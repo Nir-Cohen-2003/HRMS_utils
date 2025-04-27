@@ -1,10 +1,11 @@
 import dataclasses
 from dataclasses import dataclass
-from typing import List, Literal, Dict, Any, Optional, Union
-from itertools import batched, chain
-import joblib
-from rdkit import Chem, DataStructs
-from rdkit.Chem import AllChem, MACCSkeys
+from typing import List, Literal, Dict, Any, Optional, Union, Iterable
+from itertools import chain
+from concurrent.futures import ProcessPoolExecutor  # Added ProcessPoolExecutor import
+import functools  # Added functools import
+from rdkit import DataStructs
+from rdkit.Chem import AllChem, MACCSkeys, MolFromSmiles
 from rdkit import RDLogger
 import numpy as np
 import polars as pl
@@ -51,6 +52,9 @@ class FingerprintParams:
         # Ensure radius is set for morgan if not provided
         if self.fp_type == 'morgan' and self.radius is None:
             self.radius = 4  # Default Morgan radius
+        if self.fp_type == 'maccs':
+            # MACCS keys have a fixed size of 167 bits
+            self.fpSize = 167
 
     @classmethod
     def from_dict(cls, env: Dict[str, Any]):
@@ -61,7 +65,7 @@ class FingerprintParams:
         return cls(**filtered_dict)
 
 
-def get_fp_polars(smiles: List[str], fp_params: Union[FingerprintParams, Dict[str, Any]] = FingerprintParams(), batch_size: int = 10000) -> pl.Series:
+def get_fp_polars(smiles: Iterable[str], fp_params: Union[FingerprintParams, Dict[str, Any]] = FingerprintParams(), batch_size: int = 10000) -> pl.Series:
     """
     Generates fingerprints for a list of SMILES and returns them as a Polars Series.
 
@@ -76,11 +80,11 @@ def get_fp_polars(smiles: List[str], fp_params: Union[FingerprintParams, Dict[st
     """
     fps = get_fp_list(smiles, fp_params, batch_size)
     # Ensure fps is a flat list of numpy arrays before creating Series
-    flat_fps = list(chain.from_iterable(fps))
-    return pl.Series(flat_fps)
+
+    return pl.Series(fps)
 
 
-def get_fp_list(smiles: List[str], fp_params: Union[FingerprintParams, Dict[str, Any]] = FingerprintParams(), batch_size: int = 10000) -> List[List[np.ndarray]]:
+def get_fp_list(smiles: Iterable[str], fp_params: Union[FingerprintParams, Dict[str, Any]] = FingerprintParams(), batch_size: int = 10000) -> List[np.ndarray]:
     """
     Generates fingerprints for a list of SMILES in parallel batches.
 
@@ -91,7 +95,7 @@ def get_fp_list(smiles: List[str], fp_params: Union[FingerprintParams, Dict[str,
         batch_size: Size of batches for parallel processing.
 
     Returns:
-        A list of lists, where each inner list contains the fingerprints (numpy arrays) for a batch.
+        A list containing the fingerprints (numpy arrays).
     """
     if isinstance(fp_params, dict):
         params_obj = FingerprintParams.from_dict(fp_params)
@@ -105,9 +109,17 @@ def get_fp_list(smiles: List[str], fp_params: Union[FingerprintParams, Dict[str,
         raise ImportError("itertools.batched requires Python 3.12+. Please update Python or use an alternative batching method.")
 
     batches = list(batched(smiles, batch_size))
-    # Pass the validated FingerprintParams object to the batch function
-    fps_batches = joblib.Parallel(n_jobs=-1)(joblib.delayed(_get_fp_batch)(batch, params_obj) for batch in batches)
-    return fps_batches
+    # Pass the validated FingerprintParams object to the batch function using partial
+    partial_get_fp_batch = functools.partial(_get_fp_batch, fp_params=params_obj)
+
+    fps_batches = []
+    # Use ProcessPoolExecutor for parallel processing
+    with ProcessPoolExecutor() as executor:
+        # map returns an iterator, convert it to a list
+        fps_batches = list(executor.map(partial_get_fp_batch, batches))
+
+    flat_fps = list(chain.from_iterable(fps_batches))
+    return flat_fps
 
 
 def _get_fp_batch(smiles: List[str], fp_params: FingerprintParams) -> List[np.ndarray]:
@@ -121,6 +133,8 @@ def _get_fp_batch(smiles: List[str], fp_params: FingerprintParams) -> List[np.nd
     Returns:
         List[np.ndarray]: List of generated fingerprints as dense numpy arrays.
     '''
+    RDLogger.DisableLog('rdApp.*')
+
     fpgen: Any = None
     method_kwargs = {}
     fp_method_func = None
@@ -187,13 +201,11 @@ def _get_fp_batch(smiles: List[str], fp_params: FingerprintParams) -> List[np.nd
                 f"Valid methods for {type(fpgen).__name__} might include: {valid_methods}"
             ) from None  # Suppress original AttributeError
 
-    mols = [Chem.MolFromSmiles(s) for s in smiles]
+    mols = [MolFromSmiles(s) for s in smiles]
     fps = []
-    # Determine fingerprint length (MACCS has fixed size 167)
-    fingerprint_length = 167 if fp_params.fp_type == 'maccs' else fp_params.fpSize
 
     for mol in mols:
-        np_fp = np.zeros(fingerprint_length, dtype=np.float32)
+        np_fp = np.zeros(fp_params.fpSize, dtype=np.float32)
         if mol is not None:
             try:
                 fp = None
@@ -219,8 +231,8 @@ def _get_fp_batch(smiles: List[str], fp_params: FingerprintParams) -> List[np.nd
                     elif hasattr(fp, 'GetNonzeroElements'):  # Handle sparse/count vectors
                         # Fold sparse/count vector into the fixed-size numpy array
                         for bit_id, count in fp.GetNonzeroElements().items():
-                            if fingerprint_length > 0:
-                                idx = bit_id % fingerprint_length
+                            if fp_params.fpSize > 0:
+                                idx = bit_id % fp_params.fpSize
                                 np_fp[idx] = count
                             else:
                                 print(f"Warning: fingerprint_length is zero or invalid for folding. Skipping feature {bit_id}.")
@@ -230,7 +242,6 @@ def _get_fp_batch(smiles: List[str], fp_params: FingerprintParams) -> List[np.nd
 
             except Exception as e:
                 # Consider logging the SMILES string that caused the error
-                # smiles_str = Chem.MolToSmiles(mol) if mol else "Invalid Mol"
                 print(f"Error generating fingerprint for a molecule: {e}. Returning zeros.")
                 # np_fp remains zeros
 

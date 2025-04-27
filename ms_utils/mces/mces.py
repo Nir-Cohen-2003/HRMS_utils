@@ -3,10 +3,11 @@ import polars as pl
 import os
 from multiprocessing import cpu_count
 from joblib import Parallel, delayed, parallel_backend
-from typing import List, Optional, Tuple, Any, Generator
+from typing import List, Optional, Generator
 from itertools import batched, chain
 from contextlib import contextmanager
 from time import time
+import sys
 from ms_utils.mces.par import _calculate_bounds_batch, _calculate_exact_batch, _calculate_distinct_batch
 
 def calculate_mces_distances(smiles_list1: List[str], smiles_list2: Optional[List[str]] = None,
@@ -249,42 +250,27 @@ def are_very_distinct(smiles_list1: List[str], smiles_list2: Optional[List[str]]
 @contextmanager
 def suppress_output() -> Generator[None, None, None]:
     """Suppress stdout and stderr output for both terminal and notebook environments"""
-    import sys
     # Save the original stdout/stderr
     old_stdout = sys.stdout
     old_stderr = sys.stderr
-    
-    # Save file descriptors if we're in a terminal environment
-    try:
-        old_stdout_fd = os.dup(1)
-        old_stderr_fd = os.dup(2)
-        fd_based = True
-    except OSError:
-        fd_based = False
-    
-    devnull = open(os.devnull, 'w')
-    
-    # Redirect at both file descriptor level (for C libraries) and Python level
-    if fd_based:
-        os.dup2(devnull.fileno(), 1)
-        os.dup2(devnull.fileno(), 2)
-    sys.stdout = devnull
-    sys.stderr = devnull
-    
+
+    # Create dummy streams to redirect output
+    # Using io.StringIO captures output in memory, os.devnull discards it.
+    # os.devnull is generally better for pure suppression.
+    devnull_w = open(os.devnull, 'w')
+    # For notebooks, redirecting sys streams is usually sufficient.
+    # File descriptor redirection can be problematic in notebooks.
+    sys.stdout = devnull_w
+    sys.stderr = devnull_w
+
     try:
         yield
     finally:
-        # Restore at both levels
+        # Restore original streams
         sys.stdout = old_stdout
         sys.stderr = old_stderr
-        
-        if fd_based:
-            os.dup2(old_stdout_fd, 1)
-            os.dup2(old_stderr_fd, 2)
-            os.close(old_stdout_fd)
-            os.close(old_stderr_fd)
-        
-        devnull.close()
+        # Close the dummy stream
+        devnull_w.close()
 
 
 if __name__ == "__main__":

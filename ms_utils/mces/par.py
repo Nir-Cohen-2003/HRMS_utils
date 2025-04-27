@@ -1,13 +1,38 @@
 import os
 import numpy as np
 import polars as pl
-from multiprocessing import cpu_count
-from joblib import Parallel, delayed, parallel_backend, Memory
+from joblib import Memory
 from ms_utils.mces.lib import construct_graph, filter2, MCES_ILP
-from typing import List, Tuple, Any,Optional, Generator
-from itertools import batched, chain
+from typing import List, Tuple, Any, Generator
+from contextlib import contextmanager
+import sys
 # Keep the memory cache configuration
 memory = Memory("./cachedir", verbose=0)
+
+@contextmanager
+def suppress_output() -> Generator[None, None, None]:
+    """Suppress stdout and stderr output for both terminal and notebook environments"""
+    # Save the original stdout/stderr
+    old_stdout = sys.stdout
+    old_stderr = sys.stderr
+
+    # Create dummy streams to redirect output
+    # Using io.StringIO captures output in memory, os.devnull discards it.
+    # os.devnull is generally better for pure suppression.
+    devnull_w = open(os.devnull, 'w')
+    # For notebooks, redirecting sys streams is usually sufficient.
+    # File descriptor redirection can be problematic in notebooks.
+    sys.stdout = devnull_w
+    sys.stderr = devnull_w
+
+    try:
+        yield
+    finally:
+        # Restore original streams
+        sys.stdout = old_stdout
+        sys.stderr = old_stderr
+        # Close the dummy stream
+        devnull_w.close()
 
 # This function now provides the only caching layer
 @memory.cache
@@ -16,13 +41,14 @@ def _cached_construct_graph(smiles: str) -> Any:
 
 # Process bounds in batches to reduce overhead
 def _calculate_bounds_batch(smiles_list1: List[str], smiles_list2: List[str], batch_pairs: List[Tuple[int, int]]) -> List[Tuple[int, int, float]]:
-    results = []
-    for i, j in batch_pairs:
-        # Load graphs on-demand
-        g1 = _cached_construct_graph(smiles_list1[i])
-        g2 = _cached_construct_graph(smiles_list2[j])
-        bound = filter2(g1, g2)
-        results.append((i, j, bound))
+    with suppress_output():
+        results = []
+        for i, j in batch_pairs:
+            # Load graphs on-demand
+            g1 = _cached_construct_graph(smiles_list1[i])
+            g2 = _cached_construct_graph(smiles_list2[j])
+            bound = filter2(g1, g2)
+            results.append((i, j, bound))
     return results
 
 # Process exact calculations in batches
@@ -33,29 +59,31 @@ def _calculate_exact_batch(smiles_list1: List[str], smiles_list2: List[str], bat
     if the computation fails, it will return None.
     The function will return a list of tuples, where each tuple contains the indices of the two molecules and the distance value.
     '''
-    results = []
-    for i, j in batch_pairs:
-        # Load graphs on-demand
-        g1 = _cached_construct_graph(smiles_list1[i])
-        g2 = _cached_construct_graph(smiles_list2[j])
-        try:
-            distance, _ = MCES_ILP(g1, g2, threshold=threshold)
-        except Exception("GurobiError") as e:
-            # Handle GurobiError gracefully
-            print(f"GurobiError for pair ({i}, {j}): {e}")
-            distance = None
-        results.append((i, j, distance))
+    with suppress_output():
+        results = []
+        for i, j in batch_pairs:
+            # Load graphs on-demand
+            g1 = _cached_construct_graph(smiles_list1[i])
+            g2 = _cached_construct_graph(smiles_list2[j])
+            try:
+                distance, _ = MCES_ILP(g1, g2, threshold=threshold)
+            except Exception("GurobiError") as e:
+                # Handle GurobiError gracefully
+                print(f"GurobiError for pair ({i}, {j}): {e}")
+                distance = None
+            results.append((i, j, distance))
     return results
 
 def _calculate_distinct_batch(smiles_list1, smiles_list2, batch_pairs):
-    results = []
-    for i, j in batch_pairs:
-        # Load graphs on-demand
-        g1 = _cached_construct_graph(smiles_list1[i])
-        g2 = _cached_construct_graph(smiles_list2[j])
-        distance, _ = MCES_ILP(g1, g2, threshold=10)
-        is_distinct = distance > 10
-        results.append((i, j, is_distinct))
+    with suppress_output():
+        results = []
+        for i, j in batch_pairs:
+            # Load graphs on-demand
+            g1 = _cached_construct_graph(smiles_list1[i])
+            g2 = _cached_construct_graph(smiles_list2[j])
+            distance, _ = MCES_ILP(g1, g2, threshold=10)
+            is_distinct = distance > 10
+            results.append((i, j, is_distinct))
     return results
 
 
