@@ -1,1 +1,3 @@
 ms_utils/rdkit/__pycache__/
+ms_utils/*/__pycache__/
+ms_utils/__pycache__/
