@@ -196,9 +196,12 @@ if __name__ == "__main__":
     try:
         # Dynamically build the list of columns to load
         cols_to_load = [ID_COL, MZ_COL, MS2_MZ_COL, MS2_INT_COL]
-        if RT_COL: cols_to_load.append(RT_COL)
-        if ADDUCT_COL: cols_to_load.append(ADDUCT_COL)
-        if CHARGE_COL: cols_to_load.append(CHARGE_COL)
+        if RT_COL: 
+            cols_to_load.append(RT_COL)
+        if ADDUCT_COL: 
+            cols_to_load.append(ADDUCT_COL)
+        if CHARGE_COL: 
+            cols_to_load.append(CHARGE_COL)
 
         NIST_full = pl.read_parquet(DATA_PATH, columns=list(set(cols_to_load))).filter(
             pl.col(MZ_COL).le(900),
