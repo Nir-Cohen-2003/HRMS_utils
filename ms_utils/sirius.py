@@ -134,19 +134,19 @@ def _get_sirius_base_url(sirius_project_name:str) -> str:
 if __name__ == '__main__':
     start = time()
     sirius_project_name = '10ppb'
-    # sirius_base_url = _get_sirius_base_url(sirius_project_name)
-    # print(sirius_base_url)
-    # # compounds = get_all_compounds(sirius_project_name)
-    # # print(compounds)
-    # # print(compounds.schema)
-
+    sirius_base_url = _get_sirius_base_url(sirius_project_name)
+    print(sirius_base_url)
     # compounds = get_all_compounds(sirius_project_name)
     # print(compounds)
     # print(compounds.schema)
 
-    # formulas = asyncio.run(_get_all_formulas(sirius_project_name))
-    # print(formulas)
-    # print(formulas.schema)
+    compounds = get_all_compounds(sirius_project_name)
+    print(compounds)
+    print(compounds.schema)
+
+    formulas = asyncio.run(_get_all_formulas(sirius_project_name))
+    print(formulas)
+    print(formulas.schema)
 
     cleaned_spectra = get_clean_spectra(sirius_project_name)
     print(cleaned_spectra)

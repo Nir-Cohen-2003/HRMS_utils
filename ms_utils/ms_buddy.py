@@ -4,18 +4,23 @@ from msbuddy import Msbuddy, MsbuddyConfig
 from msbuddy.base import MetaFeature, Spectrum
 from typing import List, Dict, Any, Optional
 import time
-import os  # For checking file existence
+import os
+from dataclasses import dataclass
 
+@dataclass
+class msbuddyInterfaceConfig:
+    data_path: str
+    identifier_col: str = "NIST_ID"
+    precursor_mz_col: str = "PrecursorMZ"
+    ms2_mz_col: str = "raw_spectrum_mz"
+    ms2_int_col: str = "raw_spectrum_intensity"
+    rt_col: Optional[str] = None
+    adduct_col: Optional[str] = None
+    charge_col: Optional[str] = None
 
 def create_metafeature_from_row(
     row: Dict[str, Any],
-    identifier_col: str,
-    precursor_mz_col: str,
-    ms2_mz_col: str,
-    ms2_int_col: str,
-    rt_col: Optional[str] = None,
-    adduct_col: Optional[str] = None,
-    charge_col: Optional[str] = None,
+    interface_config: msbuddyInterfaceConfig,
     default_adduct: str = "[M+H]+",
     default_charge: int = 1,
 ) -> Optional[MetaFeature]:
@@ -24,18 +29,24 @@ def create_metafeature_from_row(
     Returns MetaFeature on success, None on error or if MS2 data is invalid/empty.
     Handles exceptions internally.
     """
-    feature_id = row.get(identifier_col, "Unknown")  # Get ID for logging
-    required_keys = [identifier_col, precursor_mz_col, ms2_mz_col, ms2_int_col]
-    if not all(key in row for key in required_keys):
-        missing = [key for key in required_keys if key not in row]
-        print(
-            f"Warning: Skipping feature (ID: {feature_id}) due to missing required keys: {missing}"
-        )
+    # pull all column names from interface_cfg
+    id_col = interface_config.identifier_col
+    pmz_col = interface_config.precursor_mz_col
+    mz2_col = interface_config.ms2_mz_col
+    int2_col = interface_config.ms2_int_col
+    rt_col = interface_config.rt_col
+    add_col = interface_config.adduct_col
+    chg_col = interface_config.charge_col
+
+    feature_id = row.get(id_col, "Unknown")  # Get ID for logging
+    required = [id_col, pmz_col, mz2_col, int2_col]
+    if not all(k in row for k in required):
+        print(f"Warning: skipping {feature_id}, missing {set(required)-row.keys()}")
         return None
 
     try:
-        mz_data = row[ms2_mz_col]
-        int_data = row[ms2_int_col]
+        mz_data = row[mz2_col]
+        int_data = row[int2_col]
         if not isinstance(mz_data, (list, np.ndarray, pl.Series)):
             raise TypeError(f"MS2 m/z data is not list-like (got {type(mz_data)})")
         if not isinstance(int_data, (list, np.ndarray, pl.Series)):
@@ -66,17 +77,17 @@ def create_metafeature_from_row(
 
         ms2_spec = Spectrum(mz_array=ms2_mz, int_array=ms2_int)
 
-        adduct = row.get(adduct_col, default_adduct) if adduct_col else default_adduct
-        charge = row.get(charge_col, default_charge) if charge_col else default_charge
+        adduct = row.get(add_col, default_adduct) if add_col else default_adduct
+        charge = row.get(chg_col, default_charge) if chg_col else default_charge
         rt = row.get(rt_col) if rt_col else None
 
         # Ensure required numeric types are correct before creating MetaFeature
-        mz_val = float(row[precursor_mz_col])
+        mz_val = float(row[pmz_col])
         charge_val = int(charge)
         rt_val = float(rt) if rt is not None else None
 
         metafeature = MetaFeature(
-            identifier=row[identifier_col],
+            identifier=row[id_col],
             mz=mz_val,
             charge=charge_val,
             adduct=adduct,
@@ -86,91 +97,63 @@ def create_metafeature_from_row(
         )
         return metafeature
 
-    except (ValueError, TypeError) as e:
-        print(
-            f"Warning: Skipping feature (ID: {feature_id}) due to error during MetaFeature creation: {e}"
-        )
-        return None
     except Exception as e:
-        print(
-            f"Warning: Skipping feature (ID: {feature_id}) due to unexpected error during MetaFeature creation: {e}"
-        )
+        print(f"Warning: skipping {feature_id} due to error: {e}")
         return None
 
+def convert_df_to_metafeature_list(
+    query_df: pl.DataFrame,
+    interface_config: msbuddyInterfaceConfig
+) -> List[MetaFeature]:
+    cols = [
+        interface_config.identifier_col,
+        interface_config.precursor_mz_col,
+        interface_config.ms2_mz_col,
+        interface_config.ms2_int_col,
+    ]
+    for opt in (interface_config.rt_col, interface_config.adduct_col, interface_config.charge_col):
+        if opt and opt in query_df.columns:
+            cols.append(opt)
+
+    row_dicts = query_df.select(cols).to_dicts()
+    mf_list: List[MetaFeature] = []
+    for r in row_dicts:
+        mf = create_metafeature_from_row(r, interface_config)
+        if mf:
+            mf_list.append(mf)
+    return mf_list
 
 def annotate_formulas_msbuddy(
     query_df: pl.DataFrame,
-    config: MsbuddyConfig,
-    identifier_col: str = "NIST_ID",
-    precursor_mz_col: str = "PrecursorMZ",
-    ms2_mz_col: str = "raw_spectrum_mz",
-    ms2_int_col: str = "raw_spectrum_intensity",
-    rt_col: Optional[str] = None,
-    adduct_col: Optional[str] = None,
-    charge_col: Optional[str] = None,
+    interface_config: msbuddyInterfaceConfig,
+    msbuddy_config: MsbuddyConfig,
 ) -> pl.DataFrame:
     """
     Annotates molecular formulas using Msbuddy.
     Creates MetaFeature objects sequentially.
     Msbuddy engine handles annotation parallelism based on its config.
     """
-    required_input_cols = [identifier_col, precursor_mz_col, ms2_mz_col, ms2_int_col]
-    cols_to_select = list(required_input_cols)
-    # Add optional columns only if they exist in the DataFrame
-    if rt_col and rt_col in query_df.columns:
-        cols_to_select.append(rt_col)
-    if adduct_col and adduct_col in query_df.columns:
-        cols_to_select.append(adduct_col)
-    if charge_col and charge_col in query_df.columns:
-        cols_to_select.append(charge_col)
-    missing_required = [
-        col for col in required_input_cols if col not in query_df.columns
+    # build and check required cols
+    req = [
+        interface_config.identifier_col,
+        interface_config.precursor_mz_col,
+        interface_config.ms2_mz_col,
+        interface_config.ms2_int_col,
     ]
-    if missing_required:
-        raise ValueError(f"Input DataFrame must contain columns: {missing_required}")
+    missing = [c for c in req if c not in query_df.columns]
+    if missing:
+        raise ValueError(f"DataFrame missing columns: {missing}")
 
-    print(f"Preparing {len(query_df)} features for Msbuddy sequentially...")
-    start_prep = time.time()
-    # Select only necessary columns before converting to dicts for efficiency
-    df_subset = query_df.select(cols_to_select)
-    row_dicts = df_subset.to_dicts()
+    print(f"Preparing {len(query_df)} features…")
+    start = time.time()
+    mf_list = convert_df_to_metafeature_list(query_df, interface_config)
+    print(f"Prepared {len(mf_list)} valid features in {time.time()-start:.2f}s")
+    if not mf_list:
+        return pl.DataFrame()
 
-    metafeature_list: List[MetaFeature] = []
-    for row_dict in row_dicts:
-        # Pass optional columns correctly, using None if not present in selected columns
-        mf = create_metafeature_from_row(
-            row=row_dict,
-            identifier_col=identifier_col,
-            precursor_mz_col=precursor_mz_col,
-            ms2_mz_col=ms2_mz_col,
-            ms2_int_col=ms2_int_col,
-            rt_col=rt_col if rt_col in cols_to_select else None,
-            adduct_col=adduct_col if adduct_col in cols_to_select else None,
-            charge_col=charge_col if charge_col in cols_to_select else None,
-        )
-        if mf is not None:
-            metafeature_list.append(mf)
-    del row_dicts  # Free memory
-    print(
-        f"MetaFeature preparation finished in {time.time() - start_prep:.2f} seconds."
-    )
-    print(f"Successfully created {len(metafeature_list)} valid MetaFeatures.")
-    if not metafeature_list:
-        print("No valid features with MS2 spectra to process.")
-        return pl.DataFrame()  # Return empty DataFrame if no features are valid
-
-    print(
-        f"Initializing Msbuddy engine with config: parallel={config.parallel}, n_cpu={config.n_cpu}"
-    )
-    msb_engine = Msbuddy(config)
-    print(f"Adding {len(metafeature_list)} valid features to Msbuddy engine...")
-    msb_engine.add_data(metafeature_list)
-
-    print("Annotating formulas using Msbuddy engine...")
-    start_annotate = time.time()
+    msb_engine = Msbuddy(msbuddy_config)
+    msb_engine.add_data(mf_list)
     msb_engine.annotate_formula()
-
-    print(f"Msbuddy annotation finished in {time.time() - start_annotate:.2f} seconds.")
 
     print("Retrieving detailed annotation results including subformulas...")
     all_results_data = []
@@ -321,7 +304,7 @@ def annotate_formulas_msbuddy(
     )
     print(f"this took {time.time() - start_convert:.2f} seconds.")
     # Rename identifier column back to original name for joining
-    results_df = results_df.rename({"identifier": identifier_col})
+    results_df = results_df.rename({"identifier": interface_config.identifier_col})
 
     return results_df
 
@@ -331,87 +314,42 @@ if __name__ == "__main__":
     pl.set_random_seed(42)
     start_time = time.time()
 
-    msb_config = MsbuddyConfig(
-        ms_instr="orbitrap",
-        ppm=True,
-        ms1_tol=5,
-        ms2_tol=10,
-        halogen=True,
-        parallel=True,  # Msbuddy engine parallelism is kept
-        n_cpu=16,  # Msbuddy engine parallelism is kept
-        timeout_secs=300,
-        rel_int_denoise_cutoff=0.001,
+    msb_cfg = MsbuddyConfig(
+        ms_instr="orbitrap", ppm=True, ms1_tol=5, ms2_tol=10,
+        halogen=True, parallel=True, n_cpu=16,
+        timeout_secs=300, rel_int_denoise_cutoff=0.001,
         top_n_per_50_da=100,
     )
 
-    DATA_PATH = r"/home/analytit_admin/Data/NIST_hr_msms/NIST_hr_msms.parquet"
-    ID_COL = "NIST_ID"
-    MZ_COL = "PrecursorMZ"
-    MS2_MZ_COL = "raw_spectrum_mz"
-    MS2_INT_COL = "raw_spectrum_intensity"
-    # Define optional columns (set to None if not used)
-    RT_COL = None
-    ADDUCT_COL = None
-    CHARGE_COL = None
+    # build one interface_cfg instead of 7 separate vars
+    interface_cfg = msbuddyInterfaceConfig(
+        data_path="/home/analytit_admin/Data/NIST_hr_msms/NIST_hr_msms.parquet",
+        identifier_col="NIST_ID",
+        precursor_mz_col="PrecursorMZ",
+        ms2_mz_col="raw_spectrum_mz",
+        ms2_int_col="raw_spectrum_intensity",
+    )
 
-    print(f"Loading data from {DATA_PATH}...")
-    if not os.path.exists(DATA_PATH):
-        print(f"Error: Data file not found at {DATA_PATH}")
+    if not os.path.exists(interface_cfg.data_path):
+        print(f"Error: Data not found at {interface_cfg.data_path}")
         exit()
 
+    df = pl.read_parquet(interface_cfg.data_path, columns=[
+        interface_cfg.identifier_col,
+        interface_cfg.precursor_mz_col,
+        interface_cfg.ms2_mz_col,
+        interface_cfg.ms2_int_col,
+    ]).filter(pl.col(interface_cfg.precursor_mz_col) <= 900)
+
+    query_df = df.sample(n=10, seed=42) if len(df) >= 10 else df
     try:
-        # Dynamically build the list of columns to load
-        cols_to_load = [ID_COL, MZ_COL, MS2_MZ_COL, MS2_INT_COL]
-        if RT_COL:
-            cols_to_load.append(RT_COL)
-        if ADDUCT_COL:
-            cols_to_load.append(ADDUCT_COL)
-        if CHARGE_COL:
-            cols_to_load.append(CHARGE_COL)
-
-        NIST_full = pl.read_parquet(DATA_PATH, columns=list(set(cols_to_load))).filter(
-            pl.col(MZ_COL).le(900),
-        )  # Use set to avoid duplicates
-        print(f"Loaded {len(NIST_full)} entries.")
+        results = annotate_formulas_msbuddy(query_df, interface_cfg, msb_cfg)
     except Exception as e:
-        print(f"Error loading or processing data: {e}")
-        exit()
+        print(f"Error: {e}")
+        results = pl.DataFrame()
 
-    n_samples = 10
-    if len(NIST_full) < n_samples:
-        query_df = NIST_full
-    else:
-        query_df = NIST_full.sample(n=n_samples, seed=42)
-    print(f"Selected {len(query_df)} features for annotation.")
+    if not results.is_empty():
+        print(results.head(), results.schema)
 
-    print("Starting annotation process...")
-
-    try:
-        annotation_results = annotate_formulas_msbuddy(
-            query_df=query_df,
-            config=msb_config,
-            identifier_col=ID_COL,
-            precursor_mz_col=MZ_COL,
-            ms2_mz_col=MS2_MZ_COL,
-            ms2_int_col=MS2_INT_COL,
-            rt_col=RT_COL,
-            adduct_col=ADDUCT_COL,
-            charge_col=CHARGE_COL,
-        )
-    except ValueError as ve:  # Catch specific expected errors like missing columns
-        print(f"Configuration Error: {ve}")
-        annotation_results = pl.DataFrame()  # Ensure it's an empty DF on error
-    except Exception as e:
-        print(f"An unexpected error occurred during annotation function call: {e}")
-        annotation_results = pl.DataFrame()  # Ensure it's an empty DF on error
-
-    if not annotation_results.is_empty():
-        print("\nAnnotation Results Summary:")
-        pl.Config.set_tbl_cols(
-            annotation_results.width
-        )  
-        print(annotation_results.head())  # Show head for brevity
-        print(annotation_results.schema)
-
-    print(f"\nTotal script execution time: {time.time() - start_time:.2f} seconds.")
+    print(f"Total time: {time.time()-start_time:.2f}s")
     pl.disable_string_cache()
