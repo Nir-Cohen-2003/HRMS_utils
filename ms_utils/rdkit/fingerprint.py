@@ -63,6 +63,24 @@ class FingerprintParams:
         valid_keys = {f.name for f in dataclasses.fields(cls)}
         filtered_dict = {k: v for k, v in env.items() if k in valid_keys}
         return cls(**filtered_dict)
+    
+    def __eq__(self, other):
+        """
+        Determines if two FingerprintParams instances are equal by comparing all attributes.
+        
+        Args:
+            other: Another FingerprintParams instance to compare with
+            
+        Returns:
+            bool: True if all attributes are equal, False otherwise
+        """
+        if not isinstance(other, FingerprintParams):
+            return False
+        
+        return all(
+            getattr(self, field.name) == getattr(other, field.name)
+            for field in dataclasses.fields(self)
+        )
 
 
 def get_fp_polars(smiles: Iterable[str], fp_params: Union[FingerprintParams, Dict[str, Any]] = FingerprintParams(), batch_size: int = 10000) -> pl.Series:
