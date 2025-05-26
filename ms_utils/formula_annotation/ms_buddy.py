@@ -2,14 +2,14 @@ import polars as pl
 import numpy as np
 from msbuddy import Msbuddy, MsbuddyConfig
 from msbuddy.base import MetaFeature, Spectrum
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Literal # Added Literal
 import time
 import os
 from dataclasses import dataclass
 
 @dataclass
 class msbuddyInterfaceConfig:
-    data_path: str
+    data_path: Optional[str]
     identifier_col: str = "NIST_ID"
     precursor_mz_col: str = "PrecursorMZ"
     ms2_mz_col: str = "raw_spectrum_mz"
@@ -17,12 +17,23 @@ class msbuddyInterfaceConfig:
     rt_col: Optional[str] = None
     adduct_col: Optional[str] = None
     charge_col: Optional[str] = None
+    ms1_isotope_mz_col: Optional[str] = None
+    ms1_isotope_int_col: Optional[str] = None
+    polarity_col: Optional[str] = None  # New: column name for polarity
+    default_polarity: Literal["positive", "negative"] = "positive" # New: 'positive' or 'negative'
+
+    def __post_init__(self):
+        # Normalize and validate default_polarity
+        if isinstance(self.default_polarity, str):
+            self.default_polarity = self.default_polarity.lower() # type: ignore
+        if self.default_polarity not in ["positive", "negative"]:
+            raise ValueError("default_polarity must be 'positive' or 'negative'")
 
 def create_metafeature_from_row(
     row: Dict[str, Any],
-    interface_config: msbuddyInterfaceConfig,
-    default_adduct: str = "[M+H]+",
-    default_charge: int = 1,
+    interface_config: msbuddyInterfaceConfig
+    # default_adduct: str = "[M+H]+", # Removed
+    # default_charge: int = 1, # Removed
 ) -> Optional[MetaFeature]:
     """
     Creates a msbuddy.base.MetaFeature object from a dictionary representing a DataFrame row.
@@ -37,6 +48,9 @@ def create_metafeature_from_row(
     rt_col = interface_config.rt_col
     add_col = interface_config.adduct_col
     chg_col = interface_config.charge_col
+    ms1_iso_mz_c = interface_config.ms1_isotope_mz_col
+    ms1_iso_int_c = interface_config.ms1_isotope_int_col
+    pol_col = interface_config.polarity_col # New
 
     feature_id = row.get(id_col, "Unknown")  # Get ID for logging
     required = [id_col, pmz_col, mz2_col, int2_col]
@@ -73,26 +87,101 @@ def create_metafeature_from_row(
 
         # Skip if spectrum is empty after validation
         if len(ms2_mz) == 0:
+            # print(f"Warning: skipping {feature_id} due to empty MS2 spectrum after validation.") # Optional: more verbose logging
             return None
 
         ms2_spec = Spectrum(mz_array=ms2_mz, int_array=ms2_int)
 
-        adduct = row.get(add_col, default_adduct) if add_col else default_adduct
-        charge = row.get(chg_col, default_charge) if chg_col else default_charge
+        # Determine is_positive_mode based on polarity_col or default_polarity
+        is_positive_mode: bool
+        if pol_col and pol_col in row and row[pol_col] is not None:
+            polarity_val_str = str(row[pol_col]).lower()
+            if polarity_val_str == "positive":
+                is_positive_mode = True
+            elif polarity_val_str == "negative":
+                is_positive_mode = False
+            else:
+                print(f"Warning: Invalid polarity value '{row[pol_col]}' for feature {feature_id}. Using default polarity '{interface_config.default_polarity}'.")
+                is_positive_mode = interface_config.default_polarity == "positive"
+        else:
+            is_positive_mode = interface_config.default_polarity == "positive"
+
+        # Determine adduct string
+        adduct_str: str
+        if add_col and add_col in row and row[add_col] is not None:
+            adduct_str = str(row[add_col])
+        else:
+            adduct_str = "[M+H]+" if is_positive_mode else "[M-H]-"
+            # Optional: Log if default adduct is used
+            # print(f"Feature {feature_id}: No adduct column '{add_col}' or value missing. Using default adduct '{adduct_str}' based on polarity: {'positive' if is_positive_mode else 'negative'}.")
+
+        # Determine charge_val
+        charge_val: int
+        if chg_col and chg_col in row and row[chg_col] is not None:
+            try:
+                charge_val = int(row[chg_col])
+                # Optional: Basic consistency check with is_positive_mode, can be noisy
+                # if (charge_val > 0 and not is_positive_mode) or \
+                #    (charge_val < 0 and is_positive_mode) and \
+                #    charge_val != 0 : # Allow charge 0 for neutral M
+                #     print(f"Warning: Charge {charge_val} from column '{chg_col}' might be inconsistent with determined polarity for feature {feature_id}.")
+            except ValueError:
+                print(f"Warning: Invalid charge value '{row[chg_col]}' for feature {feature_id}. Using polarity-derived charge.")
+                charge_val = 1 if is_positive_mode else -1
+        else: # No charge column, or value is None
+            charge_val = 1 if is_positive_mode else -1
+        
+        # Ensure charge is non-zero if default adducts [M+H]+ or [M-H]- are used.
+        if charge_val == 0:
+            if adduct_str == "[M+H]+":
+                # print(f"Warning: Charge was 0 for feature {feature_id} with adduct {adduct_str}. Setting charge to 1.")
+                charge_val = 1
+            elif adduct_str == "[M-H]-":
+                # print(f"Warning: Charge was 0 for feature {feature_id} with adduct {adduct_str}. Setting charge to -1.")
+                charge_val = -1
+            # If charge is 0 and adduct is something else (e.g. "[M]"), msbuddy should handle it.
+
         rt = row.get(rt_col) if rt_col else None
 
         # Ensure required numeric types are correct before creating MetaFeature
         mz_val = float(row[pmz_col])
-        charge_val = int(charge)
         rt_val = float(rt) if rt is not None else None
+
+        # Handle MS1 isotopic pattern
+        ms1_spectrum = None
+        if ms1_iso_mz_c and ms1_iso_int_c and \
+           ms1_iso_mz_c in row and ms1_iso_int_c in row:
+            
+            iso_mz_data = row[ms1_iso_mz_c]
+            iso_int_data = row[ms1_iso_int_c]
+
+            if isinstance(iso_mz_data, (list, np.ndarray, pl.Series)) and \
+               isinstance(iso_int_data, (list, np.ndarray, pl.Series)):
+                
+                ms1_iso_mz_arr = np.array(iso_mz_data, dtype=np.float64)
+                ms1_iso_int_arr = np.array(iso_int_data, dtype=np.float64)
+
+                if ms1_iso_mz_arr.ndim == 1 and ms1_iso_int_arr.ndim == 1 and \
+                   len(ms1_iso_mz_arr) == len(ms1_iso_int_arr) and len(ms1_iso_mz_arr) > 0:
+                    
+                    if not (np.any(np.isnan(ms1_iso_mz_arr)) or np.any(np.isinf(ms1_iso_mz_arr)) or \
+                            np.any(np.isnan(ms1_iso_int_arr)) or np.any(np.isinf(ms1_iso_int_arr)) or \
+                            np.any(ms1_iso_int_arr < 0)):
+                        ms1_spectrum = Spectrum(mz_array=ms1_iso_mz_arr, int_array=ms1_iso_int_arr)
+                    else:
+                        print(f"Warning: Skipping MS1 isotopic pattern for {feature_id} due to invalid values (NaN, Inf, or negative intensity).")
+                elif len(ms1_iso_mz_arr) > 0: # Only warn if there was data but it was malformed or empty after processing
+                    print(f"Warning: Skipping MS1 isotopic pattern for {feature_id} due to mismatched, non-1D, or empty m/z and intensity arrays (lengths: {len(ms1_iso_mz_arr)}, {len(ms1_iso_int_arr)}).")
+            elif iso_mz_data is not None or iso_int_data is not None: # Warn if columns exist but data is not list-like
+                 print(f"Warning: Skipping MS1 isotopic pattern for {feature_id} due to non list-like data for m/z (type: {type(iso_mz_data)}) or intensity (type: {type(iso_int_data)}).")
 
         metafeature = MetaFeature(
             identifier=row[id_col],
             mz=mz_val,
-            charge=charge_val,
-            adduct=adduct,
+            charge=charge_val, # Use the determined charge_val
+            adduct=adduct_str, # Use the determined adduct_str
             rt=rt_val,
-            ms1=None,  # Assuming MS1 is not used here
+            ms1=ms1_spectrum, # Use the created Spectrum object for MS1 isotopic pattern
             ms2=ms2_spec,
         )
         return metafeature
@@ -111,9 +200,30 @@ def convert_df_to_metafeature_list(
         interface_config.ms2_mz_col,
         interface_config.ms2_int_col,
     ]
-    for opt in (interface_config.rt_col, interface_config.adduct_col, interface_config.charge_col):
-        if opt and opt in query_df.columns:
-            cols.append(opt)
+    # Add optional columns if they exist in the DataFrame and are configured
+    for opt_col_attr in ['rt_col', 'adduct_col', 'charge_col', 
+                         'ms1_isotope_mz_col', 'ms1_isotope_int_col']:
+        col_name = getattr(interface_config, opt_col_attr)
+        if col_name and col_name in query_df.columns:
+            cols.append(col_name)
+        elif col_name and col_name not in query_df.columns:
+             # Only print warning if column is configured but missing in DataFrame
+            print(f"Warning: Optional column '{col_name}' not found in DataFrame, it will not be used.")
+
+
+    # Ensure no duplicate columns
+    cols = sorted(list(set(cols)))
+    
+    # Check if all essential columns are present before attempting to select
+    essential_cols_in_df = [
+        interface_config.identifier_col,
+        interface_config.precursor_mz_col,
+        interface_config.ms2_mz_col,
+        interface_config.ms2_int_col,
+    ]
+    missing_essential = [c for c in essential_cols_in_df if c not in query_df.columns]
+    if missing_essential:
+        raise ValueError(f"DataFrame missing essential columns for MetaFeature conversion: {missing_essential}")
 
     row_dicts = query_df.select(cols).to_dicts()
     mf_list: List[MetaFeature] = []
@@ -310,46 +420,81 @@ def annotate_formulas_msbuddy(
 
 
 if __name__ == "__main__":
+    from ms_utils.msdial import get_chromatogram
     pl.enable_string_cache()
     pl.set_random_seed(42)
     start_time = time.time()
 
-    msb_cfg = MsbuddyConfig(
-        ms_instr="orbitrap", ppm=True, ms1_tol=5, ms2_tol=10,
+
+    msbuddy_config = MsbuddyConfig(
+        ms_instr="orbitrap", ppm=True, 
+        ms1_tol=3, 
+        ms2_tol=5,
         halogen=True, parallel=True, n_cpu=16,
         timeout_secs=300, rel_int_denoise_cutoff=0.001,
         top_n_per_50_da=100,
+        isotope_bin_mztol=0.008
+    )
+    interface_config = msbuddyInterfaceConfig(
+        data_path="placeholder",
+        identifier_col="Peak ID",
+        precursor_mz_col="Precursor_mz_MSDIAL",
+        adduct_col="Precursor_type_MSDIAL", # Msbuddy will parse this if present
+        charge_col="Charge", # Msbuddy will use this if present and valid
+        ms2_mz_col="msms_m/z",
+        ms2_int_col="msms_intensity",
+        ms1_isotope_mz_col='ms1_isotopes_m/z',
+        ms1_isotope_int_col='ms1_isotopes_intensity',
+        polarity_col=None,  # Set to your polarity column name if you have one, e.g., "Polarity"
+        default_polarity="negative"  # Or "negative" if that's your data's common mode
     )
 
-    # build one interface_cfg instead of 7 separate vars
-    interface_cfg = msbuddyInterfaceConfig(
-        data_path="/home/analytit_admin/Data/NIST_hr_msms/NIST_hr_msms.parquet",
-        identifier_col="NIST_ID",
-        precursor_mz_col="PrecursorMZ",
-        ms2_mz_col="raw_spectrum_mz",
-        ms2_int_col="raw_spectrum_intensity",
+    # Example: Ensure your DataFrame (query_df) might have 'Charge' and 'Polarity' columns
+    # if you specify them in interface_cfg. Otherwise, the defaults will apply.
+    # For the sample data loading:
+    # df = get_chromatogram(...).filter(...)
+    # If 'Charge' column is missing from df, charge will be 1 or -1 based on polarity.
+    # If 'Precursor_type_MSDIAL' is missing, adduct will be [M+H]+ or [M-H]- based on polarity.
+
+    # Example of how you might add these columns if they don't exist for testing:
+    # if "Charge" not in query_df.columns and interface_cfg.charge_col == "Charge":
+    #     print("Adding dummy 'Charge' column for testing based on default_polarity.")
+    #     query_df = query_df.with_columns(
+    #         pl.when(pl.lit(interface_cfg.default_polarity == "positive")).then(pl.lit(1)).otherwise(pl.lit(-1)).alias("Charge")
+    #     )
+    # if "Polarity" not in query_df.columns and interface_cfg.polarity_col == "Polarity":
+    #     print("Adding dummy 'Polarity' column for testing.")
+    #     query_df = query_df.with_columns(pl.lit(interface_cfg.default_polarity).alias("Polarity"))
+    query_df= get_chromatogram(
+    path = '/home/analytit_admin/dev/PFAS/data/raw_data/250514_015.txt'
+    ).filter(
+    pl.col('msms_m/z').is_not_null() &
+    pl.col('msms_m/z').list.len() > 0,
+    pl.col('RT (min)').gt(2)
     )
-
-    if not os.path.exists(interface_cfg.data_path):
-        print(f"Error: Data not found at {interface_cfg.data_path}")
-        exit()
-
-    df = pl.read_parquet(interface_cfg.data_path, columns=[
-        interface_cfg.identifier_col,
-        interface_cfg.precursor_mz_col,
-        interface_cfg.ms2_mz_col,
-        interface_cfg.ms2_int_col,
-    ]).filter(pl.col(interface_cfg.precursor_mz_col) <= 900)
-
-    query_df = df.sample(n=10, seed=42) if len(df) >= 10 else df
     try:
-        results = annotate_formulas_msbuddy(query_df, interface_cfg, msb_cfg)
+        results = annotate_formulas_msbuddy(query_df, interface_config, msbuddy_config).filter(
+            pl.col('subformula_mz').list.len()> 0
+        )
     except Exception as e:
         print(f"Error: {e}")
         results = pl.DataFrame()
 
     if not results.is_empty():
-        print(results.head(), results.schema)
+        print(results.select(
+            pl.col(interface_config.identifier_col),
+            pl.col("rank"),
+            # pl.col("neutral_formula"),
+            pl.col("charged_formula"),
+            pl.col("estimated_prob"),
+            pl.col("normed_estimated_prob"),
+            pl.col("estimated_fdr"),
+            pl.col("ms1_isotope_similarity"),
+            # pl.col("subformula_mz"),
+            # pl.col("subformula_int"),
+            pl.col("subformula_str"),
+            # pl.col("subformula_arr")
+        ).head(), results.schema)
 
     print(f"Total time: {time.time()-start_time:.2f}s")
     pl.disable_string_cache()

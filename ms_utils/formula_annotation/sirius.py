@@ -3,7 +3,7 @@ from time import time
 import polars as pl
 from aiohttp import ClientSession
 import asyncio
-from MS_utils.formula import format_formula_string_to_array
+from ms_utils.formula import format_formula_string_to_array
 from pathlib import Path
 
 num_elements = 15
@@ -92,7 +92,7 @@ async def _get_frag_trees_for_feature(session: ClientSession,base_url:str, featu
 
 def get_clean_spectra(sirius_project_name: str) -> pl.DataFrame:
 
-    frag_trees = asyncio.run(_get_all_frag_trees(sirius_project_name))
+    frag_trees: pl.DataFrame = asyncio.run(_get_all_frag_trees(sirius_project_name))
     frag_trees = frag_trees.with_columns(
         pl.col('fragments').list.eval(
             pl.element().struct.field('adduct').str.replace('M',pl.element().struct.field('molecularFormula')).str.extract(r'\[(.+)\]',1)
@@ -133,7 +133,7 @@ def _get_sirius_base_url(sirius_project_name:str) -> str:
 
 if __name__ == '__main__':
     start = time()
-    sirius_project_name = '10ppb'
+    sirius_project_name = 'pfas_low_conc'
     sirius_base_url = _get_sirius_base_url(sirius_project_name)
     print(sirius_base_url)
     # compounds = get_all_compounds(sirius_project_name)
