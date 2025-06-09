@@ -2,112 +2,13 @@ import polars as pl
 # import numpy as np
 from pathlib import Path
 from time import time
-from NIST_search import NIST_search_external , custom_search
-from spectral_similarity import entropy_score_batch
-from ms_utils.interfaces.msdial import get_chromatogram
+from ms_utils.interfaces.msdial import get_chromatogram, subtract_blank_frame
 from ms_utils.formula_annotation.isotopic_pattern import fits_isotopic_pattern_batch
 from pyscreen_config import blank_config, search_config, isotopic_pattern_config, suspect_list_config,pyscreen_config, adducts_neg, adducts_pos
+from NIST_search import NIST_search_external , custom_search
+from epa import get_EPA
 VERBOSE = False
 SHORT = False
-
-def subtract_blank_frame(
-        sample_df: pl.DataFrame, 
-        blank_df: pl.DataFrame, 
-        config:blank_config) -> pl.DataFrame:
-    '''subtracts a blank chromatogram, using ms1, ms2 and RT. 
-    in absense of ms2 for either the blank or the sample compound, a stricter rt threshold is used. 
-    keep dRT_min_with_ms2 > dRT_min, or the logic gets weird and wrong.'''
-
-    if not config.use_ms2: #so when both sample and blank spectra has msms, we require a 0.85 fit on ms2, but lower fit on rt. if any of them lacks ms2, we just use strict rt.
-        sample_lf = sample_df.select(
-            [
-                "Peak ID",
-                "RT (min)",
-                "Precursor_mz_MSDIAL",
-                "Height",
-            ]
-        ).lazy()
-        blank_lf = blank_df.select(
-            [
-                "RT (min)",
-                "Precursor_mz_MSDIAL",
-                "Height",
-            ]
-        ).lazy()
-
-        subtract_df = sample_lf.join_where(
-            blank_lf,
-            pl.col("RT (min)") < pl.col("RT (min)_blank") + config.dRT_min,
-            pl.col("RT (min)") > pl.col("RT (min)_blank") -  config.dRT_min,
-            (pl.col("Precursor_mz_MSDIAL").truediv(pl.col("Precursor_mz_MSDIAL_blank"))-1).abs().le(config.ms1_mass_tolerance),
-            pl.col("Height") <  pl.col("Height_blank") * config.ratio,
-            suffix="_blank"
-        ).collect(streaming=True)
-    else: # so we just use strict rt
-        sample_lf = sample_df.select(
-            [
-                "Peak ID",
-                "RT (min)",
-                "Precursor_mz_MSDIAL",
-                "Height",
-                'msms_m/z',
-                'msms_intensity'
-            ]
-        ).lazy()
-        blank_lf = blank_df.select(
-            [
-                "RT (min)",
-                "Precursor_mz_MSDIAL",
-                "Height",
-                'msms_m/z',
-                'msms_intensity'
-            ]
-        ).lazy()
-        subtract_lf = sample_lf.join_where(
-            blank_lf,
-            pl.col("RT (min)") < pl.col("RT (min)_blank") + config.dRT_min_with_ms2,
-            pl.col("RT (min)") > pl.col("RT (min)_blank") - config.dRT_min_with_ms2,
-            (pl.col("Precursor_mz_MSDIAL").truediv(pl.col("Precursor_mz_MSDIAL_blank"))-1).abs().le(config.ms1_mass_tolerance),
-            pl.col("Height") <  pl.col("Height_blank") * config.ratio,
-            suffix="_blank"
-        )
-        subtract_lf_rt_strict = subtract_lf.filter(
-            pl.col('msms_m/z').is_null() | 
-            pl.col('msms_m/z_blank').is_null()
-        )
-        subtract_lf_rt_strict = subtract_lf_rt_strict.filter(
-            pl.col("RT (min)") < pl.col("RT (min)_blank") + config.dRT_min,
-            pl.col("RT (min)") > pl.col("RT (min)_blank") - config.dRT_min
-        )
-
-        subtract_df_ms2 = subtract_lf.filter(
-            pl.col('msms_m/z').is_not_null(),
-            pl.col('msms_m/z_blank').is_not_null()
-        ).collect(streaming=True)
-        
-        subtract_df_ms2 = subtract_df_ms2.filter(
-            pl.struct(
-                pl.col('msms_intensity'),
-                pl.col('msms_m/z'),
-                pl.col('msms_intensity_blank'),
-                pl.col('msms_m/z_blank')
-            ).map_batches(
-                lambda spectra: entropy_score_batch(
-                    spectra.struct.field('msms_m/z').to_numpy(),
-                    spectra.struct.field('msms_intensity').to_numpy(),
-                    spectra.struct.field('msms_m/z_blank').to_numpy(),
-                    spectra.struct.field('msms_intensity_blank').to_numpy(),
-                    config
-                    ),
-                return_dtype=pl.Float64,
-                is_elementwise=True
-            ).ge(config.ms2_fit))
-        
-        subtract_df = pl.concat([subtract_df_ms2,subtract_lf_rt_strict.collect(streaming=True)])
-
-    cleaned_sample_df = sample_df.join(subtract_df,on="Peak ID", how='anti')
-    return cleaned_sample_df
-
 
 def cross_with_EPA(chromatogram : pl.LazyFrame | pl.DataFrame, EPA: pl.LazyFrame | pl.DataFrame, config:search_config) -> pl.DataFrame:
     '''
@@ -450,57 +351,6 @@ def get_NIST(condig:search_config) -> pl.DataFrame:
     NIST = NIST.collect()
     return NIST
 
-def exclude_boring_compounds(EPA:pl.DataFrame) -> pl.DataFrame:
-    '''
-    NON VALIDATED! DO NOT USE! this is Nir's quick-n-dirty exclusion list
-    overwrites the Haz_level of the natural compounds to be 3, mathces based on inchikey and DTXSID
-    '''
-    print("NON VALIDATED! DO NOT USE! this is Nir's quick-n-dirty exclusion list")
-    boring_compounds = pl.read_excel(source=Path(r"boring_compounds.xlsx"))
-    boring_compounds = boring_compounds.select(['DTXSID','inchikey']).unique()
-    boring_compounds = boring_compounds.rename({
-        'inchikey' :'inchikey_EPA'
-    },strict=False)
-    EPA_boring = EPA.join(boring_compounds,on=['DTXSID','inchikey_EPA'],how='inner')
-    EPA_boring = EPA_boring.with_columns(
-        pl.lit(value=3,dtype=pl.Int64).alias('Haz_level')
-    )
-    EPA = EPA.join(boring_compounds,on=['DTXSID','inchikey_EPA'],how='anti')
-    EPA = pl.concat([EPA,EPA_boring])
-    return EPA
-
-def get_EPA(config:suspect_list_config)-> pl.DataFrame:
-    EPA_important_columns = [
-    'DTXSID','Haz_level','MS_READY_SMILES',
-    'PREFERRED NAME','CASRN','INCHIKEY',
-    'IUPAC NAME','SMILES',
-    'MOLECULAR FORMULA','MONOISOTOPIC MASS',
-    'synonyms'
-    ]
-    EPA = pl.scan_parquet(r"EPA_with_Haz_level.parquet").select(EPA_important_columns).rename(
-            {'INCHIKEY':'inchikey_EPA',
-             'CASRN':'CAS_EPA',
-             'synonyms':'Synonyms_EPA',
-             'PREFERRED NAME':'Name_EPA',
-             'MOLECULAR FORMULA':'Formula_EPA',
-             },
-        strict=False
-    ).collect()
-
-    if config.exclusion_list is None:
-        pass
-    else:
-        match config.exclusion_list.lower():
-            case 'boring_compounds':
-                EPA = exclude_boring_compounds(EPA)
-            case None:
-                pass
-            case 'none':
-                pass
-            case _:
-                print(config.exclusion_list)
-                raise Exception("invalid exclusion list given")
-    return EPA
 
 def screen_per_file(
         MSDIAL_file_path: str | Path, 

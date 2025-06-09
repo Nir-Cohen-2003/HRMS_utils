@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 
 from ms_utils.formula_annotation.isotopic_pattern import isotopic_pattern_config
-from ms_utils.pyscreen.spectral_similarity import search_config
+from ms_utils.pyscreen.NIST_search import search_config
 from ms_utils.interfaces.msdial import blank_config
 from ms_utils.pyscreen.epa import suspect_list_config
 
