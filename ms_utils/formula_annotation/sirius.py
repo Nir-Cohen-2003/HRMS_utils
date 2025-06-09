@@ -3,7 +3,7 @@ from time import time
 import polars as pl
 from aiohttp import ClientSession
 import asyncio
-from ms_utils.formula import format_formula_string_to_array
+from ms_utils.formula_annotation.utils import format_formula_string_to_array
 from pathlib import Path
 import numpy as np
 from typing import Any, List, Tuple, Dict, Optional

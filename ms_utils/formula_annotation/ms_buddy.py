@@ -420,7 +420,7 @@ def annotate_formulas_msbuddy(
 
 
 if __name__ == "__main__":
-    from ms_utils.msdial import get_chromatogram
+    from ms_utils.interfaces.msdial import get_chromatogram
     pl.enable_string_cache()
     pl.set_random_seed(42)
     start_time = time.time()
