@@ -4,7 +4,7 @@ from pathlib import Path
 from time import time
 from ms_entropy import calculate_spectral_entropy
 from dataclasses import dataclass
-from ms_utils.pyscreen.spectral_similarity import entropy_score_batch
+from ms_utils.pyscreen.spectral_search import entropy_score_batch # used to compare chromatograms agianst each other, which is a case of spectral search
 
 MSDIAL_columns_to_read = [
     'Peak ID','Scan',

@@ -5,7 +5,7 @@ from time import time
 from ms_utils.interfaces.msdial import get_chromatogram, subtract_blank_frame
 from ms_utils.formula_annotation.isotopic_pattern import fits_isotopic_pattern_batch
 from pyscreen_config import blank_config, search_config, isotopic_pattern_config, suspect_list_config,pyscreen_config, adducts_neg, adducts_pos
-from NIST_search import NIST_search_external , custom_search
+from ms_utils.pyscreen.spectral_search import NIST_search_external , custom_search, get_NIST
 from epa import get_EPA
 VERBOSE = False
 SHORT = False
@@ -295,63 +295,6 @@ def foramt_results(
 
     return suspects_found_in_NIST
 
-def get_NIST(condig:search_config) -> pl.DataFrame:
-    NIST = pl.scan_parquet(source=r"NIST_DB.parquet")
-    NIST = NIST.select([
-    'Name',
-    'NIST_ID',
-    'DB_ID',
-    'DB_Name',
-    'Precursor_type',
-    'PrecursorMZ',
-    'Ion_mode',
-    'Instrument_type',
-    'Formula',
-    'Num_Peaks',
-    'CAS',
-    'InChIKey',
-    'Synonyms',
-    'raw_spectrum_intensity',
-    'normalized_spectrum_mz',
-    'MultiCharge',
-    'Collision_energy_raw',
-    # 'Collision_energy_NCE'
-    # 'InChI',
-    # 'CanonicalSMILES'
-    ]).rename(
-            {'InChIKey':'inchikey_NIST',
-             'CAS':'CAS_NIST',
-             'Synonyms':'Synonyms_NIST',
-             'Name':'Name_NIST',
-             'Formula':'Formula_NIST',
-             'Precursor_type':'Precursor_type_NIST',
-             'Collision_energy_raw':'collision_energy_NIST'
-             }
-        )
-    
-
-    if condig.polarity.lower()=="positive":
-        mode="P"
-    elif condig.polarity.lower()=="negative":
-        mode="N"
-
-    if mode is not None:
-        NIST = NIST.filter(
-            pl.col("Ion_mode").eq(mode)
-    )
-    else:
-        print("supply correct operation mode to NIST_presearch_filtering to get better performance")
-        NIST = NIST
-
-    NIST = NIST.filter(
-        pl.col('Instrument_type').eq('HCD') |
-        pl.col('Instrument_type').eq('IT-FT/ion trap with FTMS'),
-        pl.col('MultiCharge').not_()
-    )
-    NIST = NIST.collect()
-    return NIST
-
-
 def screen_per_file(
         MSDIAL_file_path: str | Path, 
         blank_chromatogram: pl.DataFrame,
@@ -459,9 +402,10 @@ def screen_per_file(
         print('wrote not in lib')
     return
 
-# Takes a list of files (as paths), a blank (as path) a polarity (positive/negative).
+# Takes a list of files (as paths), a blank (as path) a the config for this run.
 # Then splits the work using the "screen_per_file" function.
 # currently impossible to make parrallel, since NIST cant work this way and its the most time consuming step by a mile.
+# if not using NIST, it can be parallelized, but then its already fast enough, and polars already does it in parallel.
 def main(
         sample_file_paths:  list[str] | list[Path] , 
         blank_file_path : str | Path | None, 

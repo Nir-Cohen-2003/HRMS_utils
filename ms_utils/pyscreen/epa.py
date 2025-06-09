@@ -59,3 +59,6 @@ def get_EPA(config:suspect_list_config)-> pl.DataFrame:
                 print(config.exclusion_list)
                 raise Exception("invalid exclusion list given")
     return EPA
+
+
+# TODO: add the function for construction of the suspect list. might add a GUI for it later.

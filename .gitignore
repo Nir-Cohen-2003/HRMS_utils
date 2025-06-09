@@ -2,5 +2,6 @@ ms_utils/rdkit/__pycache__/
 ms_utils/*/__pycache__/
 ms_utils/__pycache__/
 ./__pycache__
+*/__pycache__
 ms_utils/mces/__pycache__/mces.cpython-312.pyc
 ms_utils/FIDDLE
