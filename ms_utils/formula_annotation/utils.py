@@ -43,7 +43,10 @@ def formula_fits_mass(formula: str, mass: float, mass_tolerance:float=3e-6) -> b
         calculated_mass = float(calculated_mass)
         mass = float(mass)
         return math.isclose(calculated_mass, mass, rel_tol=mass_tolerance, abs_tol=0.0) 
-    except:
+    except Exception as e:
+        print(f"Error in formula_fits_mass: {e}")
+        print(f"Formula: {formula}, Mass: {mass}")
+        # If there's an error in the calculation, return False
         return False
     
 @lru_cache(maxsize = None)

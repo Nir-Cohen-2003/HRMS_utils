@@ -3,6 +3,8 @@ import numpy as np
 from pathlib import Path
 from time import time
 from ms_entropy import calculate_spectral_entropy
+from dataclasses import dataclass
+from ms_utils.pyscreen.spectral_similarity import entropy_score_batch
 
 MSDIAL_columns_to_read = [
     'Peak ID','Scan',
@@ -33,6 +35,17 @@ MSDIAL_columns_to_output= [
     'energy_is_too_low', 'energy_is_too_high',
     'ms1_isotopes_m/z', 'ms1_isotopes_intensity'
 ]
+@dataclass
+class blank_config:
+    ms1_mass_tolerance : float=3e-6
+    dRT_min : float=0.1
+    ratio : float | int=5
+    use_ms2:bool=False
+    dRT_min_with_ms2:float=0.3
+    ms2_fit:float=0.85
+
+
+
 def get_chromatogram(path: str | Path)-> pl.DataFrame :
     chromatogram = _get_chromatogram_basic(path=path)
     chromatogram = _annotate_isobars_and_clean_spectrum(chromatogram=chromatogram)
@@ -43,6 +56,107 @@ def get_chromatogram(path: str | Path)-> pl.DataFrame :
         raise Exception("failed getting chromatogram from the file: " + str(path))
     
     return chromatogram
+
+
+def subtract_blank_frame(
+        sample_df: pl.DataFrame, 
+        blank_df: pl.DataFrame, 
+        config:blank_config) -> pl.DataFrame:
+    '''subtracts a blank chromatogram, using ms1, ms2 and RT. 
+    in absense of ms2 for either the blank or the sample compound, a stricter rt threshold is used. 
+    keep dRT_min_with_ms2 > dRT_min, or the logic gets wrong.'''
+
+    if not config.use_ms2: #so when both sample and blank spectra has msms, we require a 0.85 fit on ms2, but lower fit on rt. if any of them lacks ms2, we just use strict rt.
+        sample_lf = sample_df.select(
+            [
+                "Peak ID",
+                "RT (min)",
+                "Precursor_mz_MSDIAL",
+                "Height",
+            ]
+        ).lazy()
+        blank_lf = blank_df.select(
+            [
+                "RT (min)",
+                "Precursor_mz_MSDIAL",
+                "Height",
+            ]
+        ).lazy()
+
+        subtract_df = sample_lf.join_where(
+            blank_lf,
+            pl.col("RT (min)") < pl.col("RT (min)_blank") + config.dRT_min,
+            pl.col("RT (min)") > pl.col("RT (min)_blank") -  config.dRT_min,
+            (pl.col("Precursor_mz_MSDIAL").truediv(pl.col("Precursor_mz_MSDIAL_blank"))-1).abs().le(config.ms1_mass_tolerance),
+            pl.col("Height") <  pl.col("Height_blank") * config.ratio,
+            suffix="_blank"
+        ).collect(streaming=True)
+    else: # so we just use strict rt
+        sample_lf = sample_df.select(
+            [
+                "Peak ID",
+                "RT (min)",
+                "Precursor_mz_MSDIAL",
+                "Height",
+                'msms_m/z',
+                'msms_intensity'
+            ]
+        ).lazy()
+        blank_lf = blank_df.select(
+            [
+                "RT (min)",
+                "Precursor_mz_MSDIAL",
+                "Height",
+                'msms_m/z',
+                'msms_intensity'
+            ]
+        ).lazy()
+        subtract_lf = sample_lf.join_where(
+            blank_lf,
+            pl.col("RT (min)") < pl.col("RT (min)_blank") + config.dRT_min_with_ms2,
+            pl.col("RT (min)") > pl.col("RT (min)_blank") - config.dRT_min_with_ms2,
+            (pl.col("Precursor_mz_MSDIAL").truediv(pl.col("Precursor_mz_MSDIAL_blank"))-1).abs().le(config.ms1_mass_tolerance),
+            pl.col("Height") <  pl.col("Height_blank") * config.ratio,
+            suffix="_blank"
+        )
+        subtract_lf_rt_strict = subtract_lf.filter(
+            pl.col('msms_m/z').is_null() | 
+            pl.col('msms_m/z_blank').is_null()
+        )
+        subtract_lf_rt_strict = subtract_lf_rt_strict.filter(
+            pl.col("RT (min)") < pl.col("RT (min)_blank") + config.dRT_min,
+            pl.col("RT (min)") > pl.col("RT (min)_blank") - config.dRT_min
+        )
+
+        subtract_df_ms2 = subtract_lf.filter(
+            pl.col('msms_m/z').is_not_null(),
+            pl.col('msms_m/z_blank').is_not_null()
+        ).collect(streaming=True)
+        
+        subtract_df_ms2 = subtract_df_ms2.filter(
+            pl.struct(
+                pl.col('msms_intensity'),
+                pl.col('msms_m/z'),
+                pl.col('msms_intensity_blank'),
+                pl.col('msms_m/z_blank')
+            ).map_batches(
+                lambda spectra: entropy_score_batch(
+                    spectra.struct.field('msms_m/z').to_numpy(),
+                    spectra.struct.field('msms_intensity').to_numpy(),
+                    spectra.struct.field('msms_m/z_blank').to_numpy(),
+                    spectra.struct.field('msms_intensity_blank').to_numpy(),
+                    config
+                    ),
+                return_dtype=pl.Float64,
+                is_elementwise=True
+            ).ge(config.ms2_fit))
+        
+        subtract_df = pl.concat([subtract_df_ms2,subtract_lf_rt_strict.collect(streaming=True)])
+
+    cleaned_sample_df = sample_df.join(subtract_df,on="Peak ID", how='anti')
+    return cleaned_sample_df
+
+
 
 def _get_chromatogram_basic(path: str | Path)-> pl.LazyFrame :
     chromatogram=pl.read_csv(source=path,has_header=True,skip_rows=0,separator="	", null_values='null')
