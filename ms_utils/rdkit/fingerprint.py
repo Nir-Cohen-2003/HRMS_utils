@@ -30,7 +30,7 @@ class FingerprintParams:
     # Note: fpSize is ignored for 'maccs' (fixed size 167).
     fpSize: int = 2048
     # Morgan specific
-    radius: Optional[int] = 4
+    radius: Optional[int] = 2
     useBondTypes: Optional[bool] = True
     # RDKit specific
     minPath: Optional[int] = 1
