@@ -1,7 +1,7 @@
 import time
 import polars as pl
 from pathlib import Path
-from MS_utils.formula import formula_to_array_EPA
+from ms_utils.formula_annotation.utils import formula_to_array_EPA
 
 EPA_main_data_shcema_initial = dict({
     'INPUT': pl.String,
@@ -93,7 +93,7 @@ def read_xlsx_EPA_list_file(file_path):
     return combined_df
 
 def Main_sheet_cleaner(main_df):
-    main_df = main_df.with_columns(
+    main_df = main_df.with_columns( # this mostly just convert the columns where Y/N are to boolean values
         pl.col('SAFETY_DATA').str.contains('Y').alias('SAFETY_DATA'),
         pl.col('EXPOCAST').str.contains('Y').alias('EXPOCAST'),
         pl.col('TOXVAL_DATA').str.contains('Y').alias('TOXVAL_DATA'),
