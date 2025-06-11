@@ -59,7 +59,7 @@ def cross_with_EPA(chromatogram : pl.LazyFrame | pl.DataFrame, EPA: pl.LazyFrame
         print('all adduct done')
     
     suspects = pl.concat(adducts_list,how='vertical')
-    adducts_list = None #memory savings
+    del adducts_list
 
     suspects=suspects.collect(streaming=True)
     return suspects
@@ -327,8 +327,8 @@ def screen_per_file(
 
     start_cross = time()
     suspects = cross_with_EPA(chromatogram=chromatogram,EPA=EPA,config=config.search)
-    
     suspects = annotate_isotopic_pattern(suspects=suspects,config=config.isotopic_pattern)
+    #TODO: somewhere here we should send to sirius or msbuddy (or something that I'll write) to get possible formulae, and see if there ius one that matches the isotopic pattern, if the epa formula doesn't match.
     suspects = filter_suspects(suspects=suspects,chromatogram=chromatogram)
     end_cross = time()
     if VERBOSE:
@@ -377,7 +377,7 @@ def screen_per_file(
     suspects_found_in_NIST.sort(
             by=['Haz_level','DotProd'],descending=[False,True]
         ).write_excel(MSDIAL_file_path.parent.joinpath(MSDIAL_file_path.stem+"_results.xlsx"))
-    suspects_found_in_NIST = None # memory savings
+    del suspects_found_in_NIST
     end_writing_results = time()
     if VERBOSE:
         print(f'time to write results: {end_writing_results-start_writing_results}')

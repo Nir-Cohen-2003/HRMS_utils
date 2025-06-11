@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 import polars as pl
-from pathlib import Path
+from pathlib import Path, Pathlike
+from typing import Iterable, Tuple
+
 
 @dataclass
 class suspect_list_config:
@@ -62,3 +64,18 @@ def get_EPA(config:suspect_list_config)-> pl.DataFrame:
 
 
 # TODO: add the function for construction of the suspect list. might add a GUI for it later.
+# takes an iterable of tuples (name, haz_level) and returns a polars DataFrame, which can be written to disk or used directly.
+def construct_suspect_list(list_dir:Pathlike,lists:Iterable[Tuple[str,int]]) -> pl.DataFrame:
+    '''
+    takes an iterable of tuples (name, haz_level) and returns a polars DataFrame, which can be written to disk or used directly.
+    '''
+    #assert the path points to an exisiting directory
+    list_dir = Path(list_dir)
+    if not list_dir.exists():
+        raise FileNotFoundError(f"Directory {list_dir} does not exist")
+    if not list_dir.is_dir():
+        raise NotADirectoryError(f"{list_dir} is not a directory")
+    #make sure that all banes exist in the directory
+    for name, haz_level in lists:
+        list_path = list_dir / f"{name}."
+    for 
