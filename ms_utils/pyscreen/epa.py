@@ -31,10 +31,10 @@ def exclude_boring_compounds(EPA:pl.DataFrame) -> pl.DataFrame:
 
 def get_EPA(config:suspect_list_config,epa_path:Path|str='EPA_with_Haz_level')-> pl.DataFrame:
     EPA_important_columns = [
-    'DTXSID','Haz_level','MS_READY_SMILES',
-    'PREFERRED NAME','CASRN','INCHIKEY',
-    'IUPAC NAME','SMILES',
-    'MOLECULAR FORMULA','MONOISOTOPIC MASS',
+    'DTXSID','Haz_level',
+    'PREFERRED_NAME','CASRN','INCHIKEY',
+    'IUPAC_NAME','SMILES',
+    'MOLECULAR_FORMULA','MONOISOTOPIC_MASS',
     'synonyms'
     ]
     #make sure the path is a Path object
@@ -45,15 +45,20 @@ def get_EPA(config:suspect_list_config,epa_path:Path|str='EPA_with_Haz_level')->
     #add the parquet file extension if it is not already there
     if not epa_path.suffix == '.parquet':
         epa_path = epa_path.with_suffix('.parquet')
-    EPA = pl.scan_parquet(epa_path).select(EPA_important_columns).rename(
+    
+    try :
+        EPA = pl.scan_parquet(epa_path).select(EPA_important_columns).rename(
             {'INCHIKEY':'inchikey_EPA',
              'CASRN':'CAS_EPA',
              'synonyms':'Synonyms_EPA',
-             'PREFERRED NAME':'Name_EPA',
-             'MOLECULAR FORMULA':'Formula_EPA',
+             'PREFERRED_NAME':'Name_EPA',
+             'MOLECULAR_FORMULA':'Formula_EPA',
              },
-        strict=False
-    ).collect()
+            strict=False
+        ).collect()
+    except pl.exceptions.ColumnNotFoundError as e:
+        print(f"Error: Missing {e}. The file {epa_path} might not be in the expected format or missing some columns.")
+        raise 
 
     if config.exclusion_list is None:
         pass
@@ -142,6 +147,6 @@ if __name__ == "__main__":
     print(suspect_list.head())
     suspect_list.write_parquet('/home/analytit_admin/Data/EPA/suspect_list.parquet')
     # Example usage
-    config = suspect_list_config(exclusion_list='boring_compounds')
+    config = suspect_list_config()
     EPA_df = get_EPA(config, epa_path='/home/analytit_admin/Data/EPA/suspect_list.parquet')
     print(EPA_df.head())
