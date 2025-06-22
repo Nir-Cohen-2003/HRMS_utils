@@ -12,7 +12,7 @@ def z3_solve_mass_decomposition_optimized(
     max_solutions: int = 100,
     solver_options: dict = None,
     enable_profiling: bool = False,
-    optimization_strategy: Literal["push_pop", "fresh_solver", "minimize_vars"] = "minimize_vars",
+    optimization_strategy: Literal["push_pop", "fresh_solver", "minimize_vars", "all_smt"] = "all_smt",
 ):
     """
     Optimized Z3-based mass decomposition with multiple strategies to reduce solving time.
@@ -27,15 +27,18 @@ def z3_solve_mass_decomposition_optimized(
 
     match optimization_strategy:
         case "push_pop":
-            return _solve_with_push_pop(target_mass, error_ppm, element_details, rules, max_solutions, enable_profiling)
+            return _solve_with_push_pop_fixed(target_mass, error_ppm, element_details, rules, max_solutions, enable_profiling)
         case "fresh_solver":
             return _solve_with_fresh_solver(target_mass, error_ppm, element_details, rules, max_solutions, enable_profiling)
         case "minimize_vars":
             return _solve_with_minimized_vars(target_mass, error_ppm, element_details, rules, max_solutions, enable_profiling)
+        case "all_smt":
+            return _solve_with_all_smt(target_mass, error_ppm, element_details, rules, max_solutions, enable_profiling)
 
-def _solve_with_push_pop(target_mass, error_ppm, element_details, rules, max_solutions, enable_profiling):
+def _solve_with_push_pop_fixed(target_mass, error_ppm, element_details, rules, max_solutions, enable_profiling):
     """
     Strategy 1: Use push/pop to manage exclusion constraints efficiently
+    The original approach was actually correct - Z3 maintains learned clauses between iterations
     """
     mass_tolerance_absolute = target_mass * error_ppm * 1e-6
     min_mass = target_mass - mass_tolerance_absolute
@@ -108,7 +111,7 @@ def _solve_with_push_pop(target_mass, error_ppm, element_details, rules, max_sol
             except Exception as e:
                 print(f"Warning: Error applying rule: {e}")
 
-    # Solving loop with push/pop
+    # Solving loop - add exclusions permanently to benefit from learned clauses
     solution_count = 0
     
     while solution_count < max_solutions:
@@ -143,7 +146,7 @@ def _solve_with_push_pop(target_mass, error_ppm, element_details, rules, max_sol
             found_formulas.append(current_formula)
             solution_count += 1
             
-            # FIXED: Add exclusion constraint for this exact solution
+            # Add exclusion constraint permanently - Z3 keeps learned clauses
             if current_solution_vars:
                 exclusion_constraint = Not(And(current_solution_vars))
                 base_solver.add(exclusion_constraint)
@@ -357,6 +360,108 @@ def _solve_with_minimized_vars(target_mass, error_ppm, element_details, rules, m
 
     return found_formulas
 
+def _solve_with_all_smt(target_mass, error_ppm, element_details, rules, max_solutions, enable_profiling):
+    """
+    Strategy 4: Use optimal all_smt algorithm with divide-and-conquer approach
+    This is the most efficient method for finding multiple solutions.
+    """
+    mass_tolerance_absolute = target_mass * error_ppm * 1e-6
+    min_mass = target_mass - mass_tolerance_absolute
+    max_mass = target_mass + mass_tolerance_absolute
+    
+    found_formulas = []
+    element_symbols = list(element_details.keys())
+    
+    # Create solver with integer variables (simpler approach)
+    solver = Solver()
+    element_counts = {}
+    
+    for element_symbol in element_symbols:
+        element_data = element_details[element_symbol]
+        min_count = element_data.get("min", 0)
+        max_allowed_count = math.floor(max_mass / element_data["mass"]) if element_data["mass"] > 0 else 0
+        max_count = element_data.get("max", max_allowed_count)
+        max_count = min(max_count, max_allowed_count)
+        
+        element_counts[element_symbol] = Int(f"count_{element_symbol}")
+        solver.add(element_counts[element_symbol] >= min_count)
+        solver.add(element_counts[element_symbol] <= max_count)
+
+    # Mass constraints
+    scale_factor = 1000000
+    total_mass_scaled = Sum([element_counts[element_symbol] * int(element_details[element_symbol]["mass"] * scale_factor)
+                            for element_symbol in element_symbols])
+    min_mass_scaled = int(min_mass * scale_factor)
+    max_mass_scaled = int(max_mass * scale_factor)
+    
+    solver.add(total_mass_scaled >= min_mass_scaled)
+    solver.add(total_mass_scaled <= max_mass_scaled)
+
+    # Add rules (adapted for integer variables)
+    if rules:
+        for rule_func in rules:
+            try:
+                constraint = rule_func(element_counts)
+                if constraint is not None:
+                    solver.add(constraint)
+            except Exception as e:
+                print(f"Warning: Error applying rule: {e}")
+
+    # Get all variables for the all_smt algorithm
+    variables = [element_counts[symbol] for symbol in element_symbols]
+    
+    def block_term(s, m, t):
+        """Block a specific evaluation of term t in model m"""
+        s.add(t != m.eval(t, model_completion=True))
+        
+    def fix_term(s, m, t):
+        """Fix a specific evaluation of term t in model m"""
+        s.add(t == m.eval(t, model_completion=True))
+        
+    def all_smt_rec(terms):
+        """Recursive function to enumerate all models using divide-and-conquer"""
+        solve_start = perf_counter()
+        if solver.check() == sat:
+            solve_time = perf_counter() - solve_start
+            if enable_profiling:
+                print(f"PROFILE: all_smt iteration took {solve_time:.4f} seconds")
+                
+            m = solver.model()
+            yield m
+            
+            # Divide and conquer: for each term, block it and fix previous terms
+            for i in range(len(terms)):
+                solver.push()
+                block_term(solver, m, terms[i])
+                for j in range(i):
+                    fix_term(solver, m, terms[j])
+                yield from all_smt_rec(terms[i:])
+                solver.pop()
+    
+    # Use the all_smt algorithm to enumerate solutions
+    solution_count = 0
+    for model in all_smt_rec(variables):
+        if solution_count >= max_solutions:
+            break
+            
+        current_formula = {}
+        actual_mass = 0.0
+        
+        for element_symbol in element_symbols:
+            count = model[element_counts[element_symbol]]
+            element_count = count.as_long() if count is not None else 0
+            
+            if element_count > 0:
+                current_formula[element_symbol] = element_count
+            actual_mass += element_count * element_details[element_symbol]["mass"]
+        
+        delta_ppm = ((actual_mass - target_mass) / target_mass) * 1e6
+        print(f"solution {solution_count + 1}: {current_formula} (mass: {actual_mass:.6f}, delta: {delta_ppm:.2f} ppm)")
+        found_formulas.append(current_formula)
+        solution_count += 1
+
+    return found_formulas
+
 # Updated rule functions for integer variables
 def rule_DBE_int(element_counts):
     """DBE rule for integer variables"""
@@ -389,7 +494,7 @@ if __name__ == "__main__":
     error_user = 2
 
     # Test different strategies
-    strategies = ["minimize_vars", "fresh_solver", "push_pop"]
+    strategies = ["all_smt", "minimize_vars", "fresh_solver", "push_pop"]
     
     for strategy in strategies:
         print(f"\n{'='*60}")
@@ -397,7 +502,7 @@ if __name__ == "__main__":
         print(f"{'='*60}")
         
         start_time = perf_counter()
-        if strategy == "minimize_vars":
+        if strategy in ["minimize_vars", "all_smt"]:
             rules = [rule_DBE_int, rule_oc_ratio_int]
         else:
             rules = [rule_DBE_int, rule_oc_ratio_int]
