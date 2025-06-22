@@ -278,15 +278,13 @@ def solve_mass_decomposition(
     return found_formulas
 
 
-# ...existing code...
-
 if __name__ == "__main__":
     # --- Example Usage ---
     print("Running Mass Decomposition Example with One-Hot Encoding...")
 
     # Define elements and their properties
     elements_data_generic = {
-        "C": {"mass": 12.000000, "min": 0, "max": 20},
+        "C": {"mass": 12.000000, "min": 15, "max": 19},
         "H": {"mass": 1.007825, "min": 0, "max": 50},
         "O": {"mass": 15.994914, "min": 0, "max": 20},
         "N": {"mass": 14.003074, "min": 0, "max": 10},
@@ -371,6 +369,7 @@ if __name__ == "__main__":
     
     # Single run with detailed profiling
     print("\n--- SINGLE RUN WITH DETAILED PROFILING ---")
+    solutions_onehot = None
     solutions_onehot = solve_mass_decomposition(
         measured_mass_user,
         error_user,
@@ -379,24 +378,6 @@ if __name__ == "__main__":
         max_solutions=50,  # Reduced for detailed profiling
         enable_profiling=True,
     )
-    
-    # # Multiple runs for performance testing
-    # print("\n--- PERFORMANCE TEST (10 RUNS) ---")
-    # start_time = perf_counter()
-    # for i in range(10):
-    #     print(f"Run {i+1}/10...", end=" ")
-    #     solutions_onehot = solve_mass_decomposition_onehot(
-    #         measured_mass_user,
-    #         error_user,
-    #         elements_data_generic,
-    #         rules=custom_rules,
-    #         max_solutions=50,
-    #         enable_profiling=False,  # Disable per-iteration profiling for cleaner output
-    #     )
-    #     print("Done")
-    # total_time = perf_counter() - start_time
-    # print(f"Total time for 10 runs: {total_time:.2f} seconds")
-    # print(f"Average time per run: {total_time/10:.2f} seconds")
     
     if solutions_onehot:
         print(f"\nFound {len(solutions_onehot)} possible formulas:")
@@ -412,3 +393,5 @@ if __name__ == "__main__":
             print(f"  ... and {len(solutions_onehot) - 10} more solutions")
     else:
         print(f"No solutions found for mass {measured_mass_user}.")
+    
+   
