@@ -1,8 +1,9 @@
-from z3 import Solver, Bool, Sum, If, Int, Or, And, Not, sat, Optimize,is_true
+from z3 import Solver, Bool, Sum, If, Int, Or, And, Not, sat, Optimize, is_true
 import math
-from typing import List, Dict
+from typing import List, Dict, Literal, Optional
 from time import perf_counter
 from functools import wraps
+
 def z3_solve_mass_decomposition(
     target_mass: float,
     error_ppm: float,
@@ -212,9 +213,9 @@ def z3_solve_mass_decomposition(
                     if is_true(model[choices[element_symbol][count]]):
                         current_solution_vars.append(choices[element_symbol][count])
             
-            # Constraint: at least one of these variables must be False in future solutions
+            # FIXED: Exclude this exact combination
             if current_solution_vars:
-                solver.add(Sum([If(var, 1, 0) for var in current_solution_vars]) <= len(current_solution_vars) - 1)
+                solver.add(Not(And(current_solution_vars)))
             
             exclusion_time = perf_counter() - exclusion_start
             total_exclusion_time += exclusion_time
@@ -244,6 +245,7 @@ def z3_solve_mass_decomposition(
         print(f"Time per solution: {timing_profile['total']/solution_count:.4f}s")
 
     return found_formulas
+
 def z3_solve_mass_decomposition_optimized(
     target_mass: float,
     error_ppm: float,
@@ -252,7 +254,7 @@ def z3_solve_mass_decomposition_optimized(
     max_solutions: int = 100,
     solver_options: dict = None,
     enable_profiling: bool = False,
-    optimization_strategy: str = "push_pop",  # "push_pop", "fresh_solver", "minimize_vars"
+    optimization_strategy: str = "minimize_vars",  # "push_pop", "fresh_solver", "minimize_vars"
 ):
     """
     Optimized Z3-based mass decomposition with multiple strategies to reduce solving time.
@@ -364,8 +366,6 @@ def _solve_with_push_pop(target_mass, error_ppm, element_details, rules, max_sol
     solution_count = 0
     
     while solution_count < max_solutions:
-        base_solver.push()  # Save current state
-        
         solve_start = perf_counter()
         result = base_solver.check()
         solve_time = perf_counter() - solve_start
@@ -397,14 +397,12 @@ def _solve_with_push_pop(target_mass, error_ppm, element_details, rules, max_sol
             found_formulas.append(current_formula)
             solution_count += 1
             
-            # Add exclusion constraint and continue
+            # FIXED: Add exclusion constraint for this exact solution
             if current_solution_vars:
-                base_solver.add(Sum([If(var, 1, 0) for var in current_solution_vars]) <= len(current_solution_vars) - 1)
+                exclusion_constraint = Not(And(current_solution_vars))
+                base_solver.add(exclusion_constraint)
         else:
-            base_solver.pop()  # Restore state
             break
-            
-        base_solver.pop()  # Always pop after processing
 
     return found_formulas
 
@@ -484,7 +482,7 @@ def _solve_with_fresh_solver(target_mass, error_ppm, element_details, rules, max
                 except Exception as e:
                     print(f"Warning: Error applying rule: {e}")
 
-        # Add exclusion constraints for all previously found solutions
+        # FIXED: Add exclusion constraints for all previously found solutions
         for excluded_formula in excluded_solutions:
             exclusion_vars = []
             for element_symbol in element_symbols:
@@ -492,8 +490,9 @@ def _solve_with_fresh_solver(target_mass, error_ppm, element_details, rules, max
                 if count in count_ranges[element_symbol]:
                     exclusion_vars.append(choices[element_symbol][count])
             
+            # FIXED: Use And() + Not() to exclude this exact combination
             if exclusion_vars:
-                solver.add(Sum([If(var, 1, 0) for var in exclusion_vars]) <= len(exclusion_vars) - 1)
+                solver.add(Not(And(exclusion_vars)))
 
         # Solve
         solve_start = perf_counter()
@@ -603,9 +602,9 @@ def _solve_with_minimized_vars(target_mass, error_ppm, element_details, rules, m
             found_formulas.append(current_formula)
             solution_count += 1
             
-            # Add exclusion constraint for this exact solution
-            exclusion_constraint = Or([element_counts[element_symbol] != current_formula.get(element_symbol, 0)
-                                     for element_symbol in element_symbols])
+            # FIXED: Add exclusion constraint for this exact solution
+            exclusion_constraint = Not(And([element_counts[element_symbol] == current_formula.get(element_symbol, 0)
+                                           for element_symbol in element_symbols]))
             solver.add(exclusion_constraint)
         else:
             break
@@ -627,10 +626,17 @@ def rule_oc_ratio_int(element_counts):
 
 if __name__ == "__main__":
     elements_data_generic = {
-        "C": {"mass": 12.000000, "min": 15, "max": 19},
+        "C": {"mass": 12.000000, "min": 0, "max": 20},
         "H": {"mass": 1.007825, "min": 0, "max": 50},
         "O": {"mass": 15.994914, "min": 0, "max": 20},
         "N": {"mass": 14.003074, "min": 0, "max": 10},
+        "S": {"mass": 31.972071, "min": 0, "max": 0},
+        "P": {"mass": 30.973762, "min": 0, "max": 5},
+        "Na": {"mass": 22.989769, "min": 0, "max": 1},
+        "F": {"mass": 18.998403, "min": 0, "max": 5},
+        "Cl": {"mass": 34.968853, "min": 0, "max": 0},
+        "Br": {"mass": 78.918337, "min": 0, "max": 0},
+        "I": {"mass": 126.904473, "min": 0, "max": 5},
     }
 
     measured_mass_user = 285.136493
@@ -663,3 +669,19 @@ if __name__ == "__main__":
         total_time = perf_counter() - start_time
         print(f"\nStrategy '{strategy}': Found {len(solutions)} solutions in {total_time:.4f}s")
 
+        print(f"\n{'='*60}")
+        print("Testing non-optimized (one-hot) version")
+        print(f"{'='*60}")
+
+        start_time = perf_counter()
+        rules = [rule_DBE_int, rule_oc_ratio_int]
+        solutions = z3_solve_mass_decomposition(
+            measured_mass_user,
+            error_user,
+            elements_data_generic,
+            rules=rules,
+            max_solutions=20,
+            enable_profiling=True,
+        )
+        total_time = perf_counter() - start_time
+        print(f"\nNon-optimized: Found {len(solutions)} solutions in {total_time:.4f}s")
