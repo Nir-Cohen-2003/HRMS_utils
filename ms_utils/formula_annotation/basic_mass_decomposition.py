@@ -3,18 +3,6 @@ import math
 from typing import List, Dict
 from time import perf_counter
 from functools import wraps
-
-def profile_function(func):
-    """Decorator to profile individual functions"""
-    @wraps(func)
-    def wrapper(*args, **kwargs):
-        start_time = perf_counter()
-        result = func(*args, **kwargs)
-        end_time = perf_counter()
-        print(f"PROFILE: {func.__name__} took {end_time - start_time:.4f} seconds")
-        return result
-    return wrapper
-
 def z3_solve_mass_decomposition(
     target_mass: float,
     error_ppm: float,
@@ -256,97 +244,422 @@ def z3_solve_mass_decomposition(
         print(f"Time per solution: {timing_profile['total']/solution_count:.4f}s")
 
     return found_formulas
+def z3_solve_mass_decomposition_optimized(
+    target_mass: float,
+    error_ppm: float,
+    element_details: Dict[str, Dict[str, float]],
+    rules: list = None,
+    max_solutions: int = 100,
+    solver_options: dict = None,
+    enable_profiling: bool = False,
+    optimization_strategy: str = "push_pop",  # "push_pop", "fresh_solver", "minimize_vars"
+):
+    """
+    Optimized Z3-based mass decomposition with multiple strategies to reduce solving time.
+    """
+    if rules is None:
+        rules = []
+    if solver_options is None:
+        solver_options = {}
 
-# Z3-compatible rule functions
-def rule_DBE_z3(choices, count_ranges):
-    """
-    DBE (Double Bond Equivalent) rule: H <= 2*C + 3
-    Z3 version using If expressions
-    """
-    if "H" not in choices or "C" not in choices:
-        return None
+    total_start = perf_counter()
     
-    h_sum = Sum([If(choices["H"][count], count, 0) for count in count_ranges["H"]])
-    c_sum = Sum([If(choices["C"][count], count, 0) for count in count_ranges["C"]])
-    
-    return h_sum <= 2 * c_sum + 3
+    # Setup phase (same as before)
+    mass_tolerance_absolute = target_mass * error_ppm * 1e-6
+    min_mass = target_mass - mass_tolerance_absolute
+    max_mass = target_mass + mass_tolerance_absolute
 
-def rule_oc_ratio_z3(choices, count_ranges):
-    """
-    Oxygen-Carbon ratio rule: O <= C
-    Z3 version using If expressions
-    """
-    if "O" not in choices or "C" not in choices:
-        return None
-    
-    o_sum = Sum([If(choices["O"][count], count, 0) for count in count_ranges["O"]])
-    c_sum = Sum([If(choices["C"][count], count, 0) for count in count_ranges["C"]])
-    
-    return o_sum <= c_sum
+    print(f"Target mass: {target_mass:.6f}, Error: {error_ppm} ppm")
+    print(f"Optimization strategy: {optimization_strategy}")
 
-def rule_nitrogen_limit_z3(choices, count_ranges):
+    found_formulas = []
+    element_symbols = list(element_details.keys())
+
+    if optimization_strategy == "push_pop":
+        return _solve_with_push_pop(target_mass, error_ppm, element_details, rules, max_solutions, enable_profiling)
+    elif optimization_strategy == "fresh_solver":
+        return _solve_with_fresh_solver(target_mass, error_ppm, element_details, rules, max_solutions, enable_profiling)
+    elif optimization_strategy == "minimize_vars":
+        return _solve_with_minimized_vars(target_mass, error_ppm, element_details, rules, max_solutions, enable_profiling)
+    else:
+        # Default to original method
+        return z3_solve_mass_decomposition(target_mass, error_ppm, element_details, rules, max_solutions, solver_options, enable_profiling)
+
+def _solve_with_push_pop(target_mass, error_ppm, element_details, rules, max_solutions, enable_profiling):
     """
-    Nitrogen limit rule: N <= C/2 + 1
-    Z3 version using If expressions
+    Strategy 1: Use push/pop to manage exclusion constraints efficiently
     """
-    if "N" not in choices or "C" not in choices:
+    mass_tolerance_absolute = target_mass * error_ppm * 1e-6
+    min_mass = target_mass - mass_tolerance_absolute
+    max_mass = target_mass + mass_tolerance_absolute
+    
+    found_formulas = []
+    element_symbols = list(element_details.keys())
+    
+    # Create base solver with all permanent constraints
+    base_solver = Solver()
+    
+    # Variable creation (same as original)
+    choices = {}
+    count_ranges = {}
+    
+    for element_symbol in element_symbols:
+        element_data = element_details[element_symbol]
+        min_count = element_data.get("min", 0)
+        max_allowed_count = math.floor(max_mass / element_data["mass"]) if element_data["mass"] > 0 else 0
+        max_count = element_data.get("max", max_allowed_count)
+        max_count = min(max_count, max_allowed_count)
+        count_ranges[element_symbol] = range(min_count, max_count + 1)
+        choices[element_symbol] = {}
+        
+        for count in count_ranges[element_symbol]:
+            choices[element_symbol][count] = Bool(f"Choice_{element_symbol}_{count}")
+
+    # Add permanent constraints to base solver
+    # One-hot constraints
+    for element_symbol in element_symbols:
+        base_solver.add(Sum([If(choices[element_symbol][count], 1, 0) 
+                           for count in count_ranges[element_symbol]]) == 1)
+
+    # Mass constraints
+    scale_factor = 1000000
+    mass_contributions = []
+    for element_symbol in element_symbols:
+        for count in count_ranges[element_symbol]:
+            scaled_mass = int(element_details[element_symbol]["mass"] * scale_factor)
+            mass_contributions.append(
+                If(choices[element_symbol][count], count * scaled_mass, 0)
+            )
+    
+    total_mass_scaled = Sum(mass_contributions)
+    min_mass_scaled = int(min_mass * scale_factor)
+    max_mass_scaled = int(max_mass * scale_factor)
+    
+    base_solver.add(total_mass_scaled >= min_mass_scaled)
+    base_solver.add(total_mass_scaled <= max_mass_scaled)
+
+    # Add rules
+    if rules:
+        for rule_func in rules:
+            try:
+                import inspect
+                sig = inspect.signature(rule_func)
+                if len(sig.parameters) == 2:
+                    constraint = rule_func(choices, count_ranges)
+                else:
+                    element_counts = {}
+                    for element_symbol in element_symbols:
+                        element_counts[element_symbol] = Sum([
+                            If(choices[element_symbol][count], count, 0)
+                            for count in count_ranges[element_symbol]
+                        ])
+                    constraint = rule_func(element_counts)
+                
+                if constraint is not None:
+                    base_solver.add(constraint)
+            except Exception as e:
+                print(f"Warning: Error applying rule: {e}")
+
+    # Solving loop with push/pop
+    solution_count = 0
+    
+    while solution_count < max_solutions:
+        base_solver.push()  # Save current state
+        
+        solve_start = perf_counter()
+        result = base_solver.check()
+        solve_time = perf_counter() - solve_start
+        
+        if enable_profiling:
+            print(f"PROFILE: Solve iteration {solution_count + 1} took {solve_time:.4f} seconds")
+        
+        if result == sat:
+            model = base_solver.model()
+            current_formula = {}
+            actual_mass = 0.0
+            
+            # Extract solution
+            current_solution_vars = []
+            for element_symbol in element_symbols:
+                element_count = 0
+                for count in count_ranges[element_symbol]:
+                    choice_value = model[choices[element_symbol][count]]
+                    if is_true(choice_value):
+                        element_count = count
+                        current_solution_vars.append(choices[element_symbol][count])
+                
+                if element_count > 0:
+                    current_formula[element_symbol] = element_count
+                actual_mass += element_count * element_details[element_symbol]["mass"]
+            
+            delta_ppm = ((actual_mass - target_mass) / target_mass) * 1e6
+            print(f"solution {solution_count + 1}: {current_formula} (mass: {actual_mass:.6f}, delta: {delta_ppm:.2f} ppm)")
+            found_formulas.append(current_formula)
+            solution_count += 1
+            
+            # Add exclusion constraint and continue
+            if current_solution_vars:
+                base_solver.add(Sum([If(var, 1, 0) for var in current_solution_vars]) <= len(current_solution_vars) - 1)
+        else:
+            base_solver.pop()  # Restore state
+            break
+            
+        base_solver.pop()  # Always pop after processing
+
+    return found_formulas
+
+def _solve_with_fresh_solver(target_mass, error_ppm, element_details, rules, max_solutions, enable_profiling):
+    """
+    Strategy 2: Create fresh solver for each iteration with accumulated exclusions
+    """
+    mass_tolerance_absolute = target_mass * error_ppm * 1e-6
+    min_mass = target_mass - mass_tolerance_absolute
+    max_mass = target_mass + mass_tolerance_absolute
+    
+    found_formulas = []
+    element_symbols = list(element_details.keys())
+    excluded_solutions = []  # Store solutions to exclude
+    
+    for iteration in range(max_solutions):
+        # Create fresh solver
+        solver = Solver()
+        
+        # Variable creation
+        choices = {}
+        count_ranges = {}
+        
+        for element_symbol in element_symbols:
+            element_data = element_details[element_symbol]
+            min_count = element_data.get("min", 0)
+            max_allowed_count = math.floor(max_mass / element_data["mass"]) if element_data["mass"] > 0 else 0
+            max_count = element_data.get("max", max_allowed_count)
+            max_count = min(max_count, max_allowed_count)
+            count_ranges[element_symbol] = range(min_count, max_count + 1)
+            choices[element_symbol] = {}
+            
+            for count in count_ranges[element_symbol]:
+                choices[element_symbol][count] = Bool(f"Choice_{element_symbol}_{count}")
+
+        # Add all constraints (same as before)
+        for element_symbol in element_symbols:
+            solver.add(Sum([If(choices[element_symbol][count], 1, 0) 
+                           for count in count_ranges[element_symbol]]) == 1)
+
+        # Mass constraints
+        scale_factor = 1000000
+        mass_contributions = []
+        for element_symbol in element_symbols:
+            for count in count_ranges[element_symbol]:
+                scaled_mass = int(element_details[element_symbol]["mass"] * scale_factor)
+                mass_contributions.append(
+                    If(choices[element_symbol][count], count * scaled_mass, 0)
+                )
+        
+        total_mass_scaled = Sum(mass_contributions)
+        min_mass_scaled = int(min_mass * scale_factor)
+        max_mass_scaled = int(max_mass * scale_factor)
+        
+        solver.add(total_mass_scaled >= min_mass_scaled)
+        solver.add(total_mass_scaled <= max_mass_scaled)
+
+        # Add rules
+        if rules:
+            for rule_func in rules:
+                try:
+                    import inspect
+                    sig = inspect.signature(rule_func)
+                    if len(sig.parameters) == 2:
+                        constraint = rule_func(choices, count_ranges)
+                    else:
+                        element_counts = {}
+                        for element_symbol in element_symbols:
+                            element_counts[element_symbol] = Sum([
+                                If(choices[element_symbol][count], count, 0)
+                                for count in count_ranges[element_symbol]
+                            ])
+                        constraint = rule_func(element_counts)
+                    
+                    if constraint is not None:
+                        solver.add(constraint)
+                except Exception as e:
+                    print(f"Warning: Error applying rule: {e}")
+
+        # Add exclusion constraints for all previously found solutions
+        for excluded_formula in excluded_solutions:
+            exclusion_vars = []
+            for element_symbol in element_symbols:
+                count = excluded_formula.get(element_symbol, 0)
+                if count in count_ranges[element_symbol]:
+                    exclusion_vars.append(choices[element_symbol][count])
+            
+            if exclusion_vars:
+                solver.add(Sum([If(var, 1, 0) for var in exclusion_vars]) <= len(exclusion_vars) - 1)
+
+        # Solve
+        solve_start = perf_counter()
+        result = solver.check()
+        solve_time = perf_counter() - solve_start
+        
+        if enable_profiling:
+            print(f"PROFILE: Solve iteration {iteration + 1} took {solve_time:.4f} seconds")
+        
+        if result == sat:
+            model = solver.model()
+            current_formula = {}
+            actual_mass = 0.0
+            
+            for element_symbol in element_symbols:
+                element_count = 0
+                for count in count_ranges[element_symbol]:
+                    choice_value = model[choices[element_symbol][count]]
+                    if is_true(choice_value):
+                        element_count = count
+                
+                if element_count > 0:
+                    current_formula[element_symbol] = element_count
+                actual_mass += element_count * element_details[element_symbol]["mass"]
+            
+            delta_ppm = ((actual_mass - target_mass) / target_mass) * 1e6
+            print(f"solution {iteration + 1}: {current_formula} (mass: {actual_mass:.6f}, delta: {delta_ppm:.2f} ppm)")
+            found_formulas.append(current_formula)
+            excluded_solutions.append(current_formula)
+        else:
+            break
+
+    return found_formulas
+
+def _solve_with_minimized_vars(target_mass, error_ppm, element_details, rules, max_solutions, enable_profiling):
+    """
+    Strategy 3: Use integer variables instead of one-hot binary variables
+    """
+    mass_tolerance_absolute = target_mass * error_ppm * 1e-6
+    min_mass = target_mass - mass_tolerance_absolute
+    max_mass = target_mass + mass_tolerance_absolute
+    
+    found_formulas = []
+    element_symbols = list(element_details.keys())
+    
+    # Create solver with integer variables (much fewer variables)
+    solver = Solver()
+    element_counts = {}
+    
+    for element_symbol in element_symbols:
+        element_data = element_details[element_symbol]
+        min_count = element_data.get("min", 0)
+        max_allowed_count = math.floor(max_mass / element_data["mass"]) if element_data["mass"] > 0 else 0
+        max_count = element_data.get("max", max_allowed_count)
+        max_count = min(max_count, max_allowed_count)
+        
+        element_counts[element_symbol] = Int(f"count_{element_symbol}")
+        solver.add(element_counts[element_symbol] >= min_count)
+        solver.add(element_counts[element_symbol] <= max_count)
+
+    # Mass constraints
+    scale_factor = 1000000
+    total_mass_scaled = Sum([element_counts[element_symbol] * int(element_details[element_symbol]["mass"] * scale_factor)
+                            for element_symbol in element_symbols])
+    min_mass_scaled = int(min_mass * scale_factor)
+    max_mass_scaled = int(max_mass * scale_factor)
+    
+    solver.add(total_mass_scaled >= min_mass_scaled)
+    solver.add(total_mass_scaled <= max_mass_scaled)
+
+    # Add rules (adapted for integer variables)
+    if rules:
+        for rule_func in rules:
+            try:
+                constraint = rule_func(element_counts)
+                if constraint is not None:
+                    solver.add(constraint)
+            except Exception as e:
+                print(f"Warning: Error applying rule: {e}")
+
+    # Solving loop
+    solution_count = 0
+    
+    while solution_count < max_solutions:
+        solve_start = perf_counter()
+        result = solver.check()
+        solve_time = perf_counter() - solve_start
+        
+        if enable_profiling:
+            print(f"PROFILE: Solve iteration {solution_count + 1} took {solve_time:.4f} seconds")
+        
+        if result == sat:
+            model = solver.model()
+            current_formula = {}
+            actual_mass = 0.0
+            
+            for element_symbol in element_symbols:
+                count = model[element_counts[element_symbol]]
+                element_count = count.as_long() if count is not None else 0
+                
+                if element_count > 0:
+                    current_formula[element_symbol] = element_count
+                actual_mass += element_count * element_details[element_symbol]["mass"]
+            
+            delta_ppm = ((actual_mass - target_mass) / target_mass) * 1e6
+            print(f"solution {solution_count + 1}: {current_formula} (mass: {actual_mass:.6f}, delta: {delta_ppm:.2f} ppm)")
+            found_formulas.append(current_formula)
+            solution_count += 1
+            
+            # Add exclusion constraint for this exact solution
+            exclusion_constraint = Or([element_counts[element_symbol] != current_formula.get(element_symbol, 0)
+                                     for element_symbol in element_symbols])
+            solver.add(exclusion_constraint)
+        else:
+            break
+
+    return found_formulas
+
+# Updated rule functions for integer variables
+def rule_DBE_int(element_counts):
+    """DBE rule for integer variables"""
+    if "H" not in element_counts or "C" not in element_counts:
         return None
-    
-    n_sum = Sum([If(choices["N"][count], count, 0) for count in count_ranges["N"]])
-    c_sum = Sum([If(choices["C"][count], count, 0) for count in count_ranges["C"]])
-    
-    return n_sum <= c_sum / 2 + 1
+    return element_counts["H"] <= 2 * element_counts["C"] + 3
+
+def rule_oc_ratio_int(element_counts):
+    """O/C ratio rule for integer variables"""
+    if "O" not in element_counts or "C" not in element_counts:
+        return None
+    return element_counts["O"] <= element_counts["C"]
 
 if __name__ == "__main__":
-    # --- Example Usage ---
-    print("Running Mass Decomposition Example with Z3 Solver...")
-
-    # Define elements and their properties (same as original)
     elements_data_generic = {
-        "C": {"mass": 12.000000, "min": 0, "max": 20},
-        "H": {"mass": 1.007825, "min": 0, "max": 100},
+        "C": {"mass": 12.000000, "min": 15, "max": 19},
+        "H": {"mass": 1.007825, "min": 0, "max": 50},
         "O": {"mass": 15.994914, "min": 0, "max": 20},
         "N": {"mass": 14.003074, "min": 0, "max": 10},
-        "S": {"mass": 31.972071, "min": 0, "max": 0},
-        "P": {"mass": 30.973762, "min": 0, "max": 5},
-        "F": {"mass": 18.998403, "min": 0, "max": 20},
-        "Cl": {"mass": 34.968853, "min": 0, "max": 0},
-        "Br": {"mass": 78.918337, "min": 0, "max": 0},
-        "I": {"mass": 126.904473, "min": 0, "max": 2},
     }
 
-    # Z3-compatible rules
-    custom_rules = [rule_DBE_z3, rule_oc_ratio_z3]
-
-    # Test with the same mass
     measured_mass_user = 285.136493
-    error_user = 2  # ppm
+    error_user = 2
 
-    print(f"\n--- Decomposing mass {measured_mass_user} +/- {error_user} ppm (Z3 method) ---")
+    # Test different strategies
+    strategies = ["minimize_vars", "fresh_solver", "push_pop"]
     
-    # Single run with detailed profiling
-    print("\n--- SINGLE RUN WITH DETAILED PROFILING ---")
-    solutions_z3 = z3_solve_mass_decomposition(
-        measured_mass_user,
-        error_user,
-        elements_data_generic,
-        rules=custom_rules,
-        max_solutions=50,
-        enable_profiling=True,
-    )
-    
-    if solutions_z3:
-        print(f"\nFound {len(solutions_z3)} possible formulas:")
-        for i, formula in enumerate(solutions_z3[:10]):  # Show first 10
-            formula_str = "".join([f"{el}{count}" for el, count in sorted(formula.items())])
-            mass = sum(
-                elements_data_generic[el]["mass"] * count
-                for el, count in formula.items()
-            )
-            delta_ppm = ((mass - measured_mass_user) / measured_mass_user) * 1e6
-            print(f"  {i + 1}. {formula_str} (Mass: {mass:.6f}, Delta: {delta_ppm:.2f} ppm)")
-        if len(solutions_z3) > 10:
-            print(f"  ... and {len(solutions_z3) - 10} more solutions")
-    else:
-        print(f"No solutions found for mass {measured_mass_user}.")
+    for strategy in strategies:
+        print(f"\n{'='*60}")
+        print(f"Testing strategy: {strategy}")
+        print(f"{'='*60}")
+        
+        start_time = perf_counter()
+        if strategy == "minimize_vars":
+            rules = [rule_DBE_int, rule_oc_ratio_int]
+        else:
+            rules = [rule_DBE_int, rule_oc_ratio_int]
+            
+        solutions = z3_solve_mass_decomposition_optimized(
+            measured_mass_user,
+            error_user,
+            elements_data_generic,
+            rules=rules,
+            max_solutions=20,
+            enable_profiling=True,
+            optimization_strategy=strategy,
+        )
+        
+        total_time = perf_counter() - start_time
+        print(f"\nStrategy '{strategy}': Found {len(solutions)} solutions in {total_time:.4f}s")
 
