@@ -8431,75 +8431,18 @@ static void __pyx_f_17sirius_decomposer_22CythonSiriusDecomposer__decompose_recu
  * 
  *             formula[level] = count             # <<<<<<<<<<<<<<
  * 
- *             # Early constraint checking for critical elements to prune search space
+ *             # Temporarily disable partial constraint checking to debug
 */
     (__pyx_v_formula[__pyx_v_level]) = __pyx_v_count;
 
-    /* "sirius_decomposer.pyx":409
- *             # Early constraint checking for critical elements to prune search space
- *             # Only check constraints if we have enough elements processed
- *             if level >= self.n_elements - 1 or self._should_check_partial_constraints(level):             # <<<<<<<<<<<<<<
- *                 if not self._check_partial_constraints(formula, level + 1):
- *                     continue
-*/
-    __pyx_t_1 = (__pyx_v_level >= (__pyx_v_self->n_elements - 1));
-    if (!__pyx_t_1) {
-    } else {
-      __pyx_t_4 = __pyx_t_1;
-      goto __pyx_L14_bool_binop_done;
-    }
-    __pyx_t_1 = ((struct __pyx_vtabstruct_17sirius_decomposer_CythonSiriusDecomposer *)__pyx_v_self->__pyx_vtab)->_should_check_partial_constraints(__pyx_v_self, __pyx_v_level); if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 409, __pyx_L1_error)
-    __pyx_t_4 = __pyx_t_1;
-    __pyx_L14_bool_binop_done:;
-    if (__pyx_t_4) {
-
-      /* "sirius_decomposer.pyx":410
- *             # Only check constraints if we have enough elements processed
- *             if level >= self.n_elements - 1 or self._should_check_partial_constraints(level):
- *                 if not self._check_partial_constraints(formula, level + 1):             # <<<<<<<<<<<<<<
- *                     continue
- * 
-*/
-      __pyx_t_4 = ((struct __pyx_vtabstruct_17sirius_decomposer_CythonSiriusDecomposer *)__pyx_v_self->__pyx_vtab)->_check_partial_constraints(__pyx_v_self, __pyx_v_formula, (__pyx_v_level + 1)); if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 410, __pyx_L1_error)
-      __pyx_t_1 = (!__pyx_t_4);
-      if (__pyx_t_1) {
-
-        /* "sirius_decomposer.pyx":411
- *             if level >= self.n_elements - 1 or self._should_check_partial_constraints(level):
- *                 if not self._check_partial_constraints(formula, level + 1):
- *                     continue             # <<<<<<<<<<<<<<
- * 
- *             self._decompose_recursive(formula, new_mass, level + 1)
-*/
-        goto __pyx_L10_continue;
-
-        /* "sirius_decomposer.pyx":410
- *             # Only check constraints if we have enough elements processed
- *             if level >= self.n_elements - 1 or self._should_check_partial_constraints(level):
- *                 if not self._check_partial_constraints(formula, level + 1):             # <<<<<<<<<<<<<<
- *                     continue
- * 
-*/
-      }
-
-      /* "sirius_decomposer.pyx":409
- *             # Early constraint checking for critical elements to prune search space
- *             # Only check constraints if we have enough elements processed
- *             if level >= self.n_elements - 1 or self._should_check_partial_constraints(level):             # <<<<<<<<<<<<<<
- *                 if not self._check_partial_constraints(formula, level + 1):
- *                     continue
-*/
-    }
-
-    /* "sirius_decomposer.pyx":413
- *                     continue
+    /* "sirius_decomposer.pyx":414
+ *             #         continue
  * 
  *             self._decompose_recursive(formula, new_mass, level + 1)             # <<<<<<<<<<<<<<
  * 
  *     cdef void _add_result(self, int* formula):
 */
-    ((struct __pyx_vtabstruct_17sirius_decomposer_CythonSiriusDecomposer *)__pyx_v_self->__pyx_vtab)->_decompose_recursive(__pyx_v_self, __pyx_v_formula, __pyx_v_new_mass, (__pyx_v_level + 1)); if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 413, __pyx_L1_error)
-    __pyx_L10_continue:;
+    ((struct __pyx_vtabstruct_17sirius_decomposer_CythonSiriusDecomposer *)__pyx_v_self->__pyx_vtab)->_decompose_recursive(__pyx_v_self, __pyx_v_formula, __pyx_v_new_mass, (__pyx_v_level + 1)); if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 414, __pyx_L1_error)
   }
   __pyx_L11_break:;
 
@@ -8520,7 +8463,7 @@ static void __pyx_f_17sirius_decomposer_22CythonSiriusDecomposer__decompose_recu
   __Pyx_RefNannyFinishContext();
 }
 
-/* "sirius_decomposer.pyx":415
+/* "sirius_decomposer.pyx":416
  *             self._decompose_recursive(formula, new_mass, level + 1)
  * 
  *     cdef void _add_result(self, int* formula):             # <<<<<<<<<<<<<<
@@ -8555,19 +8498,19 @@ static void __pyx_f_17sirius_decomposer_22CythonSiriusDecomposer__add_result(str
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("_add_result", 0);
 
-  /* "sirius_decomposer.pyx":420
+  /* "sirius_decomposer.pyx":421
  *         cdef bytes symbol_bytes
  * 
  *         result = {}             # <<<<<<<<<<<<<<
  * 
  *         for i in range(self.n_elements):
 */
-  __pyx_t_1 = __Pyx_PyDict_NewPresized(0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 420, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_PyDict_NewPresized(0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 421, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_v_result = ((PyObject*)__pyx_t_1);
   __pyx_t_1 = 0;
 
-  /* "sirius_decomposer.pyx":422
+  /* "sirius_decomposer.pyx":423
  *         result = {}
  * 
  *         for i in range(self.n_elements):             # <<<<<<<<<<<<<<
@@ -8579,7 +8522,7 @@ static void __pyx_f_17sirius_decomposer_22CythonSiriusDecomposer__add_result(str
   for (__pyx_t_4 = 0; __pyx_t_4 < __pyx_t_3; __pyx_t_4+=1) {
     __pyx_v_i = __pyx_t_4;
 
-    /* "sirius_decomposer.pyx":423
+    /* "sirius_decomposer.pyx":424
  * 
  *         for i in range(self.n_elements):
  *             if formula[i] > 0:             # <<<<<<<<<<<<<<
@@ -8589,19 +8532,19 @@ static void __pyx_f_17sirius_decomposer_22CythonSiriusDecomposer__add_result(str
     __pyx_t_5 = ((__pyx_v_formula[__pyx_v_i]) > 0);
     if (__pyx_t_5) {
 
-      /* "sirius_decomposer.pyx":425
+      /* "sirius_decomposer.pyx":426
  *             if formula[i] > 0:
  *                 # Safely extract symbol from C char array
  *                 symbol_bytes = self.elements[i].symbol             # <<<<<<<<<<<<<<
  *                 try:
  *                     symbol = symbol_bytes.decode('ascii').rstrip('\x00')
 */
-      __pyx_t_1 = __Pyx_PyObject_FromString((__pyx_v_self->elements[__pyx_v_i]).symbol); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 425, __pyx_L1_error)
+      __pyx_t_1 = __Pyx_PyObject_FromString((__pyx_v_self->elements[__pyx_v_i]).symbol); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 426, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_1);
       __Pyx_XDECREF_SET(__pyx_v_symbol_bytes, ((PyObject*)__pyx_t_1));
       __pyx_t_1 = 0;
 
-      /* "sirius_decomposer.pyx":426
+      /* "sirius_decomposer.pyx":427
  *                 # Safely extract symbol from C char array
  *                 symbol_bytes = self.elements[i].symbol
  *                 try:             # <<<<<<<<<<<<<<
@@ -8617,14 +8560,14 @@ static void __pyx_f_17sirius_decomposer_22CythonSiriusDecomposer__add_result(str
         __Pyx_XGOTREF(__pyx_t_8);
         /*try:*/ {
 
-          /* "sirius_decomposer.pyx":427
+          /* "sirius_decomposer.pyx":428
  *                 symbol_bytes = self.elements[i].symbol
  *                 try:
  *                     symbol = symbol_bytes.decode('ascii').rstrip('\x00')             # <<<<<<<<<<<<<<
  *                     if symbol:  # Only add non-empty symbols
  *                         result[symbol] = formula[i]
 */
-          __pyx_t_10 = __Pyx_decode_bytes(__pyx_v_symbol_bytes, 0, PY_SSIZE_T_MAX, NULL, NULL, PyUnicode_DecodeASCII); if (unlikely(!__pyx_t_10)) __PYX_ERR(0, 427, __pyx_L6_error)
+          __pyx_t_10 = __Pyx_decode_bytes(__pyx_v_symbol_bytes, 0, PY_SSIZE_T_MAX, NULL, NULL, PyUnicode_DecodeASCII); if (unlikely(!__pyx_t_10)) __PYX_ERR(0, 428, __pyx_L6_error)
           __Pyx_GOTREF(__pyx_t_10);
           __pyx_t_9 = __pyx_t_10;
           __Pyx_INCREF(__pyx_t_9);
@@ -8634,13 +8577,13 @@ static void __pyx_f_17sirius_decomposer_22CythonSiriusDecomposer__add_result(str
             __pyx_t_1 = __Pyx_PyObject_FastCallMethod(__pyx_mstate_global->__pyx_n_u_rstrip, __pyx_callargs+__pyx_t_11, (2-__pyx_t_11) | (1*__Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET));
             __Pyx_XDECREF(__pyx_t_9); __pyx_t_9 = 0;
             __Pyx_DECREF(__pyx_t_10); __pyx_t_10 = 0;
-            if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 427, __pyx_L6_error)
+            if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 428, __pyx_L6_error)
             __Pyx_GOTREF(__pyx_t_1);
           }
           __Pyx_XDECREF_SET(__pyx_v_symbol, ((PyObject*)__pyx_t_1));
           __pyx_t_1 = 0;
 
-          /* "sirius_decomposer.pyx":428
+          /* "sirius_decomposer.pyx":429
  *                 try:
  *                     symbol = symbol_bytes.decode('ascii').rstrip('\x00')
  *                     if symbol:  # Only add non-empty symbols             # <<<<<<<<<<<<<<
@@ -8648,22 +8591,22 @@ static void __pyx_f_17sirius_decomposer_22CythonSiriusDecomposer__add_result(str
  *                 except UnicodeDecodeError:
 */
           __pyx_t_5 = (__Pyx_PyUnicode_IS_TRUE(__pyx_v_symbol) != 0);
-          if (unlikely(((!CYTHON_ASSUME_SAFE_MACROS) && __pyx_t_5 < 0))) __PYX_ERR(0, 428, __pyx_L6_error)
+          if (unlikely(((!CYTHON_ASSUME_SAFE_MACROS) && __pyx_t_5 < 0))) __PYX_ERR(0, 429, __pyx_L6_error)
           if (__pyx_t_5) {
 
-            /* "sirius_decomposer.pyx":429
+            /* "sirius_decomposer.pyx":430
  *                     symbol = symbol_bytes.decode('ascii').rstrip('\x00')
  *                     if symbol:  # Only add non-empty symbols
  *                         result[symbol] = formula[i]             # <<<<<<<<<<<<<<
  *                 except UnicodeDecodeError:
  *                     # Fallback: construct symbol byte by byte
 */
-            __pyx_t_1 = __Pyx_PyLong_From_int((__pyx_v_formula[__pyx_v_i])); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 429, __pyx_L6_error)
+            __pyx_t_1 = __Pyx_PyLong_From_int((__pyx_v_formula[__pyx_v_i])); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 430, __pyx_L6_error)
             __Pyx_GOTREF(__pyx_t_1);
-            if (unlikely((PyDict_SetItem(__pyx_v_result, __pyx_v_symbol, __pyx_t_1) < 0))) __PYX_ERR(0, 429, __pyx_L6_error)
+            if (unlikely((PyDict_SetItem(__pyx_v_result, __pyx_v_symbol, __pyx_t_1) < 0))) __PYX_ERR(0, 430, __pyx_L6_error)
             __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-            /* "sirius_decomposer.pyx":428
+            /* "sirius_decomposer.pyx":429
  *                 try:
  *                     symbol = symbol_bytes.decode('ascii').rstrip('\x00')
  *                     if symbol:  # Only add non-empty symbols             # <<<<<<<<<<<<<<
@@ -8672,7 +8615,7 @@ static void __pyx_f_17sirius_decomposer_22CythonSiriusDecomposer__add_result(str
 */
           }
 
-          /* "sirius_decomposer.pyx":426
+          /* "sirius_decomposer.pyx":427
  *                 # Safely extract symbol from C char array
  *                 symbol_bytes = self.elements[i].symbol
  *                 try:             # <<<<<<<<<<<<<<
@@ -8689,7 +8632,7 @@ static void __pyx_f_17sirius_decomposer_22CythonSiriusDecomposer__add_result(str
         __Pyx_XDECREF(__pyx_t_10); __pyx_t_10 = 0;
         __Pyx_XDECREF(__pyx_t_9); __pyx_t_9 = 0;
 
-        /* "sirius_decomposer.pyx":430
+        /* "sirius_decomposer.pyx":431
  *                     if symbol:  # Only add non-empty symbols
  *                         result[symbol] = formula[i]
  *                 except UnicodeDecodeError:             # <<<<<<<<<<<<<<
@@ -8699,24 +8642,24 @@ static void __pyx_f_17sirius_decomposer_22CythonSiriusDecomposer__add_result(str
         __pyx_t_12 = __Pyx_PyErr_ExceptionMatches(__pyx_builtin_UnicodeDecodeError);
         if (__pyx_t_12) {
           __Pyx_AddTraceback("sirius_decomposer.CythonSiriusDecomposer._add_result", __pyx_clineno, __pyx_lineno, __pyx_filename);
-          if (__Pyx_GetException(&__pyx_t_1, &__pyx_t_10, &__pyx_t_9) < 0) __PYX_ERR(0, 430, __pyx_L8_except_error)
+          if (__Pyx_GetException(&__pyx_t_1, &__pyx_t_10, &__pyx_t_9) < 0) __PYX_ERR(0, 431, __pyx_L8_except_error)
           __Pyx_XGOTREF(__pyx_t_1);
           __Pyx_XGOTREF(__pyx_t_10);
           __Pyx_XGOTREF(__pyx_t_9);
 
-          /* "sirius_decomposer.pyx":432
+          /* "sirius_decomposer.pyx":433
  *                 except UnicodeDecodeError:
  *                     # Fallback: construct symbol byte by byte
  *                     symbol_chars = []             # <<<<<<<<<<<<<<
  *                     for j in range(4):  # max 3 chars + null terminator
  *                         if self.elements[i].symbol[j] == 0:
 */
-          __pyx_t_13 = PyList_New(0); if (unlikely(!__pyx_t_13)) __PYX_ERR(0, 432, __pyx_L8_except_error)
+          __pyx_t_13 = PyList_New(0); if (unlikely(!__pyx_t_13)) __PYX_ERR(0, 433, __pyx_L8_except_error)
           __Pyx_GOTREF(__pyx_t_13);
           __Pyx_XDECREF_SET(__pyx_v_symbol_chars, ((PyObject*)__pyx_t_13));
           __pyx_t_13 = 0;
 
-          /* "sirius_decomposer.pyx":433
+          /* "sirius_decomposer.pyx":434
  *                     # Fallback: construct symbol byte by byte
  *                     symbol_chars = []
  *                     for j in range(4):  # max 3 chars + null terminator             # <<<<<<<<<<<<<<
@@ -8726,7 +8669,7 @@ static void __pyx_f_17sirius_decomposer_22CythonSiriusDecomposer__add_result(str
           for (__pyx_t_12 = 0; __pyx_t_12 < 4; __pyx_t_12+=1) {
             __pyx_v_j = __pyx_t_12;
 
-            /* "sirius_decomposer.pyx":434
+            /* "sirius_decomposer.pyx":435
  *                     symbol_chars = []
  *                     for j in range(4):  # max 3 chars + null terminator
  *                         if self.elements[i].symbol[j] == 0:             # <<<<<<<<<<<<<<
@@ -8736,7 +8679,7 @@ static void __pyx_f_17sirius_decomposer_22CythonSiriusDecomposer__add_result(str
             __pyx_t_5 = (((__pyx_v_self->elements[__pyx_v_i]).symbol[__pyx_v_j]) == 0);
             if (__pyx_t_5) {
 
-              /* "sirius_decomposer.pyx":435
+              /* "sirius_decomposer.pyx":436
  *                     for j in range(4):  # max 3 chars + null terminator
  *                         if self.elements[i].symbol[j] == 0:
  *                             break             # <<<<<<<<<<<<<<
@@ -8745,7 +8688,7 @@ static void __pyx_f_17sirius_decomposer_22CythonSiriusDecomposer__add_result(str
 */
               goto __pyx_L18_break;
 
-              /* "sirius_decomposer.pyx":434
+              /* "sirius_decomposer.pyx":435
  *                     symbol_chars = []
  *                     for j in range(4):  # max 3 chars + null terminator
  *                         if self.elements[i].symbol[j] == 0:             # <<<<<<<<<<<<<<
@@ -8754,7 +8697,7 @@ static void __pyx_f_17sirius_decomposer_22CythonSiriusDecomposer__add_result(str
 */
             }
 
-            /* "sirius_decomposer.pyx":436
+            /* "sirius_decomposer.pyx":437
  *                         if self.elements[i].symbol[j] == 0:
  *                             break
  *                         if 32 <= self.elements[i].symbol[j] <= 126:  # printable ASCII             # <<<<<<<<<<<<<<
@@ -8767,19 +8710,19 @@ static void __pyx_f_17sirius_decomposer_22CythonSiriusDecomposer__add_result(str
             }
             if (__pyx_t_5) {
 
-              /* "sirius_decomposer.pyx":437
+              /* "sirius_decomposer.pyx":438
  *                             break
  *                         if 32 <= self.elements[i].symbol[j] <= 126:  # printable ASCII
  *                             symbol_chars.append(chr(self.elements[i].symbol[j]))             # <<<<<<<<<<<<<<
  *                     symbol = ''.join(symbol_chars)
  *                     if symbol:
 */
-              __pyx_t_13 = PyUnicode_FromOrdinal(((__pyx_v_self->elements[__pyx_v_i]).symbol[__pyx_v_j])); if (unlikely(!__pyx_t_13)) __PYX_ERR(0, 437, __pyx_L8_except_error)
+              __pyx_t_13 = PyUnicode_FromOrdinal(((__pyx_v_self->elements[__pyx_v_i]).symbol[__pyx_v_j])); if (unlikely(!__pyx_t_13)) __PYX_ERR(0, 438, __pyx_L8_except_error)
               __Pyx_GOTREF(__pyx_t_13);
-              __pyx_t_14 = __Pyx_PyList_Append(__pyx_v_symbol_chars, __pyx_t_13); if (unlikely(__pyx_t_14 == ((int)-1))) __PYX_ERR(0, 437, __pyx_L8_except_error)
+              __pyx_t_14 = __Pyx_PyList_Append(__pyx_v_symbol_chars, __pyx_t_13); if (unlikely(__pyx_t_14 == ((int)-1))) __PYX_ERR(0, 438, __pyx_L8_except_error)
               __Pyx_DECREF(__pyx_t_13); __pyx_t_13 = 0;
 
-              /* "sirius_decomposer.pyx":436
+              /* "sirius_decomposer.pyx":437
  *                         if self.elements[i].symbol[j] == 0:
  *                             break
  *                         if 32 <= self.elements[i].symbol[j] <= 126:  # printable ASCII             # <<<<<<<<<<<<<<
@@ -8790,19 +8733,19 @@ static void __pyx_f_17sirius_decomposer_22CythonSiriusDecomposer__add_result(str
           }
           __pyx_L18_break:;
 
-          /* "sirius_decomposer.pyx":438
+          /* "sirius_decomposer.pyx":439
  *                         if 32 <= self.elements[i].symbol[j] <= 126:  # printable ASCII
  *                             symbol_chars.append(chr(self.elements[i].symbol[j]))
  *                     symbol = ''.join(symbol_chars)             # <<<<<<<<<<<<<<
  *                     if symbol:
  *                         result[symbol] = formula[i]
 */
-          __pyx_t_13 = PyUnicode_Join(__pyx_mstate_global->__pyx_kp_u__2, __pyx_v_symbol_chars); if (unlikely(!__pyx_t_13)) __PYX_ERR(0, 438, __pyx_L8_except_error)
+          __pyx_t_13 = PyUnicode_Join(__pyx_mstate_global->__pyx_kp_u__2, __pyx_v_symbol_chars); if (unlikely(!__pyx_t_13)) __PYX_ERR(0, 439, __pyx_L8_except_error)
           __Pyx_GOTREF(__pyx_t_13);
           __Pyx_XDECREF_SET(__pyx_v_symbol, ((PyObject*)__pyx_t_13));
           __pyx_t_13 = 0;
 
-          /* "sirius_decomposer.pyx":439
+          /* "sirius_decomposer.pyx":440
  *                             symbol_chars.append(chr(self.elements[i].symbol[j]))
  *                     symbol = ''.join(symbol_chars)
  *                     if symbol:             # <<<<<<<<<<<<<<
@@ -8810,22 +8753,22 @@ static void __pyx_f_17sirius_decomposer_22CythonSiriusDecomposer__add_result(str
  * 
 */
           __pyx_t_5 = (__pyx_v_symbol != Py_None)&&(__Pyx_PyUnicode_IS_TRUE(__pyx_v_symbol) != 0);
-          if (unlikely(((!CYTHON_ASSUME_SAFE_MACROS) && __pyx_t_5 < 0))) __PYX_ERR(0, 439, __pyx_L8_except_error)
+          if (unlikely(((!CYTHON_ASSUME_SAFE_MACROS) && __pyx_t_5 < 0))) __PYX_ERR(0, 440, __pyx_L8_except_error)
           if (__pyx_t_5) {
 
-            /* "sirius_decomposer.pyx":440
+            /* "sirius_decomposer.pyx":441
  *                     symbol = ''.join(symbol_chars)
  *                     if symbol:
  *                         result[symbol] = formula[i]             # <<<<<<<<<<<<<<
  * 
  *         self.results.append(result)
 */
-            __pyx_t_13 = __Pyx_PyLong_From_int((__pyx_v_formula[__pyx_v_i])); if (unlikely(!__pyx_t_13)) __PYX_ERR(0, 440, __pyx_L8_except_error)
+            __pyx_t_13 = __Pyx_PyLong_From_int((__pyx_v_formula[__pyx_v_i])); if (unlikely(!__pyx_t_13)) __PYX_ERR(0, 441, __pyx_L8_except_error)
             __Pyx_GOTREF(__pyx_t_13);
-            if (unlikely((PyDict_SetItem(__pyx_v_result, __pyx_v_symbol, __pyx_t_13) < 0))) __PYX_ERR(0, 440, __pyx_L8_except_error)
+            if (unlikely((PyDict_SetItem(__pyx_v_result, __pyx_v_symbol, __pyx_t_13) < 0))) __PYX_ERR(0, 441, __pyx_L8_except_error)
             __Pyx_DECREF(__pyx_t_13); __pyx_t_13 = 0;
 
-            /* "sirius_decomposer.pyx":439
+            /* "sirius_decomposer.pyx":440
  *                             symbol_chars.append(chr(self.elements[i].symbol[j]))
  *                     symbol = ''.join(symbol_chars)
  *                     if symbol:             # <<<<<<<<<<<<<<
@@ -8840,7 +8783,7 @@ static void __pyx_f_17sirius_decomposer_22CythonSiriusDecomposer__add_result(str
         }
         goto __pyx_L8_except_error;
 
-        /* "sirius_decomposer.pyx":426
+        /* "sirius_decomposer.pyx":427
  *                 # Safely extract symbol from C char array
  *                 symbol_bytes = self.elements[i].symbol
  *                 try:             # <<<<<<<<<<<<<<
@@ -8861,7 +8804,7 @@ static void __pyx_f_17sirius_decomposer_22CythonSiriusDecomposer__add_result(str
         __pyx_L13_try_end:;
       }
 
-      /* "sirius_decomposer.pyx":423
+      /* "sirius_decomposer.pyx":424
  * 
  *         for i in range(self.n_elements):
  *             if formula[i] > 0:             # <<<<<<<<<<<<<<
@@ -8871,7 +8814,7 @@ static void __pyx_f_17sirius_decomposer_22CythonSiriusDecomposer__add_result(str
     }
   }
 
-  /* "sirius_decomposer.pyx":442
+  /* "sirius_decomposer.pyx":443
  *                         result[symbol] = formula[i]
  * 
  *         self.results.append(result)             # <<<<<<<<<<<<<<
@@ -8880,11 +8823,11 @@ static void __pyx_f_17sirius_decomposer_22CythonSiriusDecomposer__add_result(str
 */
   if (unlikely(__pyx_v_self->results == Py_None)) {
     PyErr_Format(PyExc_AttributeError, "'NoneType' object has no attribute '%.30s'", "append");
-    __PYX_ERR(0, 442, __pyx_L1_error)
+    __PYX_ERR(0, 443, __pyx_L1_error)
   }
-  __pyx_t_14 = __Pyx_PyList_Append(__pyx_v_self->results, __pyx_v_result); if (unlikely(__pyx_t_14 == ((int)-1))) __PYX_ERR(0, 442, __pyx_L1_error)
+  __pyx_t_14 = __Pyx_PyList_Append(__pyx_v_self->results, __pyx_v_result); if (unlikely(__pyx_t_14 == ((int)-1))) __PYX_ERR(0, 443, __pyx_L1_error)
 
-  /* "sirius_decomposer.pyx":415
+  /* "sirius_decomposer.pyx":416
  *             self._decompose_recursive(formula, new_mass, level + 1)
  * 
  *     cdef void _add_result(self, int* formula):             # <<<<<<<<<<<<<<
@@ -8908,7 +8851,7 @@ static void __pyx_f_17sirius_decomposer_22CythonSiriusDecomposer__add_result(str
   __Pyx_RefNannyFinishContext();
 }
 
-/* "sirius_decomposer.pyx":444
+/* "sirius_decomposer.pyx":445
  *         self.results.append(result)
  * 
  *     def decompose(self) -> List[Dict[str, int]]:             # <<<<<<<<<<<<<<
@@ -8983,7 +8926,7 @@ static PyObject *__pyx_pf_17sirius_decomposer_22CythonSiriusDecomposer_4decompos
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("decompose", 0);
 
-  /* "sirius_decomposer.pyx":448
+  /* "sirius_decomposer.pyx":449
  *         Perform mass decomposition to find all valid molecular formulas.
  *         """
  *         cdef int* formula = <int*>malloc(self.n_elements * sizeof(int))             # <<<<<<<<<<<<<<
@@ -8992,7 +8935,7 @@ static PyObject *__pyx_pf_17sirius_decomposer_22CythonSiriusDecomposer_4decompos
 */
   __pyx_v_formula = ((int *)malloc((__pyx_v_self->n_elements * (sizeof(int)))));
 
-  /* "sirius_decomposer.pyx":452
+  /* "sirius_decomposer.pyx":453
  * 
  *         # Initialize formula array
  *         for i in range(self.n_elements):             # <<<<<<<<<<<<<<
@@ -9004,7 +8947,7 @@ static PyObject *__pyx_pf_17sirius_decomposer_22CythonSiriusDecomposer_4decompos
   for (__pyx_t_3 = 0; __pyx_t_3 < __pyx_t_2; __pyx_t_3+=1) {
     __pyx_v_i = __pyx_t_3;
 
-    /* "sirius_decomposer.pyx":453
+    /* "sirius_decomposer.pyx":454
  *         # Initialize formula array
  *         for i in range(self.n_elements):
  *             formula[i] = 0             # <<<<<<<<<<<<<<
@@ -9014,7 +8957,7 @@ static PyObject *__pyx_pf_17sirius_decomposer_22CythonSiriusDecomposer_4decompos
     (__pyx_v_formula[__pyx_v_i]) = 0;
   }
 
-  /* "sirius_decomposer.pyx":455
+  /* "sirius_decomposer.pyx":456
  *             formula[i] = 0
  * 
  *         try:             # <<<<<<<<<<<<<<
@@ -9023,14 +8966,14 @@ static PyObject *__pyx_pf_17sirius_decomposer_22CythonSiriusDecomposer_4decompos
 */
   /*try:*/ {
 
-    /* "sirius_decomposer.pyx":457
+    /* "sirius_decomposer.pyx":458
  *         try:
  *             # Clear previous results
  *             self.results = []             # <<<<<<<<<<<<<<
  * 
  *             # Start recursive decomposition
 */
-    __pyx_t_4 = PyList_New(0); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 457, __pyx_L6_error)
+    __pyx_t_4 = PyList_New(0); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 458, __pyx_L6_error)
     __Pyx_GOTREF(__pyx_t_4);
     __Pyx_GIVEREF(__pyx_t_4);
     __Pyx_GOTREF(__pyx_v_self->results);
@@ -9038,16 +8981,16 @@ static PyObject *__pyx_pf_17sirius_decomposer_22CythonSiriusDecomposer_4decompos
     __pyx_v_self->results = ((PyObject*)__pyx_t_4);
     __pyx_t_4 = 0;
 
-    /* "sirius_decomposer.pyx":460
+    /* "sirius_decomposer.pyx":461
  * 
  *             # Start recursive decomposition
  *             self._decompose_recursive(formula, 0.0, 0)             # <<<<<<<<<<<<<<
  * 
  *             return self.results.copy()
 */
-    ((struct __pyx_vtabstruct_17sirius_decomposer_CythonSiriusDecomposer *)__pyx_v_self->__pyx_vtab)->_decompose_recursive(__pyx_v_self, __pyx_v_formula, 0.0, 0); if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 460, __pyx_L6_error)
+    ((struct __pyx_vtabstruct_17sirius_decomposer_CythonSiriusDecomposer *)__pyx_v_self->__pyx_vtab)->_decompose_recursive(__pyx_v_self, __pyx_v_formula, 0.0, 0); if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 461, __pyx_L6_error)
 
-    /* "sirius_decomposer.pyx":462
+    /* "sirius_decomposer.pyx":463
  *             self._decompose_recursive(formula, 0.0, 0)
  * 
  *             return self.results.copy()             # <<<<<<<<<<<<<<
@@ -9062,7 +9005,7 @@ static PyObject *__pyx_pf_17sirius_decomposer_22CythonSiriusDecomposer_4decompos
       PyObject *__pyx_callargs[2] = {__pyx_t_5, NULL};
       __pyx_t_4 = __Pyx_PyObject_FastCallMethod(__pyx_mstate_global->__pyx_n_u_copy, __pyx_callargs+__pyx_t_6, (1-__pyx_t_6) | (1*__Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET));
       __Pyx_XDECREF(__pyx_t_5); __pyx_t_5 = 0;
-      if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 462, __pyx_L6_error)
+      if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 463, __pyx_L6_error)
       __Pyx_GOTREF(__pyx_t_4);
     }
     __pyx_r = ((PyObject*)__pyx_t_4);
@@ -9070,7 +9013,7 @@ static PyObject *__pyx_pf_17sirius_decomposer_22CythonSiriusDecomposer_4decompos
     goto __pyx_L5_return;
   }
 
-  /* "sirius_decomposer.pyx":465
+  /* "sirius_decomposer.pyx":466
  * 
  *         finally:
  *             free(formula)             # <<<<<<<<<<<<<<
@@ -9119,7 +9062,7 @@ static PyObject *__pyx_pf_17sirius_decomposer_22CythonSiriusDecomposer_4decompos
     }
   }
 
-  /* "sirius_decomposer.pyx":444
+  /* "sirius_decomposer.pyx":445
  *         self.results.append(result)
  * 
  *     def decompose(self) -> List[Dict[str, int]]:             # <<<<<<<<<<<<<<
@@ -9343,7 +9286,7 @@ static PyObject *__pyx_pf_17sirius_decomposer_22CythonSiriusDecomposer_8__setsta
   return __pyx_r;
 }
 
-/* "sirius_decomposer.pyx":467
+/* "sirius_decomposer.pyx":468
  *             free(formula)
  * 
  * def cython_decompose_mass(target_mass: float,             # <<<<<<<<<<<<<<
@@ -9397,45 +9340,45 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
   {
     PyObject ** const __pyx_pyargnames[] = {&__pyx_mstate_global->__pyx_n_u_target_mass,&__pyx_mstate_global->__pyx_n_u_element_bounds,&__pyx_mstate_global->__pyx_n_u_tolerance_ppm,&__pyx_mstate_global->__pyx_n_u_max_results,&__pyx_mstate_global->__pyx_n_u_min_dbe,&__pyx_mstate_global->__pyx_n_u_max_dbe,&__pyx_mstate_global->__pyx_n_u_max_hetero_ratio,0};
     const Py_ssize_t __pyx_kwds_len = (__pyx_kwds) ? __Pyx_NumKwargs_FASTCALL(__pyx_kwds) : 0;
-    if (unlikely(__pyx_kwds_len) < 0) __PYX_ERR(0, 467, __pyx_L3_error)
+    if (unlikely(__pyx_kwds_len) < 0) __PYX_ERR(0, 468, __pyx_L3_error)
     if (__pyx_kwds_len > 0) {
       switch (__pyx_nargs) {
         case  7:
         values[6] = __Pyx_ArgRef_FASTCALL(__pyx_args, 6);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[6])) __PYX_ERR(0, 467, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[6])) __PYX_ERR(0, 468, __pyx_L3_error)
         CYTHON_FALLTHROUGH;
         case  6:
         values[5] = __Pyx_ArgRef_FASTCALL(__pyx_args, 5);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[5])) __PYX_ERR(0, 467, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[5])) __PYX_ERR(0, 468, __pyx_L3_error)
         CYTHON_FALLTHROUGH;
         case  5:
         values[4] = __Pyx_ArgRef_FASTCALL(__pyx_args, 4);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[4])) __PYX_ERR(0, 467, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[4])) __PYX_ERR(0, 468, __pyx_L3_error)
         CYTHON_FALLTHROUGH;
         case  4:
         values[3] = __Pyx_ArgRef_FASTCALL(__pyx_args, 3);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[3])) __PYX_ERR(0, 467, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[3])) __PYX_ERR(0, 468, __pyx_L3_error)
         CYTHON_FALLTHROUGH;
         case  3:
         values[2] = __Pyx_ArgRef_FASTCALL(__pyx_args, 2);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[2])) __PYX_ERR(0, 467, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[2])) __PYX_ERR(0, 468, __pyx_L3_error)
         CYTHON_FALLTHROUGH;
         case  2:
         values[1] = __Pyx_ArgRef_FASTCALL(__pyx_args, 1);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[1])) __PYX_ERR(0, 467, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[1])) __PYX_ERR(0, 468, __pyx_L3_error)
         CYTHON_FALLTHROUGH;
         case  1:
         values[0] = __Pyx_ArgRef_FASTCALL(__pyx_args, 0);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[0])) __PYX_ERR(0, 467, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[0])) __PYX_ERR(0, 468, __pyx_L3_error)
         CYTHON_FALLTHROUGH;
         case  0: break;
         default: goto __pyx_L5_argtuple_error;
       }
       const Py_ssize_t kwd_pos_args = __pyx_nargs;
-      if (__Pyx_ParseKeywords(__pyx_kwds, __pyx_kwvalues, __pyx_pyargnames, 0, values, kwd_pos_args, __pyx_kwds_len, "cython_decompose_mass", 0) < 0) __PYX_ERR(0, 467, __pyx_L3_error)
+      if (__Pyx_ParseKeywords(__pyx_kwds, __pyx_kwvalues, __pyx_pyargnames, 0, values, kwd_pos_args, __pyx_kwds_len, "cython_decompose_mass", 0) < 0) __PYX_ERR(0, 468, __pyx_L3_error)
       if (!values[3]) values[3] = __Pyx_NewRef(((PyObject*)((PyObject*)__pyx_mstate_global->__pyx_int_1000000)));
 
-      /* "sirius_decomposer.pyx":471
+      /* "sirius_decomposer.pyx":472
  *                           tolerance_ppm: float = 5.0,
  *                           max_results: int = 1000000,
  *                           min_dbe: Optional[float] = None,             # <<<<<<<<<<<<<<
@@ -9444,7 +9387,7 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
 */
       if (!values[4]) values[4] = __Pyx_NewRef(((PyObject*)Py_None));
 
-      /* "sirius_decomposer.pyx":472
+      /* "sirius_decomposer.pyx":473
  *                           max_results: int = 1000000,
  *                           min_dbe: Optional[float] = None,
  *                           max_dbe: Optional[float] = None,             # <<<<<<<<<<<<<<
@@ -9453,7 +9396,7 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
 */
       if (!values[5]) values[5] = __Pyx_NewRef(((PyObject*)Py_None));
 
-      /* "sirius_decomposer.pyx":473
+      /* "sirius_decomposer.pyx":474
  *                           min_dbe: Optional[float] = None,
  *                           max_dbe: Optional[float] = None,
  *                           max_hetero_ratio: Optional[float] = None) -> List[Dict[str, int]]:             # <<<<<<<<<<<<<<
@@ -9462,41 +9405,41 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
 */
       if (!values[6]) values[6] = __Pyx_NewRef(((PyObject*)Py_None));
       for (Py_ssize_t i = __pyx_nargs; i < 2; i++) {
-        if (unlikely(!values[i])) { __Pyx_RaiseArgtupleInvalid("cython_decompose_mass", 0, 2, 7, i); __PYX_ERR(0, 467, __pyx_L3_error) }
+        if (unlikely(!values[i])) { __Pyx_RaiseArgtupleInvalid("cython_decompose_mass", 0, 2, 7, i); __PYX_ERR(0, 468, __pyx_L3_error) }
       }
     } else {
       switch (__pyx_nargs) {
         case  7:
         values[6] = __Pyx_ArgRef_FASTCALL(__pyx_args, 6);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[6])) __PYX_ERR(0, 467, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[6])) __PYX_ERR(0, 468, __pyx_L3_error)
         CYTHON_FALLTHROUGH;
         case  6:
         values[5] = __Pyx_ArgRef_FASTCALL(__pyx_args, 5);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[5])) __PYX_ERR(0, 467, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[5])) __PYX_ERR(0, 468, __pyx_L3_error)
         CYTHON_FALLTHROUGH;
         case  5:
         values[4] = __Pyx_ArgRef_FASTCALL(__pyx_args, 4);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[4])) __PYX_ERR(0, 467, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[4])) __PYX_ERR(0, 468, __pyx_L3_error)
         CYTHON_FALLTHROUGH;
         case  4:
         values[3] = __Pyx_ArgRef_FASTCALL(__pyx_args, 3);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[3])) __PYX_ERR(0, 467, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[3])) __PYX_ERR(0, 468, __pyx_L3_error)
         CYTHON_FALLTHROUGH;
         case  3:
         values[2] = __Pyx_ArgRef_FASTCALL(__pyx_args, 2);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[2])) __PYX_ERR(0, 467, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[2])) __PYX_ERR(0, 468, __pyx_L3_error)
         CYTHON_FALLTHROUGH;
         case  2:
         values[1] = __Pyx_ArgRef_FASTCALL(__pyx_args, 1);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[1])) __PYX_ERR(0, 467, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[1])) __PYX_ERR(0, 468, __pyx_L3_error)
         values[0] = __Pyx_ArgRef_FASTCALL(__pyx_args, 0);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[0])) __PYX_ERR(0, 467, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[0])) __PYX_ERR(0, 468, __pyx_L3_error)
         break;
         default: goto __pyx_L5_argtuple_error;
       }
       if (!values[3]) values[3] = __Pyx_NewRef(((PyObject*)((PyObject*)__pyx_mstate_global->__pyx_int_1000000)));
 
-      /* "sirius_decomposer.pyx":471
+      /* "sirius_decomposer.pyx":472
  *                           tolerance_ppm: float = 5.0,
  *                           max_results: int = 1000000,
  *                           min_dbe: Optional[float] = None,             # <<<<<<<<<<<<<<
@@ -9505,7 +9448,7 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
 */
       if (!values[4]) values[4] = __Pyx_NewRef(((PyObject*)Py_None));
 
-      /* "sirius_decomposer.pyx":472
+      /* "sirius_decomposer.pyx":473
  *                           max_results: int = 1000000,
  *                           min_dbe: Optional[float] = None,
  *                           max_dbe: Optional[float] = None,             # <<<<<<<<<<<<<<
@@ -9514,7 +9457,7 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
 */
       if (!values[5]) values[5] = __Pyx_NewRef(((PyObject*)Py_None));
 
-      /* "sirius_decomposer.pyx":473
+      /* "sirius_decomposer.pyx":474
  *                           min_dbe: Optional[float] = None,
  *                           max_dbe: Optional[float] = None,
  *                           max_hetero_ratio: Optional[float] = None) -> List[Dict[str, int]]:             # <<<<<<<<<<<<<<
@@ -9523,10 +9466,10 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
 */
       if (!values[6]) values[6] = __Pyx_NewRef(((PyObject*)Py_None));
     }
-    __pyx_v_target_mass = __Pyx_PyFloat_AsDouble(values[0]); if (unlikely((__pyx_v_target_mass == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 467, __pyx_L3_error)
+    __pyx_v_target_mass = __Pyx_PyFloat_AsDouble(values[0]); if (unlikely((__pyx_v_target_mass == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 468, __pyx_L3_error)
     __pyx_v_element_bounds = ((PyObject*)values[1]);
     if (values[2]) {
-      __pyx_v_tolerance_ppm = __Pyx_PyFloat_AsDouble(values[2]); if (unlikely((__pyx_v_tolerance_ppm == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 469, __pyx_L3_error)
+      __pyx_v_tolerance_ppm = __Pyx_PyFloat_AsDouble(values[2]); if (unlikely((__pyx_v_tolerance_ppm == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 470, __pyx_L3_error)
     } else {
       __pyx_v_tolerance_ppm = ((double)((double)5.0));
     }
@@ -9537,7 +9480,7 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
   }
   goto __pyx_L6_skip;
   __pyx_L5_argtuple_error:;
-  __Pyx_RaiseArgtupleInvalid("cython_decompose_mass", 0, 2, 7, __pyx_nargs); __PYX_ERR(0, 467, __pyx_L3_error)
+  __Pyx_RaiseArgtupleInvalid("cython_decompose_mass", 0, 2, 7, __pyx_nargs); __PYX_ERR(0, 468, __pyx_L3_error)
   __pyx_L6_skip:;
   goto __pyx_L4_argument_unpacking_done;
   __pyx_L3_error:;
@@ -9548,14 +9491,14 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
   __Pyx_RefNannyFinishContext();
   return NULL;
   __pyx_L4_argument_unpacking_done:;
-  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_element_bounds), (&PyDict_Type), 0, "element_bounds", 2))) __PYX_ERR(0, 468, __pyx_L1_error)
-  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_max_results), (&PyLong_Type), 0, "max_results", 2))) __PYX_ERR(0, 470, __pyx_L1_error)
-  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_min_dbe), (&PyFloat_Type), 1, "min_dbe", 2))) __PYX_ERR(0, 471, __pyx_L1_error)
-  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_max_dbe), (&PyFloat_Type), 1, "max_dbe", 2))) __PYX_ERR(0, 472, __pyx_L1_error)
-  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_max_hetero_ratio), (&PyFloat_Type), 1, "max_hetero_ratio", 2))) __PYX_ERR(0, 473, __pyx_L1_error)
+  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_element_bounds), (&PyDict_Type), 0, "element_bounds", 2))) __PYX_ERR(0, 469, __pyx_L1_error)
+  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_max_results), (&PyLong_Type), 0, "max_results", 2))) __PYX_ERR(0, 471, __pyx_L1_error)
+  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_min_dbe), (&PyFloat_Type), 1, "min_dbe", 2))) __PYX_ERR(0, 472, __pyx_L1_error)
+  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_max_dbe), (&PyFloat_Type), 1, "max_dbe", 2))) __PYX_ERR(0, 473, __pyx_L1_error)
+  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_max_hetero_ratio), (&PyFloat_Type), 1, "max_hetero_ratio", 2))) __PYX_ERR(0, 474, __pyx_L1_error)
   __pyx_r = __pyx_pf_17sirius_decomposer_cython_decompose_mass(__pyx_self, __pyx_v_target_mass, __pyx_v_element_bounds, __pyx_v_tolerance_ppm, __pyx_v_max_results, __pyx_v_min_dbe, __pyx_v_max_dbe, __pyx_v_max_hetero_ratio);
 
-  /* "sirius_decomposer.pyx":467
+  /* "sirius_decomposer.pyx":468
  *             free(formula)
  * 
  * def cython_decompose_mass(target_mass: float,             # <<<<<<<<<<<<<<
@@ -9604,7 +9547,7 @@ static PyObject *__pyx_pf_17sirius_decomposer_cython_decompose_mass(CYTHON_UNUSE
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("cython_decompose_mass", 0);
 
-  /* "sirius_decomposer.pyx":490
+  /* "sirius_decomposer.pyx":491
  *     """
  *     # Set default values for constraints
  *     cdef double c_min_dbe = min_dbe if min_dbe is not None else -1000.0             # <<<<<<<<<<<<<<
@@ -9613,14 +9556,14 @@ static PyObject *__pyx_pf_17sirius_decomposer_cython_decompose_mass(CYTHON_UNUSE
 */
   __pyx_t_2 = (__pyx_v_min_dbe != ((PyObject*)Py_None));
   if (__pyx_t_2) {
-    __pyx_t_3 = __Pyx_PyFloat_AsDouble(__pyx_v_min_dbe); if (unlikely((__pyx_t_3 == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 490, __pyx_L1_error)
+    __pyx_t_3 = __Pyx_PyFloat_AsDouble(__pyx_v_min_dbe); if (unlikely((__pyx_t_3 == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 491, __pyx_L1_error)
     __pyx_t_1 = __pyx_t_3;
   } else {
     __pyx_t_1 = -1000.0;
   }
   __pyx_v_c_min_dbe = __pyx_t_1;
 
-  /* "sirius_decomposer.pyx":491
+  /* "sirius_decomposer.pyx":492
  *     # Set default values for constraints
  *     cdef double c_min_dbe = min_dbe if min_dbe is not None else -1000.0
  *     cdef double c_max_dbe = max_dbe if max_dbe is not None else 1000.0             # <<<<<<<<<<<<<<
@@ -9629,14 +9572,14 @@ static PyObject *__pyx_pf_17sirius_decomposer_cython_decompose_mass(CYTHON_UNUSE
 */
   __pyx_t_2 = (__pyx_v_max_dbe != ((PyObject*)Py_None));
   if (__pyx_t_2) {
-    __pyx_t_3 = __Pyx_PyFloat_AsDouble(__pyx_v_max_dbe); if (unlikely((__pyx_t_3 == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 491, __pyx_L1_error)
+    __pyx_t_3 = __Pyx_PyFloat_AsDouble(__pyx_v_max_dbe); if (unlikely((__pyx_t_3 == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 492, __pyx_L1_error)
     __pyx_t_1 = __pyx_t_3;
   } else {
     __pyx_t_1 = 1000.0;
   }
   __pyx_v_c_max_dbe = __pyx_t_1;
 
-  /* "sirius_decomposer.pyx":492
+  /* "sirius_decomposer.pyx":493
  *     cdef double c_min_dbe = min_dbe if min_dbe is not None else -1000.0
  *     cdef double c_max_dbe = max_dbe if max_dbe is not None else 1000.0
  *     cdef double c_max_hetero_ratio = max_hetero_ratio if max_hetero_ratio is not None else 1000.0             # <<<<<<<<<<<<<<
@@ -9645,14 +9588,14 @@ static PyObject *__pyx_pf_17sirius_decomposer_cython_decompose_mass(CYTHON_UNUSE
 */
   __pyx_t_2 = (__pyx_v_max_hetero_ratio != ((PyObject*)Py_None));
   if (__pyx_t_2) {
-    __pyx_t_3 = __Pyx_PyFloat_AsDouble(__pyx_v_max_hetero_ratio); if (unlikely((__pyx_t_3 == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 492, __pyx_L1_error)
+    __pyx_t_3 = __Pyx_PyFloat_AsDouble(__pyx_v_max_hetero_ratio); if (unlikely((__pyx_t_3 == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 493, __pyx_L1_error)
     __pyx_t_1 = __pyx_t_3;
   } else {
     __pyx_t_1 = 1000.0;
   }
   __pyx_v_c_max_hetero_ratio = __pyx_t_1;
 
-  /* "sirius_decomposer.pyx":494
+  /* "sirius_decomposer.pyx":495
  *     cdef double c_max_hetero_ratio = max_hetero_ratio if max_hetero_ratio is not None else 1000.0
  * 
  *     decomposer = CythonSiriusDecomposer(element_bounds, target_mass, tolerance_ppm, max_results,             # <<<<<<<<<<<<<<
@@ -9662,22 +9605,22 @@ static PyObject *__pyx_pf_17sirius_decomposer_cython_decompose_mass(CYTHON_UNUSE
   __pyx_t_5 = NULL;
   __Pyx_INCREF((PyObject *)__pyx_mstate_global->__pyx_ptype_17sirius_decomposer_CythonSiriusDecomposer);
   __pyx_t_6 = ((PyObject *)__pyx_mstate_global->__pyx_ptype_17sirius_decomposer_CythonSiriusDecomposer); 
-  __pyx_t_7 = PyFloat_FromDouble(__pyx_v_target_mass); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 494, __pyx_L1_error)
+  __pyx_t_7 = PyFloat_FromDouble(__pyx_v_target_mass); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 495, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_7);
-  __pyx_t_8 = PyFloat_FromDouble(__pyx_v_tolerance_ppm); if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 494, __pyx_L1_error)
+  __pyx_t_8 = PyFloat_FromDouble(__pyx_v_tolerance_ppm); if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 495, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_8);
 
-  /* "sirius_decomposer.pyx":495
+  /* "sirius_decomposer.pyx":496
  * 
  *     decomposer = CythonSiriusDecomposer(element_bounds, target_mass, tolerance_ppm, max_results,
  *                                        c_min_dbe, c_max_dbe, c_max_hetero_ratio)             # <<<<<<<<<<<<<<
  *     return decomposer.decompose()
 */
-  __pyx_t_9 = PyFloat_FromDouble(__pyx_v_c_min_dbe); if (unlikely(!__pyx_t_9)) __PYX_ERR(0, 495, __pyx_L1_error)
+  __pyx_t_9 = PyFloat_FromDouble(__pyx_v_c_min_dbe); if (unlikely(!__pyx_t_9)) __PYX_ERR(0, 496, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_9);
-  __pyx_t_10 = PyFloat_FromDouble(__pyx_v_c_max_dbe); if (unlikely(!__pyx_t_10)) __PYX_ERR(0, 495, __pyx_L1_error)
+  __pyx_t_10 = PyFloat_FromDouble(__pyx_v_c_max_dbe); if (unlikely(!__pyx_t_10)) __PYX_ERR(0, 496, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_10);
-  __pyx_t_11 = PyFloat_FromDouble(__pyx_v_c_max_hetero_ratio); if (unlikely(!__pyx_t_11)) __PYX_ERR(0, 495, __pyx_L1_error)
+  __pyx_t_11 = PyFloat_FromDouble(__pyx_v_c_max_hetero_ratio); if (unlikely(!__pyx_t_11)) __PYX_ERR(0, 496, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_11);
   __pyx_t_12 = 1;
   {
@@ -9690,13 +9633,13 @@ static PyObject *__pyx_pf_17sirius_decomposer_cython_decompose_mass(CYTHON_UNUSE
     __Pyx_DECREF(__pyx_t_10); __pyx_t_10 = 0;
     __Pyx_DECREF(__pyx_t_11); __pyx_t_11 = 0;
     __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
-    if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 494, __pyx_L1_error)
+    if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 495, __pyx_L1_error)
     __Pyx_GOTREF((PyObject *)__pyx_t_4);
   }
   __pyx_v_decomposer = ((struct __pyx_obj_17sirius_decomposer_CythonSiriusDecomposer *)__pyx_t_4);
   __pyx_t_4 = 0;
 
-  /* "sirius_decomposer.pyx":496
+  /* "sirius_decomposer.pyx":497
  *     decomposer = CythonSiriusDecomposer(element_bounds, target_mass, tolerance_ppm, max_results,
  *                                        c_min_dbe, c_max_dbe, c_max_hetero_ratio)
  *     return decomposer.decompose()             # <<<<<<<<<<<<<<
@@ -9709,15 +9652,15 @@ static PyObject *__pyx_pf_17sirius_decomposer_cython_decompose_mass(CYTHON_UNUSE
     PyObject *__pyx_callargs[2] = {__pyx_t_6, NULL};
     __pyx_t_4 = __Pyx_PyObject_FastCallMethod(__pyx_mstate_global->__pyx_n_u_decompose, __pyx_callargs+__pyx_t_12, (1-__pyx_t_12) | (1*__Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET));
     __Pyx_XDECREF(__pyx_t_6); __pyx_t_6 = 0;
-    if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 496, __pyx_L1_error)
+    if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 497, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_4);
   }
-  if (!(likely(PyList_CheckExact(__pyx_t_4))||((__pyx_t_4) == Py_None) || __Pyx_RaiseUnexpectedTypeError("list", __pyx_t_4))) __PYX_ERR(0, 496, __pyx_L1_error)
+  if (!(likely(PyList_CheckExact(__pyx_t_4))||((__pyx_t_4) == Py_None) || __Pyx_RaiseUnexpectedTypeError("list", __pyx_t_4))) __PYX_ERR(0, 497, __pyx_L1_error)
   __pyx_r = ((PyObject*)__pyx_t_4);
   __pyx_t_4 = 0;
   goto __pyx_L0;
 
-  /* "sirius_decomposer.pyx":467
+  /* "sirius_decomposer.pyx":468
  *             free(formula)
  * 
  * def cython_decompose_mass(target_mass: float,             # <<<<<<<<<<<<<<
@@ -10555,21 +10498,21 @@ __Pyx_RefNannySetupContext("PyInit_sirius_decomposer", 0);
   if (PyDict_SetItem(__pyx_mstate_global->__pyx_d, __pyx_mstate_global->__pyx_n_u_ATOMIC_MASSES, __pyx_t_3) < 0) __PYX_ERR(0, 14, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
 
-  /* "sirius_decomposer.pyx":444
+  /* "sirius_decomposer.pyx":445
  *         self.results.append(result)
  * 
  *     def decompose(self) -> List[Dict[str, int]]:             # <<<<<<<<<<<<<<
  *         """
  *         Perform mass decomposition to find all valid molecular formulas.
 */
-  __pyx_t_3 = __Pyx_PyDict_NewPresized(1); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 444, __pyx_L1_error)
+  __pyx_t_3 = __Pyx_PyDict_NewPresized(1); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 445, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_3);
-  if (PyDict_SetItem(__pyx_t_3, __pyx_mstate_global->__pyx_n_u_return, __pyx_mstate_global->__pyx_kp_u_List_Dict_str_int) < 0) __PYX_ERR(0, 444, __pyx_L1_error)
-  __pyx_t_2 = __Pyx_CyFunction_New(&__pyx_mdef_17sirius_decomposer_22CythonSiriusDecomposer_5decompose, __Pyx_CYFUNCTION_CCLASS, __pyx_mstate_global->__pyx_n_u_CythonSiriusDecomposer_decompose, NULL, __pyx_mstate_global->__pyx_n_u_sirius_decomposer, __pyx_mstate_global->__pyx_d, ((PyObject *)__pyx_mstate_global->__pyx_codeobj_tab[1])); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 444, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_t_3, __pyx_mstate_global->__pyx_n_u_return, __pyx_mstate_global->__pyx_kp_u_List_Dict_str_int) < 0) __PYX_ERR(0, 445, __pyx_L1_error)
+  __pyx_t_2 = __Pyx_CyFunction_New(&__pyx_mdef_17sirius_decomposer_22CythonSiriusDecomposer_5decompose, __Pyx_CYFUNCTION_CCLASS, __pyx_mstate_global->__pyx_n_u_CythonSiriusDecomposer_decompose, NULL, __pyx_mstate_global->__pyx_n_u_sirius_decomposer, __pyx_mstate_global->__pyx_d, ((PyObject *)__pyx_mstate_global->__pyx_codeobj_tab[1])); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 445, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
   __Pyx_CyFunction_SetAnnotationsDict(__pyx_t_2, __pyx_t_3);
   __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
-  if (__Pyx_SetItemOnTypeDict(__pyx_mstate_global->__pyx_ptype_17sirius_decomposer_CythonSiriusDecomposer, __pyx_mstate_global->__pyx_n_u_decompose, __pyx_t_2) < 0) __PYX_ERR(0, 444, __pyx_L1_error)
+  if (__Pyx_SetItemOnTypeDict(__pyx_mstate_global->__pyx_ptype_17sirius_decomposer_CythonSiriusDecomposer, __pyx_mstate_global->__pyx_n_u_decompose, __pyx_t_2) < 0) __PYX_ERR(0, 445, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
 
   /* "(tree fragment)":1
@@ -10593,43 +10536,43 @@ __Pyx_RefNannySetupContext("PyInit_sirius_decomposer", 0);
   if (PyDict_SetItem(__pyx_mstate_global->__pyx_d, __pyx_mstate_global->__pyx_n_u_setstate_cython, __pyx_t_2) < 0) __PYX_ERR(1, 3, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
 
-  /* "sirius_decomposer.pyx":469
+  /* "sirius_decomposer.pyx":470
  * def cython_decompose_mass(target_mass: float,
  *                           element_bounds: Dict[str, Tuple[int, int]],
  *                           tolerance_ppm: float = 5.0,             # <<<<<<<<<<<<<<
  *                           max_results: int = 1000000,
  *                           min_dbe: Optional[float] = None,
 */
-  __pyx_t_2 = PyFloat_FromDouble(((double)5.0)); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 469, __pyx_L1_error)
+  __pyx_t_2 = PyFloat_FromDouble(((double)5.0)); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 470, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
 
-  /* "sirius_decomposer.pyx":467
+  /* "sirius_decomposer.pyx":468
  *             free(formula)
  * 
  * def cython_decompose_mass(target_mass: float,             # <<<<<<<<<<<<<<
  *                           element_bounds: Dict[str, Tuple[int, int]],
  *                           tolerance_ppm: float = 5.0,
 */
-  __pyx_t_3 = PyTuple_Pack(5, __pyx_t_2, ((PyObject*)__pyx_mstate_global->__pyx_int_1000000), Py_None, Py_None, Py_None); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 467, __pyx_L1_error)
+  __pyx_t_3 = PyTuple_Pack(5, __pyx_t_2, ((PyObject*)__pyx_mstate_global->__pyx_int_1000000), Py_None, Py_None, Py_None); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 468, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_3);
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
-  __pyx_t_2 = __Pyx_PyDict_NewPresized(8); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 467, __pyx_L1_error)
+  __pyx_t_2 = __Pyx_PyDict_NewPresized(8); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 468, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
-  if (PyDict_SetItem(__pyx_t_2, __pyx_mstate_global->__pyx_n_u_target_mass, __pyx_mstate_global->__pyx_n_u_float) < 0) __PYX_ERR(0, 467, __pyx_L1_error)
-  if (PyDict_SetItem(__pyx_t_2, __pyx_mstate_global->__pyx_n_u_element_bounds, __pyx_mstate_global->__pyx_kp_u_Dict_str_Tuple_int_int) < 0) __PYX_ERR(0, 467, __pyx_L1_error)
-  if (PyDict_SetItem(__pyx_t_2, __pyx_mstate_global->__pyx_n_u_tolerance_ppm, __pyx_mstate_global->__pyx_n_u_float) < 0) __PYX_ERR(0, 467, __pyx_L1_error)
-  if (PyDict_SetItem(__pyx_t_2, __pyx_mstate_global->__pyx_n_u_max_results, __pyx_mstate_global->__pyx_n_u_int) < 0) __PYX_ERR(0, 467, __pyx_L1_error)
-  if (PyDict_SetItem(__pyx_t_2, __pyx_mstate_global->__pyx_n_u_min_dbe, __pyx_mstate_global->__pyx_kp_u_Optional_float) < 0) __PYX_ERR(0, 467, __pyx_L1_error)
-  if (PyDict_SetItem(__pyx_t_2, __pyx_mstate_global->__pyx_n_u_max_dbe, __pyx_mstate_global->__pyx_kp_u_Optional_float) < 0) __PYX_ERR(0, 467, __pyx_L1_error)
-  if (PyDict_SetItem(__pyx_t_2, __pyx_mstate_global->__pyx_n_u_max_hetero_ratio, __pyx_mstate_global->__pyx_kp_u_Optional_float) < 0) __PYX_ERR(0, 467, __pyx_L1_error)
-  if (PyDict_SetItem(__pyx_t_2, __pyx_mstate_global->__pyx_n_u_return, __pyx_mstate_global->__pyx_kp_u_List_Dict_str_int) < 0) __PYX_ERR(0, 467, __pyx_L1_error)
-  __pyx_t_4 = __Pyx_CyFunction_New(&__pyx_mdef_17sirius_decomposer_1cython_decompose_mass, 0, __pyx_mstate_global->__pyx_n_u_cython_decompose_mass, NULL, __pyx_mstate_global->__pyx_n_u_sirius_decomposer, __pyx_mstate_global->__pyx_d, ((PyObject *)__pyx_mstate_global->__pyx_codeobj_tab[4])); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 467, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_t_2, __pyx_mstate_global->__pyx_n_u_target_mass, __pyx_mstate_global->__pyx_n_u_float) < 0) __PYX_ERR(0, 468, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_t_2, __pyx_mstate_global->__pyx_n_u_element_bounds, __pyx_mstate_global->__pyx_kp_u_Dict_str_Tuple_int_int) < 0) __PYX_ERR(0, 468, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_t_2, __pyx_mstate_global->__pyx_n_u_tolerance_ppm, __pyx_mstate_global->__pyx_n_u_float) < 0) __PYX_ERR(0, 468, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_t_2, __pyx_mstate_global->__pyx_n_u_max_results, __pyx_mstate_global->__pyx_n_u_int) < 0) __PYX_ERR(0, 468, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_t_2, __pyx_mstate_global->__pyx_n_u_min_dbe, __pyx_mstate_global->__pyx_kp_u_Optional_float) < 0) __PYX_ERR(0, 468, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_t_2, __pyx_mstate_global->__pyx_n_u_max_dbe, __pyx_mstate_global->__pyx_kp_u_Optional_float) < 0) __PYX_ERR(0, 468, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_t_2, __pyx_mstate_global->__pyx_n_u_max_hetero_ratio, __pyx_mstate_global->__pyx_kp_u_Optional_float) < 0) __PYX_ERR(0, 468, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_t_2, __pyx_mstate_global->__pyx_n_u_return, __pyx_mstate_global->__pyx_kp_u_List_Dict_str_int) < 0) __PYX_ERR(0, 468, __pyx_L1_error)
+  __pyx_t_4 = __Pyx_CyFunction_New(&__pyx_mdef_17sirius_decomposer_1cython_decompose_mass, 0, __pyx_mstate_global->__pyx_n_u_cython_decompose_mass, NULL, __pyx_mstate_global->__pyx_n_u_sirius_decomposer, __pyx_mstate_global->__pyx_d, ((PyObject *)__pyx_mstate_global->__pyx_codeobj_tab[4])); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 468, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_4);
   __Pyx_CyFunction_SetDefaultsTuple(__pyx_t_4, __pyx_t_3);
   __Pyx_CyFunction_SetAnnotationsDict(__pyx_t_4, __pyx_t_2);
   __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
-  if (PyDict_SetItem(__pyx_mstate_global->__pyx_d, __pyx_mstate_global->__pyx_n_u_cython_decompose_mass, __pyx_t_4) < 0) __PYX_ERR(0, 467, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_mstate_global->__pyx_d, __pyx_mstate_global->__pyx_n_u_cython_decompose_mass, __pyx_t_4) < 0) __PYX_ERR(0, 468, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
 
   /* "sirius_decomposer.pyx":1
@@ -10822,7 +10765,7 @@ static int __Pyx_InitCachedBuiltins(__pyx_mstatetype *__pyx_mstate) {
   __pyx_builtin_sorted = __Pyx_GetBuiltinName(__pyx_mstate->__pyx_n_u_sorted); if (!__pyx_builtin_sorted) __PYX_ERR(0, 114, __pyx_L1_error)
   __pyx_builtin_enumerate = __Pyx_GetBuiltinName(__pyx_mstate->__pyx_n_u_enumerate); if (!__pyx_builtin_enumerate) __PYX_ERR(0, 120, __pyx_L1_error)
   __pyx_builtin_range = __Pyx_GetBuiltinName(__pyx_mstate->__pyx_n_u_range); if (!__pyx_builtin_range) __PYX_ERR(0, 123, __pyx_L1_error)
-  __pyx_builtin_UnicodeDecodeError = __Pyx_GetBuiltinName(__pyx_mstate->__pyx_n_u_UnicodeDecodeError); if (!__pyx_builtin_UnicodeDecodeError) __PYX_ERR(0, 430, __pyx_L1_error)
+  __pyx_builtin_UnicodeDecodeError = __Pyx_GetBuiltinName(__pyx_mstate->__pyx_n_u_UnicodeDecodeError); if (!__pyx_builtin_UnicodeDecodeError) __PYX_ERR(0, 431, __pyx_L1_error)
   __pyx_builtin_TypeError = __Pyx_GetBuiltinName(__pyx_mstate->__pyx_n_u_TypeError); if (!__pyx_builtin_TypeError) __PYX_ERR(1, 2, __pyx_L1_error)
   __pyx_builtin_ImportError = __Pyx_GetBuiltinName(__pyx_mstate->__pyx_n_u_ImportError); if (!__pyx_builtin_ImportError) __PYX_ERR(2, 1051, __pyx_L1_error)
   return 0;
@@ -10905,7 +10848,7 @@ static int __Pyx_CreateCodeObjects(__pyx_mstatetype *__pyx_mstate) {
     __pyx_mstate_global->__pyx_codeobj_tab[0] = __Pyx_PyCode_New(descr, varnames, __pyx_mstate->__pyx_kp_u_sirius_decomposer_pyx, __pyx_mstate->__pyx_n_u_lambda, __pyx_k_aq_Q, tuple_dedup_map); if (unlikely(!__pyx_mstate_global->__pyx_codeobj_tab[0])) goto bad;
   }
   {
-    const __Pyx_PyCode_New_function_description descr = {1, 0, 0, 3, (unsigned int)(CO_OPTIMIZED|CO_NEWLOCALS), 444, 94};
+    const __Pyx_PyCode_New_function_description descr = {1, 0, 0, 3, (unsigned int)(CO_OPTIMIZED|CO_NEWLOCALS), 445, 94};
     PyObject* const varnames[] = {__pyx_mstate->__pyx_n_u_self, __pyx_mstate->__pyx_n_u_formula, __pyx_mstate->__pyx_n_u_i};
     __pyx_mstate_global->__pyx_codeobj_tab[1] = __Pyx_PyCode_New(descr, varnames, __pyx_mstate->__pyx_kp_u_sirius_decomposer_pyx, __pyx_mstate->__pyx_n_u_decompose, __pyx_k_1_F_1_E_at1_1E_1_QiuA_4xuA, tuple_dedup_map); if (unlikely(!__pyx_mstate_global->__pyx_codeobj_tab[1])) goto bad;
   }
@@ -10920,7 +10863,7 @@ static int __Pyx_CreateCodeObjects(__pyx_mstatetype *__pyx_mstate) {
     __pyx_mstate_global->__pyx_codeobj_tab[3] = __Pyx_PyCode_New(descr, varnames, __pyx_mstate->__pyx_kp_u_stringsource, __pyx_mstate->__pyx_n_u_setstate_cython, __pyx_k_Q, tuple_dedup_map); if (unlikely(!__pyx_mstate_global->__pyx_codeobj_tab[3])) goto bad;
   }
   {
-    const __Pyx_PyCode_New_function_description descr = {7, 0, 0, 11, (unsigned int)(CO_OPTIMIZED|CO_NEWLOCALS), 467, 115};
+    const __Pyx_PyCode_New_function_description descr = {7, 0, 0, 11, (unsigned int)(CO_OPTIMIZED|CO_NEWLOCALS), 468, 115};
     PyObject* const varnames[] = {__pyx_mstate->__pyx_n_u_target_mass, __pyx_mstate->__pyx_n_u_element_bounds, __pyx_mstate->__pyx_n_u_tolerance_ppm, __pyx_mstate->__pyx_n_u_max_results, __pyx_mstate->__pyx_n_u_min_dbe, __pyx_mstate->__pyx_n_u_max_dbe, __pyx_mstate->__pyx_n_u_max_hetero_ratio, __pyx_mstate->__pyx_n_u_c_min_dbe, __pyx_mstate->__pyx_n_u_c_max_dbe, __pyx_mstate->__pyx_n_u_c_max_hetero_ratio, __pyx_mstate->__pyx_n_u_decomposer};
     __pyx_mstate_global->__pyx_codeobj_tab[4] = __Pyx_PyCode_New(descr, varnames, __pyx_mstate->__pyx_kp_u_sirius_decomposer_pyx, __pyx_mstate->__pyx_n_u_cython_decompose_mass, __pyx_k_q_q_1_1_Gq_Kxwj_Kxwj_99J_Q_q_8, tuple_dedup_map); if (unlikely(!__pyx_mstate_global->__pyx_codeobj_tab[4])) goto bad;
   }

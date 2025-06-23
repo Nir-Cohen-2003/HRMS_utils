@@ -22,12 +22,12 @@ except ImportError:
 
 def benchmark_algorithms():
     """
-    Benchmark different mass decomposition algorithms.
+    Benchmark different mass decomposition algorithms with DBE constraints.
     """
     import time
     
     # Test case: 2 * (C17H19N3O)
-    target_mass = 285.136493 *2
+    target_mass = 285.136493 * 1
     element_bounds = {
         'C': (0, 50),
         'H': (0, 100), 
@@ -42,36 +42,60 @@ def benchmark_algorithms():
         'I': (0, 4),
     }
     
+    # DBE constraints
+    min_dbe = 0
+    max_dbe = 40
+    
     print(f"Benchmarking mass decomposition for mass {target_mass}")
     print(f"Element bounds: {element_bounds}")
+    print(f"DBE constraints: {min_dbe} <= DBE <= {max_dbe}")
     print("-" * 60)
     
-    # Test recursive algorithm
+    # Test recursive algorithm without constraints
     start_time = time.time()
     recursive_decomposer = SiriusMassDecomposer(element_bounds, target_mass, tolerance_ppm=5.0)
-    recursive_results = recursive_decomposer.decompose()
-    recursive_time = time.time() - start_time
+    recursive_results_raw = recursive_decomposer.decompose()
+    recursive_time_raw = time.time() - start_time
     
-    print("Recursive algorithm:")
-    print(f"  Time: {recursive_time:.3f} seconds")
-    print(f"  Results: {len(recursive_results)} formulas")
-    
-    # Test iterative algorithm
+    # Apply constraints using Python function
     start_time = time.time()
-    iterative_results = decompose_mass_fast(target_mass, element_bounds, tolerance_ppm=5.0)
-    iterative_time = time.time() - start_time
+    recursive_results = add_chemical_constraints(recursive_results_raw, min_dbe=min_dbe, max_dbe=max_dbe)
+    recursive_constraint_time = time.time() - start_time
+    recursive_time = recursive_time_raw + recursive_constraint_time
     
-    print("Iterative algorithm:")
-    print(f"  Time: {iterative_time:.3f} seconds")
-    print(f"  Results: {len(iterative_results)} formulas")
+    print("Recursive algorithm (Python constraints):")
+    print(f"  Decomposition time: {recursive_time_raw:.3f} seconds")
+    print(f"  Constraint time: {recursive_constraint_time:.3f} seconds")
+    print(f"  Total time: {recursive_time:.3f} seconds")
+    print(f"  Results before constraints: {len(recursive_results_raw)} formulas")
+    print(f"  Results after constraints: {len(recursive_results)} formulas")
     
-    # Test Cython algorithm (if available)
+    # Test iterative algorithm without constraints
+    start_time = time.time()
+    iterative_results_raw = decompose_mass_fast(target_mass, element_bounds, tolerance_ppm=5.0)
+    iterative_time_raw = time.time() - start_time
+    
+    # Apply constraints using Python function
+    start_time = time.time()
+    iterative_results = add_chemical_constraints(iterative_results_raw, min_dbe=min_dbe, max_dbe=max_dbe)
+    iterative_constraint_time = time.time() - start_time
+    iterative_time = iterative_time_raw + iterative_constraint_time
+    
+    print("Iterative algorithm (Python constraints):")
+    print(f"  Decomposition time: {iterative_time_raw:.3f} seconds")
+    print(f"  Constraint time: {iterative_constraint_time:.3f} seconds")
+    print(f"  Total time: {iterative_time:.3f} seconds")
+    print(f"  Results before constraints: {len(iterative_results_raw)} formulas")
+    print(f"  Results after constraints: {len(iterative_results)} formulas")
+    
+    # Test Cython algorithm (if available) with constraints during enumeration
     try:
         start_time = time.time()
-        cython_results = cython_decompose_mass(target_mass, element_bounds, tolerance_ppm=5.0)
+        cython_results = cython_decompose_mass(target_mass, element_bounds, tolerance_ppm=5.0, 
+                                              min_dbe=float(min_dbe), max_dbe=float(max_dbe))
         cython_time = time.time() - start_time
         
-        print("Cython algorithm:")
+        print("Cython algorithm (constraints during enumeration):")
         print(f"  Time: {cython_time:.3f} seconds")
         print(f"  Results: {len(cython_results)} formulas")
         cython_available = True
@@ -93,25 +117,44 @@ def benchmark_algorithms():
     if cython_available:
         cython_set = {frozenset(formula.items()) for formula in cython_results}
     
+    print("\nPerformance Comparison:")
+    print("-" * 60)
+    
     if recursive_set == iterative_set:
         print("✓ Recursive and iterative algorithms produce identical results")
         speedup = recursive_time / iterative_time if iterative_time > 0 else float('inf')
         print(f"  Iterative speedup: {speedup:.1f}x")
         
         if cython_available:
-            cython_set = {frozenset(formula.items()) for formula in cython_results}
             if recursive_set == cython_set:
                 print("✓ Cython algorithm produces identical results")
                 cython_speedup = recursive_time / cython_time if cython_time > 0 else float('inf')
                 iter_speedup = iterative_time / cython_time if cython_time > 0 else float('inf')
                 print(f"  Cython speedup vs recursive: {cython_speedup:.1f}x")
                 print(f"  Cython speedup vs iterative: {iter_speedup:.1f}x")
+                
+                # Calculate efficiency gains from constraint integration
+                total_python_time = max(recursive_time, iterative_time)
+                constraint_overhead = max(recursive_constraint_time, iterative_constraint_time)
+                efficiency_gain = (total_python_time - cython_time) / total_python_time * 100
+                print(f"  Constraint integration efficiency gain: {efficiency_gain:.1f}%")
+                print(f"  Python constraint overhead: {constraint_overhead:.3f}s ({constraint_overhead/total_python_time*100:.1f}%)")
             else:
                 print("✗ Cython results differ!")
+                print(f"  Common results: {len(recursive_set & cython_set)}")
+                print(f"  Python only: {len(recursive_set - cython_set)}")
+                print(f"  Cython only: {len(cython_set - recursive_set)}")
     else:
         print("✗ Results differ!")
         print(f"  Recursive only: {len(recursive_set - iterative_set)}")
         print(f"  Iterative only: {len(iterative_set - recursive_set)}")
+    
+    # Show constraint filtering statistics
+    print("\nConstraint Filtering Statistics:")
+    print(f"  Before constraints: {len(recursive_results_raw)} formulas")
+    print(f"  After constraints: {len(recursive_results)} formulas")
+    filter_ratio = (len(recursive_results_raw) - len(recursive_results)) / len(recursive_results_raw) * 100
+    print(f"  Filtered out: {filter_ratio:.1f}%")
     
     print("\nFirst 10 results:")
     for i, formula in enumerate(iterative_results[:10]):
@@ -127,45 +170,3 @@ if __name__ == "__main__":
     # Run benchmark
     benchmark_algorithms()
     
-    print("\n" + "=" * 50)
-    print("Chemical constraint filtering example:")
-    
-    # Example with chemical constraints
-    target_mass = 285.136493 *2
-    element_bounds = {
-        'C': (0, 20),
-        'H': (0, 50), 
-        'N': (0, 10),
-        'O': (0, 20),
-        'S': (0, 3),
-        'P': (0, 5),
-        'Na': (0, 1),
-        'F': (0, 20),
-        'Cl': (0, 0),
-        'Br': (0, 0),   
-        'I': (0, 2),
-    }
-    
-    formulas = decompose_mass_fast(target_mass, element_bounds, tolerance_ppm=5.0)
-    print(f"\nFound {len(formulas)} total formulas")
-    
-    # Apply chemical constraints
-    filtered = add_chemical_constraints(formulas, min_dbe=0, max_dbe=20, max_hetero_ratio=2.0)
-    print(f"After chemical filtering: {len(filtered)} formulas")
-    
-    print("\nTop 5 chemically valid formulas:")
-    for i, formula in enumerate(filtered[:5]):
-        mass = sum(ATOMIC_MASSES[elem] * count for elem, count in formula.items())
-        
-        # Calculate DBE
-        c = formula.get('C', 0)
-        h = formula.get('H', 0)
-        n = formula.get('N', 0)
-        dbe = c + 1 - (h + n) / 2.0 if c > 0 else 0
-        
-        print(f"  {i+1}: {formula} (mass: {mass:.4f}, DBE: {dbe:.1f})")
-    
-    # print("\nTo compile the ultra-fast Cython version:")
-    # print("  1. pip install cython numpy")
-    # print("  2. python setup.py build_ext --inplace")
-    # print("  3. Import: from sirius_decomposer import cython_decompose_mass")

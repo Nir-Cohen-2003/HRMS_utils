@@ -404,11 +404,12 @@ cdef class CythonSiriusDecomposer:
             
             formula[level] = count
             
-            # Early constraint checking for critical elements to prune search space
-            # Only check constraints if we have enough elements processed
-            if level >= self.n_elements - 1 or self._should_check_partial_constraints(level):
-                if not self._check_partial_constraints(formula, level + 1):
-                    continue
+            # Temporarily disable partial constraint checking to debug
+            # # Early constraint checking for critical elements to prune search space
+            # # Only check constraints if we have enough elements processed
+            # if level >= self.n_elements - 1 or self._should_check_partial_constraints(level):
+            #     if not self._check_partial_constraints(formula, level + 1):
+            #         continue
             
             self._decompose_recursive(formula, new_mass, level + 1)
     
