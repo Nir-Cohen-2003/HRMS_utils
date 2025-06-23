@@ -1,32 +1,8 @@
-from z3 import Solver, Bool, Sum, If, Int, And, Not, sat, is_true
+from z3 import Solver, Bool, Sum, If, Int, Or, And, Not, sat, Optimize, is_true
 import math
-from typing import Dict, Literal
+from typing import List, Dict, Literal, Optional
 from time import perf_counter
 
-
-def _calculate_mass_bounds(target_mass: float, error_ppm: float):
-    """Calculate mass tolerance bounds"""
-    mass_tolerance_absolute = target_mass * error_ppm * 1e-6
-    min_mass = target_mass - mass_tolerance_absolute
-    max_mass = target_mass + mass_tolerance_absolute
-    return min_mass, max_mass
-
-def _calculate_count_ranges(element_details: Dict[str, Dict[str, float]], max_mass: float):
-    """Calculate valid count ranges for each element"""
-    count_ranges = {}
-    for element_symbol, element_data in element_details.items():
-        min_count = element_data.get("min", 0)
-        max_allowed_count = math.floor(max_mass / element_data["mass"]) if element_data["mass"] > 0 else 0
-        max_count = element_data.get("max", max_allowed_count)
-        max_count = min(max_count, max_allowed_count)
-        count_ranges[element_symbol] = (min_count, max_count)
-    return count_ranges
-
-def _create_mass_constraints(element_details: Dict[str, Dict[str, float]], min_mass: float, max_mass: float, scale_factor: int = 1000000):
-    """Create scaled mass constraint bounds"""
-    min_mass_scaled = int(min_mass * scale_factor)
-    max_mass_scaled = int(max_mass * scale_factor)
-    return min_mass_scaled, max_mass_scaled, scale_factor
 
 def z3_solve_mass_decomposition_optimized(
     target_mass: float,
@@ -49,60 +25,66 @@ def z3_solve_mass_decomposition_optimized(
     print(f"Target mass: {target_mass:.6f}, Error: {error_ppm} ppm")
     print(f"Optimization strategy: {optimization_strategy}")
 
-    # Calculate common parameters once
-    min_mass, max_mass = _calculate_mass_bounds(target_mass, error_ppm)
-    count_ranges = _calculate_count_ranges(element_details, max_mass)
-    element_symbols = list(element_details.keys())
-
     match optimization_strategy:
         case "push_pop":
-            return _solve_with_push_pop_fixed(target_mass, min_mass, max_mass, element_details, element_symbols, count_ranges, rules, max_solutions, enable_profiling)
+            return _solve_with_push_pop_fixed(target_mass, error_ppm, element_details, rules, max_solutions, enable_profiling)
         case "fresh_solver":
-            return _solve_with_fresh_solver(target_mass, min_mass, max_mass, element_details, element_symbols, count_ranges, rules, max_solutions, enable_profiling)
+            return _solve_with_fresh_solver(target_mass, error_ppm, element_details, rules, max_solutions, enable_profiling)
         case "minimize_vars":
-            return _solve_with_minimized_vars(target_mass, min_mass, max_mass, element_details, element_symbols, count_ranges, rules, max_solutions, enable_profiling)
+            return _solve_with_minimized_vars(target_mass, error_ppm, element_details, rules, max_solutions, enable_profiling)
         case "all_smt":
-            return _solve_with_all_smt(target_mass, min_mass, max_mass, element_details, element_symbols, count_ranges, rules, max_solutions, enable_profiling)
+            return _solve_with_all_smt(target_mass, error_ppm, element_details, rules, max_solutions, enable_profiling)
 
-def _solve_with_push_pop_fixed(target_mass, min_mass, max_mass, element_details, element_symbols, count_ranges, rules, max_solutions, enable_profiling):
+def _solve_with_push_pop_fixed(target_mass, error_ppm, element_details, rules, max_solutions, enable_profiling):
     """
     Strategy 1: Use push/pop to manage exclusion constraints efficiently
     The original approach was actually correct - Z3 maintains learned clauses between iterations
     """
+    mass_tolerance_absolute = target_mass * error_ppm * 1e-6
+    min_mass = target_mass - mass_tolerance_absolute
+    max_mass = target_mass + mass_tolerance_absolute
+    
     found_formulas = []
+    element_symbols = list(element_details.keys())
     
     # Create base solver with all permanent constraints
     base_solver = Solver()
     
-    # Variable creation using extracted count_ranges
+    # Variable creation (same as original)
     choices = {}
+    count_ranges = {}
     
     for element_symbol in element_symbols:
-        min_count, max_count = count_ranges[element_symbol]
+        element_data = element_details[element_symbol]
+        min_count = element_data.get("min", 0)
+        max_allowed_count = math.floor(max_mass / element_data["mass"]) if element_data["mass"] > 0 else 0
+        max_count = element_data.get("max", max_allowed_count)
+        max_count = min(max_count, max_allowed_count)
+        count_ranges[element_symbol] = range(min_count, max_count + 1)
         choices[element_symbol] = {}
         
-        for count in range(min_count, max_count + 1):
+        for count in count_ranges[element_symbol]:
             choices[element_symbol][count] = Bool(f"Choice_{element_symbol}_{count}")
 
     # Add permanent constraints to base solver
     # One-hot constraints
     for element_symbol in element_symbols:
-        min_count, max_count = count_ranges[element_symbol]
         base_solver.add(Sum([If(choices[element_symbol][count], 1, 0) 
-                           for count in range(min_count, max_count + 1)]) == 1)
+                           for count in count_ranges[element_symbol]]) == 1)
 
     # Mass constraints
-    min_mass_scaled, max_mass_scaled, scale_factor = _create_mass_constraints(element_details, min_mass, max_mass)
+    scale_factor = 1000000
     mass_contributions = []
     for element_symbol in element_symbols:
-        min_count, max_count = count_ranges[element_symbol]
-        for count in range(min_count, max_count + 1):
+        for count in count_ranges[element_symbol]:
             scaled_mass = int(element_details[element_symbol]["mass"] * scale_factor)
             mass_contributions.append(
                 If(choices[element_symbol][count], count * scaled_mass, 0)
             )
     
     total_mass_scaled = Sum(mass_contributions)
+    min_mass_scaled = int(min_mass * scale_factor)
+    max_mass_scaled = int(max_mass * scale_factor)
     
     base_solver.add(total_mass_scaled >= min_mass_scaled)
     base_solver.add(total_mass_scaled <= max_mass_scaled)
@@ -114,19 +96,13 @@ def _solve_with_push_pop_fixed(target_mass, min_mass, max_mass, element_details,
                 import inspect
                 sig = inspect.signature(rule_func)
                 if len(sig.parameters) == 2:
-                    # Convert count_ranges back to range objects for backward compatibility
-                    count_ranges_compat = {}
-                    for element_symbol in element_symbols:
-                        min_count, max_count = count_ranges[element_symbol]
-                        count_ranges_compat[element_symbol] = range(min_count, max_count + 1)
-                    constraint = rule_func(choices, count_ranges_compat)
+                    constraint = rule_func(choices, count_ranges)
                 else:
                     element_counts = {}
                     for element_symbol in element_symbols:
-                        min_count, max_count = count_ranges[element_symbol]
                         element_counts[element_symbol] = Sum([
                             If(choices[element_symbol][count], count, 0)
-                            for count in range(min_count, max_count + 1)
+                            for count in count_ranges[element_symbol]
                         ])
                     constraint = rule_func(element_counts)
                 
@@ -155,8 +131,7 @@ def _solve_with_push_pop_fixed(target_mass, min_mass, max_mass, element_details,
             current_solution_vars = []
             for element_symbol in element_symbols:
                 element_count = 0
-                min_count, max_count = count_ranges[element_symbol]
-                for count in range(min_count, max_count + 1):
+                for count in count_ranges[element_symbol]:
                     choice_value = model[choices[element_symbol][count]]
                     if is_true(choice_value):
                         element_count = count
@@ -180,45 +155,56 @@ def _solve_with_push_pop_fixed(target_mass, min_mass, max_mass, element_details,
 
     return found_formulas
 
-def _solve_with_fresh_solver(target_mass, min_mass, max_mass, element_details, element_symbols, count_ranges, rules, max_solutions, enable_profiling):
+def _solve_with_fresh_solver(target_mass, error_ppm, element_details, rules, max_solutions, enable_profiling):
     """
     Strategy 2: Create fresh solver for each iteration with accumulated exclusions
     """
+    mass_tolerance_absolute = target_mass * error_ppm * 1e-6
+    min_mass = target_mass - mass_tolerance_absolute
+    max_mass = target_mass + mass_tolerance_absolute
+    
     found_formulas = []
+    element_symbols = list(element_details.keys())
     excluded_solutions = []  # Store solutions to exclude
     
     for iteration in range(max_solutions):
         # Create fresh solver
         solver = Solver()
         
-        # Variable creation using extracted count_ranges
+        # Variable creation
         choices = {}
+        count_ranges = {}
         
         for element_symbol in element_symbols:
-            min_count, max_count = count_ranges[element_symbol]
+            element_data = element_details[element_symbol]
+            min_count = element_data.get("min", 0)
+            max_allowed_count = math.floor(max_mass / element_data["mass"]) if element_data["mass"] > 0 else 0
+            max_count = element_data.get("max", max_allowed_count)
+            max_count = min(max_count, max_allowed_count)
+            count_ranges[element_symbol] = range(min_count, max_count + 1)
             choices[element_symbol] = {}
             
-            for count in range(min_count, max_count + 1):
+            for count in count_ranges[element_symbol]:
                 choices[element_symbol][count] = Bool(f"Choice_{element_symbol}_{count}")
 
         # Add all constraints (same as before)
         for element_symbol in element_symbols:
-            min_count, max_count = count_ranges[element_symbol]
             solver.add(Sum([If(choices[element_symbol][count], 1, 0) 
-                           for count in range(min_count, max_count + 1)]) == 1)
+                           for count in count_ranges[element_symbol]]) == 1)
 
         # Mass constraints
-        min_mass_scaled, max_mass_scaled, scale_factor = _create_mass_constraints(element_details, min_mass, max_mass)
+        scale_factor = 1000000
         mass_contributions = []
         for element_symbol in element_symbols:
-            min_count, max_count = count_ranges[element_symbol]
-            for count in range(min_count, max_count + 1):
+            for count in count_ranges[element_symbol]:
                 scaled_mass = int(element_details[element_symbol]["mass"] * scale_factor)
                 mass_contributions.append(
                     If(choices[element_symbol][count], count * scaled_mass, 0)
                 )
         
         total_mass_scaled = Sum(mass_contributions)
+        min_mass_scaled = int(min_mass * scale_factor)
+        max_mass_scaled = int(max_mass * scale_factor)
         
         solver.add(total_mass_scaled >= min_mass_scaled)
         solver.add(total_mass_scaled <= max_mass_scaled)
@@ -230,19 +216,13 @@ def _solve_with_fresh_solver(target_mass, min_mass, max_mass, element_details, e
                     import inspect
                     sig = inspect.signature(rule_func)
                     if len(sig.parameters) == 2:
-                        # Convert count_ranges back to range objects for backward compatibility
-                        count_ranges_compat = {}
-                        for element_symbol in element_symbols:
-                            min_count, max_count = count_ranges[element_symbol]
-                            count_ranges_compat[element_symbol] = range(min_count, max_count + 1)
-                        constraint = rule_func(choices, count_ranges_compat)
+                        constraint = rule_func(choices, count_ranges)
                     else:
                         element_counts = {}
                         for element_symbol in element_symbols:
-                            min_count, max_count = count_ranges[element_symbol]
                             element_counts[element_symbol] = Sum([
                                 If(choices[element_symbol][count], count, 0)
-                                for count in range(min_count, max_count + 1)
+                                for count in count_ranges[element_symbol]
                             ])
                         constraint = rule_func(element_counts)
                     
@@ -256,8 +236,7 @@ def _solve_with_fresh_solver(target_mass, min_mass, max_mass, element_details, e
             exclusion_vars = []
             for element_symbol in element_symbols:
                 count = excluded_formula.get(element_symbol, 0)
-                min_count, max_count = count_ranges[element_symbol]
-                if min_count <= count <= max_count:
+                if count in count_ranges[element_symbol]:
                     exclusion_vars.append(choices[element_symbol][count])
             
             # FIXED: Use And() + Not() to exclude this exact combination
@@ -279,8 +258,7 @@ def _solve_with_fresh_solver(target_mass, min_mass, max_mass, element_details, e
             
             for element_symbol in element_symbols:
                 element_count = 0
-                min_count, max_count = count_ranges[element_symbol]
-                for count in range(min_count, max_count + 1):
+                for count in count_ranges[element_symbol]:
                     choice_value = model[choices[element_symbol][count]]
                     if is_true(choice_value):
                         element_count = count
@@ -298,26 +276,38 @@ def _solve_with_fresh_solver(target_mass, min_mass, max_mass, element_details, e
 
     return found_formulas
 
-def _solve_with_minimized_vars(target_mass, min_mass, max_mass, element_details, element_symbols, count_ranges, rules, max_solutions, enable_profiling):
+def _solve_with_minimized_vars(target_mass, error_ppm, element_details, rules, max_solutions, enable_profiling):
     """
     Strategy 3: Use integer variables instead of one-hot binary variables
     """
+    mass_tolerance_absolute = target_mass * error_ppm * 1e-6
+    min_mass = target_mass - mass_tolerance_absolute
+    max_mass = target_mass + mass_tolerance_absolute
+    
     found_formulas = []
+    element_symbols = list(element_details.keys())
     
     # Create solver with integer variables (much fewer variables)
     solver = Solver()
     element_counts = {}
     
     for element_symbol in element_symbols:
-        min_count, max_count = count_ranges[element_symbol]
+        element_data = element_details[element_symbol]
+        min_count = element_data.get("min", 0)
+        max_allowed_count = math.floor(max_mass / element_data["mass"]) if element_data["mass"] > 0 else 0
+        max_count = element_data.get("max", max_allowed_count)
+        max_count = min(max_count, max_allowed_count)
+        
         element_counts[element_symbol] = Int(f"count_{element_symbol}")
         solver.add(element_counts[element_symbol] >= min_count)
         solver.add(element_counts[element_symbol] <= max_count)
 
     # Mass constraints
-    min_mass_scaled, max_mass_scaled, scale_factor = _create_mass_constraints(element_details, min_mass, max_mass)
+    scale_factor = 1000000
     total_mass_scaled = Sum([element_counts[element_symbol] * int(element_details[element_symbol]["mass"] * scale_factor)
                             for element_symbol in element_symbols])
+    min_mass_scaled = int(min_mass * scale_factor)
+    max_mass_scaled = int(max_mass * scale_factor)
     
     solver.add(total_mass_scaled >= min_mass_scaled)
     solver.add(total_mass_scaled <= max_mass_scaled)
@@ -370,27 +360,39 @@ def _solve_with_minimized_vars(target_mass, min_mass, max_mass, element_details,
 
     return found_formulas
 
-def _solve_with_all_smt(target_mass, min_mass, max_mass, element_details, element_symbols, count_ranges, rules, max_solutions, enable_profiling):
+def _solve_with_all_smt(target_mass, error_ppm, element_details, rules, max_solutions, enable_profiling):
     """
     Strategy 4: Use optimal all_smt algorithm with divide-and-conquer approach
     This is the most efficient method for finding multiple solutions.
     """
+    mass_tolerance_absolute = target_mass * error_ppm * 1e-6
+    min_mass = target_mass - mass_tolerance_absolute
+    max_mass = target_mass + mass_tolerance_absolute
+    
     found_formulas = []
+    element_symbols = list(element_details.keys())
     
     # Create solver with integer variables (simpler approach)
     solver = Solver()
     element_counts = {}
     
     for element_symbol in element_symbols:
-        min_count, max_count = count_ranges[element_symbol]
+        element_data = element_details[element_symbol]
+        min_count = element_data.get("min", 0)
+        max_allowed_count = math.floor(max_mass / element_data["mass"]) if element_data["mass"] > 0 else 0
+        max_count = element_data.get("max", max_allowed_count)
+        max_count = min(max_count, max_allowed_count)
+        
         element_counts[element_symbol] = Int(f"count_{element_symbol}")
         solver.add(element_counts[element_symbol] >= min_count)
         solver.add(element_counts[element_symbol] <= max_count)
 
     # Mass constraints
-    min_mass_scaled, max_mass_scaled, scale_factor = _create_mass_constraints(element_details, min_mass, max_mass)
+    scale_factor = 1000000
     total_mass_scaled = Sum([element_counts[element_symbol] * int(element_details[element_symbol]["mass"] * scale_factor)
                             for element_symbol in element_symbols])
+    min_mass_scaled = int(min_mass * scale_factor)
+    max_mass_scaled = int(max_mass * scale_factor)
     
     solver.add(total_mass_scaled >= min_mass_scaled)
     solver.add(total_mass_scaled <= max_mass_scaled)
