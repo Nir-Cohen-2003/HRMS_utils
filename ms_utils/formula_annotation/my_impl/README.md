@@ -61,10 +61,52 @@ The implementation includes three approaches:
 2. **Iterative (FastMassDecomposer)**: Stack-based iterative version (faster in Python)
 3. **Cython (CythonSiriusDecomposer)**: Compiled version (fastest)
 
-Typical performance on a glucose-mass search:
-- Recursive: ~0.1-0.2 seconds
-- Iterative: ~0.05-0.1 seconds (2-3x faster)
-- Cython: ~0.01-0.02 seconds (10-20x faster)
+### Benchmark Results
+
+Run the benchmarks with:
+```python
+from impl import benchmark_algorithms
+benchmark_algorithms()
+```
+
+Typical performance on a glucose-mass search (180.0634 Da, 6 elements):
+- **Recursive**: ~0.1-0.2 seconds
+- **Iterative**: ~0.05-0.1 seconds (2-3x faster)
+- **Cython**: ~0.01-0.02 seconds (10-20x faster)
+
+### Performance with Chemical Constraints
+
+**Current approach (post-filtering)**: Chemical constraints are applied after mass decomposition
+- ✅ Simple implementation
+- ❌ Computes many invalid formulas that get filtered out
+- ❌ Slower for highly constrained searches
+
+**Recommended optimization: Integrate constraints into search algorithm**
+- ✅ Dramatically reduces search space by pruning invalid branches early
+- ✅ Faster overall performance (often 5-50x speedup for constrained searches)
+- ✅ Lower memory usage (fewer intermediate results)
+- ✅ Can handle larger search spaces efficiently
+
+#### Example constraint integration strategies:
+
+1. **DBE constraints**: Prune branches where minimum possible DBE > max_dbe
+2. **Heteroatom ratios**: Skip branches where N+O+S > max_ratio × C_count
+3. **Ring rules**: Apply RDBE (Ring + Double Bond Equivalents) bounds
+4. **Valency checks**: Ensure chemically valid connectivity
+
+**Implementation status**: Currently post-filtering only. Integrated constraints planned for next version.
+
+**Current workaround**: Use tighter element bounds to reduce initial search space:
+```python
+# Instead of wide bounds + post-filtering
+element_bounds = {'C': (1, 50), 'H': (1, 100), 'N': (0, 20), 'O': (0, 30)}
+formulas = decompose_mass_fast(target_mass, element_bounds, tolerance_ppm=5.0)
+filtered = add_chemical_constraints(formulas, max_dbe=20, max_hetero_ratio=1.5)
+
+# Use educated bounds to reduce initial search
+element_bounds = {'C': (5, 25), 'H': (5, 50), 'N': (0, 5), 'O': (0, 10)}  # More realistic
+formulas = decompose_mass_fast(target_mass, element_bounds, tolerance_ppm=5.0)
+```
 
 ## Compiling Cython Version (Optional)
 

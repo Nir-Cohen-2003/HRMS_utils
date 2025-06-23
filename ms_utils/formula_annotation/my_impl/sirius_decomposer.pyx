@@ -195,13 +195,30 @@ cdef class CythonSiriusDecomposer:
     
     cdef void _add_result(self, int* formula):
         """Add a valid formula to results."""
-        cdef int i
+        cdef int i, j
+        cdef bytes symbol_bytes
+        
         result = {}
         
         for i in range(self.n_elements):
             if formula[i] > 0:
-                symbol = self.elements[i].symbol[:3].decode('ascii').rstrip('\x00')
-                result[symbol] = formula[i]
+                # Safely extract symbol from C char array
+                symbol_bytes = self.elements[i].symbol
+                try:
+                    symbol = symbol_bytes.decode('ascii').rstrip('\x00')
+                    if symbol:  # Only add non-empty symbols
+                        result[symbol] = formula[i]
+                except UnicodeDecodeError:
+                    # Fallback: construct symbol byte by byte
+                    symbol_chars = []
+                    for j in range(4):  # max 3 chars + null terminator
+                        if self.elements[i].symbol[j] == 0:
+                            break
+                        if 32 <= self.elements[i].symbol[j] <= 126:  # printable ASCII
+                            symbol_chars.append(chr(self.elements[i].symbol[j]))
+                    symbol = ''.join(symbol_chars)
+                    if symbol:
+                        result[symbol] = formula[i]
         
         self.results.append(result)
     
