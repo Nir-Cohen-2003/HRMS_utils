@@ -9,7 +9,7 @@ algorithm used in SIRIUS for finding all possible molecular formulas within a gi
 For maximum performance, compile the Cython version using the provided setup.py
 """
 
-from typing import List, Dict, Tuple, Optional
+import concurrent.futures
 from base_data import ATOMIC_MASSES
 from python_impl import SiriusMassDecomposer, decompose_mass_fast, add_chemical_constraints
 try:
@@ -19,6 +19,11 @@ except ImportError:
         raise NotImplementedError("Cython version not available")
 
 # Standard atomic masses (most abundant isotopes)
+
+def run_cython_decomposition(target_mass, element_bounds, tolerance_ppm=5.0, min_dbe=0, max_dbe=40):
+    """Helper function to run a single Cython decomposition - used for parallel processing."""
+    return cython_decompose_mass(target_mass, element_bounds, tolerance_ppm=tolerance_ppm, 
+                               min_dbe=float(min_dbe), max_dbe=float(max_dbe))
 
 def benchmark_algorithms():
     """
@@ -89,15 +94,44 @@ def benchmark_algorithms():
     print(f"  Results after constraints: {len(iterative_results)} formulas")
     
     # Test Cython algorithm (if available) with constraints during enumeration
+    # Run 200 parallel instances to test performance under load
     try:
+        print("Cython algorithm (200 parallel instances):")
         start_time = time.time()
-        cython_results = cython_decompose_mass(target_mass, element_bounds, tolerance_ppm=5.0, 
-                                              min_dbe=float(min_dbe), max_dbe=float(max_dbe))
+        
+        # Run 200 parallel instances of the same decomposition
+        with concurrent.futures.ThreadPoolExecutor(max_workers=None) as executor:
+            futures = []
+            for i in range(200):
+                future = executor.submit(run_cython_decomposition, target_mass, element_bounds, 
+                                       tolerance_ppm=5.0, min_dbe=min_dbe, max_dbe=max_dbe)
+                futures.append(future)
+            
+            # Collect all results
+            cython_results_list = []
+            for future in concurrent.futures.as_completed(futures):
+                result = future.result()
+                cython_results_list.append(result)
+        
         cython_time = time.time() - start_time
         
-        print("Cython algorithm (constraints during enumeration):")
-        print(f"  Time: {cython_time:.3f} seconds")
-        print(f"  Results: {len(cython_results)} formulas")
+        # Use the first result for comparison (all should be identical)
+        cython_results = cython_results_list[0] if cython_results_list else []
+        
+        print(f"  Time for 200 parallel runs: {cython_time:.3f} seconds")
+        print(f"  Average time per run: {cython_time/200:.3f} seconds")
+        print(f"  Results per run: {len(cython_results)} formulas")
+        print(f"  Total completed runs: {len(cython_results_list)}")
+        
+        # Verify all results are identical
+        if len(cython_results_list) > 1:
+            first_result_set = {frozenset(formula.items()) for formula in cython_results_list[0]}
+            all_identical = all(
+                {frozenset(formula.items()) for formula in result} == first_result_set 
+                for result in cython_results_list[1:]
+            )
+            print(f"  All parallel results identical: {'✓' if all_identical else '✗'}")
+        
         cython_available = True
     except NotImplementedError:
         print("Cython algorithm: Not compiled (run 'python setup.py build_ext --inplace')")
@@ -128,15 +162,18 @@ def benchmark_algorithms():
         if cython_available:
             if recursive_set == cython_set:
                 print("✓ Cython algorithm produces identical results")
-                cython_speedup = recursive_time / cython_time if cython_time > 0 else float('inf')
-                iter_speedup = iterative_time / cython_time if cython_time > 0 else float('inf')
-                print(f"  Cython speedup vs recursive: {cython_speedup:.1f}x")
-                print(f"  Cython speedup vs iterative: {iter_speedup:.1f}x")
+                # Compare single-run performance (average cython time vs single python runs)
+                avg_cython_time = cython_time / 200
+                cython_speedup = recursive_time / avg_cython_time if avg_cython_time > 0 else float('inf')
+                iter_speedup = iterative_time / avg_cython_time if avg_cython_time > 0 else float('inf')
+                print(f"  Cython speedup vs recursive (single run): {cython_speedup:.1f}x")
+                print(f"  Cython speedup vs iterative (single run): {iter_speedup:.1f}x")
+                print(f"  Parallel processing throughput: {200/cython_time:.1f} decompositions/second")
                 
                 # Calculate efficiency gains from constraint integration
                 total_python_time = max(recursive_time, iterative_time)
                 constraint_overhead = max(recursive_constraint_time, iterative_constraint_time)
-                efficiency_gain = (total_python_time - cython_time) / total_python_time * 100
+                efficiency_gain = (total_python_time - avg_cython_time) / total_python_time * 100
                 print(f"  Constraint integration efficiency gain: {efficiency_gain:.1f}%")
                 print(f"  Python constraint overhead: {constraint_overhead:.3f}s ({constraint_overhead/total_python_time*100:.1f}%)")
             else:
