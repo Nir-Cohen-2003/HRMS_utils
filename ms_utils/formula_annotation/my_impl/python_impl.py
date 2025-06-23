@@ -1,5 +1,5 @@
 from typing import List, Dict, Tuple, Optional
-
+from base_data import ATOMIC_MASSES
 
 
 class Element:
@@ -277,3 +277,52 @@ def decompose_mass_fast(target_mass: float,
     """
     decomposer = FastMassDecomposer(element_bounds, target_mass, tolerance_ppm, max_results)
     return decomposer.decompose()
+
+
+
+def add_chemical_constraints(formulas: List[Dict[str, int]], 
+                           min_dbe: Optional[float] = None,
+                           max_dbe: Optional[float] = None,
+                           max_hetero_ratio: Optional[float] = None) -> List[Dict[str, int]]:
+    """
+    Apply additional chemical constraints to filter formulas.
+    
+    Args:
+        formulas: List of molecular formulas
+        min_dbe: Minimum double bond equivalents
+        max_dbe: Maximum double bond equivalents
+        max_hetero_ratio: Maximum ratio of heteroatoms to carbons
+    
+    Returns:
+        Filtered list of formulas
+    """
+    filtered = []
+    
+    for formula in formulas:
+        # Calculate DBE (Double Bond Equivalents)
+        c = formula.get('C', 0)
+        h = formula.get('H', 0)
+        n = formula.get('N', 0)
+        p = formula.get('P', 0)
+        x = sum(formula.get(halogen, 0) for halogen in ['F', 'Cl', 'Br', 'I'])
+        
+        if c == 0:
+            continue  # Skip formulas without carbon
+        
+        dbe = c + 1 - (h - x + n + p) / 2.0
+        
+        # Apply DBE constraints
+        if min_dbe is not None and dbe < min_dbe:
+            continue
+        if max_dbe is not None and dbe > max_dbe:
+            continue
+        
+        # Apply heteroatom ratio constraint
+        if max_hetero_ratio is not None:
+            heteroatoms = sum(count for elem, count in formula.items() if elem not in ['C', 'H'])
+            if c > 0 and heteroatoms / c > max_hetero_ratio:
+                continue
+        
+        filtered.append(formula)
+    
+    return filtered

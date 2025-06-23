@@ -10,6 +10,8 @@ For maximum performance, compile the Cython version using the provided setup.py
 """
 
 from typing import List, Dict, Tuple, Optional
+from base_data import ATOMIC_MASSES
+from python_impl import SiriusMassDecomposer, decompose_mass_fast, add_chemical_constraints
 try:
     from sirius_decomposer import cython_decompose_mass
 except ImportError:
@@ -17,75 +19,6 @@ except ImportError:
         raise NotImplementedError("Cython version not available")
 
 # Standard atomic masses (most abundant isotopes)
-ATOMIC_MASSES = {
-    'C': 12.0000000,
-    'H': 1.0078250,
-    'N': 14.0030740,
-    'O': 15.9949146,
-    'P': 30.9737620,
-    'S': 31.9720718,
-    'F': 18.9984032,
-    'Cl': 34.9688527,
-    'Br': 78.9183376,
-    'I': 126.9044719,
-    'Si': 27.9769271,
-    'Na': 22.9897693,
-    'K': 38.9637069,
-    'Ca': 39.9625912,
-    'Mg': 23.9850423,
-    'Fe': 55.9349421,
-    'Zn': 63.9291466,
-    'Se': 79.9165218,
-    'B': 11.0093054,
-    'Al': 26.9815386
-}
-
-def add_chemical_constraints(formulas: List[Dict[str, int]], 
-                           min_dbe: Optional[float] = None,
-                           max_dbe: Optional[float] = None,
-                           max_hetero_ratio: Optional[float] = None) -> List[Dict[str, int]]:
-    """
-    Apply additional chemical constraints to filter formulas.
-    
-    Args:
-        formulas: List of molecular formulas
-        min_dbe: Minimum double bond equivalents
-        max_dbe: Maximum double bond equivalents
-        max_hetero_ratio: Maximum ratio of heteroatoms to carbons
-    
-    Returns:
-        Filtered list of formulas
-    """
-    filtered = []
-    
-    for formula in formulas:
-        # Calculate DBE (Double Bond Equivalents)
-        c = formula.get('C', 0)
-        h = formula.get('H', 0)
-        n = formula.get('N', 0)
-        p = formula.get('P', 0)
-        x = sum(formula.get(halogen, 0) for halogen in ['F', 'Cl', 'Br', 'I'])
-        
-        if c == 0:
-            continue  # Skip formulas without carbon
-        
-        dbe = c + 1 - (h - x + n + p) / 2.0
-        
-        # Apply DBE constraints
-        if min_dbe is not None and dbe < min_dbe:
-            continue
-        if max_dbe is not None and dbe > max_dbe:
-            continue
-        
-        # Apply heteroatom ratio constraint
-        if max_hetero_ratio is not None:
-            heteroatoms = sum(count for elem, count in formula.items() if elem not in ['C', 'H'])
-            if c > 0 and heteroatoms / c > max_hetero_ratio:
-                continue
-        
-        filtered.append(formula)
-    
-    return filtered
 
 def benchmark_algorithms():
     """
