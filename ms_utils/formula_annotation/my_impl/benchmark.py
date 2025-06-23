@@ -25,9 +25,12 @@ def run_cython_decomposition(target_mass, element_bounds, tolerance_ppm=5.0, min
     return cython_decompose_mass(target_mass, element_bounds, tolerance_ppm=tolerance_ppm, 
                                min_dbe=float(min_dbe), max_dbe=float(max_dbe))
 
-def benchmark_algorithms():
+def benchmark_algorithms(num_parallel_runs=2000):
     """
     Benchmark different mass decomposition algorithms with DBE constraints.
+    
+    Args:
+        num_parallel_runs (int): Number of parallel runs to test scaling performance. Default is 200.
     """
     import time
     
@@ -94,15 +97,15 @@ def benchmark_algorithms():
     print(f"  Results after constraints: {len(iterative_results)} formulas")
     
     # Test Cython algorithm (if available) with constraints during enumeration
-    # Run 200 parallel instances to test performance under load
+    # Run parallel instances to test performance under load
     try:
-        print("Cython algorithm (200 parallel instances):")
+        print(f"Cython algorithm ({num_parallel_runs} parallel instances):")
         start_time = time.time()
         
-        # Run 200 parallel instances of the same decomposition
+        # Run parallel instances of the same decomposition
         with concurrent.futures.ThreadPoolExecutor(max_workers=None) as executor:
             futures = []
-            for i in range(200):
+            for i in range(num_parallel_runs):
                 future = executor.submit(run_cython_decomposition, target_mass, element_bounds, 
                                        tolerance_ppm=5.0, min_dbe=min_dbe, max_dbe=max_dbe)
                 futures.append(future)
@@ -118,8 +121,8 @@ def benchmark_algorithms():
         # Use the first result for comparison (all should be identical)
         cython_results = cython_results_list[0] if cython_results_list else []
         
-        print(f"  Time for 200 parallel runs: {cython_time:.3f} seconds")
-        print(f"  Average time per run: {cython_time/200:.3f} seconds")
+        print(f"  Time for {num_parallel_runs} parallel runs: {cython_time:.3f} seconds")
+        print(f"  Average time per run: {cython_time/num_parallel_runs:.3f} seconds")
         print(f"  Results per run: {len(cython_results)} formulas")
         print(f"  Total completed runs: {len(cython_results_list)}")
         
@@ -163,12 +166,12 @@ def benchmark_algorithms():
             if recursive_set == cython_set:
                 print("✓ Cython algorithm produces identical results")
                 # Compare single-run performance (average cython time vs single python runs)
-                avg_cython_time = cython_time / 200
+                avg_cython_time = cython_time / num_parallel_runs
                 cython_speedup = recursive_time / avg_cython_time if avg_cython_time > 0 else float('inf')
                 iter_speedup = iterative_time / avg_cython_time if avg_cython_time > 0 else float('inf')
                 print(f"  Cython speedup vs recursive (single run): {cython_speedup:.1f}x")
                 print(f"  Cython speedup vs iterative (single run): {iter_speedup:.1f}x")
-                print(f"  Parallel processing throughput: {200/cython_time:.1f} decompositions/second")
+                print(f"  Parallel processing throughput: {num_parallel_runs/cython_time:.1f} decompositions/second")
                 
                 # Calculate efficiency gains from constraint integration
                 total_python_time = max(recursive_time, iterative_time)
@@ -201,9 +204,16 @@ def benchmark_algorithms():
 
 # Example usage and testing
 if __name__ == "__main__":
+    import sys
+    
     print("SIRIUS Mass Decomposition Algorithm")
     print("=" * 50)
     
+    # Get number of parallel runs from command line argument, default to 200
+    num_runs = int(sys.argv[1]) if len(sys.argv) > 1 else 200
+    print(f"Running benchmark with {num_runs} parallel runs")
+    print()
+    
     # Run benchmark
-    benchmark_algorithms()
+    benchmark_algorithms(num_runs)
     
