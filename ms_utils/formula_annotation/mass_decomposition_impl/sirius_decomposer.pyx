@@ -7,7 +7,7 @@ import numpy as np
 cimport numpy as cnp
 cimport cython
 from libc.stdlib cimport malloc, free
-from libc.math cimport fabs
+from libc.math cimport fabs, ceil, floor, round as c_round
 from typing import List, Dict, Tuple, Optional
 
 # Standard atomic masses (most abundant isotopes)
@@ -70,7 +70,7 @@ cdef class CythonSiriusDecomposer:
     def __cinit__(self, element_bounds: Dict[str, Tuple[int, int]], 
                   double target_mass, double tolerance_ppm = 5.0, 
                   int max_results = 1000000,
-                  double min_dbe = -1000.0, double max_dbe = 1000.0,
+                  double min_dbe = 0.0, double max_dbe = 100.0,
                   double max_hetero_ratio = 1000.0):
         """
         Initialize the mass decomposer with chemical constraints.
@@ -191,7 +191,7 @@ cdef class CythonSiriusDecomposer:
         cdef int c_count, h_count, n_count, p_count, x_count, hetero_count
         cdef double dbe
         cdef int i
-        
+
         # Skip constraint checking if not enabled
         if not self.use_dbe_constraint and not self.use_hetero_constraint:
             return True
@@ -219,10 +219,11 @@ cdef class CythonSiriusDecomposer:
         
         # Check DBE constraint
         if self.use_dbe_constraint and c_count > 0:
-            dbe = c_count + 1 - (h_count - x_count + n_count + p_count) / 2.0
-            if dbe < self.min_dbe or dbe > self.max_dbe:
+            dbe = c_count + 1 - (h_count - x_count + n_count) / 2.0 - p_count
+            # DBE must be within range and integer
+            if dbe < self.min_dbe or dbe > self.max_dbe or fabs(dbe - c_round(dbe)) > 1e-8:
                 return False
-        
+
         # Check heteroatom ratio constraint
         if self.use_hetero_constraint and c_count > 0:
             hetero_count = 0
@@ -268,7 +269,9 @@ cdef class CythonSiriusDecomposer:
         cdef int c_count, h_count, n_count, p_count, x_count, hetero_count
         cdef double dbe, min_possible_dbe, max_possible_dbe
         cdef int i, remaining_h, remaining_n, remaining_p, remaining_x
-        
+        cdef int min_int, max_int, int_dbe
+        cdef bint found_integer
+
         # Skip if constraints not enabled
         if not self.use_dbe_constraint and not self.use_hetero_constraint:
             return True
@@ -313,13 +316,20 @@ cdef class CythonSiriusDecomposer:
             
             # Calculate DBE bounds
             # Minimum DBE: maximize H, N, P, X contributions (most negative)
-            min_possible_dbe = c_count + 1 - ((h_count + remaining_h) - (x_count + remaining_x) + (n_count + remaining_n) + (p_count + remaining_p)) / 2.0
-            
+            min_possible_dbe = c_count + 1 - ((h_count + remaining_h) - (x_count + remaining_x) + (n_count + remaining_n)) / 2.0 - (p_count + remaining_p)
+
             # Maximum DBE: minimize H, N, P, X contributions (most positive)
-            max_possible_dbe = c_count + 1 - (h_count - x_count + n_count + p_count) / 2.0
-            
-            # Check if DBE bounds can satisfy constraints
-            if max_possible_dbe < self.min_dbe or min_possible_dbe > self.max_dbe:
+            max_possible_dbe = c_count + 1 - (h_count - x_count + n_count) / 2.0 - p_count
+
+            # DBE must be able to reach an integer value in the allowed range (C version)
+            min_int = <int>ceil(self.min_dbe)
+            max_int = <int>floor(self.max_dbe)
+            found_integer = False
+            for int_dbe in range(min_int, max_int + 1):
+                if min_possible_dbe <= int_dbe <= max_possible_dbe:
+                    found_integer = True
+                    break
+            if not found_integer:
                 return False
         
         # Check partial heteroatom ratio (this is more approximate)
@@ -681,7 +691,7 @@ cdef class CythonSpectrumDecomposer:
         # First, decompose the precursor mass
         decomposer = CythonSiriusDecomposer(self.element_bounds, precursor_mass, 
                                           self.tolerance * 1e6, self.max_results,
-                                          -1000.0, 1000.0, 1000.0)  # Use same defaults as cython_decompose_mass
+                                          0.0, 100.0, 1000.0)  # DBE always 0-100
         precursor_formulas = decomposer.decompose()
         
         # For each possible precursor formula, decompose the fragments
@@ -720,8 +730,8 @@ def cython_decompose_mass(double target_mass,
         List of molecular formulas as dictionaries
     """
     # Set default values for constraints
-    cdef double c_min_dbe = min_dbe if min_dbe is not None else -1000.0
-    cdef double c_max_dbe = max_dbe if max_dbe is not None else 1000.0
+    cdef double c_min_dbe = 0.0 if min_dbe is None else min_dbe
+    cdef double c_max_dbe = 100.0 if max_dbe is None else max_dbe
     cdef double c_max_hetero_ratio = max_hetero_ratio if max_hetero_ratio is not None else 1000.0
     
     decomposer = CythonSiriusDecomposer(element_bounds, target_mass, tolerance_ppm, max_results,
