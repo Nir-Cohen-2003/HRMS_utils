@@ -465,13 +465,245 @@ cdef class CythonSiriusDecomposer:
         finally:
             free(formula)
 
-def cython_decompose_mass(target_mass: float, 
-                          element_bounds: Dict[str, Tuple[int, int]],
-                          tolerance_ppm: float = 5.0,
-                          max_results: int = 1000000,
-                          min_dbe: Optional[float] = None,
-                          max_dbe: Optional[float] = None,
-                          max_hetero_ratio: Optional[float] = None) -> List[Dict[str, int]]:
+@cython.boundscheck(False)
+@cython.wraparound(False)
+cdef class CythonSpectrumDecomposer:
+    """
+    Cython implementation for decomposing mass spectra with precursor constraints.
+    """
+    
+    cdef Element* elements
+    cdef int n_elements
+    cdef double tolerance
+    cdef int max_results
+    cdef dict element_bounds
+    
+    def __cinit__(self, dict element_bounds, 
+                  double tolerance_ppm = 5.0, int max_results = 1000000):
+        """
+        Initialize the spectrum decomposer.
+        
+        Args:
+            element_bounds: Dict mapping element symbols to (min_count, max_count)
+            tolerance_ppm: Mass tolerance in parts per million
+            max_results: Maximum number of results to return
+        """
+        self.tolerance = tolerance_ppm / 1e6  # Convert to relative tolerance
+        self.max_results = max_results
+        self.element_bounds = element_bounds
+        
+        # Initialize elements array (same as SIRIUS decomposer)
+        self.n_elements = len(element_bounds)
+        self.elements = <Element*>malloc(self.n_elements * sizeof(Element))
+        
+        # Sort elements by mass (heaviest first for better pruning)
+        sorted_elements = sorted(element_bounds.items(), 
+                               key=lambda x: ATOMIC_MASSES.get(x[0], 0), reverse=True)
+        
+        cdef int i, j
+        cdef bytes symbol_bytes
+        
+        for i, (symbol, (min_count, max_count)) in enumerate(sorted_elements):
+            # Copy symbol (ensure null termination)
+            symbol_bytes = symbol.encode('ascii')
+            for j in range(min(3, len(symbol_bytes))):
+                self.elements[i].symbol[j] = symbol_bytes[j]
+            self.elements[i].symbol[min(3, len(symbol_bytes))] = 0
+            
+            self.elements[i].mass = ATOMIC_MASSES.get(symbol, 0.0)
+            self.elements[i].min_count = min_count
+            self.elements[i].max_count = max_count
+    
+    def __dealloc__(self):
+        """Clean up allocated memory."""
+        if self.elements:
+            free(self.elements)
+    
+    cdef dict _formula_array_to_dict(self, int* formula):
+        """Convert formula array to dictionary."""
+        cdef int i, j
+        cdef bytes symbol_bytes
+        
+        result = {}
+        
+        for i in range(self.n_elements):
+            if formula[i] > 0:
+                # Safely extract symbol from C char array
+                symbol_bytes = self.elements[i].symbol
+                try:
+                    symbol = symbol_bytes.decode('ascii').rstrip('\x00')
+                    if symbol:  # Only add non-empty symbols
+                        result[symbol] = formula[i]
+                except UnicodeDecodeError:
+                    # Fallback: construct symbol byte by byte
+                    symbol_chars = []
+                    for j in range(4):  # max 3 chars + null terminator
+                        if self.elements[i].symbol[j] == 0:
+                            break
+                        if 32 <= self.elements[i].symbol[j] <= 126:  # printable ASCII
+                            symbol_chars.append(chr(self.elements[i].symbol[j]))
+                    symbol = ''.join(symbol_chars)
+                    if symbol:
+                        result[symbol] = formula[i]
+        
+        return result
+    
+    cdef bint _is_subset_formula(self, int* subset_formula, int* parent_formula):
+        """
+        Check if subset_formula is a subset of parent_formula.
+        This allows fragments to be equal to the precursor (no fragmentation case).
+        """
+        cdef int i
+        
+        for i in range(self.n_elements):
+            if subset_formula[i] > parent_formula[i]:
+                return False
+        
+        return True
+    
+    cdef double _calculate_formula_mass(self, int* formula):
+        """Calculate the exact mass of a formula."""
+        cdef double mass = 0.0
+        cdef int i
+        
+        for i in range(self.n_elements):
+            mass += formula[i] * self.elements[i].mass
+        
+        return mass
+    
+    def decompose_given_formula_spectrum(self, dict given_formula, list fragment_masses):
+        """
+        Decompose a spectrum given a specific precursor formula.
+        
+        Fragment masses can be equal to the precursor mass. In this case, the algorithm
+        will return the original precursor formula as one of the possible fragment formulas.
+        
+        Args:
+            given_formula: Dictionary representing the precursor formula
+            fragment_masses: List of fragment masses to decompose (can include precursor mass)
+            
+        Returns:
+            List of possible fragment formulas for each mass
+        """
+        cdef int* precursor_formula = <int*>malloc(self.n_elements * sizeof(int))
+        cdef int* fragment_formula = <int*>malloc(self.n_elements * sizeof(int))
+        cdef int i, j, element_idx
+        cdef double fragment_mass, calculated_mass, mass_tolerance
+        cdef list results = []
+        cdef list fragment_results
+        
+        try:
+            # Initialize precursor formula array
+            for i in range(self.n_elements):
+                precursor_formula[i] = 0
+                fragment_formula[i] = 0  # Also initialize fragment_formula
+            
+            # Convert given formula to array
+            for i in range(self.n_elements):
+                symbol_bytes = self.elements[i].symbol
+                symbol = symbol_bytes.decode('ascii').rstrip('\x00')
+                if symbol in given_formula:
+                    precursor_formula[i] = given_formula[symbol]
+            
+            # For each fragment mass, find all possible subset formulas
+            for fragment_mass in fragment_masses:
+                fragment_results = []
+                mass_tolerance = fragment_mass * self.tolerance
+                
+                # Generate all possible subset formulas
+                self._generate_subset_formulas(precursor_formula, fragment_formula, 0, 
+                                             fragment_mass, mass_tolerance, fragment_results)
+                
+                results.append(fragment_results)
+            
+            return results
+        
+        finally:
+            free(precursor_formula)
+            free(fragment_formula)
+    
+    cdef void _generate_subset_formulas(self, int* max_formula, int* current_formula, 
+                                       int level, double target_mass, double tolerance,
+                                       list results):
+        """Recursively generate all subset formulas that match the target mass."""
+        cdef int count, max_count
+        cdef double new_mass, current_mass
+        
+        if level >= self.n_elements:
+            # Check if mass matches
+            current_mass = self._calculate_formula_mass(current_formula)
+            if fabs(current_mass - target_mass) <= tolerance:
+                formula_dict = self._formula_array_to_dict(current_formula)
+                if formula_dict:  # Only add non-empty formulas
+                    results.append(formula_dict)
+            return
+        
+        # Early termination if too many results
+        if len(results) >= self.max_results:
+            return
+        
+        max_count = max_formula[level]
+        
+        # Try all possible counts for this element (0 to max_count)
+        for count in range(max_count + 1):
+            current_formula[level] = count
+            
+            # Early mass check to prune search space
+            current_mass = self._calculate_formula_mass(current_formula)
+            if current_mass > target_mass + tolerance:
+                break  # Mass too high, no point in trying higher counts
+            
+            self._generate_subset_formulas(max_formula, current_formula, level + 1,
+                                         target_mass, tolerance, results)
+    
+    def decompose_spectrum(self, double precursor_mass, list fragment_masses):
+        """
+        Decompose a complete spectrum: first decompose precursor, then fragments.
+        
+        Note: Fragment masses can be equal to the precursor mass (e.g., molecular ion peaks,
+        or cases with no fragmentation). The algorithm correctly handles this by allowing
+        fragment formulas to be identical to the precursor formula.
+        
+        Args:
+            precursor_mass: Mass of the precursor ion
+            fragment_masses: List of fragment masses (can include masses equal to precursor)
+            
+        Returns:
+            List of dictionaries, each containing:
+            - 'precursor_formula': The precursor formula
+            - 'fragment_decompositions': List of possible formulas for each fragment
+        """
+        cdef list results = []
+        cdef list precursor_formulas
+        cdef dict precursor_formula
+        cdef list fragment_decompositions
+        
+        # First, decompose the precursor mass
+        decomposer = CythonSiriusDecomposer(self.element_bounds, precursor_mass, 
+                                          self.tolerance * 1e6, self.max_results,
+                                          -1000.0, 1000.0, 1000.0)  # Use same defaults as cython_decompose_mass
+        precursor_formulas = decomposer.decompose()
+        
+        # For each possible precursor formula, decompose the fragments
+        for precursor_formula in precursor_formulas:
+            fragment_decompositions = self.decompose_given_formula_spectrum(
+                precursor_formula, fragment_masses)
+            
+            results.append({
+                'precursor_formula': precursor_formula,
+                'fragment_decompositions': fragment_decompositions
+            })
+        
+        return results
+
+
+def cython_decompose_mass(double target_mass, 
+                          dict element_bounds,
+                          double tolerance_ppm = 5.0,
+                          int max_results = 1000000,
+                          min_dbe = None,
+                          max_dbe = None,
+                          max_hetero_ratio = None):
     """
     High-level function for ultra-fast mass decomposition using Cython with chemical constraints.
     
@@ -495,3 +727,44 @@ def cython_decompose_mass(target_mass: float,
     decomposer = CythonSiriusDecomposer(element_bounds, target_mass, tolerance_ppm, max_results,
                                        c_min_dbe, c_max_dbe, c_max_hetero_ratio)
     return decomposer.decompose()
+
+def decompose_spectrum_cython(double precursor_mass, list fragment_masses,
+                             dict element_bounds,
+                             double tolerance_ppm = 5.0,
+                             int max_results = 1000000):
+    """
+    High-level function for spectrum decomposition using Cython.
+    
+    Args:
+        precursor_mass: Mass of the precursor ion
+        fragment_masses: List of fragment masses to decompose
+        element_bounds: Dictionary mapping element symbols to (min_count, max_count)
+        tolerance_ppm: Mass tolerance in parts per million
+        max_results: Maximum number of results to return
+    
+    Returns:
+        List of dictionaries containing precursor formulas and fragment decompositions
+    """
+    decomposer = CythonSpectrumDecomposer(element_bounds, tolerance_ppm, max_results)
+    return decomposer.decompose_spectrum(precursor_mass, fragment_masses)
+
+
+def decompose_given_formula_spectrum_cython(dict given_formula, list fragment_masses,
+                                           dict element_bounds,
+                                           double tolerance_ppm = 5.0,
+                                           int max_results = 1000000):
+    """
+    High-level function for decomposing fragments given a known precursor formula.
+    
+    Args:
+        given_formula: Dictionary representing the precursor formula
+        fragment_masses: List of fragment masses to decompose
+        element_bounds: Dictionary mapping element symbols to (min_count, max_count)
+        tolerance_ppm: Mass tolerance in parts per million
+        max_results: Maximum number of results to return
+    
+    Returns:
+        List of possible fragment formulas for each mass
+    """
+    decomposer = CythonSpectrumDecomposer(element_bounds, tolerance_ppm, max_results)
+    return decomposer.decompose_given_formula_spectrum(given_formula, fragment_masses)

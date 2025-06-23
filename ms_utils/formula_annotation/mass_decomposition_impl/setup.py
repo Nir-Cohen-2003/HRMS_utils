@@ -12,7 +12,7 @@ from setuptools import setup, Extension
 from Cython.Build import cythonize
 import numpy
 
-# Define the extension
+# Define the extensions
 extensions = [
     Extension(
         "sirius_decomposer",
@@ -30,7 +30,7 @@ extensions = [
 ]
 
 setup(
-    name="sirius_mass_decomposer",
+    name="mass_decomposer_suite",
     ext_modules=cythonize(extensions, 
                          compiler_directives={'language_level': 3}),
     zip_safe=False,

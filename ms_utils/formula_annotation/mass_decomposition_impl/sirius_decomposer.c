@@ -1750,6 +1750,7 @@ static CYTHON_INLINE __pyx_t_long_double_complex __pyx_t_long_double_complex_fro
 
 /*--- Type declarations ---*/
 struct __pyx_obj_17sirius_decomposer_CythonSiriusDecomposer;
+struct __pyx_obj_17sirius_decomposer_CythonSpectrumDecomposer;
 struct __pyx_t_17sirius_decomposer_Element;
 
 /* "sirius_decomposer.pyx":37
@@ -1800,6 +1801,32 @@ struct __pyx_obj_17sirius_decomposer_CythonSiriusDecomposer {
 };
 
 
+/* "sirius_decomposer.pyx":468
+ *             free(formula)
+ * 
+ * @cython.boundscheck(False)             # <<<<<<<<<<<<<<
+ * @cython.wraparound(False)
+ * cdef class CythonSpectrumDecomposer:
+*/
+struct __pyx_obj_17sirius_decomposer_CythonSpectrumDecomposer {
+  PyObject_HEAD
+  struct __pyx_vtabstruct_17sirius_decomposer_CythonSpectrumDecomposer *__pyx_vtab;
+  struct __pyx_t_17sirius_decomposer_Element *elements;
+  int n_elements;
+  double tolerance;
+  int max_results;
+  PyObject *element_bounds;
+};
+
+
+
+/* "sirius_decomposer.pyx":43
+ *     int max_count   # Maximum count
+ * 
+ * @cython.boundscheck(False)             # <<<<<<<<<<<<<<
+ * @cython.wraparound(False)
+ * cdef class CythonSiriusDecomposer:
+*/
 
 struct __pyx_vtabstruct_17sirius_decomposer_CythonSiriusDecomposer {
   void (*_initialize_residue_tables)(struct __pyx_obj_17sirius_decomposer_CythonSiriusDecomposer *);
@@ -1811,6 +1838,23 @@ struct __pyx_vtabstruct_17sirius_decomposer_CythonSiriusDecomposer {
   void (*_add_result)(struct __pyx_obj_17sirius_decomposer_CythonSiriusDecomposer *, int *);
 };
 static struct __pyx_vtabstruct_17sirius_decomposer_CythonSiriusDecomposer *__pyx_vtabptr_17sirius_decomposer_CythonSiriusDecomposer;
+
+
+/* "sirius_decomposer.pyx":468
+ *             free(formula)
+ * 
+ * @cython.boundscheck(False)             # <<<<<<<<<<<<<<
+ * @cython.wraparound(False)
+ * cdef class CythonSpectrumDecomposer:
+*/
+
+struct __pyx_vtabstruct_17sirius_decomposer_CythonSpectrumDecomposer {
+  PyObject *(*_formula_array_to_dict)(struct __pyx_obj_17sirius_decomposer_CythonSpectrumDecomposer *, int *);
+  int (*_is_subset_formula)(struct __pyx_obj_17sirius_decomposer_CythonSpectrumDecomposer *, int *, int *);
+  double (*_calculate_formula_mass)(struct __pyx_obj_17sirius_decomposer_CythonSpectrumDecomposer *, int *);
+  void (*_generate_subset_formulas)(struct __pyx_obj_17sirius_decomposer_CythonSpectrumDecomposer *, int *, int *, int, double, double, PyObject *);
+};
+static struct __pyx_vtabstruct_17sirius_decomposer_CythonSpectrumDecomposer *__pyx_vtabptr_17sirius_decomposer_CythonSpectrumDecomposer;
 /* #### Code section: utility_code_proto ### */
 
 /* --- Runtime support code (head) --- */
@@ -2485,6 +2529,29 @@ static CYTHON_INLINE void __Pyx__ExceptionSwap(PyThreadState *tstate, PyObject *
 static CYTHON_INLINE void __Pyx_ExceptionSwap(PyObject **type, PyObject **value, PyObject **tb);
 #endif
 
+/* decode_c_string.proto */
+static CYTHON_INLINE PyObject* __Pyx_decode_c_string(
+         const char* cstring, Py_ssize_t start, Py_ssize_t stop,
+         const char* encoding, const char* errors,
+         PyObject* (*decode_func)(const char *s, Py_ssize_t size, const char *errors));
+
+/* PyDictContains.proto */
+static CYTHON_INLINE int __Pyx_PyDict_ContainsTF(PyObject* item, PyObject* dict, int eq) {
+    int result = PyDict_Contains(dict, item);
+    return unlikely(result < 0) ? result : (result == (eq == Py_EQ));
+}
+
+/* DictGetItem.proto */
+#if !CYTHON_COMPILING_IN_PYPY
+static PyObject *__Pyx_PyDict_GetItem(PyObject *d, PyObject* key);
+#define __Pyx_PyObject_Dict_GetItem(obj, name)\
+    (likely(PyDict_CheckExact(obj)) ?\
+     __Pyx_PyDict_GetItem(obj, name) : PyObject_GetItem(obj, name))
+#else
+#define __Pyx_PyDict_GetItem(d, key) PyObject_GetItem(d, key)
+#define __Pyx_PyObject_Dict_GetItem(obj, name)  PyObject_GetItem(obj, name)
+#endif
+
 /* PyObjectCallNoArg.proto */
 static CYTHON_INLINE PyObject* __Pyx_PyObject_CallNoArg(PyObject *func);
 
@@ -2859,6 +2926,10 @@ static int __pyx_f_17sirius_decomposer_22CythonSiriusDecomposer__check_partial_c
 static int __pyx_f_17sirius_decomposer_22CythonSiriusDecomposer__can_reach_target(struct __pyx_obj_17sirius_decomposer_CythonSiriusDecomposer *__pyx_v_self, double __pyx_v_current_mass, int __pyx_v_level); /* proto*/
 static void __pyx_f_17sirius_decomposer_22CythonSiriusDecomposer__decompose_recursive(struct __pyx_obj_17sirius_decomposer_CythonSiriusDecomposer *__pyx_v_self, int *__pyx_v_formula, double __pyx_v_current_mass, int __pyx_v_level); /* proto*/
 static void __pyx_f_17sirius_decomposer_22CythonSiriusDecomposer__add_result(struct __pyx_obj_17sirius_decomposer_CythonSiriusDecomposer *__pyx_v_self, int *__pyx_v_formula); /* proto*/
+static PyObject *__pyx_f_17sirius_decomposer_24CythonSpectrumDecomposer__formula_array_to_dict(struct __pyx_obj_17sirius_decomposer_CythonSpectrumDecomposer *__pyx_v_self, int *__pyx_v_formula); /* proto*/
+static int __pyx_f_17sirius_decomposer_24CythonSpectrumDecomposer__is_subset_formula(struct __pyx_obj_17sirius_decomposer_CythonSpectrumDecomposer *__pyx_v_self, int *__pyx_v_subset_formula, int *__pyx_v_parent_formula); /* proto*/
+static double __pyx_f_17sirius_decomposer_24CythonSpectrumDecomposer__calculate_formula_mass(struct __pyx_obj_17sirius_decomposer_CythonSpectrumDecomposer *__pyx_v_self, int *__pyx_v_formula); /* proto*/
+static void __pyx_f_17sirius_decomposer_24CythonSpectrumDecomposer__generate_subset_formulas(struct __pyx_obj_17sirius_decomposer_CythonSpectrumDecomposer *__pyx_v_self, int *__pyx_v_max_formula, int *__pyx_v_current_formula, int __pyx_v_level, double __pyx_v_target_mass, double __pyx_v_tolerance, PyObject *__pyx_v_results); /* proto*/
 
 /* Module declarations from "libc.string" */
 
@@ -2901,6 +2972,7 @@ static PyObject *__pyx_builtin_TypeError;
 static PyObject *__pyx_builtin_ImportError;
 /* #### Code section: string_decls ### */
 static const char __pyx_k_[] = "\000";
+static const char __pyx_k_9[] = "\200\001\340\035\036\330\035\036\360\034\000\005\022\320\021)\250\021\320*:\270/\310\021\330\004\013\210:\320\025(\250\001\320)9\270\021";
 static const char __pyx_k_B[] = "B";
 static const char __pyx_k_C[] = "C";
 static const char __pyx_k_F[] = "F";
@@ -2913,6 +2985,7 @@ static const char __pyx_k_P[] = "P";
 static const char __pyx_k_Q[] = "\200\001\330\004\n\210+\220Q";
 static const char __pyx_k_S[] = "S";
 static const char __pyx_k_i[] = "i";
+static const char __pyx_k_j[] = "j";
 static const char __pyx_k_x[] = "x";
 static const char __pyx_k_Al[] = "Al";
 static const char __pyx_k_Br[] = "Br";
@@ -2930,9 +3003,9 @@ static const char __pyx_k__4[] = "?";
 static const char __pyx_k_gc[] = "gc";
 static const char __pyx_k_np[] = "np";
 static const char __pyx_k_get[] = "get";
-static const char __pyx_k_int[] = "int";
 static const char __pyx_k_key[] = "key";
 static const char __pyx_k_pop[] = "pop";
+static const char __pyx_k_6a_a[] = "\200\001\340+,\330+,\360\034\000\005\022\320\021)\250\021\320*:\270/\310\021\330\004\013\210:\320\0256\260a\260\300a";
 static const char __pyx_k_Dict[] = "Dict";
 static const char __pyx_k_List[] = "List";
 static const char __pyx_k_aq_Q[] = "\240:\250]\270$\270a\270q\300\001\300\024\300Q";
@@ -2945,7 +3018,6 @@ static const char __pyx_k_spec[] = "__spec__";
 static const char __pyx_k_test[] = "__test__";
 static const char __pyx_k_Tuple[] = "Tuple";
 static const char __pyx_k_ascii[] = "ascii";
-static const char __pyx_k_float[] = "float";
 static const char __pyx_k_items[] = "items";
 static const char __pyx_k_numpy[] = "numpy";
 static const char __pyx_k_range[] = "range";
@@ -2957,11 +3029,13 @@ static const char __pyx_k_reduce[] = "__reduce__";
 static const char __pyx_k_return[] = "return";
 static const char __pyx_k_rstrip[] = "rstrip";
 static const char __pyx_k_sorted[] = "sorted";
+static const char __pyx_k_symbol[] = "symbol";
 static const char __pyx_k_typing[] = "typing";
 static const char __pyx_k_disable[] = "disable";
 static const char __pyx_k_formula[] = "formula";
 static const char __pyx_k_max_dbe[] = "max_dbe";
 static const char __pyx_k_min_dbe[] = "min_dbe";
+static const char __pyx_k_results[] = "results";
 static const char __pyx_k_reverse[] = "reverse";
 static const char __pyx_k_Optional[] = "Optional";
 static const char __pyx_k_add_note[] = "add_note";
@@ -2980,39 +3054,61 @@ static const char __pyx_k_reduce_ex[] = "__reduce_ex__";
 static const char __pyx_k_decomposer[] = "decomposer";
 static const char __pyx_k_pyx_vtable[] = "__pyx_vtable__";
 static const char __pyx_k_ImportError[] = "ImportError";
+static const char __pyx_k_element_idx[] = "element_idx";
 static const char __pyx_k_max_results[] = "max_results";
 static const char __pyx_k_target_mass[] = "target_mass";
 static const char __pyx_k_initializing[] = "_initializing";
 static const char __pyx_k_is_coroutine[] = "_is_coroutine";
 static const char __pyx_k_stringsource[] = "<stringsource>";
+static const char __pyx_k_symbol_bytes[] = "symbol_bytes";
 static const char __pyx_k_ATOMIC_MASSES[] = "ATOMIC_MASSES";
+static const char __pyx_k_fragment_mass[] = "fragment_mass";
+static const char __pyx_k_given_formula[] = "given_formula";
 static const char __pyx_k_reduce_cython[] = "__reduce_cython__";
 static const char __pyx_k_tolerance_ppm[] = "tolerance_ppm";
-static const char __pyx_k_Optional_float[] = "Optional[float]";
 static const char __pyx_k_element_bounds[] = "element_bounds";
+static const char __pyx_k_mass_tolerance[] = "mass_tolerance";
+static const char __pyx_k_precursor_mass[] = "precursor_mass";
+static const char __pyx_k_calculated_mass[] = "calculated_mass";
+static const char __pyx_k_fragment_masses[] = "fragment_masses";
 static const char __pyx_k_setstate_cython[] = "__setstate_cython__";
+static const char __pyx_k_fragment_formula[] = "fragment_formula";
+static const char __pyx_k_fragment_results[] = "fragment_results";
 static const char __pyx_k_max_hetero_ratio[] = "max_hetero_ratio";
 static const char __pyx_k_List_Dict_str_int[] = "List[Dict[str, int]]";
+static const char __pyx_k_precursor_formula[] = "precursor_formula";
 static const char __pyx_k_sirius_decomposer[] = "sirius_decomposer";
 static const char __pyx_k_UnicodeDecodeError[] = "UnicodeDecodeError";
 static const char __pyx_k_asyncio_coroutines[] = "asyncio.coroutines";
 static const char __pyx_k_c_max_hetero_ratio[] = "c_max_hetero_ratio";
 static const char __pyx_k_cline_in_traceback[] = "cline_in_traceback";
+static const char __pyx_k_decompose_spectrum[] = "decompose_spectrum";
+static const char __pyx_k_precursor_formulas[] = "precursor_formulas";
 static const char __pyx_k_cinit___locals_lambda[] = "__cinit__.<locals>.<lambda>";
 static const char __pyx_k_cython_decompose_mass[] = "cython_decompose_mass";
 static const char __pyx_k_sirius_decomposer_pyx[] = "sirius_decomposer.pyx";
 static const char __pyx_k_CythonSiriusDecomposer[] = "CythonSiriusDecomposer";
-static const char __pyx_k_Dict_str_Tuple_int_int[] = "Dict[str, Tuple[int, int]]";
+static const char __pyx_k_fragment_decompositions[] = "fragment_decompositions";
+static const char __pyx_k_CythonSpectrumDecomposer[] = "CythonSpectrumDecomposer";
+static const char __pyx_k_decompose_spectrum_cython[] = "decompose_spectrum_cython";
 static const char __pyx_k_1_F_1_E_at1_1E_1_QiuA_4xuA[] = "\320\004\033\2301\360\010\000\t\035\230F\240&\250\001\250\024\250\\\270\022\2701\360\010\000\t\r\210E\220\025\220a\220t\2301\330\014\023\2201\220E\230\021\340\010\t\340\014\020\220\013\2301\360\006\000\r\021\320\020%\240Q\240i\250u\260A\340\014\023\2204\220x\230u\240A\360\006\000\r\021\220\001\220\021";
-static const char __pyx_k_q_q_1_1_Gq_Kxwj_Kxwj_99J_Q_q_8[] = "\320\000'\240q\330*+\330\032)\250\021\330\032'\240q\330\032#\2401\330\032#\2401\330\032,\320,G\300q\360\"\000\005\035\230K\240x\250w\260j\300\001\330\004\034\230K\240x\250w\260j\300\001\330\004%\320%9\3209J\310'\320Q[\320[\\\340\004\021\320\021'\240q\320(8\270\r\300_\320TU\330'2\260+\270Q\330\004\013\210:\220Z\230q";
+static const char __pyx_k_Kxwj_Kxwj_99J_Q_q_8__TU_2_Q_Zq[] = "\200\001\340\032\033\330\032\033\330\032\033\330\032\033\330\032\033\360\"\000\005\035\230K\240x\250w\260j\300\001\330\004\034\230K\240x\250w\260j\300\001\330\004%\320%9\3209J\310'\320Q[\320[\\\340\004\021\320\021'\240q\320(8\270\r\300_\320TU\330'2\260+\270Q\330\004\013\210:\220Z\230q";
 static const char __pyx_k_CythonSiriusDecomposer___reduce[] = "CythonSiriusDecomposer.__reduce_cython__";
 static const char __pyx_k_High_performance_Cython_impleme[] = "\nHigh-performance Cython implementation of the SIRIUS mass decomposition algorithm with chemical constraints.\n";
+static const char __pyx_k_A_A_1D0A_k_5_A_381_Zz_d_K1_1_7_Q[] = "\200A\360\"\000\t\035\230A\360\014\000\t\026\320\025+\2501\250D\3200A\300\021\330*.\250k\270\022\2705\300\004\300A\330*3\2608\2701\330\010\035\230Z\240z\260\021\360\006\000\t\r\320\014!\240\021\330\014&\240d\320*K\3101\330\020#\2401\340\014\023\2207\230!\330\020%\240Q\330\020+\2501\360\006\000\t\020\210q";
+static const char __pyx_k_A_fF_4_2Q_V6_l_A_A_U_4q_q_a_U_4q[] = "\200A\360\034\000\t'\240f\250F\260!\2604\260|\3002\300Q\330\010%\240V\2506\260\021\260$\260l\300\"\300A\360\006\000\t\035\230A\360\006\000\t\n\340\014\020\220\005\220U\230!\2304\230q\330\020!\240\021\240%\240q\330\020 \240\001\240\025\240a\360\006\000\r\021\220\005\220U\230!\2304\230q\330\020\037\230t\2409\250A\250R\250q\330\020\031\230\034\240W\250A\250X\260W\270A\270Q\330\020\023\2207\230#\230Q\330\024%\240Q\240e\250=\270\001\270\021\360\006\000\r\021\320\020!\240\021\330\020#\2401\330\020!\240\036\250r\260\024\260Q\360\006\000\021\025\320\024.\250a\320/B\320BT\320TU\330-<\320<L\310A\340\020\027\220w\230a\230q\340\014\023\2201\360\006\000\r\021\220\001\220\021\330\014\020\220\001\220\021";
 static const char __pyx_k_CythonSiriusDecomposer___setstat[] = "CythonSiriusDecomposer.__setstate_cython__";
 static const char __pyx_k_CythonSiriusDecomposer_decompose[] = "CythonSiriusDecomposer.decompose";
+static const char __pyx_k_CythonSpectrumDecomposer___reduc[] = "CythonSpectrumDecomposer.__reduce_cython__";
+static const char __pyx_k_CythonSpectrumDecomposer___setst[] = "CythonSpectrumDecomposer.__setstate_cython__";
+static const char __pyx_k_CythonSpectrumDecomposer_decompo[] = "CythonSpectrumDecomposer.decompose_given_formula_spectrum";
 static const char __pyx_k_Note_that_Cython_is_deliberately[] = "Note that Cython is deliberately stricter than PEP-484 and rejects subclasses of builtin types. If you need to pass subclasses then set the 'annotation_typing' directive to False.";
+static const char __pyx_k_decompose_given_formula_spectrum[] = "decompose_given_formula_spectrum";
 static const char __pyx_k_no_default___reduce___due_to_non[] = "no default __reduce__ due to non-trivial __cinit__";
 static const char __pyx_k_numpy__core_multiarray_failed_to[] = "numpy._core.multiarray failed to import";
 static const char __pyx_k_numpy__core_umath_failed_to_impo[] = "numpy._core.umath failed to import";
+static const char __pyx_k_CythonSpectrumDecomposer_decompo_2[] = "CythonSpectrumDecomposer.decompose_spectrum";
+static const char __pyx_k_decompose_given_formula_spectrum_2[] = "decompose_given_formula_spectrum_cython";
 /* #### Code section: decls ### */
 static PyObject *__pyx_lambda_funcdef_lambda(CYTHON_UNUSED PyObject *__pyx_self, PyObject *__pyx_v_x); /* proto */
 static int __pyx_pf_17sirius_decomposer_22CythonSiriusDecomposer___cinit__(struct __pyx_obj_17sirius_decomposer_CythonSiriusDecomposer *__pyx_v_self, PyObject *__pyx_v_element_bounds, double __pyx_v_target_mass, double __pyx_v_tolerance_ppm, int __pyx_v_max_results, double __pyx_v_min_dbe, double __pyx_v_max_dbe, double __pyx_v_max_hetero_ratio); /* proto */
@@ -3020,8 +3116,18 @@ static void __pyx_pf_17sirius_decomposer_22CythonSiriusDecomposer_2__dealloc__(s
 static PyObject *__pyx_pf_17sirius_decomposer_22CythonSiriusDecomposer_4decompose(struct __pyx_obj_17sirius_decomposer_CythonSiriusDecomposer *__pyx_v_self); /* proto */
 static PyObject *__pyx_pf_17sirius_decomposer_22CythonSiriusDecomposer_6__reduce_cython__(CYTHON_UNUSED struct __pyx_obj_17sirius_decomposer_CythonSiriusDecomposer *__pyx_v_self); /* proto */
 static PyObject *__pyx_pf_17sirius_decomposer_22CythonSiriusDecomposer_8__setstate_cython__(CYTHON_UNUSED struct __pyx_obj_17sirius_decomposer_CythonSiriusDecomposer *__pyx_v_self, CYTHON_UNUSED PyObject *__pyx_v___pyx_state); /* proto */
-static PyObject *__pyx_pf_17sirius_decomposer_cython_decompose_mass(CYTHON_UNUSED PyObject *__pyx_self, double __pyx_v_target_mass, PyObject *__pyx_v_element_bounds, double __pyx_v_tolerance_ppm, PyObject *__pyx_v_max_results, PyObject *__pyx_v_min_dbe, PyObject *__pyx_v_max_dbe, PyObject *__pyx_v_max_hetero_ratio); /* proto */
+static PyObject *__pyx_lambda_funcdef_lambda1(CYTHON_UNUSED PyObject *__pyx_self, PyObject *__pyx_v_x); /* proto */
+static int __pyx_pf_17sirius_decomposer_24CythonSpectrumDecomposer___cinit__(struct __pyx_obj_17sirius_decomposer_CythonSpectrumDecomposer *__pyx_v_self, PyObject *__pyx_v_element_bounds, double __pyx_v_tolerance_ppm, int __pyx_v_max_results); /* proto */
+static void __pyx_pf_17sirius_decomposer_24CythonSpectrumDecomposer_2__dealloc__(struct __pyx_obj_17sirius_decomposer_CythonSpectrumDecomposer *__pyx_v_self); /* proto */
+static PyObject *__pyx_pf_17sirius_decomposer_24CythonSpectrumDecomposer_4decompose_given_formula_spectrum(struct __pyx_obj_17sirius_decomposer_CythonSpectrumDecomposer *__pyx_v_self, PyObject *__pyx_v_given_formula, PyObject *__pyx_v_fragment_masses); /* proto */
+static PyObject *__pyx_pf_17sirius_decomposer_24CythonSpectrumDecomposer_6decompose_spectrum(struct __pyx_obj_17sirius_decomposer_CythonSpectrumDecomposer *__pyx_v_self, double __pyx_v_precursor_mass, PyObject *__pyx_v_fragment_masses); /* proto */
+static PyObject *__pyx_pf_17sirius_decomposer_24CythonSpectrumDecomposer_8__reduce_cython__(CYTHON_UNUSED struct __pyx_obj_17sirius_decomposer_CythonSpectrumDecomposer *__pyx_v_self); /* proto */
+static PyObject *__pyx_pf_17sirius_decomposer_24CythonSpectrumDecomposer_10__setstate_cython__(CYTHON_UNUSED struct __pyx_obj_17sirius_decomposer_CythonSpectrumDecomposer *__pyx_v_self, CYTHON_UNUSED PyObject *__pyx_v___pyx_state); /* proto */
+static PyObject *__pyx_pf_17sirius_decomposer_cython_decompose_mass(CYTHON_UNUSED PyObject *__pyx_self, double __pyx_v_target_mass, PyObject *__pyx_v_element_bounds, double __pyx_v_tolerance_ppm, int __pyx_v_max_results, PyObject *__pyx_v_min_dbe, PyObject *__pyx_v_max_dbe, PyObject *__pyx_v_max_hetero_ratio); /* proto */
+static PyObject *__pyx_pf_17sirius_decomposer_2decompose_spectrum_cython(CYTHON_UNUSED PyObject *__pyx_self, double __pyx_v_precursor_mass, PyObject *__pyx_v_fragment_masses, PyObject *__pyx_v_element_bounds, double __pyx_v_tolerance_ppm, int __pyx_v_max_results); /* proto */
+static PyObject *__pyx_pf_17sirius_decomposer_4decompose_given_formula_spectrum_cython(CYTHON_UNUSED PyObject *__pyx_self, PyObject *__pyx_v_given_formula, PyObject *__pyx_v_fragment_masses, PyObject *__pyx_v_element_bounds, double __pyx_v_tolerance_ppm, int __pyx_v_max_results); /* proto */
 static PyObject *__pyx_tp_new_17sirius_decomposer_CythonSiriusDecomposer(PyTypeObject *t, PyObject *a, PyObject *k); /*proto*/
+static PyObject *__pyx_tp_new_17sirius_decomposer_CythonSpectrumDecomposer(PyTypeObject *t, PyObject *a, PyObject *k); /*proto*/
 /* #### Code section: late_includes ### */
 /* #### Code section: module_state ### */
 /* SmallCodeConfig */
@@ -3077,12 +3183,15 @@ typedef struct {
   PyTypeObject *__pyx_ptype_5numpy_character;
   PyTypeObject *__pyx_ptype_5numpy_ufunc;
   PyObject *__pyx_type_17sirius_decomposer_CythonSiriusDecomposer;
+  PyObject *__pyx_type_17sirius_decomposer_CythonSpectrumDecomposer;
   PyTypeObject *__pyx_ptype_17sirius_decomposer_CythonSiriusDecomposer;
+  PyTypeObject *__pyx_ptype_17sirius_decomposer_CythonSpectrumDecomposer;
   __Pyx_CachedCFunction __pyx_umethod_PyDict_Type_items;
   __Pyx_CachedCFunction __pyx_umethod_PyDict_Type_pop;
-  PyObject *__pyx_codeobj_tab[5];
-  PyObject *__pyx_string_tab[108];
+  PyObject *__pyx_codeobj_tab[12];
+  PyObject *__pyx_string_tab[129];
   PyObject *__pyx_float_0_0;
+  PyObject *__pyx_float_1000_0;
   PyObject *__pyx_float_1_0078250;
   PyObject *__pyx_float_11_0093054;
   PyObject *__pyx_float_12_0000000;
@@ -3103,8 +3212,8 @@ typedef struct {
   PyObject *__pyx_float_78_9183376;
   PyObject *__pyx_float_79_9165218;
   PyObject *__pyx_float_126_9044719;
+  PyObject *__pyx_float_neg_1000_0;
   PyObject *__pyx_int_0;
-  PyObject *__pyx_int_1000000;
 /* #### Code section: module_state_contents ### */
 /* CommonTypesMetaclass.module_state_decls */
 PyTypeObject *__pyx_CommonTypesMetaclassType;
@@ -3154,102 +3263,123 @@ static __pyx_mstatetype * const __pyx_mstate_global = &__pyx_mstate_global_stati
 #define __pyx_n_u_CythonSiriusDecomposer___reduce __pyx_string_tab[9]
 #define __pyx_n_u_CythonSiriusDecomposer___setstat __pyx_string_tab[10]
 #define __pyx_n_u_CythonSiriusDecomposer_decompose __pyx_string_tab[11]
-#define __pyx_n_u_Dict __pyx_string_tab[12]
-#define __pyx_kp_u_Dict_str_Tuple_int_int __pyx_string_tab[13]
-#define __pyx_n_u_F __pyx_string_tab[14]
-#define __pyx_n_u_Fe __pyx_string_tab[15]
-#define __pyx_n_u_H __pyx_string_tab[16]
-#define __pyx_n_u_I __pyx_string_tab[17]
-#define __pyx_n_u_ImportError __pyx_string_tab[18]
-#define __pyx_n_u_K __pyx_string_tab[19]
-#define __pyx_n_u_List __pyx_string_tab[20]
-#define __pyx_kp_u_List_Dict_str_int __pyx_string_tab[21]
-#define __pyx_n_u_Mg __pyx_string_tab[22]
-#define __pyx_n_u_N __pyx_string_tab[23]
-#define __pyx_n_u_Na __pyx_string_tab[24]
-#define __pyx_kp_u_Note_that_Cython_is_deliberately __pyx_string_tab[25]
-#define __pyx_n_u_O __pyx_string_tab[26]
-#define __pyx_n_u_Optional __pyx_string_tab[27]
-#define __pyx_kp_u_Optional_float __pyx_string_tab[28]
-#define __pyx_n_u_P __pyx_string_tab[29]
-#define __pyx_n_u_S __pyx_string_tab[30]
-#define __pyx_n_u_Se __pyx_string_tab[31]
-#define __pyx_n_u_Si __pyx_string_tab[32]
-#define __pyx_n_u_Tuple __pyx_string_tab[33]
-#define __pyx_n_u_TypeError __pyx_string_tab[34]
-#define __pyx_n_u_UnicodeDecodeError __pyx_string_tab[35]
-#define __pyx_n_u_Zn __pyx_string_tab[36]
-#define __pyx_kp_u__2 __pyx_string_tab[37]
-#define __pyx_kp_u__3 __pyx_string_tab[38]
-#define __pyx_kp_u__4 __pyx_string_tab[39]
-#define __pyx_kp_u_add_note __pyx_string_tab[40]
-#define __pyx_n_u_ascii __pyx_string_tab[41]
-#define __pyx_n_u_asyncio_coroutines __pyx_string_tab[42]
-#define __pyx_n_u_c_max_dbe __pyx_string_tab[43]
-#define __pyx_n_u_c_max_hetero_ratio __pyx_string_tab[44]
-#define __pyx_n_u_c_min_dbe __pyx_string_tab[45]
-#define __pyx_n_u_cinit___locals_lambda __pyx_string_tab[46]
-#define __pyx_n_u_cline_in_traceback __pyx_string_tab[47]
-#define __pyx_n_u_copy __pyx_string_tab[48]
-#define __pyx_n_u_cython_decompose_mass __pyx_string_tab[49]
-#define __pyx_n_u_decompose __pyx_string_tab[50]
-#define __pyx_n_u_decomposer __pyx_string_tab[51]
-#define __pyx_kp_u_disable __pyx_string_tab[52]
-#define __pyx_n_u_element_bounds __pyx_string_tab[53]
-#define __pyx_kp_u_enable __pyx_string_tab[54]
-#define __pyx_n_u_encode __pyx_string_tab[55]
-#define __pyx_n_u_enumerate __pyx_string_tab[56]
-#define __pyx_n_u_float __pyx_string_tab[57]
-#define __pyx_n_u_formula __pyx_string_tab[58]
-#define __pyx_n_u_func __pyx_string_tab[59]
-#define __pyx_kp_u_gc __pyx_string_tab[60]
-#define __pyx_n_u_get __pyx_string_tab[61]
-#define __pyx_n_u_getstate __pyx_string_tab[62]
-#define __pyx_n_u_i __pyx_string_tab[63]
-#define __pyx_n_u_initializing __pyx_string_tab[64]
-#define __pyx_n_u_int __pyx_string_tab[65]
-#define __pyx_n_u_is_coroutine __pyx_string_tab[66]
-#define __pyx_kp_u_isenabled __pyx_string_tab[67]
-#define __pyx_n_u_items __pyx_string_tab[68]
-#define __pyx_n_u_key __pyx_string_tab[69]
-#define __pyx_n_u_lambda __pyx_string_tab[70]
-#define __pyx_n_u_main __pyx_string_tab[71]
-#define __pyx_n_u_max_dbe __pyx_string_tab[72]
-#define __pyx_n_u_max_hetero_ratio __pyx_string_tab[73]
-#define __pyx_n_u_max_results __pyx_string_tab[74]
-#define __pyx_n_u_min_dbe __pyx_string_tab[75]
-#define __pyx_n_u_module __pyx_string_tab[76]
-#define __pyx_n_u_name __pyx_string_tab[77]
-#define __pyx_kp_u_no_default___reduce___due_to_non __pyx_string_tab[78]
-#define __pyx_n_u_np __pyx_string_tab[79]
-#define __pyx_n_u_numpy __pyx_string_tab[80]
-#define __pyx_kp_u_numpy__core_multiarray_failed_to __pyx_string_tab[81]
-#define __pyx_kp_u_numpy__core_umath_failed_to_impo __pyx_string_tab[82]
-#define __pyx_n_u_pop __pyx_string_tab[83]
-#define __pyx_n_u_pyx_state __pyx_string_tab[84]
-#define __pyx_n_u_pyx_vtable __pyx_string_tab[85]
-#define __pyx_n_u_qualname __pyx_string_tab[86]
-#define __pyx_n_u_range __pyx_string_tab[87]
-#define __pyx_n_u_reduce __pyx_string_tab[88]
-#define __pyx_n_u_reduce_cython __pyx_string_tab[89]
-#define __pyx_n_u_reduce_ex __pyx_string_tab[90]
-#define __pyx_n_u_return __pyx_string_tab[91]
-#define __pyx_n_u_reverse __pyx_string_tab[92]
-#define __pyx_n_u_rstrip __pyx_string_tab[93]
-#define __pyx_n_u_self __pyx_string_tab[94]
-#define __pyx_n_u_set_name __pyx_string_tab[95]
-#define __pyx_n_u_setstate __pyx_string_tab[96]
-#define __pyx_n_u_setstate_cython __pyx_string_tab[97]
-#define __pyx_n_u_sirius_decomposer __pyx_string_tab[98]
-#define __pyx_kp_u_sirius_decomposer_pyx __pyx_string_tab[99]
-#define __pyx_n_u_sorted __pyx_string_tab[100]
-#define __pyx_n_u_spec __pyx_string_tab[101]
-#define __pyx_kp_u_stringsource __pyx_string_tab[102]
-#define __pyx_n_u_target_mass __pyx_string_tab[103]
-#define __pyx_n_u_test __pyx_string_tab[104]
-#define __pyx_n_u_tolerance_ppm __pyx_string_tab[105]
-#define __pyx_n_u_typing __pyx_string_tab[106]
-#define __pyx_n_u_x __pyx_string_tab[107]
+#define __pyx_n_u_CythonSpectrumDecomposer __pyx_string_tab[12]
+#define __pyx_n_u_CythonSpectrumDecomposer___reduc __pyx_string_tab[13]
+#define __pyx_n_u_CythonSpectrumDecomposer___setst __pyx_string_tab[14]
+#define __pyx_n_u_CythonSpectrumDecomposer_decompo __pyx_string_tab[15]
+#define __pyx_n_u_CythonSpectrumDecomposer_decompo_2 __pyx_string_tab[16]
+#define __pyx_n_u_Dict __pyx_string_tab[17]
+#define __pyx_n_u_F __pyx_string_tab[18]
+#define __pyx_n_u_Fe __pyx_string_tab[19]
+#define __pyx_n_u_H __pyx_string_tab[20]
+#define __pyx_n_u_I __pyx_string_tab[21]
+#define __pyx_n_u_ImportError __pyx_string_tab[22]
+#define __pyx_n_u_K __pyx_string_tab[23]
+#define __pyx_n_u_List __pyx_string_tab[24]
+#define __pyx_kp_u_List_Dict_str_int __pyx_string_tab[25]
+#define __pyx_n_u_Mg __pyx_string_tab[26]
+#define __pyx_n_u_N __pyx_string_tab[27]
+#define __pyx_n_u_Na __pyx_string_tab[28]
+#define __pyx_kp_u_Note_that_Cython_is_deliberately __pyx_string_tab[29]
+#define __pyx_n_u_O __pyx_string_tab[30]
+#define __pyx_n_u_Optional __pyx_string_tab[31]
+#define __pyx_n_u_P __pyx_string_tab[32]
+#define __pyx_n_u_S __pyx_string_tab[33]
+#define __pyx_n_u_Se __pyx_string_tab[34]
+#define __pyx_n_u_Si __pyx_string_tab[35]
+#define __pyx_n_u_Tuple __pyx_string_tab[36]
+#define __pyx_n_u_TypeError __pyx_string_tab[37]
+#define __pyx_n_u_UnicodeDecodeError __pyx_string_tab[38]
+#define __pyx_n_u_Zn __pyx_string_tab[39]
+#define __pyx_kp_u__2 __pyx_string_tab[40]
+#define __pyx_kp_u__3 __pyx_string_tab[41]
+#define __pyx_kp_u__4 __pyx_string_tab[42]
+#define __pyx_kp_u_add_note __pyx_string_tab[43]
+#define __pyx_n_u_ascii __pyx_string_tab[44]
+#define __pyx_n_u_asyncio_coroutines __pyx_string_tab[45]
+#define __pyx_n_u_c_max_dbe __pyx_string_tab[46]
+#define __pyx_n_u_c_max_hetero_ratio __pyx_string_tab[47]
+#define __pyx_n_u_c_min_dbe __pyx_string_tab[48]
+#define __pyx_n_u_calculated_mass __pyx_string_tab[49]
+#define __pyx_n_u_cinit___locals_lambda __pyx_string_tab[50]
+#define __pyx_n_u_cline_in_traceback __pyx_string_tab[51]
+#define __pyx_n_u_copy __pyx_string_tab[52]
+#define __pyx_n_u_cython_decompose_mass __pyx_string_tab[53]
+#define __pyx_n_u_decompose __pyx_string_tab[54]
+#define __pyx_n_u_decompose_given_formula_spectrum __pyx_string_tab[55]
+#define __pyx_n_u_decompose_given_formula_spectrum_2 __pyx_string_tab[56]
+#define __pyx_n_u_decompose_spectrum __pyx_string_tab[57]
+#define __pyx_n_u_decompose_spectrum_cython __pyx_string_tab[58]
+#define __pyx_n_u_decomposer __pyx_string_tab[59]
+#define __pyx_kp_u_disable __pyx_string_tab[60]
+#define __pyx_n_u_element_bounds __pyx_string_tab[61]
+#define __pyx_n_u_element_idx __pyx_string_tab[62]
+#define __pyx_kp_u_enable __pyx_string_tab[63]
+#define __pyx_n_u_encode __pyx_string_tab[64]
+#define __pyx_n_u_enumerate __pyx_string_tab[65]
+#define __pyx_n_u_formula __pyx_string_tab[66]
+#define __pyx_n_u_fragment_decompositions __pyx_string_tab[67]
+#define __pyx_n_u_fragment_formula __pyx_string_tab[68]
+#define __pyx_n_u_fragment_mass __pyx_string_tab[69]
+#define __pyx_n_u_fragment_masses __pyx_string_tab[70]
+#define __pyx_n_u_fragment_results __pyx_string_tab[71]
+#define __pyx_n_u_func __pyx_string_tab[72]
+#define __pyx_kp_u_gc __pyx_string_tab[73]
+#define __pyx_n_u_get __pyx_string_tab[74]
+#define __pyx_n_u_getstate __pyx_string_tab[75]
+#define __pyx_n_u_given_formula __pyx_string_tab[76]
+#define __pyx_n_u_i __pyx_string_tab[77]
+#define __pyx_n_u_initializing __pyx_string_tab[78]
+#define __pyx_n_u_is_coroutine __pyx_string_tab[79]
+#define __pyx_kp_u_isenabled __pyx_string_tab[80]
+#define __pyx_n_u_items __pyx_string_tab[81]
+#define __pyx_n_u_j __pyx_string_tab[82]
+#define __pyx_n_u_key __pyx_string_tab[83]
+#define __pyx_n_u_lambda __pyx_string_tab[84]
+#define __pyx_n_u_main __pyx_string_tab[85]
+#define __pyx_n_u_mass_tolerance __pyx_string_tab[86]
+#define __pyx_n_u_max_dbe __pyx_string_tab[87]
+#define __pyx_n_u_max_hetero_ratio __pyx_string_tab[88]
+#define __pyx_n_u_max_results __pyx_string_tab[89]
+#define __pyx_n_u_min_dbe __pyx_string_tab[90]
+#define __pyx_n_u_module __pyx_string_tab[91]
+#define __pyx_n_u_name __pyx_string_tab[92]
+#define __pyx_kp_u_no_default___reduce___due_to_non __pyx_string_tab[93]
+#define __pyx_n_u_np __pyx_string_tab[94]
+#define __pyx_n_u_numpy __pyx_string_tab[95]
+#define __pyx_kp_u_numpy__core_multiarray_failed_to __pyx_string_tab[96]
+#define __pyx_kp_u_numpy__core_umath_failed_to_impo __pyx_string_tab[97]
+#define __pyx_n_u_pop __pyx_string_tab[98]
+#define __pyx_n_u_precursor_formula __pyx_string_tab[99]
+#define __pyx_n_u_precursor_formulas __pyx_string_tab[100]
+#define __pyx_n_u_precursor_mass __pyx_string_tab[101]
+#define __pyx_n_u_pyx_state __pyx_string_tab[102]
+#define __pyx_n_u_pyx_vtable __pyx_string_tab[103]
+#define __pyx_n_u_qualname __pyx_string_tab[104]
+#define __pyx_n_u_range __pyx_string_tab[105]
+#define __pyx_n_u_reduce __pyx_string_tab[106]
+#define __pyx_n_u_reduce_cython __pyx_string_tab[107]
+#define __pyx_n_u_reduce_ex __pyx_string_tab[108]
+#define __pyx_n_u_results __pyx_string_tab[109]
+#define __pyx_n_u_return __pyx_string_tab[110]
+#define __pyx_n_u_reverse __pyx_string_tab[111]
+#define __pyx_n_u_rstrip __pyx_string_tab[112]
+#define __pyx_n_u_self __pyx_string_tab[113]
+#define __pyx_n_u_set_name __pyx_string_tab[114]
+#define __pyx_n_u_setstate __pyx_string_tab[115]
+#define __pyx_n_u_setstate_cython __pyx_string_tab[116]
+#define __pyx_n_u_sirius_decomposer __pyx_string_tab[117]
+#define __pyx_kp_u_sirius_decomposer_pyx __pyx_string_tab[118]
+#define __pyx_n_u_sorted __pyx_string_tab[119]
+#define __pyx_n_u_spec __pyx_string_tab[120]
+#define __pyx_kp_u_stringsource __pyx_string_tab[121]
+#define __pyx_n_u_symbol __pyx_string_tab[122]
+#define __pyx_n_u_symbol_bytes __pyx_string_tab[123]
+#define __pyx_n_u_target_mass __pyx_string_tab[124]
+#define __pyx_n_u_test __pyx_string_tab[125]
+#define __pyx_n_u_tolerance_ppm __pyx_string_tab[126]
+#define __pyx_n_u_typing __pyx_string_tab[127]
+#define __pyx_n_u_x __pyx_string_tab[128]
 /* #### Code section: module_state_clear ### */
 #if CYTHON_USE_MODULE_STATE
 static CYTHON_SMALL_CODE int __pyx_m_clear(PyObject *m) {
@@ -3288,9 +3418,12 @@ static CYTHON_SMALL_CODE int __pyx_m_clear(PyObject *m) {
   Py_CLEAR(clear_module_state->__pyx_ptype_5numpy_ufunc);
   Py_CLEAR(clear_module_state->__pyx_ptype_17sirius_decomposer_CythonSiriusDecomposer);
   Py_CLEAR(clear_module_state->__pyx_type_17sirius_decomposer_CythonSiriusDecomposer);
-  for (int i=0; i<5; ++i) { Py_CLEAR(clear_module_state->__pyx_codeobj_tab[i]); }
-  for (int i=0; i<108; ++i) { Py_CLEAR(clear_module_state->__pyx_string_tab[i]); }
+  Py_CLEAR(clear_module_state->__pyx_ptype_17sirius_decomposer_CythonSpectrumDecomposer);
+  Py_CLEAR(clear_module_state->__pyx_type_17sirius_decomposer_CythonSpectrumDecomposer);
+  for (int i=0; i<12; ++i) { Py_CLEAR(clear_module_state->__pyx_codeobj_tab[i]); }
+  for (int i=0; i<129; ++i) { Py_CLEAR(clear_module_state->__pyx_string_tab[i]); }
   Py_CLEAR(clear_module_state->__pyx_float_0_0);
+  Py_CLEAR(clear_module_state->__pyx_float_1000_0);
   Py_CLEAR(clear_module_state->__pyx_float_1_0078250);
   Py_CLEAR(clear_module_state->__pyx_float_11_0093054);
   Py_CLEAR(clear_module_state->__pyx_float_12_0000000);
@@ -3311,8 +3444,8 @@ static CYTHON_SMALL_CODE int __pyx_m_clear(PyObject *m) {
   Py_CLEAR(clear_module_state->__pyx_float_78_9183376);
   Py_CLEAR(clear_module_state->__pyx_float_79_9165218);
   Py_CLEAR(clear_module_state->__pyx_float_126_9044719);
+  Py_CLEAR(clear_module_state->__pyx_float_neg_1000_0);
   Py_CLEAR(clear_module_state->__pyx_int_0);
-  Py_CLEAR(clear_module_state->__pyx_int_1000000);
   return 0;
 }
 #endif
@@ -3351,9 +3484,12 @@ static CYTHON_SMALL_CODE int __pyx_m_traverse(PyObject *m, visitproc visit, void
   Py_VISIT(traverse_module_state->__pyx_ptype_5numpy_ufunc);
   Py_VISIT(traverse_module_state->__pyx_ptype_17sirius_decomposer_CythonSiriusDecomposer);
   Py_VISIT(traverse_module_state->__pyx_type_17sirius_decomposer_CythonSiriusDecomposer);
-  for (int i=0; i<5; ++i) { __Pyx_VISIT_CONST(traverse_module_state->__pyx_codeobj_tab[i]); }
-  for (int i=0; i<108; ++i) { __Pyx_VISIT_CONST(traverse_module_state->__pyx_string_tab[i]); }
+  Py_VISIT(traverse_module_state->__pyx_ptype_17sirius_decomposer_CythonSpectrumDecomposer);
+  Py_VISIT(traverse_module_state->__pyx_type_17sirius_decomposer_CythonSpectrumDecomposer);
+  for (int i=0; i<12; ++i) { __Pyx_VISIT_CONST(traverse_module_state->__pyx_codeobj_tab[i]); }
+  for (int i=0; i<129; ++i) { __Pyx_VISIT_CONST(traverse_module_state->__pyx_string_tab[i]); }
   __Pyx_VISIT_CONST(traverse_module_state->__pyx_float_0_0);
+  __Pyx_VISIT_CONST(traverse_module_state->__pyx_float_1000_0);
   __Pyx_VISIT_CONST(traverse_module_state->__pyx_float_1_0078250);
   __Pyx_VISIT_CONST(traverse_module_state->__pyx_float_11_0093054);
   __Pyx_VISIT_CONST(traverse_module_state->__pyx_float_12_0000000);
@@ -3374,8 +3510,8 @@ static CYTHON_SMALL_CODE int __pyx_m_traverse(PyObject *m, visitproc visit, void
   __Pyx_VISIT_CONST(traverse_module_state->__pyx_float_78_9183376);
   __Pyx_VISIT_CONST(traverse_module_state->__pyx_float_79_9165218);
   __Pyx_VISIT_CONST(traverse_module_state->__pyx_float_126_9044719);
+  __Pyx_VISIT_CONST(traverse_module_state->__pyx_float_neg_1000_0);
   __Pyx_VISIT_CONST(traverse_module_state->__pyx_int_0);
-  __Pyx_VISIT_CONST(traverse_module_state->__pyx_int_1000000);
   return 0;
 }
 #endif
@@ -9018,7 +9154,7 @@ static PyObject *__pyx_pf_17sirius_decomposer_22CythonSiriusDecomposer_4decompos
  *         finally:
  *             free(formula)             # <<<<<<<<<<<<<<
  * 
- * def cython_decompose_mass(target_mass: float,
+ * @cython.boundscheck(False)
 */
   /*finally:*/ {
     __pyx_L6_error:;
@@ -9286,12 +9422,2685 @@ static PyObject *__pyx_pf_17sirius_decomposer_22CythonSiriusDecomposer_8__setsta
   return __pyx_r;
 }
 
-/* "sirius_decomposer.pyx":468
- *             free(formula)
+/* "sirius_decomposer.pyx":481
+ *     cdef dict element_bounds
  * 
- * def cython_decompose_mass(target_mass: float,             # <<<<<<<<<<<<<<
- *                           element_bounds: Dict[str, Tuple[int, int]],
- *                           tolerance_ppm: float = 5.0,
+ *     def __cinit__(self, dict element_bounds,             # <<<<<<<<<<<<<<
+ *                   double tolerance_ppm = 5.0, int max_results = 1000000):
+ *         """
+*/
+
+/* Python wrapper */
+static int __pyx_pw_17sirius_decomposer_24CythonSpectrumDecomposer_1__cinit__(PyObject *__pyx_v_self, PyObject *__pyx_args, PyObject *__pyx_kwds); /*proto*/
+static int __pyx_pw_17sirius_decomposer_24CythonSpectrumDecomposer_1__cinit__(PyObject *__pyx_v_self, PyObject *__pyx_args, PyObject *__pyx_kwds) {
+  PyObject *__pyx_v_element_bounds = 0;
+  double __pyx_v_tolerance_ppm;
+  int __pyx_v_max_results;
+  CYTHON_UNUSED Py_ssize_t __pyx_nargs;
+  CYTHON_UNUSED PyObject *const *__pyx_kwvalues;
+  PyObject* values[3] = {0,0,0};
+  int __pyx_lineno = 0;
+  const char *__pyx_filename = NULL;
+  int __pyx_clineno = 0;
+  int __pyx_r;
+  __Pyx_RefNannyDeclarations
+  __Pyx_RefNannySetupContext("__cinit__ (wrapper)", 0);
+  #if CYTHON_ASSUME_SAFE_SIZE
+  __pyx_nargs = PyTuple_GET_SIZE(__pyx_args);
+  #else
+  __pyx_nargs = PyTuple_Size(__pyx_args); if (unlikely(__pyx_nargs < 0)) return -1;
+  #endif
+  __pyx_kwvalues = __Pyx_KwValues_VARARGS(__pyx_args, __pyx_nargs);
+  {
+    PyObject ** const __pyx_pyargnames[] = {&__pyx_mstate_global->__pyx_n_u_element_bounds,&__pyx_mstate_global->__pyx_n_u_tolerance_ppm,&__pyx_mstate_global->__pyx_n_u_max_results,0};
+    const Py_ssize_t __pyx_kwds_len = (__pyx_kwds) ? __Pyx_NumKwargs_VARARGS(__pyx_kwds) : 0;
+    if (unlikely(__pyx_kwds_len) < 0) __PYX_ERR(0, 481, __pyx_L3_error)
+    if (__pyx_kwds_len > 0) {
+      switch (__pyx_nargs) {
+        case  3:
+        values[2] = __Pyx_ArgRef_VARARGS(__pyx_args, 2);
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[2])) __PYX_ERR(0, 481, __pyx_L3_error)
+        CYTHON_FALLTHROUGH;
+        case  2:
+        values[1] = __Pyx_ArgRef_VARARGS(__pyx_args, 1);
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[1])) __PYX_ERR(0, 481, __pyx_L3_error)
+        CYTHON_FALLTHROUGH;
+        case  1:
+        values[0] = __Pyx_ArgRef_VARARGS(__pyx_args, 0);
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[0])) __PYX_ERR(0, 481, __pyx_L3_error)
+        CYTHON_FALLTHROUGH;
+        case  0: break;
+        default: goto __pyx_L5_argtuple_error;
+      }
+      const Py_ssize_t kwd_pos_args = __pyx_nargs;
+      if (__Pyx_ParseKeywords(__pyx_kwds, __pyx_kwvalues, __pyx_pyargnames, 0, values, kwd_pos_args, __pyx_kwds_len, "__cinit__", 0) < 0) __PYX_ERR(0, 481, __pyx_L3_error)
+      for (Py_ssize_t i = __pyx_nargs; i < 1; i++) {
+        if (unlikely(!values[i])) { __Pyx_RaiseArgtupleInvalid("__cinit__", 0, 1, 3, i); __PYX_ERR(0, 481, __pyx_L3_error) }
+      }
+    } else {
+      switch (__pyx_nargs) {
+        case  3:
+        values[2] = __Pyx_ArgRef_VARARGS(__pyx_args, 2);
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[2])) __PYX_ERR(0, 481, __pyx_L3_error)
+        CYTHON_FALLTHROUGH;
+        case  2:
+        values[1] = __Pyx_ArgRef_VARARGS(__pyx_args, 1);
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[1])) __PYX_ERR(0, 481, __pyx_L3_error)
+        CYTHON_FALLTHROUGH;
+        case  1:
+        values[0] = __Pyx_ArgRef_VARARGS(__pyx_args, 0);
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[0])) __PYX_ERR(0, 481, __pyx_L3_error)
+        break;
+        default: goto __pyx_L5_argtuple_error;
+      }
+    }
+    __pyx_v_element_bounds = ((PyObject*)values[0]);
+    if (values[1]) {
+      __pyx_v_tolerance_ppm = __Pyx_PyFloat_AsDouble(values[1]); if (unlikely((__pyx_v_tolerance_ppm == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 482, __pyx_L3_error)
+    } else {
+      __pyx_v_tolerance_ppm = ((double)5.0);
+    }
+    if (values[2]) {
+      __pyx_v_max_results = __Pyx_PyLong_As_int(values[2]); if (unlikely((__pyx_v_max_results == (int)-1) && PyErr_Occurred())) __PYX_ERR(0, 482, __pyx_L3_error)
+    } else {
+      __pyx_v_max_results = ((int)0xF4240);
+    }
+  }
+  goto __pyx_L6_skip;
+  __pyx_L5_argtuple_error:;
+  __Pyx_RaiseArgtupleInvalid("__cinit__", 0, 1, 3, __pyx_nargs); __PYX_ERR(0, 481, __pyx_L3_error)
+  __pyx_L6_skip:;
+  goto __pyx_L4_argument_unpacking_done;
+  __pyx_L3_error:;
+  for (Py_ssize_t __pyx_temp=0; __pyx_temp < (Py_ssize_t)(sizeof(values)/sizeof(values[0])); ++__pyx_temp) {
+    Py_XDECREF(values[__pyx_temp]);
+  }
+  __Pyx_AddTraceback("sirius_decomposer.CythonSpectrumDecomposer.__cinit__", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __Pyx_RefNannyFinishContext();
+  return -1;
+  __pyx_L4_argument_unpacking_done:;
+  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_element_bounds), (&PyDict_Type), 1, "element_bounds", 1))) __PYX_ERR(0, 481, __pyx_L1_error)
+  __pyx_r = __pyx_pf_17sirius_decomposer_24CythonSpectrumDecomposer___cinit__(((struct __pyx_obj_17sirius_decomposer_CythonSpectrumDecomposer *)__pyx_v_self), __pyx_v_element_bounds, __pyx_v_tolerance_ppm, __pyx_v_max_results);
+
+  /* function exit code */
+  goto __pyx_L0;
+  __pyx_L1_error:;
+  __pyx_r = -1;
+  for (Py_ssize_t __pyx_temp=0; __pyx_temp < (Py_ssize_t)(sizeof(values)/sizeof(values[0])); ++__pyx_temp) {
+    Py_XDECREF(values[__pyx_temp]);
+  }
+  goto __pyx_L7_cleaned_up;
+  __pyx_L0:;
+  for (Py_ssize_t __pyx_temp=0; __pyx_temp < (Py_ssize_t)(sizeof(values)/sizeof(values[0])); ++__pyx_temp) {
+    Py_XDECREF(values[__pyx_temp]);
+  }
+  __pyx_L7_cleaned_up:;
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+/* "sirius_decomposer.pyx":501
+ *         # Sort elements by mass (heaviest first for better pruning)
+ *         sorted_elements = sorted(element_bounds.items(),
+ *                                key=lambda x: ATOMIC_MASSES.get(x[0], 0), reverse=True)             # <<<<<<<<<<<<<<
+ * 
+ *         cdef int i, j
+*/
+
+/* Python wrapper */
+static PyObject *__pyx_pw_17sirius_decomposer_24CythonSpectrumDecomposer_9__cinit___lambda1(PyObject *__pyx_self, 
+#if CYTHON_METH_FASTCALL
+PyObject *const *__pyx_args, Py_ssize_t __pyx_nargs, PyObject *__pyx_kwds
+#else
+PyObject *__pyx_args, PyObject *__pyx_kwds
+#endif
+); /*proto*/
+static PyMethodDef __pyx_mdef_17sirius_decomposer_24CythonSpectrumDecomposer_9__cinit___lambda1 = {"lambda1", (PyCFunction)(void(*)(void))(__Pyx_PyCFunction_FastCallWithKeywords)__pyx_pw_17sirius_decomposer_24CythonSpectrumDecomposer_9__cinit___lambda1, __Pyx_METH_FASTCALL|METH_KEYWORDS, 0};
+static PyObject *__pyx_pw_17sirius_decomposer_24CythonSpectrumDecomposer_9__cinit___lambda1(PyObject *__pyx_self, 
+#if CYTHON_METH_FASTCALL
+PyObject *const *__pyx_args, Py_ssize_t __pyx_nargs, PyObject *__pyx_kwds
+#else
+PyObject *__pyx_args, PyObject *__pyx_kwds
+#endif
+) {
+  PyObject *__pyx_v_x = 0;
+  #if !CYTHON_METH_FASTCALL
+  CYTHON_UNUSED Py_ssize_t __pyx_nargs;
+  #endif
+  CYTHON_UNUSED PyObject *const *__pyx_kwvalues;
+  PyObject* values[1] = {0};
+  int __pyx_lineno = 0;
+  const char *__pyx_filename = NULL;
+  int __pyx_clineno = 0;
+  PyObject *__pyx_r = 0;
+  __Pyx_RefNannyDeclarations
+  __Pyx_RefNannySetupContext("lambda1 (wrapper)", 0);
+  #if !CYTHON_METH_FASTCALL
+  #if CYTHON_ASSUME_SAFE_SIZE
+  __pyx_nargs = PyTuple_GET_SIZE(__pyx_args);
+  #else
+  __pyx_nargs = PyTuple_Size(__pyx_args); if (unlikely(__pyx_nargs < 0)) return NULL;
+  #endif
+  #endif
+  __pyx_kwvalues = __Pyx_KwValues_FASTCALL(__pyx_args, __pyx_nargs);
+  {
+    PyObject ** const __pyx_pyargnames[] = {&__pyx_mstate_global->__pyx_n_u_x,0};
+    const Py_ssize_t __pyx_kwds_len = (__pyx_kwds) ? __Pyx_NumKwargs_FASTCALL(__pyx_kwds) : 0;
+    if (unlikely(__pyx_kwds_len) < 0) __PYX_ERR(0, 501, __pyx_L3_error)
+    if (__pyx_kwds_len > 0) {
+      switch (__pyx_nargs) {
+        case  1:
+        values[0] = __Pyx_ArgRef_FASTCALL(__pyx_args, 0);
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[0])) __PYX_ERR(0, 501, __pyx_L3_error)
+        CYTHON_FALLTHROUGH;
+        case  0: break;
+        default: goto __pyx_L5_argtuple_error;
+      }
+      const Py_ssize_t kwd_pos_args = __pyx_nargs;
+      if (__Pyx_ParseKeywords(__pyx_kwds, __pyx_kwvalues, __pyx_pyargnames, 0, values, kwd_pos_args, __pyx_kwds_len, "lambda1", 0) < 0) __PYX_ERR(0, 501, __pyx_L3_error)
+      for (Py_ssize_t i = __pyx_nargs; i < 1; i++) {
+        if (unlikely(!values[i])) { __Pyx_RaiseArgtupleInvalid("lambda1", 1, 1, 1, i); __PYX_ERR(0, 501, __pyx_L3_error) }
+      }
+    } else if (unlikely(__pyx_nargs != 1)) {
+      goto __pyx_L5_argtuple_error;
+    } else {
+      values[0] = __Pyx_ArgRef_FASTCALL(__pyx_args, 0);
+      if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[0])) __PYX_ERR(0, 501, __pyx_L3_error)
+    }
+    __pyx_v_x = values[0];
+  }
+  goto __pyx_L6_skip;
+  __pyx_L5_argtuple_error:;
+  __Pyx_RaiseArgtupleInvalid("lambda1", 1, 1, 1, __pyx_nargs); __PYX_ERR(0, 501, __pyx_L3_error)
+  __pyx_L6_skip:;
+  goto __pyx_L4_argument_unpacking_done;
+  __pyx_L3_error:;
+  for (Py_ssize_t __pyx_temp=0; __pyx_temp < (Py_ssize_t)(sizeof(values)/sizeof(values[0])); ++__pyx_temp) {
+    Py_XDECREF(values[__pyx_temp]);
+  }
+  __Pyx_AddTraceback("sirius_decomposer.CythonSpectrumDecomposer.__cinit__.lambda1", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __Pyx_RefNannyFinishContext();
+  return NULL;
+  __pyx_L4_argument_unpacking_done:;
+  __pyx_r = __pyx_lambda_funcdef_lambda1(__pyx_self, __pyx_v_x);
+
+  /* function exit code */
+  for (Py_ssize_t __pyx_temp=0; __pyx_temp < (Py_ssize_t)(sizeof(values)/sizeof(values[0])); ++__pyx_temp) {
+    Py_XDECREF(values[__pyx_temp]);
+  }
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+static PyObject *__pyx_lambda_funcdef_lambda1(CYTHON_UNUSED PyObject *__pyx_self, PyObject *__pyx_v_x) {
+  PyObject *__pyx_r = NULL;
+  __Pyx_RefNannyDeclarations
+  PyObject *__pyx_t_1 = NULL;
+  PyObject *__pyx_t_2 = NULL;
+  PyObject *__pyx_t_3 = NULL;
+  PyObject *__pyx_t_4 = NULL;
+  size_t __pyx_t_5;
+  int __pyx_lineno = 0;
+  const char *__pyx_filename = NULL;
+  int __pyx_clineno = 0;
+  __Pyx_RefNannySetupContext("lambda1", 0);
+  __Pyx_XDECREF(__pyx_r);
+  __pyx_t_2 = NULL;
+  __Pyx_GetModuleGlobalName(__pyx_t_3, __pyx_mstate_global->__pyx_n_u_ATOMIC_MASSES); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 501, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_3);
+  __pyx_t_4 = __Pyx_PyObject_GetAttrStr(__pyx_t_3, __pyx_mstate_global->__pyx_n_u_get); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 501, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_4);
+  __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+  __pyx_t_3 = __Pyx_GetItemInt(__pyx_v_x, 0, long, 1, __Pyx_PyLong_From_long, 0, 0, 0, 1); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 501, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_3);
+  __pyx_t_5 = 1;
+  #if CYTHON_UNPACK_METHODS
+  if (unlikely(PyMethod_Check(__pyx_t_4))) {
+    __pyx_t_2 = PyMethod_GET_SELF(__pyx_t_4);
+    assert(__pyx_t_2);
+    PyObject* __pyx__function = PyMethod_GET_FUNCTION(__pyx_t_4);
+    __Pyx_INCREF(__pyx_t_2);
+    __Pyx_INCREF(__pyx__function);
+    __Pyx_DECREF_SET(__pyx_t_4, __pyx__function);
+    __pyx_t_5 = 0;
+  }
+  #endif
+  {
+    PyObject *__pyx_callargs[3] = {__pyx_t_2, __pyx_t_3, __pyx_mstate_global->__pyx_int_0};
+    __pyx_t_1 = __Pyx_PyObject_FastCall(__pyx_t_4, __pyx_callargs+__pyx_t_5, (3-__pyx_t_5) | (__pyx_t_5*__Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET));
+    __Pyx_XDECREF(__pyx_t_2); __pyx_t_2 = 0;
+    __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+    __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
+    if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 501, __pyx_L1_error)
+    __Pyx_GOTREF(__pyx_t_1);
+  }
+  __pyx_r = __pyx_t_1;
+  __pyx_t_1 = 0;
+  goto __pyx_L0;
+
+  /* function exit code */
+  __pyx_L1_error:;
+  __Pyx_XDECREF(__pyx_t_1);
+  __Pyx_XDECREF(__pyx_t_2);
+  __Pyx_XDECREF(__pyx_t_3);
+  __Pyx_XDECREF(__pyx_t_4);
+  __Pyx_AddTraceback("sirius_decomposer.CythonSpectrumDecomposer.__cinit__.lambda1", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __pyx_r = NULL;
+  __pyx_L0:;
+  __Pyx_XGIVEREF(__pyx_r);
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+/* "sirius_decomposer.pyx":481
+ *     cdef dict element_bounds
+ * 
+ *     def __cinit__(self, dict element_bounds,             # <<<<<<<<<<<<<<
+ *                   double tolerance_ppm = 5.0, int max_results = 1000000):
+ *         """
+*/
+
+static int __pyx_pf_17sirius_decomposer_24CythonSpectrumDecomposer___cinit__(struct __pyx_obj_17sirius_decomposer_CythonSpectrumDecomposer *__pyx_v_self, PyObject *__pyx_v_element_bounds, double __pyx_v_tolerance_ppm, int __pyx_v_max_results) {
+  PyObject *__pyx_v_sorted_elements = NULL;
+  int __pyx_v_i;
+  int __pyx_v_j;
+  PyObject *__pyx_v_symbol_bytes = 0;
+  PyObject *__pyx_v_symbol = NULL;
+  PyObject *__pyx_v_min_count = NULL;
+  PyObject *__pyx_v_max_count = NULL;
+  int __pyx_r;
+  __Pyx_RefNannyDeclarations
+  Py_ssize_t __pyx_t_1;
+  PyObject *__pyx_t_2 = NULL;
+  PyObject *__pyx_t_3 = NULL;
+  PyObject *__pyx_t_4 = NULL;
+  PyObject *__pyx_t_5 = NULL;
+  PyObject *__pyx_t_6 = NULL;
+  size_t __pyx_t_7;
+  PyObject *__pyx_t_8 = NULL;
+  int __pyx_t_9;
+  PyObject *(*__pyx_t_10)(PyObject *);
+  PyObject *(*__pyx_t_11)(PyObject *);
+  PyObject *__pyx_t_12 = NULL;
+  Py_ssize_t __pyx_t_13;
+  long __pyx_t_14;
+  Py_ssize_t __pyx_t_15;
+  int __pyx_t_16;
+  int __pyx_t_17;
+  char __pyx_t_18;
+  double __pyx_t_19;
+  int __pyx_lineno = 0;
+  const char *__pyx_filename = NULL;
+  int __pyx_clineno = 0;
+  __Pyx_RefNannySetupContext("__cinit__", 0);
+
+  /* "sirius_decomposer.pyx":491
+ *             max_results: Maximum number of results to return
+ *         """
+ *         self.tolerance = tolerance_ppm / 1e6  # Convert to relative tolerance             # <<<<<<<<<<<<<<
+ *         self.max_results = max_results
+ *         self.element_bounds = element_bounds
+*/
+  __pyx_v_self->tolerance = (__pyx_v_tolerance_ppm / 1e6);
+
+  /* "sirius_decomposer.pyx":492
+ *         """
+ *         self.tolerance = tolerance_ppm / 1e6  # Convert to relative tolerance
+ *         self.max_results = max_results             # <<<<<<<<<<<<<<
+ *         self.element_bounds = element_bounds
+ * 
+*/
+  __pyx_v_self->max_results = __pyx_v_max_results;
+
+  /* "sirius_decomposer.pyx":493
+ *         self.tolerance = tolerance_ppm / 1e6  # Convert to relative tolerance
+ *         self.max_results = max_results
+ *         self.element_bounds = element_bounds             # <<<<<<<<<<<<<<
+ * 
+ *         # Initialize elements array (same as SIRIUS decomposer)
+*/
+  __Pyx_INCREF(__pyx_v_element_bounds);
+  __Pyx_GIVEREF(__pyx_v_element_bounds);
+  __Pyx_GOTREF(__pyx_v_self->element_bounds);
+  __Pyx_DECREF(__pyx_v_self->element_bounds);
+  __pyx_v_self->element_bounds = __pyx_v_element_bounds;
+
+  /* "sirius_decomposer.pyx":496
+ * 
+ *         # Initialize elements array (same as SIRIUS decomposer)
+ *         self.n_elements = len(element_bounds)             # <<<<<<<<<<<<<<
+ *         self.elements = <Element*>malloc(self.n_elements * sizeof(Element))
+ * 
+*/
+  if (unlikely(__pyx_v_element_bounds == Py_None)) {
+    PyErr_SetString(PyExc_TypeError, "object of type 'NoneType' has no len()");
+    __PYX_ERR(0, 496, __pyx_L1_error)
+  }
+  __pyx_t_1 = PyDict_Size(__pyx_v_element_bounds); if (unlikely(__pyx_t_1 == ((Py_ssize_t)-1))) __PYX_ERR(0, 496, __pyx_L1_error)
+  __pyx_v_self->n_elements = __pyx_t_1;
+
+  /* "sirius_decomposer.pyx":497
+ *         # Initialize elements array (same as SIRIUS decomposer)
+ *         self.n_elements = len(element_bounds)
+ *         self.elements = <Element*>malloc(self.n_elements * sizeof(Element))             # <<<<<<<<<<<<<<
+ * 
+ *         # Sort elements by mass (heaviest first for better pruning)
+*/
+  __pyx_v_self->elements = ((struct __pyx_t_17sirius_decomposer_Element *)malloc((__pyx_v_self->n_elements * (sizeof(struct __pyx_t_17sirius_decomposer_Element)))));
+
+  /* "sirius_decomposer.pyx":500
+ * 
+ *         # Sort elements by mass (heaviest first for better pruning)
+ *         sorted_elements = sorted(element_bounds.items(),             # <<<<<<<<<<<<<<
+ *                                key=lambda x: ATOMIC_MASSES.get(x[0], 0), reverse=True)
+ * 
+*/
+  __pyx_t_3 = NULL;
+  __Pyx_INCREF(__pyx_builtin_sorted);
+  __pyx_t_4 = __pyx_builtin_sorted; 
+  if (unlikely(__pyx_v_element_bounds == Py_None)) {
+    PyErr_Format(PyExc_AttributeError, "'NoneType' object has no attribute '%.30s'", "items");
+    __PYX_ERR(0, 500, __pyx_L1_error)
+  }
+  __pyx_t_5 = __Pyx_PyDict_Items(__pyx_v_element_bounds); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 500, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_5);
+
+  /* "sirius_decomposer.pyx":501
+ *         # Sort elements by mass (heaviest first for better pruning)
+ *         sorted_elements = sorted(element_bounds.items(),
+ *                                key=lambda x: ATOMIC_MASSES.get(x[0], 0), reverse=True)             # <<<<<<<<<<<<<<
+ * 
+ *         cdef int i, j
+*/
+  __pyx_t_6 = __Pyx_CyFunction_New(&__pyx_mdef_17sirius_decomposer_24CythonSpectrumDecomposer_9__cinit___lambda1, 0, __pyx_mstate_global->__pyx_n_u_cinit___locals_lambda, NULL, __pyx_mstate_global->__pyx_n_u_sirius_decomposer, __pyx_mstate_global->__pyx_d, ((PyObject *)__pyx_mstate_global->__pyx_codeobj_tab[1])); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 501, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_6);
+  __pyx_t_7 = 1;
+  {
+    PyObject *__pyx_callargs[2 + ((CYTHON_VECTORCALL) ? 2 : 0)] = {__pyx_t_3, __pyx_t_5};
+    __pyx_t_8 = __Pyx_MakeVectorcallBuilderKwds(2); if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 500, __pyx_L1_error)
+    __Pyx_GOTREF(__pyx_t_8);
+    if (__Pyx_VectorcallBuilder_AddArg(__pyx_mstate_global->__pyx_n_u_key, __pyx_t_6, __pyx_t_8, __pyx_callargs+2, 0) < 0) __PYX_ERR(0, 500, __pyx_L1_error)
+    if (__Pyx_VectorcallBuilder_AddArg(__pyx_mstate_global->__pyx_n_u_reverse, Py_True, __pyx_t_8, __pyx_callargs+2, 1) < 0) __PYX_ERR(0, 500, __pyx_L1_error)
+    __pyx_t_2 = __Pyx_Object_Vectorcall_CallFromBuilder(__pyx_t_4, __pyx_callargs+__pyx_t_7, (2-__pyx_t_7) | (__pyx_t_7*__Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET), __pyx_t_8);
+    __Pyx_XDECREF(__pyx_t_3); __pyx_t_3 = 0;
+    __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
+    __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
+    __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
+    __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
+    if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 500, __pyx_L1_error)
+    __Pyx_GOTREF(__pyx_t_2);
+  }
+  __pyx_v_sorted_elements = __pyx_t_2;
+  __pyx_t_2 = 0;
+
+  /* "sirius_decomposer.pyx":506
+ *         cdef bytes symbol_bytes
+ * 
+ *         for i, (symbol, (min_count, max_count)) in enumerate(sorted_elements):             # <<<<<<<<<<<<<<
+ *             # Copy symbol (ensure null termination)
+ *             symbol_bytes = symbol.encode('ascii')
+*/
+  __pyx_t_9 = 0;
+  if (likely(PyList_CheckExact(__pyx_v_sorted_elements)) || PyTuple_CheckExact(__pyx_v_sorted_elements)) {
+    __pyx_t_2 = __pyx_v_sorted_elements; __Pyx_INCREF(__pyx_t_2);
+    __pyx_t_1 = 0;
+    __pyx_t_10 = NULL;
+  } else {
+    __pyx_t_1 = -1; __pyx_t_2 = PyObject_GetIter(__pyx_v_sorted_elements); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 506, __pyx_L1_error)
+    __Pyx_GOTREF(__pyx_t_2);
+    __pyx_t_10 = (CYTHON_COMPILING_IN_LIMITED_API) ? PyIter_Next : __Pyx_PyObject_GetIterNextFunc(__pyx_t_2); if (unlikely(!__pyx_t_10)) __PYX_ERR(0, 506, __pyx_L1_error)
+  }
+  for (;;) {
+    if (likely(!__pyx_t_10)) {
+      if (likely(PyList_CheckExact(__pyx_t_2))) {
+        {
+          Py_ssize_t __pyx_temp = __Pyx_PyList_GET_SIZE(__pyx_t_2);
+          #if !CYTHON_ASSUME_SAFE_SIZE
+          if (unlikely((__pyx_temp < 0))) __PYX_ERR(0, 506, __pyx_L1_error)
+          #endif
+          if (__pyx_t_1 >= __pyx_temp) break;
+        }
+        __pyx_t_4 = __Pyx_PyList_GetItemRef(__pyx_t_2, __pyx_t_1);
+        ++__pyx_t_1;
+      } else {
+        {
+          Py_ssize_t __pyx_temp = __Pyx_PyTuple_GET_SIZE(__pyx_t_2);
+          #if !CYTHON_ASSUME_SAFE_SIZE
+          if (unlikely((__pyx_temp < 0))) __PYX_ERR(0, 506, __pyx_L1_error)
+          #endif
+          if (__pyx_t_1 >= __pyx_temp) break;
+        }
+        #if CYTHON_ASSUME_SAFE_MACROS && !CYTHON_AVOID_BORROWED_REFS
+        __pyx_t_4 = __Pyx_NewRef(PyTuple_GET_ITEM(__pyx_t_2, __pyx_t_1));
+        #else
+        __pyx_t_4 = __Pyx_PySequence_ITEM(__pyx_t_2, __pyx_t_1);
+        #endif
+        ++__pyx_t_1;
+      }
+      if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 506, __pyx_L1_error)
+    } else {
+      __pyx_t_4 = __pyx_t_10(__pyx_t_2);
+      if (unlikely(!__pyx_t_4)) {
+        PyObject* exc_type = PyErr_Occurred();
+        if (exc_type) {
+          if (unlikely(!__Pyx_PyErr_GivenExceptionMatches(exc_type, PyExc_StopIteration))) __PYX_ERR(0, 506, __pyx_L1_error)
+          PyErr_Clear();
+        }
+        break;
+      }
+    }
+    __Pyx_GOTREF(__pyx_t_4);
+    if ((likely(PyTuple_CheckExact(__pyx_t_4))) || (PyList_CheckExact(__pyx_t_4))) {
+      PyObject* sequence = __pyx_t_4;
+      Py_ssize_t size = __Pyx_PySequence_SIZE(sequence);
+      if (unlikely(size != 2)) {
+        if (size > 2) __Pyx_RaiseTooManyValuesError(2);
+        else if (size >= 0) __Pyx_RaiseNeedMoreValuesError(size);
+        __PYX_ERR(0, 506, __pyx_L1_error)
+      }
+      #if CYTHON_ASSUME_SAFE_MACROS && !CYTHON_AVOID_BORROWED_REFS
+      if (likely(PyTuple_CheckExact(sequence))) {
+        __pyx_t_8 = PyTuple_GET_ITEM(sequence, 0);
+        __Pyx_INCREF(__pyx_t_8);
+        __pyx_t_6 = PyTuple_GET_ITEM(sequence, 1);
+        __Pyx_INCREF(__pyx_t_6);
+      } else {
+        __pyx_t_8 = __Pyx_PyList_GetItemRef(sequence, 0);
+        if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 506, __pyx_L1_error)
+        __Pyx_XGOTREF(__pyx_t_8);
+        __pyx_t_6 = __Pyx_PyList_GetItemRef(sequence, 1);
+        if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 506, __pyx_L1_error)
+        __Pyx_XGOTREF(__pyx_t_6);
+      }
+      #else
+      __pyx_t_8 = __Pyx_PySequence_ITEM(sequence, 0); if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 506, __pyx_L1_error)
+      __Pyx_GOTREF(__pyx_t_8);
+      __pyx_t_6 = __Pyx_PySequence_ITEM(sequence, 1); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 506, __pyx_L1_error)
+      __Pyx_GOTREF(__pyx_t_6);
+      #endif
+      __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
+    } else {
+      Py_ssize_t index = -1;
+      __pyx_t_5 = PyObject_GetIter(__pyx_t_4); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 506, __pyx_L1_error)
+      __Pyx_GOTREF(__pyx_t_5);
+      __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
+      __pyx_t_11 = (CYTHON_COMPILING_IN_LIMITED_API) ? PyIter_Next : __Pyx_PyObject_GetIterNextFunc(__pyx_t_5);
+      index = 0; __pyx_t_8 = __pyx_t_11(__pyx_t_5); if (unlikely(!__pyx_t_8)) goto __pyx_L5_unpacking_failed;
+      __Pyx_GOTREF(__pyx_t_8);
+      index = 1; __pyx_t_6 = __pyx_t_11(__pyx_t_5); if (unlikely(!__pyx_t_6)) goto __pyx_L5_unpacking_failed;
+      __Pyx_GOTREF(__pyx_t_6);
+      if (__Pyx_IternextUnpackEndCheck(__pyx_t_11(__pyx_t_5), 2) < 0) __PYX_ERR(0, 506, __pyx_L1_error)
+      __pyx_t_11 = NULL;
+      __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
+      goto __pyx_L6_unpacking_done;
+      __pyx_L5_unpacking_failed:;
+      __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
+      __pyx_t_11 = NULL;
+      if (__Pyx_IterFinish() == 0) __Pyx_RaiseNeedMoreValuesError(index);
+      __PYX_ERR(0, 506, __pyx_L1_error)
+      __pyx_L6_unpacking_done:;
+    }
+    __Pyx_XDECREF_SET(__pyx_v_symbol, __pyx_t_8);
+    __pyx_t_8 = 0;
+    if ((likely(PyTuple_CheckExact(__pyx_t_6))) || (PyList_CheckExact(__pyx_t_6))) {
+      PyObject* sequence = __pyx_t_6;
+      Py_ssize_t size = __Pyx_PySequence_SIZE(sequence);
+      if (unlikely(size != 2)) {
+        if (size > 2) __Pyx_RaiseTooManyValuesError(2);
+        else if (size >= 0) __Pyx_RaiseNeedMoreValuesError(size);
+        __PYX_ERR(0, 506, __pyx_L1_error)
+      }
+      #if CYTHON_ASSUME_SAFE_MACROS && !CYTHON_AVOID_BORROWED_REFS
+      if (likely(PyTuple_CheckExact(sequence))) {
+        __pyx_t_5 = PyTuple_GET_ITEM(sequence, 0);
+        __Pyx_INCREF(__pyx_t_5);
+        __pyx_t_3 = PyTuple_GET_ITEM(sequence, 1);
+        __Pyx_INCREF(__pyx_t_3);
+      } else {
+        __pyx_t_5 = __Pyx_PyList_GetItemRef(sequence, 0);
+        if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 506, __pyx_L1_error)
+        __Pyx_XGOTREF(__pyx_t_5);
+        __pyx_t_3 = __Pyx_PyList_GetItemRef(sequence, 1);
+        if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 506, __pyx_L1_error)
+        __Pyx_XGOTREF(__pyx_t_3);
+      }
+      #else
+      __pyx_t_5 = __Pyx_PySequence_ITEM(sequence, 0); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 506, __pyx_L1_error)
+      __Pyx_GOTREF(__pyx_t_5);
+      __pyx_t_3 = __Pyx_PySequence_ITEM(sequence, 1); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 506, __pyx_L1_error)
+      __Pyx_GOTREF(__pyx_t_3);
+      #endif
+      __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
+    } else {
+      Py_ssize_t index = -1;
+      __pyx_t_12 = PyObject_GetIter(__pyx_t_6); if (unlikely(!__pyx_t_12)) __PYX_ERR(0, 506, __pyx_L1_error)
+      __Pyx_GOTREF(__pyx_t_12);
+      __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
+      __pyx_t_11 = (CYTHON_COMPILING_IN_LIMITED_API) ? PyIter_Next : __Pyx_PyObject_GetIterNextFunc(__pyx_t_12);
+      index = 0; __pyx_t_5 = __pyx_t_11(__pyx_t_12); if (unlikely(!__pyx_t_5)) goto __pyx_L7_unpacking_failed;
+      __Pyx_GOTREF(__pyx_t_5);
+      index = 1; __pyx_t_3 = __pyx_t_11(__pyx_t_12); if (unlikely(!__pyx_t_3)) goto __pyx_L7_unpacking_failed;
+      __Pyx_GOTREF(__pyx_t_3);
+      if (__Pyx_IternextUnpackEndCheck(__pyx_t_11(__pyx_t_12), 2) < 0) __PYX_ERR(0, 506, __pyx_L1_error)
+      __pyx_t_11 = NULL;
+      __Pyx_DECREF(__pyx_t_12); __pyx_t_12 = 0;
+      goto __pyx_L8_unpacking_done;
+      __pyx_L7_unpacking_failed:;
+      __Pyx_DECREF(__pyx_t_12); __pyx_t_12 = 0;
+      __pyx_t_11 = NULL;
+      if (__Pyx_IterFinish() == 0) __Pyx_RaiseNeedMoreValuesError(index);
+      __PYX_ERR(0, 506, __pyx_L1_error)
+      __pyx_L8_unpacking_done:;
+    }
+    __Pyx_XDECREF_SET(__pyx_v_min_count, __pyx_t_5);
+    __pyx_t_5 = 0;
+    __Pyx_XDECREF_SET(__pyx_v_max_count, __pyx_t_3);
+    __pyx_t_3 = 0;
+    __pyx_v_i = __pyx_t_9;
+    __pyx_t_9 = (__pyx_t_9 + 1);
+
+    /* "sirius_decomposer.pyx":508
+ *         for i, (symbol, (min_count, max_count)) in enumerate(sorted_elements):
+ *             # Copy symbol (ensure null termination)
+ *             symbol_bytes = symbol.encode('ascii')             # <<<<<<<<<<<<<<
+ *             for j in range(min(3, len(symbol_bytes))):
+ *                 self.elements[i].symbol[j] = symbol_bytes[j]
+*/
+    __pyx_t_6 = __pyx_v_symbol;
+    __Pyx_INCREF(__pyx_t_6);
+    __pyx_t_7 = 0;
+    {
+      PyObject *__pyx_callargs[2] = {__pyx_t_6, __pyx_mstate_global->__pyx_n_u_ascii};
+      __pyx_t_4 = __Pyx_PyObject_FastCallMethod(__pyx_mstate_global->__pyx_n_u_encode, __pyx_callargs+__pyx_t_7, (2-__pyx_t_7) | (1*__Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET));
+      __Pyx_XDECREF(__pyx_t_6); __pyx_t_6 = 0;
+      if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 508, __pyx_L1_error)
+      __Pyx_GOTREF(__pyx_t_4);
+    }
+    if (!(likely(PyBytes_CheckExact(__pyx_t_4))||((__pyx_t_4) == Py_None) || __Pyx_RaiseUnexpectedTypeError("bytes", __pyx_t_4))) __PYX_ERR(0, 508, __pyx_L1_error)
+    __Pyx_XDECREF_SET(__pyx_v_symbol_bytes, ((PyObject*)__pyx_t_4));
+    __pyx_t_4 = 0;
+
+    /* "sirius_decomposer.pyx":509
+ *             # Copy symbol (ensure null termination)
+ *             symbol_bytes = symbol.encode('ascii')
+ *             for j in range(min(3, len(symbol_bytes))):             # <<<<<<<<<<<<<<
+ *                 self.elements[i].symbol[j] = symbol_bytes[j]
+ *             self.elements[i].symbol[min(3, len(symbol_bytes))] = 0
+*/
+    if (unlikely(__pyx_v_symbol_bytes == Py_None)) {
+      PyErr_SetString(PyExc_TypeError, "object of type 'NoneType' has no len()");
+      __PYX_ERR(0, 509, __pyx_L1_error)
+    }
+    __pyx_t_13 = __Pyx_PyBytes_GET_SIZE(__pyx_v_symbol_bytes); if (unlikely(__pyx_t_13 == ((Py_ssize_t)-1))) __PYX_ERR(0, 509, __pyx_L1_error)
+    __pyx_t_14 = 3;
+    __pyx_t_16 = (__pyx_t_13 < __pyx_t_14);
+    if (__pyx_t_16) {
+      __pyx_t_15 = __pyx_t_13;
+    } else {
+      __pyx_t_15 = __pyx_t_14;
+    }
+    __pyx_t_13 = __pyx_t_15;
+    __pyx_t_15 = __pyx_t_13;
+    for (__pyx_t_17 = 0; __pyx_t_17 < __pyx_t_15; __pyx_t_17+=1) {
+      __pyx_v_j = __pyx_t_17;
+
+      /* "sirius_decomposer.pyx":510
+ *             symbol_bytes = symbol.encode('ascii')
+ *             for j in range(min(3, len(symbol_bytes))):
+ *                 self.elements[i].symbol[j] = symbol_bytes[j]             # <<<<<<<<<<<<<<
+ *             self.elements[i].symbol[min(3, len(symbol_bytes))] = 0
+ * 
+*/
+      if (unlikely(__pyx_v_symbol_bytes == Py_None)) {
+        PyErr_SetString(PyExc_TypeError, "'NoneType' object is not subscriptable");
+        __PYX_ERR(0, 510, __pyx_L1_error)
+      }
+      __pyx_t_18 = __Pyx_PyBytes_GetItemInt(__pyx_v_symbol_bytes, __pyx_v_j, 0); if (unlikely(__pyx_t_18 == ((char)((char)-1)) && PyErr_Occurred())) __PYX_ERR(0, 510, __pyx_L1_error)
+      ((__pyx_v_self->elements[__pyx_v_i]).symbol[__pyx_v_j]) = __pyx_t_18;
+    }
+
+    /* "sirius_decomposer.pyx":511
+ *             for j in range(min(3, len(symbol_bytes))):
+ *                 self.elements[i].symbol[j] = symbol_bytes[j]
+ *             self.elements[i].symbol[min(3, len(symbol_bytes))] = 0             # <<<<<<<<<<<<<<
+ * 
+ *             self.elements[i].mass = ATOMIC_MASSES.get(symbol, 0.0)
+*/
+    if (unlikely(__pyx_v_symbol_bytes == Py_None)) {
+      PyErr_SetString(PyExc_TypeError, "object of type 'NoneType' has no len()");
+      __PYX_ERR(0, 511, __pyx_L1_error)
+    }
+    __pyx_t_13 = __Pyx_PyBytes_GET_SIZE(__pyx_v_symbol_bytes); if (unlikely(__pyx_t_13 == ((Py_ssize_t)-1))) __PYX_ERR(0, 511, __pyx_L1_error)
+    __pyx_t_14 = 3;
+    __pyx_t_16 = (__pyx_t_13 < __pyx_t_14);
+    if (__pyx_t_16) {
+      __pyx_t_15 = __pyx_t_13;
+    } else {
+      __pyx_t_15 = __pyx_t_14;
+    }
+    ((__pyx_v_self->elements[__pyx_v_i]).symbol[__pyx_t_15]) = 0;
+
+    /* "sirius_decomposer.pyx":513
+ *             self.elements[i].symbol[min(3, len(symbol_bytes))] = 0
+ * 
+ *             self.elements[i].mass = ATOMIC_MASSES.get(symbol, 0.0)             # <<<<<<<<<<<<<<
+ *             self.elements[i].min_count = min_count
+ *             self.elements[i].max_count = max_count
+*/
+    __pyx_t_6 = NULL;
+    __Pyx_GetModuleGlobalName(__pyx_t_8, __pyx_mstate_global->__pyx_n_u_ATOMIC_MASSES); if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 513, __pyx_L1_error)
+    __Pyx_GOTREF(__pyx_t_8);
+    __pyx_t_3 = __Pyx_PyObject_GetAttrStr(__pyx_t_8, __pyx_mstate_global->__pyx_n_u_get); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 513, __pyx_L1_error)
+    __Pyx_GOTREF(__pyx_t_3);
+    __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
+    __pyx_t_7 = 1;
+    #if CYTHON_UNPACK_METHODS
+    if (unlikely(PyMethod_Check(__pyx_t_3))) {
+      __pyx_t_6 = PyMethod_GET_SELF(__pyx_t_3);
+      assert(__pyx_t_6);
+      PyObject* __pyx__function = PyMethod_GET_FUNCTION(__pyx_t_3);
+      __Pyx_INCREF(__pyx_t_6);
+      __Pyx_INCREF(__pyx__function);
+      __Pyx_DECREF_SET(__pyx_t_3, __pyx__function);
+      __pyx_t_7 = 0;
+    }
+    #endif
+    {
+      PyObject *__pyx_callargs[3] = {__pyx_t_6, __pyx_v_symbol, __pyx_mstate_global->__pyx_float_0_0};
+      __pyx_t_4 = __Pyx_PyObject_FastCall(__pyx_t_3, __pyx_callargs+__pyx_t_7, (3-__pyx_t_7) | (__pyx_t_7*__Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET));
+      __Pyx_XDECREF(__pyx_t_6); __pyx_t_6 = 0;
+      __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+      if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 513, __pyx_L1_error)
+      __Pyx_GOTREF(__pyx_t_4);
+    }
+    __pyx_t_19 = __Pyx_PyFloat_AsDouble(__pyx_t_4); if (unlikely((__pyx_t_19 == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 513, __pyx_L1_error)
+    __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
+    (__pyx_v_self->elements[__pyx_v_i]).mass = __pyx_t_19;
+
+    /* "sirius_decomposer.pyx":514
+ * 
+ *             self.elements[i].mass = ATOMIC_MASSES.get(symbol, 0.0)
+ *             self.elements[i].min_count = min_count             # <<<<<<<<<<<<<<
+ *             self.elements[i].max_count = max_count
+ * 
+*/
+    __pyx_t_17 = __Pyx_PyLong_As_int(__pyx_v_min_count); if (unlikely((__pyx_t_17 == (int)-1) && PyErr_Occurred())) __PYX_ERR(0, 514, __pyx_L1_error)
+    (__pyx_v_self->elements[__pyx_v_i]).min_count = __pyx_t_17;
+
+    /* "sirius_decomposer.pyx":515
+ *             self.elements[i].mass = ATOMIC_MASSES.get(symbol, 0.0)
+ *             self.elements[i].min_count = min_count
+ *             self.elements[i].max_count = max_count             # <<<<<<<<<<<<<<
+ * 
+ *     def __dealloc__(self):
+*/
+    __pyx_t_17 = __Pyx_PyLong_As_int(__pyx_v_max_count); if (unlikely((__pyx_t_17 == (int)-1) && PyErr_Occurred())) __PYX_ERR(0, 515, __pyx_L1_error)
+    (__pyx_v_self->elements[__pyx_v_i]).max_count = __pyx_t_17;
+
+    /* "sirius_decomposer.pyx":506
+ *         cdef bytes symbol_bytes
+ * 
+ *         for i, (symbol, (min_count, max_count)) in enumerate(sorted_elements):             # <<<<<<<<<<<<<<
+ *             # Copy symbol (ensure null termination)
+ *             symbol_bytes = symbol.encode('ascii')
+*/
+  }
+  __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+
+  /* "sirius_decomposer.pyx":481
+ *     cdef dict element_bounds
+ * 
+ *     def __cinit__(self, dict element_bounds,             # <<<<<<<<<<<<<<
+ *                   double tolerance_ppm = 5.0, int max_results = 1000000):
+ *         """
+*/
+
+  /* function exit code */
+  __pyx_r = 0;
+  goto __pyx_L0;
+  __pyx_L1_error:;
+  __Pyx_XDECREF(__pyx_t_2);
+  __Pyx_XDECREF(__pyx_t_3);
+  __Pyx_XDECREF(__pyx_t_4);
+  __Pyx_XDECREF(__pyx_t_5);
+  __Pyx_XDECREF(__pyx_t_6);
+  __Pyx_XDECREF(__pyx_t_8);
+  __Pyx_XDECREF(__pyx_t_12);
+  __Pyx_AddTraceback("sirius_decomposer.CythonSpectrumDecomposer.__cinit__", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __pyx_r = -1;
+  __pyx_L0:;
+  __Pyx_XDECREF(__pyx_v_sorted_elements);
+  __Pyx_XDECREF(__pyx_v_symbol_bytes);
+  __Pyx_XDECREF(__pyx_v_symbol);
+  __Pyx_XDECREF(__pyx_v_min_count);
+  __Pyx_XDECREF(__pyx_v_max_count);
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+/* "sirius_decomposer.pyx":517
+ *             self.elements[i].max_count = max_count
+ * 
+ *     def __dealloc__(self):             # <<<<<<<<<<<<<<
+ *         """Clean up allocated memory."""
+ *         if self.elements:
+*/
+
+/* Python wrapper */
+static void __pyx_pw_17sirius_decomposer_24CythonSpectrumDecomposer_3__dealloc__(PyObject *__pyx_v_self); /*proto*/
+static void __pyx_pw_17sirius_decomposer_24CythonSpectrumDecomposer_3__dealloc__(PyObject *__pyx_v_self) {
+  CYTHON_UNUSED PyObject *const *__pyx_kwvalues;
+  __Pyx_RefNannyDeclarations
+  __Pyx_RefNannySetupContext("__dealloc__ (wrapper)", 0);
+  __pyx_kwvalues = __Pyx_KwValues_VARARGS(__pyx_args, __pyx_nargs);
+  __pyx_pf_17sirius_decomposer_24CythonSpectrumDecomposer_2__dealloc__(((struct __pyx_obj_17sirius_decomposer_CythonSpectrumDecomposer *)__pyx_v_self));
+
+  /* function exit code */
+  __Pyx_RefNannyFinishContext();
+}
+
+static void __pyx_pf_17sirius_decomposer_24CythonSpectrumDecomposer_2__dealloc__(struct __pyx_obj_17sirius_decomposer_CythonSpectrumDecomposer *__pyx_v_self) {
+  int __pyx_t_1;
+
+  /* "sirius_decomposer.pyx":519
+ *     def __dealloc__(self):
+ *         """Clean up allocated memory."""
+ *         if self.elements:             # <<<<<<<<<<<<<<
+ *             free(self.elements)
+ * 
+*/
+  __pyx_t_1 = (__pyx_v_self->elements != 0);
+  if (__pyx_t_1) {
+
+    /* "sirius_decomposer.pyx":520
+ *         """Clean up allocated memory."""
+ *         if self.elements:
+ *             free(self.elements)             # <<<<<<<<<<<<<<
+ * 
+ *     cdef dict _formula_array_to_dict(self, int* formula):
+*/
+    free(__pyx_v_self->elements);
+
+    /* "sirius_decomposer.pyx":519
+ *     def __dealloc__(self):
+ *         """Clean up allocated memory."""
+ *         if self.elements:             # <<<<<<<<<<<<<<
+ *             free(self.elements)
+ * 
+*/
+  }
+
+  /* "sirius_decomposer.pyx":517
+ *             self.elements[i].max_count = max_count
+ * 
+ *     def __dealloc__(self):             # <<<<<<<<<<<<<<
+ *         """Clean up allocated memory."""
+ *         if self.elements:
+*/
+
+  /* function exit code */
+}
+
+/* "sirius_decomposer.pyx":522
+ *             free(self.elements)
+ * 
+ *     cdef dict _formula_array_to_dict(self, int* formula):             # <<<<<<<<<<<<<<
+ *         """Convert formula array to dictionary."""
+ *         cdef int i, j
+*/
+
+static PyObject *__pyx_f_17sirius_decomposer_24CythonSpectrumDecomposer__formula_array_to_dict(struct __pyx_obj_17sirius_decomposer_CythonSpectrumDecomposer *__pyx_v_self, int *__pyx_v_formula) {
+  int __pyx_v_i;
+  int __pyx_v_j;
+  PyObject *__pyx_v_symbol_bytes = 0;
+  PyObject *__pyx_v_result = NULL;
+  PyObject *__pyx_v_symbol = NULL;
+  PyObject *__pyx_v_symbol_chars = NULL;
+  PyObject *__pyx_r = NULL;
+  __Pyx_RefNannyDeclarations
+  PyObject *__pyx_t_1 = NULL;
+  int __pyx_t_2;
+  int __pyx_t_3;
+  int __pyx_t_4;
+  int __pyx_t_5;
+  PyObject *__pyx_t_6 = NULL;
+  PyObject *__pyx_t_7 = NULL;
+  PyObject *__pyx_t_8 = NULL;
+  PyObject *__pyx_t_9 = NULL;
+  PyObject *__pyx_t_10 = NULL;
+  size_t __pyx_t_11;
+  int __pyx_t_12;
+  PyObject *__pyx_t_13 = NULL;
+  int __pyx_t_14;
+  int __pyx_lineno = 0;
+  const char *__pyx_filename = NULL;
+  int __pyx_clineno = 0;
+  __Pyx_RefNannySetupContext("_formula_array_to_dict", 0);
+
+  /* "sirius_decomposer.pyx":527
+ *         cdef bytes symbol_bytes
+ * 
+ *         result = {}             # <<<<<<<<<<<<<<
+ * 
+ *         for i in range(self.n_elements):
+*/
+  __pyx_t_1 = __Pyx_PyDict_NewPresized(0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 527, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_1);
+  __pyx_v_result = ((PyObject*)__pyx_t_1);
+  __pyx_t_1 = 0;
+
+  /* "sirius_decomposer.pyx":529
+ *         result = {}
+ * 
+ *         for i in range(self.n_elements):             # <<<<<<<<<<<<<<
+ *             if formula[i] > 0:
+ *                 # Safely extract symbol from C char array
+*/
+  __pyx_t_2 = __pyx_v_self->n_elements;
+  __pyx_t_3 = __pyx_t_2;
+  for (__pyx_t_4 = 0; __pyx_t_4 < __pyx_t_3; __pyx_t_4+=1) {
+    __pyx_v_i = __pyx_t_4;
+
+    /* "sirius_decomposer.pyx":530
+ * 
+ *         for i in range(self.n_elements):
+ *             if formula[i] > 0:             # <<<<<<<<<<<<<<
+ *                 # Safely extract symbol from C char array
+ *                 symbol_bytes = self.elements[i].symbol
+*/
+    __pyx_t_5 = ((__pyx_v_formula[__pyx_v_i]) > 0);
+    if (__pyx_t_5) {
+
+      /* "sirius_decomposer.pyx":532
+ *             if formula[i] > 0:
+ *                 # Safely extract symbol from C char array
+ *                 symbol_bytes = self.elements[i].symbol             # <<<<<<<<<<<<<<
+ *                 try:
+ *                     symbol = symbol_bytes.decode('ascii').rstrip('\x00')
+*/
+      __pyx_t_1 = __Pyx_PyObject_FromString((__pyx_v_self->elements[__pyx_v_i]).symbol); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 532, __pyx_L1_error)
+      __Pyx_GOTREF(__pyx_t_1);
+      __Pyx_XDECREF_SET(__pyx_v_symbol_bytes, ((PyObject*)__pyx_t_1));
+      __pyx_t_1 = 0;
+
+      /* "sirius_decomposer.pyx":533
+ *                 # Safely extract symbol from C char array
+ *                 symbol_bytes = self.elements[i].symbol
+ *                 try:             # <<<<<<<<<<<<<<
+ *                     symbol = symbol_bytes.decode('ascii').rstrip('\x00')
+ *                     if symbol:  # Only add non-empty symbols
+*/
+      {
+        __Pyx_PyThreadState_declare
+        __Pyx_PyThreadState_assign
+        __Pyx_ExceptionSave(&__pyx_t_6, &__pyx_t_7, &__pyx_t_8);
+        __Pyx_XGOTREF(__pyx_t_6);
+        __Pyx_XGOTREF(__pyx_t_7);
+        __Pyx_XGOTREF(__pyx_t_8);
+        /*try:*/ {
+
+          /* "sirius_decomposer.pyx":534
+ *                 symbol_bytes = self.elements[i].symbol
+ *                 try:
+ *                     symbol = symbol_bytes.decode('ascii').rstrip('\x00')             # <<<<<<<<<<<<<<
+ *                     if symbol:  # Only add non-empty symbols
+ *                         result[symbol] = formula[i]
+*/
+          __pyx_t_10 = __Pyx_decode_bytes(__pyx_v_symbol_bytes, 0, PY_SSIZE_T_MAX, NULL, NULL, PyUnicode_DecodeASCII); if (unlikely(!__pyx_t_10)) __PYX_ERR(0, 534, __pyx_L6_error)
+          __Pyx_GOTREF(__pyx_t_10);
+          __pyx_t_9 = __pyx_t_10;
+          __Pyx_INCREF(__pyx_t_9);
+          __pyx_t_11 = 0;
+          {
+            PyObject *__pyx_callargs[2] = {__pyx_t_9, __pyx_mstate_global->__pyx_kp_u_};
+            __pyx_t_1 = __Pyx_PyObject_FastCallMethod(__pyx_mstate_global->__pyx_n_u_rstrip, __pyx_callargs+__pyx_t_11, (2-__pyx_t_11) | (1*__Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET));
+            __Pyx_XDECREF(__pyx_t_9); __pyx_t_9 = 0;
+            __Pyx_DECREF(__pyx_t_10); __pyx_t_10 = 0;
+            if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 534, __pyx_L6_error)
+            __Pyx_GOTREF(__pyx_t_1);
+          }
+          __Pyx_XDECREF_SET(__pyx_v_symbol, ((PyObject*)__pyx_t_1));
+          __pyx_t_1 = 0;
+
+          /* "sirius_decomposer.pyx":535
+ *                 try:
+ *                     symbol = symbol_bytes.decode('ascii').rstrip('\x00')
+ *                     if symbol:  # Only add non-empty symbols             # <<<<<<<<<<<<<<
+ *                         result[symbol] = formula[i]
+ *                 except UnicodeDecodeError:
+*/
+          __pyx_t_5 = (__Pyx_PyUnicode_IS_TRUE(__pyx_v_symbol) != 0);
+          if (unlikely(((!CYTHON_ASSUME_SAFE_MACROS) && __pyx_t_5 < 0))) __PYX_ERR(0, 535, __pyx_L6_error)
+          if (__pyx_t_5) {
+
+            /* "sirius_decomposer.pyx":536
+ *                     symbol = symbol_bytes.decode('ascii').rstrip('\x00')
+ *                     if symbol:  # Only add non-empty symbols
+ *                         result[symbol] = formula[i]             # <<<<<<<<<<<<<<
+ *                 except UnicodeDecodeError:
+ *                     # Fallback: construct symbol byte by byte
+*/
+            __pyx_t_1 = __Pyx_PyLong_From_int((__pyx_v_formula[__pyx_v_i])); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 536, __pyx_L6_error)
+            __Pyx_GOTREF(__pyx_t_1);
+            if (unlikely((PyDict_SetItem(__pyx_v_result, __pyx_v_symbol, __pyx_t_1) < 0))) __PYX_ERR(0, 536, __pyx_L6_error)
+            __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
+
+            /* "sirius_decomposer.pyx":535
+ *                 try:
+ *                     symbol = symbol_bytes.decode('ascii').rstrip('\x00')
+ *                     if symbol:  # Only add non-empty symbols             # <<<<<<<<<<<<<<
+ *                         result[symbol] = formula[i]
+ *                 except UnicodeDecodeError:
+*/
+          }
+
+          /* "sirius_decomposer.pyx":533
+ *                 # Safely extract symbol from C char array
+ *                 symbol_bytes = self.elements[i].symbol
+ *                 try:             # <<<<<<<<<<<<<<
+ *                     symbol = symbol_bytes.decode('ascii').rstrip('\x00')
+ *                     if symbol:  # Only add non-empty symbols
+*/
+        }
+        __Pyx_XDECREF(__pyx_t_6); __pyx_t_6 = 0;
+        __Pyx_XDECREF(__pyx_t_7); __pyx_t_7 = 0;
+        __Pyx_XDECREF(__pyx_t_8); __pyx_t_8 = 0;
+        goto __pyx_L13_try_end;
+        __pyx_L6_error:;
+        __Pyx_XDECREF(__pyx_t_1); __pyx_t_1 = 0;
+        __Pyx_XDECREF(__pyx_t_10); __pyx_t_10 = 0;
+        __Pyx_XDECREF(__pyx_t_9); __pyx_t_9 = 0;
+
+        /* "sirius_decomposer.pyx":537
+ *                     if symbol:  # Only add non-empty symbols
+ *                         result[symbol] = formula[i]
+ *                 except UnicodeDecodeError:             # <<<<<<<<<<<<<<
+ *                     # Fallback: construct symbol byte by byte
+ *                     symbol_chars = []
+*/
+        __pyx_t_12 = __Pyx_PyErr_ExceptionMatches(__pyx_builtin_UnicodeDecodeError);
+        if (__pyx_t_12) {
+          __Pyx_AddTraceback("sirius_decomposer.CythonSpectrumDecomposer._formula_array_to_dict", __pyx_clineno, __pyx_lineno, __pyx_filename);
+          if (__Pyx_GetException(&__pyx_t_1, &__pyx_t_10, &__pyx_t_9) < 0) __PYX_ERR(0, 537, __pyx_L8_except_error)
+          __Pyx_XGOTREF(__pyx_t_1);
+          __Pyx_XGOTREF(__pyx_t_10);
+          __Pyx_XGOTREF(__pyx_t_9);
+
+          /* "sirius_decomposer.pyx":539
+ *                 except UnicodeDecodeError:
+ *                     # Fallback: construct symbol byte by byte
+ *                     symbol_chars = []             # <<<<<<<<<<<<<<
+ *                     for j in range(4):  # max 3 chars + null terminator
+ *                         if self.elements[i].symbol[j] == 0:
+*/
+          __pyx_t_13 = PyList_New(0); if (unlikely(!__pyx_t_13)) __PYX_ERR(0, 539, __pyx_L8_except_error)
+          __Pyx_GOTREF(__pyx_t_13);
+          __Pyx_XDECREF_SET(__pyx_v_symbol_chars, ((PyObject*)__pyx_t_13));
+          __pyx_t_13 = 0;
+
+          /* "sirius_decomposer.pyx":540
+ *                     # Fallback: construct symbol byte by byte
+ *                     symbol_chars = []
+ *                     for j in range(4):  # max 3 chars + null terminator             # <<<<<<<<<<<<<<
+ *                         if self.elements[i].symbol[j] == 0:
+ *                             break
+*/
+          for (__pyx_t_12 = 0; __pyx_t_12 < 4; __pyx_t_12+=1) {
+            __pyx_v_j = __pyx_t_12;
+
+            /* "sirius_decomposer.pyx":541
+ *                     symbol_chars = []
+ *                     for j in range(4):  # max 3 chars + null terminator
+ *                         if self.elements[i].symbol[j] == 0:             # <<<<<<<<<<<<<<
+ *                             break
+ *                         if 32 <= self.elements[i].symbol[j] <= 126:  # printable ASCII
+*/
+            __pyx_t_5 = (((__pyx_v_self->elements[__pyx_v_i]).symbol[__pyx_v_j]) == 0);
+            if (__pyx_t_5) {
+
+              /* "sirius_decomposer.pyx":542
+ *                     for j in range(4):  # max 3 chars + null terminator
+ *                         if self.elements[i].symbol[j] == 0:
+ *                             break             # <<<<<<<<<<<<<<
+ *                         if 32 <= self.elements[i].symbol[j] <= 126:  # printable ASCII
+ *                             symbol_chars.append(chr(self.elements[i].symbol[j]))
+*/
+              goto __pyx_L18_break;
+
+              /* "sirius_decomposer.pyx":541
+ *                     symbol_chars = []
+ *                     for j in range(4):  # max 3 chars + null terminator
+ *                         if self.elements[i].symbol[j] == 0:             # <<<<<<<<<<<<<<
+ *                             break
+ *                         if 32 <= self.elements[i].symbol[j] <= 126:  # printable ASCII
+*/
+            }
+
+            /* "sirius_decomposer.pyx":543
+ *                         if self.elements[i].symbol[j] == 0:
+ *                             break
+ *                         if 32 <= self.elements[i].symbol[j] <= 126:  # printable ASCII             # <<<<<<<<<<<<<<
+ *                             symbol_chars.append(chr(self.elements[i].symbol[j]))
+ *                     symbol = ''.join(symbol_chars)
+*/
+            __pyx_t_5 = (32 <= ((__pyx_v_self->elements[__pyx_v_i]).symbol[__pyx_v_j]));
+            if (__pyx_t_5) {
+              __pyx_t_5 = (((__pyx_v_self->elements[__pyx_v_i]).symbol[__pyx_v_j]) <= 0x7E);
+            }
+            if (__pyx_t_5) {
+
+              /* "sirius_decomposer.pyx":544
+ *                             break
+ *                         if 32 <= self.elements[i].symbol[j] <= 126:  # printable ASCII
+ *                             symbol_chars.append(chr(self.elements[i].symbol[j]))             # <<<<<<<<<<<<<<
+ *                     symbol = ''.join(symbol_chars)
+ *                     if symbol:
+*/
+              __pyx_t_13 = PyUnicode_FromOrdinal(((__pyx_v_self->elements[__pyx_v_i]).symbol[__pyx_v_j])); if (unlikely(!__pyx_t_13)) __PYX_ERR(0, 544, __pyx_L8_except_error)
+              __Pyx_GOTREF(__pyx_t_13);
+              __pyx_t_14 = __Pyx_PyList_Append(__pyx_v_symbol_chars, __pyx_t_13); if (unlikely(__pyx_t_14 == ((int)-1))) __PYX_ERR(0, 544, __pyx_L8_except_error)
+              __Pyx_DECREF(__pyx_t_13); __pyx_t_13 = 0;
+
+              /* "sirius_decomposer.pyx":543
+ *                         if self.elements[i].symbol[j] == 0:
+ *                             break
+ *                         if 32 <= self.elements[i].symbol[j] <= 126:  # printable ASCII             # <<<<<<<<<<<<<<
+ *                             symbol_chars.append(chr(self.elements[i].symbol[j]))
+ *                     symbol = ''.join(symbol_chars)
+*/
+            }
+          }
+          __pyx_L18_break:;
+
+          /* "sirius_decomposer.pyx":545
+ *                         if 32 <= self.elements[i].symbol[j] <= 126:  # printable ASCII
+ *                             symbol_chars.append(chr(self.elements[i].symbol[j]))
+ *                     symbol = ''.join(symbol_chars)             # <<<<<<<<<<<<<<
+ *                     if symbol:
+ *                         result[symbol] = formula[i]
+*/
+          __pyx_t_13 = PyUnicode_Join(__pyx_mstate_global->__pyx_kp_u__2, __pyx_v_symbol_chars); if (unlikely(!__pyx_t_13)) __PYX_ERR(0, 545, __pyx_L8_except_error)
+          __Pyx_GOTREF(__pyx_t_13);
+          __Pyx_XDECREF_SET(__pyx_v_symbol, ((PyObject*)__pyx_t_13));
+          __pyx_t_13 = 0;
+
+          /* "sirius_decomposer.pyx":546
+ *                             symbol_chars.append(chr(self.elements[i].symbol[j]))
+ *                     symbol = ''.join(symbol_chars)
+ *                     if symbol:             # <<<<<<<<<<<<<<
+ *                         result[symbol] = formula[i]
+ * 
+*/
+          __pyx_t_5 = (__pyx_v_symbol != Py_None)&&(__Pyx_PyUnicode_IS_TRUE(__pyx_v_symbol) != 0);
+          if (unlikely(((!CYTHON_ASSUME_SAFE_MACROS) && __pyx_t_5 < 0))) __PYX_ERR(0, 546, __pyx_L8_except_error)
+          if (__pyx_t_5) {
+
+            /* "sirius_decomposer.pyx":547
+ *                     symbol = ''.join(symbol_chars)
+ *                     if symbol:
+ *                         result[symbol] = formula[i]             # <<<<<<<<<<<<<<
+ * 
+ *         return result
+*/
+            __pyx_t_13 = __Pyx_PyLong_From_int((__pyx_v_formula[__pyx_v_i])); if (unlikely(!__pyx_t_13)) __PYX_ERR(0, 547, __pyx_L8_except_error)
+            __Pyx_GOTREF(__pyx_t_13);
+            if (unlikely((PyDict_SetItem(__pyx_v_result, __pyx_v_symbol, __pyx_t_13) < 0))) __PYX_ERR(0, 547, __pyx_L8_except_error)
+            __Pyx_DECREF(__pyx_t_13); __pyx_t_13 = 0;
+
+            /* "sirius_decomposer.pyx":546
+ *                             symbol_chars.append(chr(self.elements[i].symbol[j]))
+ *                     symbol = ''.join(symbol_chars)
+ *                     if symbol:             # <<<<<<<<<<<<<<
+ *                         result[symbol] = formula[i]
+ * 
+*/
+          }
+          __Pyx_XDECREF(__pyx_t_1); __pyx_t_1 = 0;
+          __Pyx_XDECREF(__pyx_t_10); __pyx_t_10 = 0;
+          __Pyx_XDECREF(__pyx_t_9); __pyx_t_9 = 0;
+          goto __pyx_L7_exception_handled;
+        }
+        goto __pyx_L8_except_error;
+
+        /* "sirius_decomposer.pyx":533
+ *                 # Safely extract symbol from C char array
+ *                 symbol_bytes = self.elements[i].symbol
+ *                 try:             # <<<<<<<<<<<<<<
+ *                     symbol = symbol_bytes.decode('ascii').rstrip('\x00')
+ *                     if symbol:  # Only add non-empty symbols
+*/
+        __pyx_L8_except_error:;
+        __Pyx_XGIVEREF(__pyx_t_6);
+        __Pyx_XGIVEREF(__pyx_t_7);
+        __Pyx_XGIVEREF(__pyx_t_8);
+        __Pyx_ExceptionReset(__pyx_t_6, __pyx_t_7, __pyx_t_8);
+        goto __pyx_L1_error;
+        __pyx_L7_exception_handled:;
+        __Pyx_XGIVEREF(__pyx_t_6);
+        __Pyx_XGIVEREF(__pyx_t_7);
+        __Pyx_XGIVEREF(__pyx_t_8);
+        __Pyx_ExceptionReset(__pyx_t_6, __pyx_t_7, __pyx_t_8);
+        __pyx_L13_try_end:;
+      }
+
+      /* "sirius_decomposer.pyx":530
+ * 
+ *         for i in range(self.n_elements):
+ *             if formula[i] > 0:             # <<<<<<<<<<<<<<
+ *                 # Safely extract symbol from C char array
+ *                 symbol_bytes = self.elements[i].symbol
+*/
+    }
+  }
+
+  /* "sirius_decomposer.pyx":549
+ *                         result[symbol] = formula[i]
+ * 
+ *         return result             # <<<<<<<<<<<<<<
+ * 
+ *     cdef bint _is_subset_formula(self, int* subset_formula, int* parent_formula):
+*/
+  __Pyx_XDECREF(__pyx_r);
+  __Pyx_INCREF(__pyx_v_result);
+  __pyx_r = __pyx_v_result;
+  goto __pyx_L0;
+
+  /* "sirius_decomposer.pyx":522
+ *             free(self.elements)
+ * 
+ *     cdef dict _formula_array_to_dict(self, int* formula):             # <<<<<<<<<<<<<<
+ *         """Convert formula array to dictionary."""
+ *         cdef int i, j
+*/
+
+  /* function exit code */
+  __pyx_L1_error:;
+  __Pyx_XDECREF(__pyx_t_1);
+  __Pyx_XDECREF(__pyx_t_9);
+  __Pyx_XDECREF(__pyx_t_10);
+  __Pyx_XDECREF(__pyx_t_13);
+  __Pyx_AddTraceback("sirius_decomposer.CythonSpectrumDecomposer._formula_array_to_dict", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __pyx_r = 0;
+  __pyx_L0:;
+  __Pyx_XDECREF(__pyx_v_symbol_bytes);
+  __Pyx_XDECREF(__pyx_v_result);
+  __Pyx_XDECREF(__pyx_v_symbol);
+  __Pyx_XDECREF(__pyx_v_symbol_chars);
+  __Pyx_XGIVEREF(__pyx_r);
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+/* "sirius_decomposer.pyx":551
+ *         return result
+ * 
+ *     cdef bint _is_subset_formula(self, int* subset_formula, int* parent_formula):             # <<<<<<<<<<<<<<
+ *         """
+ *         Check if subset_formula is a subset of parent_formula.
+*/
+
+static int __pyx_f_17sirius_decomposer_24CythonSpectrumDecomposer__is_subset_formula(struct __pyx_obj_17sirius_decomposer_CythonSpectrumDecomposer *__pyx_v_self, int *__pyx_v_subset_formula, int *__pyx_v_parent_formula) {
+  int __pyx_v_i;
+  int __pyx_r;
+  int __pyx_t_1;
+  int __pyx_t_2;
+  int __pyx_t_3;
+  int __pyx_t_4;
+
+  /* "sirius_decomposer.pyx":558
+ *         cdef int i
+ * 
+ *         for i in range(self.n_elements):             # <<<<<<<<<<<<<<
+ *             if subset_formula[i] > parent_formula[i]:
+ *                 return False
+*/
+  __pyx_t_1 = __pyx_v_self->n_elements;
+  __pyx_t_2 = __pyx_t_1;
+  for (__pyx_t_3 = 0; __pyx_t_3 < __pyx_t_2; __pyx_t_3+=1) {
+    __pyx_v_i = __pyx_t_3;
+
+    /* "sirius_decomposer.pyx":559
+ * 
+ *         for i in range(self.n_elements):
+ *             if subset_formula[i] > parent_formula[i]:             # <<<<<<<<<<<<<<
+ *                 return False
+ * 
+*/
+    __pyx_t_4 = ((__pyx_v_subset_formula[__pyx_v_i]) > (__pyx_v_parent_formula[__pyx_v_i]));
+    if (__pyx_t_4) {
+
+      /* "sirius_decomposer.pyx":560
+ *         for i in range(self.n_elements):
+ *             if subset_formula[i] > parent_formula[i]:
+ *                 return False             # <<<<<<<<<<<<<<
+ * 
+ *         return True
+*/
+      __pyx_r = 0;
+      goto __pyx_L0;
+
+      /* "sirius_decomposer.pyx":559
+ * 
+ *         for i in range(self.n_elements):
+ *             if subset_formula[i] > parent_formula[i]:             # <<<<<<<<<<<<<<
+ *                 return False
+ * 
+*/
+    }
+  }
+
+  /* "sirius_decomposer.pyx":562
+ *                 return False
+ * 
+ *         return True             # <<<<<<<<<<<<<<
+ * 
+ *     cdef double _calculate_formula_mass(self, int* formula):
+*/
+  __pyx_r = 1;
+  goto __pyx_L0;
+
+  /* "sirius_decomposer.pyx":551
+ *         return result
+ * 
+ *     cdef bint _is_subset_formula(self, int* subset_formula, int* parent_formula):             # <<<<<<<<<<<<<<
+ *         """
+ *         Check if subset_formula is a subset of parent_formula.
+*/
+
+  /* function exit code */
+  __pyx_L0:;
+  return __pyx_r;
+}
+
+/* "sirius_decomposer.pyx":564
+ *         return True
+ * 
+ *     cdef double _calculate_formula_mass(self, int* formula):             # <<<<<<<<<<<<<<
+ *         """Calculate the exact mass of a formula."""
+ *         cdef double mass = 0.0
+*/
+
+static double __pyx_f_17sirius_decomposer_24CythonSpectrumDecomposer__calculate_formula_mass(struct __pyx_obj_17sirius_decomposer_CythonSpectrumDecomposer *__pyx_v_self, int *__pyx_v_formula) {
+  double __pyx_v_mass;
+  int __pyx_v_i;
+  double __pyx_r;
+  int __pyx_t_1;
+  int __pyx_t_2;
+  int __pyx_t_3;
+
+  /* "sirius_decomposer.pyx":566
+ *     cdef double _calculate_formula_mass(self, int* formula):
+ *         """Calculate the exact mass of a formula."""
+ *         cdef double mass = 0.0             # <<<<<<<<<<<<<<
+ *         cdef int i
+ * 
+*/
+  __pyx_v_mass = 0.0;
+
+  /* "sirius_decomposer.pyx":569
+ *         cdef int i
+ * 
+ *         for i in range(self.n_elements):             # <<<<<<<<<<<<<<
+ *             mass += formula[i] * self.elements[i].mass
+ * 
+*/
+  __pyx_t_1 = __pyx_v_self->n_elements;
+  __pyx_t_2 = __pyx_t_1;
+  for (__pyx_t_3 = 0; __pyx_t_3 < __pyx_t_2; __pyx_t_3+=1) {
+    __pyx_v_i = __pyx_t_3;
+
+    /* "sirius_decomposer.pyx":570
+ * 
+ *         for i in range(self.n_elements):
+ *             mass += formula[i] * self.elements[i].mass             # <<<<<<<<<<<<<<
+ * 
+ *         return mass
+*/
+    __pyx_v_mass = (__pyx_v_mass + ((__pyx_v_formula[__pyx_v_i]) * (__pyx_v_self->elements[__pyx_v_i]).mass));
+  }
+
+  /* "sirius_decomposer.pyx":572
+ *             mass += formula[i] * self.elements[i].mass
+ * 
+ *         return mass             # <<<<<<<<<<<<<<
+ * 
+ *     def decompose_given_formula_spectrum(self, dict given_formula, list fragment_masses):
+*/
+  __pyx_r = __pyx_v_mass;
+  goto __pyx_L0;
+
+  /* "sirius_decomposer.pyx":564
+ *         return True
+ * 
+ *     cdef double _calculate_formula_mass(self, int* formula):             # <<<<<<<<<<<<<<
+ *         """Calculate the exact mass of a formula."""
+ *         cdef double mass = 0.0
+*/
+
+  /* function exit code */
+  __pyx_L0:;
+  return __pyx_r;
+}
+
+/* "sirius_decomposer.pyx":574
+ *         return mass
+ * 
+ *     def decompose_given_formula_spectrum(self, dict given_formula, list fragment_masses):             # <<<<<<<<<<<<<<
+ *         """
+ *         Decompose a spectrum given a specific precursor formula.
+*/
+
+/* Python wrapper */
+static PyObject *__pyx_pw_17sirius_decomposer_24CythonSpectrumDecomposer_5decompose_given_formula_spectrum(PyObject *__pyx_v_self, 
+#if CYTHON_METH_FASTCALL
+PyObject *const *__pyx_args, Py_ssize_t __pyx_nargs, PyObject *__pyx_kwds
+#else
+PyObject *__pyx_args, PyObject *__pyx_kwds
+#endif
+); /*proto*/
+PyDoc_STRVAR(__pyx_doc_17sirius_decomposer_24CythonSpectrumDecomposer_4decompose_given_formula_spectrum, "\n        Decompose a spectrum given a specific precursor formula.\n        \n        Fragment masses can be equal to the precursor mass. In this case, the algorithm\n        will return the original precursor formula as one of the possible fragment formulas.\n        \n        Args:\n            given_formula: Dictionary representing the precursor formula\n            fragment_masses: List of fragment masses to decompose (can include precursor mass)\n            \n        Returns:\n            List of possible fragment formulas for each mass\n        ");
+static PyMethodDef __pyx_mdef_17sirius_decomposer_24CythonSpectrumDecomposer_5decompose_given_formula_spectrum = {"decompose_given_formula_spectrum", (PyCFunction)(void(*)(void))(__Pyx_PyCFunction_FastCallWithKeywords)__pyx_pw_17sirius_decomposer_24CythonSpectrumDecomposer_5decompose_given_formula_spectrum, __Pyx_METH_FASTCALL|METH_KEYWORDS, __pyx_doc_17sirius_decomposer_24CythonSpectrumDecomposer_4decompose_given_formula_spectrum};
+static PyObject *__pyx_pw_17sirius_decomposer_24CythonSpectrumDecomposer_5decompose_given_formula_spectrum(PyObject *__pyx_v_self, 
+#if CYTHON_METH_FASTCALL
+PyObject *const *__pyx_args, Py_ssize_t __pyx_nargs, PyObject *__pyx_kwds
+#else
+PyObject *__pyx_args, PyObject *__pyx_kwds
+#endif
+) {
+  PyObject *__pyx_v_given_formula = 0;
+  PyObject *__pyx_v_fragment_masses = 0;
+  #if !CYTHON_METH_FASTCALL
+  CYTHON_UNUSED Py_ssize_t __pyx_nargs;
+  #endif
+  CYTHON_UNUSED PyObject *const *__pyx_kwvalues;
+  PyObject* values[2] = {0,0};
+  int __pyx_lineno = 0;
+  const char *__pyx_filename = NULL;
+  int __pyx_clineno = 0;
+  PyObject *__pyx_r = 0;
+  __Pyx_RefNannyDeclarations
+  __Pyx_RefNannySetupContext("decompose_given_formula_spectrum (wrapper)", 0);
+  #if !CYTHON_METH_FASTCALL
+  #if CYTHON_ASSUME_SAFE_SIZE
+  __pyx_nargs = PyTuple_GET_SIZE(__pyx_args);
+  #else
+  __pyx_nargs = PyTuple_Size(__pyx_args); if (unlikely(__pyx_nargs < 0)) return NULL;
+  #endif
+  #endif
+  __pyx_kwvalues = __Pyx_KwValues_FASTCALL(__pyx_args, __pyx_nargs);
+  {
+    PyObject ** const __pyx_pyargnames[] = {&__pyx_mstate_global->__pyx_n_u_given_formula,&__pyx_mstate_global->__pyx_n_u_fragment_masses,0};
+    const Py_ssize_t __pyx_kwds_len = (__pyx_kwds) ? __Pyx_NumKwargs_FASTCALL(__pyx_kwds) : 0;
+    if (unlikely(__pyx_kwds_len) < 0) __PYX_ERR(0, 574, __pyx_L3_error)
+    if (__pyx_kwds_len > 0) {
+      switch (__pyx_nargs) {
+        case  2:
+        values[1] = __Pyx_ArgRef_FASTCALL(__pyx_args, 1);
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[1])) __PYX_ERR(0, 574, __pyx_L3_error)
+        CYTHON_FALLTHROUGH;
+        case  1:
+        values[0] = __Pyx_ArgRef_FASTCALL(__pyx_args, 0);
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[0])) __PYX_ERR(0, 574, __pyx_L3_error)
+        CYTHON_FALLTHROUGH;
+        case  0: break;
+        default: goto __pyx_L5_argtuple_error;
+      }
+      const Py_ssize_t kwd_pos_args = __pyx_nargs;
+      if (__Pyx_ParseKeywords(__pyx_kwds, __pyx_kwvalues, __pyx_pyargnames, 0, values, kwd_pos_args, __pyx_kwds_len, "decompose_given_formula_spectrum", 0) < 0) __PYX_ERR(0, 574, __pyx_L3_error)
+      for (Py_ssize_t i = __pyx_nargs; i < 2; i++) {
+        if (unlikely(!values[i])) { __Pyx_RaiseArgtupleInvalid("decompose_given_formula_spectrum", 1, 2, 2, i); __PYX_ERR(0, 574, __pyx_L3_error) }
+      }
+    } else if (unlikely(__pyx_nargs != 2)) {
+      goto __pyx_L5_argtuple_error;
+    } else {
+      values[0] = __Pyx_ArgRef_FASTCALL(__pyx_args, 0);
+      if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[0])) __PYX_ERR(0, 574, __pyx_L3_error)
+      values[1] = __Pyx_ArgRef_FASTCALL(__pyx_args, 1);
+      if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[1])) __PYX_ERR(0, 574, __pyx_L3_error)
+    }
+    __pyx_v_given_formula = ((PyObject*)values[0]);
+    __pyx_v_fragment_masses = ((PyObject*)values[1]);
+  }
+  goto __pyx_L6_skip;
+  __pyx_L5_argtuple_error:;
+  __Pyx_RaiseArgtupleInvalid("decompose_given_formula_spectrum", 1, 2, 2, __pyx_nargs); __PYX_ERR(0, 574, __pyx_L3_error)
+  __pyx_L6_skip:;
+  goto __pyx_L4_argument_unpacking_done;
+  __pyx_L3_error:;
+  for (Py_ssize_t __pyx_temp=0; __pyx_temp < (Py_ssize_t)(sizeof(values)/sizeof(values[0])); ++__pyx_temp) {
+    Py_XDECREF(values[__pyx_temp]);
+  }
+  __Pyx_AddTraceback("sirius_decomposer.CythonSpectrumDecomposer.decompose_given_formula_spectrum", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __Pyx_RefNannyFinishContext();
+  return NULL;
+  __pyx_L4_argument_unpacking_done:;
+  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_given_formula), (&PyDict_Type), 1, "given_formula", 1))) __PYX_ERR(0, 574, __pyx_L1_error)
+  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_fragment_masses), (&PyList_Type), 1, "fragment_masses", 1))) __PYX_ERR(0, 574, __pyx_L1_error)
+  __pyx_r = __pyx_pf_17sirius_decomposer_24CythonSpectrumDecomposer_4decompose_given_formula_spectrum(((struct __pyx_obj_17sirius_decomposer_CythonSpectrumDecomposer *)__pyx_v_self), __pyx_v_given_formula, __pyx_v_fragment_masses);
+
+  /* function exit code */
+  goto __pyx_L0;
+  __pyx_L1_error:;
+  __pyx_r = NULL;
+  for (Py_ssize_t __pyx_temp=0; __pyx_temp < (Py_ssize_t)(sizeof(values)/sizeof(values[0])); ++__pyx_temp) {
+    Py_XDECREF(values[__pyx_temp]);
+  }
+  goto __pyx_L7_cleaned_up;
+  __pyx_L0:;
+  for (Py_ssize_t __pyx_temp=0; __pyx_temp < (Py_ssize_t)(sizeof(values)/sizeof(values[0])); ++__pyx_temp) {
+    Py_XDECREF(values[__pyx_temp]);
+  }
+  __pyx_L7_cleaned_up:;
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+static PyObject *__pyx_pf_17sirius_decomposer_24CythonSpectrumDecomposer_4decompose_given_formula_spectrum(struct __pyx_obj_17sirius_decomposer_CythonSpectrumDecomposer *__pyx_v_self, PyObject *__pyx_v_given_formula, PyObject *__pyx_v_fragment_masses) {
+  int *__pyx_v_precursor_formula;
+  int *__pyx_v_fragment_formula;
+  int __pyx_v_i;
+  double __pyx_v_fragment_mass;
+  double __pyx_v_mass_tolerance;
+  PyObject *__pyx_v_results = 0;
+  PyObject *__pyx_v_fragment_results = 0;
+  char *__pyx_v_symbol_bytes;
+  PyObject *__pyx_v_symbol = NULL;
+  PyObject *__pyx_r = NULL;
+  __Pyx_RefNannyDeclarations
+  PyObject *__pyx_t_1 = NULL;
+  int __pyx_t_2;
+  int __pyx_t_3;
+  int __pyx_t_4;
+  char *__pyx_t_5;
+  PyObject *__pyx_t_6 = NULL;
+  Py_ssize_t __pyx_t_7;
+  PyObject *__pyx_t_8 = NULL;
+  size_t __pyx_t_9;
+  int __pyx_t_10;
+  int __pyx_t_11;
+  double __pyx_t_12;
+  int __pyx_t_13;
+  char const *__pyx_t_14;
+  PyObject *__pyx_t_15 = NULL;
+  PyObject *__pyx_t_16 = NULL;
+  PyObject *__pyx_t_17 = NULL;
+  PyObject *__pyx_t_18 = NULL;
+  PyObject *__pyx_t_19 = NULL;
+  PyObject *__pyx_t_20 = NULL;
+  int __pyx_lineno = 0;
+  const char *__pyx_filename = NULL;
+  int __pyx_clineno = 0;
+  __Pyx_RefNannySetupContext("decompose_given_formula_spectrum", 0);
+
+  /* "sirius_decomposer.pyx":588
+ *             List of possible fragment formulas for each mass
+ *         """
+ *         cdef int* precursor_formula = <int*>malloc(self.n_elements * sizeof(int))             # <<<<<<<<<<<<<<
+ *         cdef int* fragment_formula = <int*>malloc(self.n_elements * sizeof(int))
+ *         cdef int i, j, element_idx
+*/
+  __pyx_v_precursor_formula = ((int *)malloc((__pyx_v_self->n_elements * (sizeof(int)))));
+
+  /* "sirius_decomposer.pyx":589
+ *         """
+ *         cdef int* precursor_formula = <int*>malloc(self.n_elements * sizeof(int))
+ *         cdef int* fragment_formula = <int*>malloc(self.n_elements * sizeof(int))             # <<<<<<<<<<<<<<
+ *         cdef int i, j, element_idx
+ *         cdef double fragment_mass, calculated_mass, mass_tolerance
+*/
+  __pyx_v_fragment_formula = ((int *)malloc((__pyx_v_self->n_elements * (sizeof(int)))));
+
+  /* "sirius_decomposer.pyx":592
+ *         cdef int i, j, element_idx
+ *         cdef double fragment_mass, calculated_mass, mass_tolerance
+ *         cdef list results = []             # <<<<<<<<<<<<<<
+ *         cdef list fragment_results
+ * 
+*/
+  __pyx_t_1 = PyList_New(0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 592, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_1);
+  __pyx_v_results = ((PyObject*)__pyx_t_1);
+  __pyx_t_1 = 0;
+
+  /* "sirius_decomposer.pyx":595
+ *         cdef list fragment_results
+ * 
+ *         try:             # <<<<<<<<<<<<<<
+ *             # Initialize precursor formula array
+ *             for i in range(self.n_elements):
+*/
+  /*try:*/ {
+
+    /* "sirius_decomposer.pyx":597
+ *         try:
+ *             # Initialize precursor formula array
+ *             for i in range(self.n_elements):             # <<<<<<<<<<<<<<
+ *                 precursor_formula[i] = 0
+ *                 fragment_formula[i] = 0  # Also initialize fragment_formula
+*/
+    __pyx_t_2 = __pyx_v_self->n_elements;
+    __pyx_t_3 = __pyx_t_2;
+    for (__pyx_t_4 = 0; __pyx_t_4 < __pyx_t_3; __pyx_t_4+=1) {
+      __pyx_v_i = __pyx_t_4;
+
+      /* "sirius_decomposer.pyx":598
+ *             # Initialize precursor formula array
+ *             for i in range(self.n_elements):
+ *                 precursor_formula[i] = 0             # <<<<<<<<<<<<<<
+ *                 fragment_formula[i] = 0  # Also initialize fragment_formula
+ * 
+*/
+      (__pyx_v_precursor_formula[__pyx_v_i]) = 0;
+
+      /* "sirius_decomposer.pyx":599
+ *             for i in range(self.n_elements):
+ *                 precursor_formula[i] = 0
+ *                 fragment_formula[i] = 0  # Also initialize fragment_formula             # <<<<<<<<<<<<<<
+ * 
+ *             # Convert given formula to array
+*/
+      (__pyx_v_fragment_formula[__pyx_v_i]) = 0;
+    }
+
+    /* "sirius_decomposer.pyx":602
+ * 
+ *             # Convert given formula to array
+ *             for i in range(self.n_elements):             # <<<<<<<<<<<<<<
+ *                 symbol_bytes = self.elements[i].symbol
+ *                 symbol = symbol_bytes.decode('ascii').rstrip('\x00')
+*/
+    __pyx_t_2 = __pyx_v_self->n_elements;
+    __pyx_t_3 = __pyx_t_2;
+    for (__pyx_t_4 = 0; __pyx_t_4 < __pyx_t_3; __pyx_t_4+=1) {
+      __pyx_v_i = __pyx_t_4;
+
+      /* "sirius_decomposer.pyx":603
+ *             # Convert given formula to array
+ *             for i in range(self.n_elements):
+ *                 symbol_bytes = self.elements[i].symbol             # <<<<<<<<<<<<<<
+ *                 symbol = symbol_bytes.decode('ascii').rstrip('\x00')
+ *                 if symbol in given_formula:
+*/
+      __pyx_t_5 = (__pyx_v_self->elements[__pyx_v_i]).symbol;
+      __pyx_v_symbol_bytes = __pyx_t_5;
+
+      /* "sirius_decomposer.pyx":604
+ *             for i in range(self.n_elements):
+ *                 symbol_bytes = self.elements[i].symbol
+ *                 symbol = symbol_bytes.decode('ascii').rstrip('\x00')             # <<<<<<<<<<<<<<
+ *                 if symbol in given_formula:
+ *                     precursor_formula[i] = given_formula[symbol]
+*/
+      __pyx_t_7 = __Pyx_ssize_strlen(__pyx_v_symbol_bytes); if (unlikely(__pyx_t_7 == ((Py_ssize_t)-1))) __PYX_ERR(0, 604, __pyx_L4_error)
+      __pyx_t_8 = __Pyx_decode_c_string(__pyx_v_symbol_bytes, 0, __pyx_t_7, NULL, NULL, PyUnicode_DecodeASCII); if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 604, __pyx_L4_error)
+      __Pyx_GOTREF(__pyx_t_8);
+      __pyx_t_6 = __pyx_t_8;
+      __Pyx_INCREF(__pyx_t_6);
+      __pyx_t_9 = 0;
+      {
+        PyObject *__pyx_callargs[2] = {__pyx_t_6, __pyx_mstate_global->__pyx_kp_u_};
+        __pyx_t_1 = __Pyx_PyObject_FastCallMethod(__pyx_mstate_global->__pyx_n_u_rstrip, __pyx_callargs+__pyx_t_9, (2-__pyx_t_9) | (1*__Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET));
+        __Pyx_XDECREF(__pyx_t_6); __pyx_t_6 = 0;
+        __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
+        if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 604, __pyx_L4_error)
+        __Pyx_GOTREF(__pyx_t_1);
+      }
+      __Pyx_XDECREF_SET(__pyx_v_symbol, __pyx_t_1);
+      __pyx_t_1 = 0;
+
+      /* "sirius_decomposer.pyx":605
+ *                 symbol_bytes = self.elements[i].symbol
+ *                 symbol = symbol_bytes.decode('ascii').rstrip('\x00')
+ *                 if symbol in given_formula:             # <<<<<<<<<<<<<<
+ *                     precursor_formula[i] = given_formula[symbol]
+ * 
+*/
+      if (unlikely(__pyx_v_given_formula == Py_None)) {
+        PyErr_SetString(PyExc_TypeError, "'NoneType' object is not iterable");
+        __PYX_ERR(0, 605, __pyx_L4_error)
+      }
+      __pyx_t_10 = (__Pyx_PyDict_ContainsTF(__pyx_v_symbol, __pyx_v_given_formula, Py_EQ)); if (unlikely((__pyx_t_10 < 0))) __PYX_ERR(0, 605, __pyx_L4_error)
+      if (__pyx_t_10) {
+
+        /* "sirius_decomposer.pyx":606
+ *                 symbol = symbol_bytes.decode('ascii').rstrip('\x00')
+ *                 if symbol in given_formula:
+ *                     precursor_formula[i] = given_formula[symbol]             # <<<<<<<<<<<<<<
+ * 
+ *             # For each fragment mass, find all possible subset formulas
+*/
+        if (unlikely(__pyx_v_given_formula == Py_None)) {
+          PyErr_SetString(PyExc_TypeError, "'NoneType' object is not subscriptable");
+          __PYX_ERR(0, 606, __pyx_L4_error)
+        }
+        __pyx_t_1 = __Pyx_PyDict_GetItem(__pyx_v_given_formula, __pyx_v_symbol); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 606, __pyx_L4_error)
+        __Pyx_GOTREF(__pyx_t_1);
+        __pyx_t_11 = __Pyx_PyLong_As_int(__pyx_t_1); if (unlikely((__pyx_t_11 == (int)-1) && PyErr_Occurred())) __PYX_ERR(0, 606, __pyx_L4_error)
+        __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
+        (__pyx_v_precursor_formula[__pyx_v_i]) = __pyx_t_11;
+
+        /* "sirius_decomposer.pyx":605
+ *                 symbol_bytes = self.elements[i].symbol
+ *                 symbol = symbol_bytes.decode('ascii').rstrip('\x00')
+ *                 if symbol in given_formula:             # <<<<<<<<<<<<<<
+ *                     precursor_formula[i] = given_formula[symbol]
+ * 
+*/
+      }
+    }
+
+    /* "sirius_decomposer.pyx":609
+ * 
+ *             # For each fragment mass, find all possible subset formulas
+ *             for fragment_mass in fragment_masses:             # <<<<<<<<<<<<<<
+ *                 fragment_results = []
+ *                 mass_tolerance = fragment_mass * self.tolerance
+*/
+    if (unlikely(__pyx_v_fragment_masses == Py_None)) {
+      PyErr_SetString(PyExc_TypeError, "'NoneType' object is not iterable");
+      __PYX_ERR(0, 609, __pyx_L4_error)
+    }
+    __pyx_t_1 = __pyx_v_fragment_masses; __Pyx_INCREF(__pyx_t_1);
+    __pyx_t_7 = 0;
+    for (;;) {
+      {
+        Py_ssize_t __pyx_temp = __Pyx_PyList_GET_SIZE(__pyx_t_1);
+        #if !CYTHON_ASSUME_SAFE_SIZE
+        if (unlikely((__pyx_temp < 0))) __PYX_ERR(0, 609, __pyx_L4_error)
+        #endif
+        if (__pyx_t_7 >= __pyx_temp) break;
+      }
+      __pyx_t_8 = __Pyx_PyList_GetItemRef(__pyx_t_1, __pyx_t_7);
+      ++__pyx_t_7;
+      if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 609, __pyx_L4_error)
+      __Pyx_GOTREF(__pyx_t_8);
+      __pyx_t_12 = __Pyx_PyFloat_AsDouble(__pyx_t_8); if (unlikely((__pyx_t_12 == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 609, __pyx_L4_error)
+      __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
+      __pyx_v_fragment_mass = __pyx_t_12;
+
+      /* "sirius_decomposer.pyx":610
+ *             # For each fragment mass, find all possible subset formulas
+ *             for fragment_mass in fragment_masses:
+ *                 fragment_results = []             # <<<<<<<<<<<<<<
+ *                 mass_tolerance = fragment_mass * self.tolerance
+ * 
+*/
+      __pyx_t_8 = PyList_New(0); if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 610, __pyx_L4_error)
+      __Pyx_GOTREF(__pyx_t_8);
+      __Pyx_XDECREF_SET(__pyx_v_fragment_results, ((PyObject*)__pyx_t_8));
+      __pyx_t_8 = 0;
+
+      /* "sirius_decomposer.pyx":611
+ *             for fragment_mass in fragment_masses:
+ *                 fragment_results = []
+ *                 mass_tolerance = fragment_mass * self.tolerance             # <<<<<<<<<<<<<<
+ * 
+ *                 # Generate all possible subset formulas
+*/
+      __pyx_v_mass_tolerance = (__pyx_v_fragment_mass * __pyx_v_self->tolerance);
+
+      /* "sirius_decomposer.pyx":614
+ * 
+ *                 # Generate all possible subset formulas
+ *                 self._generate_subset_formulas(precursor_formula, fragment_formula, 0,             # <<<<<<<<<<<<<<
+ *                                              fragment_mass, mass_tolerance, fragment_results)
+ * 
+*/
+      ((struct __pyx_vtabstruct_17sirius_decomposer_CythonSpectrumDecomposer *)__pyx_v_self->__pyx_vtab)->_generate_subset_formulas(__pyx_v_self, __pyx_v_precursor_formula, __pyx_v_fragment_formula, 0, __pyx_v_fragment_mass, __pyx_v_mass_tolerance, __pyx_v_fragment_results); if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 614, __pyx_L4_error)
+
+      /* "sirius_decomposer.pyx":617
+ *                                              fragment_mass, mass_tolerance, fragment_results)
+ * 
+ *                 results.append(fragment_results)             # <<<<<<<<<<<<<<
+ * 
+ *             return results
+*/
+      __pyx_t_13 = __Pyx_PyList_Append(__pyx_v_results, __pyx_v_fragment_results); if (unlikely(__pyx_t_13 == ((int)-1))) __PYX_ERR(0, 617, __pyx_L4_error)
+
+      /* "sirius_decomposer.pyx":609
+ * 
+ *             # For each fragment mass, find all possible subset formulas
+ *             for fragment_mass in fragment_masses:             # <<<<<<<<<<<<<<
+ *                 fragment_results = []
+ *                 mass_tolerance = fragment_mass * self.tolerance
+*/
+    }
+    __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
+
+    /* "sirius_decomposer.pyx":619
+ *                 results.append(fragment_results)
+ * 
+ *             return results             # <<<<<<<<<<<<<<
+ * 
+ *         finally:
+*/
+    __Pyx_XDECREF(__pyx_r);
+    __Pyx_INCREF(__pyx_v_results);
+    __pyx_r = __pyx_v_results;
+    goto __pyx_L3_return;
+  }
+
+  /* "sirius_decomposer.pyx":622
+ * 
+ *         finally:
+ *             free(precursor_formula)             # <<<<<<<<<<<<<<
+ *             free(fragment_formula)
+ * 
+*/
+  /*finally:*/ {
+    __pyx_L4_error:;
+    /*exception exit:*/{
+      __Pyx_PyThreadState_declare
+      __Pyx_PyThreadState_assign
+      __pyx_t_15 = 0; __pyx_t_16 = 0; __pyx_t_17 = 0; __pyx_t_18 = 0; __pyx_t_19 = 0; __pyx_t_20 = 0;
+      __Pyx_XDECREF(__pyx_t_1); __pyx_t_1 = 0;
+      __Pyx_XDECREF(__pyx_t_6); __pyx_t_6 = 0;
+      __Pyx_XDECREF(__pyx_t_8); __pyx_t_8 = 0;
+       __Pyx_ExceptionSwap(&__pyx_t_18, &__pyx_t_19, &__pyx_t_20);
+      if ( unlikely(__Pyx_GetException(&__pyx_t_15, &__pyx_t_16, &__pyx_t_17) < 0)) __Pyx_ErrFetch(&__pyx_t_15, &__pyx_t_16, &__pyx_t_17);
+      __Pyx_XGOTREF(__pyx_t_15);
+      __Pyx_XGOTREF(__pyx_t_16);
+      __Pyx_XGOTREF(__pyx_t_17);
+      __Pyx_XGOTREF(__pyx_t_18);
+      __Pyx_XGOTREF(__pyx_t_19);
+      __Pyx_XGOTREF(__pyx_t_20);
+      __pyx_t_2 = __pyx_lineno; __pyx_t_3 = __pyx_clineno; __pyx_t_14 = __pyx_filename;
+      {
+        free(__pyx_v_precursor_formula);
+
+        /* "sirius_decomposer.pyx":623
+ *         finally:
+ *             free(precursor_formula)
+ *             free(fragment_formula)             # <<<<<<<<<<<<<<
+ * 
+ *     cdef void _generate_subset_formulas(self, int* max_formula, int* current_formula,
+*/
+        free(__pyx_v_fragment_formula);
+      }
+      __Pyx_XGIVEREF(__pyx_t_18);
+      __Pyx_XGIVEREF(__pyx_t_19);
+      __Pyx_XGIVEREF(__pyx_t_20);
+      __Pyx_ExceptionReset(__pyx_t_18, __pyx_t_19, __pyx_t_20);
+      __Pyx_XGIVEREF(__pyx_t_15);
+      __Pyx_XGIVEREF(__pyx_t_16);
+      __Pyx_XGIVEREF(__pyx_t_17);
+      __Pyx_ErrRestore(__pyx_t_15, __pyx_t_16, __pyx_t_17);
+      __pyx_t_15 = 0; __pyx_t_16 = 0; __pyx_t_17 = 0; __pyx_t_18 = 0; __pyx_t_19 = 0; __pyx_t_20 = 0;
+      __pyx_lineno = __pyx_t_2; __pyx_clineno = __pyx_t_3; __pyx_filename = __pyx_t_14;
+      goto __pyx_L1_error;
+    }
+    __pyx_L3_return: {
+      __pyx_t_20 = __pyx_r;
+      __pyx_r = 0;
+
+      /* "sirius_decomposer.pyx":622
+ * 
+ *         finally:
+ *             free(precursor_formula)             # <<<<<<<<<<<<<<
+ *             free(fragment_formula)
+ * 
+*/
+      free(__pyx_v_precursor_formula);
+
+      /* "sirius_decomposer.pyx":623
+ *         finally:
+ *             free(precursor_formula)
+ *             free(fragment_formula)             # <<<<<<<<<<<<<<
+ * 
+ *     cdef void _generate_subset_formulas(self, int* max_formula, int* current_formula,
+*/
+      free(__pyx_v_fragment_formula);
+      __pyx_r = __pyx_t_20;
+      __pyx_t_20 = 0;
+      goto __pyx_L0;
+    }
+  }
+
+  /* "sirius_decomposer.pyx":574
+ *         return mass
+ * 
+ *     def decompose_given_formula_spectrum(self, dict given_formula, list fragment_masses):             # <<<<<<<<<<<<<<
+ *         """
+ *         Decompose a spectrum given a specific precursor formula.
+*/
+
+  /* function exit code */
+  __pyx_L1_error:;
+  __Pyx_XDECREF(__pyx_t_1);
+  __Pyx_XDECREF(__pyx_t_6);
+  __Pyx_XDECREF(__pyx_t_8);
+  __Pyx_AddTraceback("sirius_decomposer.CythonSpectrumDecomposer.decompose_given_formula_spectrum", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __pyx_r = NULL;
+  __pyx_L0:;
+  __Pyx_XDECREF(__pyx_v_results);
+  __Pyx_XDECREF(__pyx_v_fragment_results);
+  __Pyx_XDECREF(__pyx_v_symbol);
+  __Pyx_XGIVEREF(__pyx_r);
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+/* "sirius_decomposer.pyx":625
+ *             free(fragment_formula)
+ * 
+ *     cdef void _generate_subset_formulas(self, int* max_formula, int* current_formula,             # <<<<<<<<<<<<<<
+ *                                        int level, double target_mass, double tolerance,
+ *                                        list results):
+*/
+
+static void __pyx_f_17sirius_decomposer_24CythonSpectrumDecomposer__generate_subset_formulas(struct __pyx_obj_17sirius_decomposer_CythonSpectrumDecomposer *__pyx_v_self, int *__pyx_v_max_formula, int *__pyx_v_current_formula, int __pyx_v_level, double __pyx_v_target_mass, double __pyx_v_tolerance, PyObject *__pyx_v_results) {
+  int __pyx_v_count;
+  int __pyx_v_max_count;
+  double __pyx_v_current_mass;
+  PyObject *__pyx_v_formula_dict = NULL;
+  __Pyx_RefNannyDeclarations
+  int __pyx_t_1;
+  double __pyx_t_2;
+  PyObject *__pyx_t_3 = NULL;
+  int __pyx_t_4;
+  Py_ssize_t __pyx_t_5;
+  long __pyx_t_6;
+  long __pyx_t_7;
+  int __pyx_t_8;
+  int __pyx_lineno = 0;
+  const char *__pyx_filename = NULL;
+  int __pyx_clineno = 0;
+  __Pyx_RefNannySetupContext("_generate_subset_formulas", 0);
+
+  /* "sirius_decomposer.pyx":632
+ *         cdef double new_mass, current_mass
+ * 
+ *         if level >= self.n_elements:             # <<<<<<<<<<<<<<
+ *             # Check if mass matches
+ *             current_mass = self._calculate_formula_mass(current_formula)
+*/
+  __pyx_t_1 = (__pyx_v_level >= __pyx_v_self->n_elements);
+  if (__pyx_t_1) {
+
+    /* "sirius_decomposer.pyx":634
+ *         if level >= self.n_elements:
+ *             # Check if mass matches
+ *             current_mass = self._calculate_formula_mass(current_formula)             # <<<<<<<<<<<<<<
+ *             if fabs(current_mass - target_mass) <= tolerance:
+ *                 formula_dict = self._formula_array_to_dict(current_formula)
+*/
+    __pyx_t_2 = ((struct __pyx_vtabstruct_17sirius_decomposer_CythonSpectrumDecomposer *)__pyx_v_self->__pyx_vtab)->_calculate_formula_mass(__pyx_v_self, __pyx_v_current_formula); if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 634, __pyx_L1_error)
+    __pyx_v_current_mass = __pyx_t_2;
+
+    /* "sirius_decomposer.pyx":635
+ *             # Check if mass matches
+ *             current_mass = self._calculate_formula_mass(current_formula)
+ *             if fabs(current_mass - target_mass) <= tolerance:             # <<<<<<<<<<<<<<
+ *                 formula_dict = self._formula_array_to_dict(current_formula)
+ *                 if formula_dict:  # Only add non-empty formulas
+*/
+    __pyx_t_1 = (fabs((__pyx_v_current_mass - __pyx_v_target_mass)) <= __pyx_v_tolerance);
+    if (__pyx_t_1) {
+
+      /* "sirius_decomposer.pyx":636
+ *             current_mass = self._calculate_formula_mass(current_formula)
+ *             if fabs(current_mass - target_mass) <= tolerance:
+ *                 formula_dict = self._formula_array_to_dict(current_formula)             # <<<<<<<<<<<<<<
+ *                 if formula_dict:  # Only add non-empty formulas
+ *                     results.append(formula_dict)
+*/
+      __pyx_t_3 = ((struct __pyx_vtabstruct_17sirius_decomposer_CythonSpectrumDecomposer *)__pyx_v_self->__pyx_vtab)->_formula_array_to_dict(__pyx_v_self, __pyx_v_current_formula); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 636, __pyx_L1_error)
+      __Pyx_GOTREF(__pyx_t_3);
+      __pyx_v_formula_dict = ((PyObject*)__pyx_t_3);
+      __pyx_t_3 = 0;
+
+      /* "sirius_decomposer.pyx":637
+ *             if fabs(current_mass - target_mass) <= tolerance:
+ *                 formula_dict = self._formula_array_to_dict(current_formula)
+ *                 if formula_dict:  # Only add non-empty formulas             # <<<<<<<<<<<<<<
+ *                     results.append(formula_dict)
+ *             return
+*/
+      __pyx_t_1 = __Pyx_PyObject_IsTrue(__pyx_v_formula_dict); if (unlikely((__pyx_t_1 < 0))) __PYX_ERR(0, 637, __pyx_L1_error)
+      if (__pyx_t_1) {
+
+        /* "sirius_decomposer.pyx":638
+ *                 formula_dict = self._formula_array_to_dict(current_formula)
+ *                 if formula_dict:  # Only add non-empty formulas
+ *                     results.append(formula_dict)             # <<<<<<<<<<<<<<
+ *             return
+ * 
+*/
+        if (unlikely(__pyx_v_results == Py_None)) {
+          PyErr_Format(PyExc_AttributeError, "'NoneType' object has no attribute '%.30s'", "append");
+          __PYX_ERR(0, 638, __pyx_L1_error)
+        }
+        __pyx_t_4 = __Pyx_PyList_Append(__pyx_v_results, __pyx_v_formula_dict); if (unlikely(__pyx_t_4 == ((int)-1))) __PYX_ERR(0, 638, __pyx_L1_error)
+
+        /* "sirius_decomposer.pyx":637
+ *             if fabs(current_mass - target_mass) <= tolerance:
+ *                 formula_dict = self._formula_array_to_dict(current_formula)
+ *                 if formula_dict:  # Only add non-empty formulas             # <<<<<<<<<<<<<<
+ *                     results.append(formula_dict)
+ *             return
+*/
+      }
+
+      /* "sirius_decomposer.pyx":635
+ *             # Check if mass matches
+ *             current_mass = self._calculate_formula_mass(current_formula)
+ *             if fabs(current_mass - target_mass) <= tolerance:             # <<<<<<<<<<<<<<
+ *                 formula_dict = self._formula_array_to_dict(current_formula)
+ *                 if formula_dict:  # Only add non-empty formulas
+*/
+    }
+
+    /* "sirius_decomposer.pyx":639
+ *                 if formula_dict:  # Only add non-empty formulas
+ *                     results.append(formula_dict)
+ *             return             # <<<<<<<<<<<<<<
+ * 
+ *         # Early termination if too many results
+*/
+    goto __pyx_L0;
+
+    /* "sirius_decomposer.pyx":632
+ *         cdef double new_mass, current_mass
+ * 
+ *         if level >= self.n_elements:             # <<<<<<<<<<<<<<
+ *             # Check if mass matches
+ *             current_mass = self._calculate_formula_mass(current_formula)
+*/
+  }
+
+  /* "sirius_decomposer.pyx":642
+ * 
+ *         # Early termination if too many results
+ *         if len(results) >= self.max_results:             # <<<<<<<<<<<<<<
+ *             return
+ * 
+*/
+  if (unlikely(__pyx_v_results == Py_None)) {
+    PyErr_SetString(PyExc_TypeError, "object of type 'NoneType' has no len()");
+    __PYX_ERR(0, 642, __pyx_L1_error)
+  }
+  __pyx_t_5 = __Pyx_PyList_GET_SIZE(__pyx_v_results); if (unlikely(__pyx_t_5 == ((Py_ssize_t)-1))) __PYX_ERR(0, 642, __pyx_L1_error)
+  __pyx_t_1 = (__pyx_t_5 >= __pyx_v_self->max_results);
+  if (__pyx_t_1) {
+
+    /* "sirius_decomposer.pyx":643
+ *         # Early termination if too many results
+ *         if len(results) >= self.max_results:
+ *             return             # <<<<<<<<<<<<<<
+ * 
+ *         max_count = max_formula[level]
+*/
+    goto __pyx_L0;
+
+    /* "sirius_decomposer.pyx":642
+ * 
+ *         # Early termination if too many results
+ *         if len(results) >= self.max_results:             # <<<<<<<<<<<<<<
+ *             return
+ * 
+*/
+  }
+
+  /* "sirius_decomposer.pyx":645
+ *             return
+ * 
+ *         max_count = max_formula[level]             # <<<<<<<<<<<<<<
+ * 
+ *         # Try all possible counts for this element (0 to max_count)
+*/
+  __pyx_v_max_count = (__pyx_v_max_formula[__pyx_v_level]);
+
+  /* "sirius_decomposer.pyx":648
+ * 
+ *         # Try all possible counts for this element (0 to max_count)
+ *         for count in range(max_count + 1):             # <<<<<<<<<<<<<<
+ *             current_formula[level] = count
+ * 
+*/
+  __pyx_t_6 = (__pyx_v_max_count + 1);
+  __pyx_t_7 = __pyx_t_6;
+  for (__pyx_t_8 = 0; __pyx_t_8 < __pyx_t_7; __pyx_t_8+=1) {
+    __pyx_v_count = __pyx_t_8;
+
+    /* "sirius_decomposer.pyx":649
+ *         # Try all possible counts for this element (0 to max_count)
+ *         for count in range(max_count + 1):
+ *             current_formula[level] = count             # <<<<<<<<<<<<<<
+ * 
+ *             # Early mass check to prune search space
+*/
+    (__pyx_v_current_formula[__pyx_v_level]) = __pyx_v_count;
+
+    /* "sirius_decomposer.pyx":652
+ * 
+ *             # Early mass check to prune search space
+ *             current_mass = self._calculate_formula_mass(current_formula)             # <<<<<<<<<<<<<<
+ *             if current_mass > target_mass + tolerance:
+ *                 break  # Mass too high, no point in trying higher counts
+*/
+    __pyx_t_2 = ((struct __pyx_vtabstruct_17sirius_decomposer_CythonSpectrumDecomposer *)__pyx_v_self->__pyx_vtab)->_calculate_formula_mass(__pyx_v_self, __pyx_v_current_formula); if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 652, __pyx_L1_error)
+    __pyx_v_current_mass = __pyx_t_2;
+
+    /* "sirius_decomposer.pyx":653
+ *             # Early mass check to prune search space
+ *             current_mass = self._calculate_formula_mass(current_formula)
+ *             if current_mass > target_mass + tolerance:             # <<<<<<<<<<<<<<
+ *                 break  # Mass too high, no point in trying higher counts
+ * 
+*/
+    __pyx_t_1 = (__pyx_v_current_mass > (__pyx_v_target_mass + __pyx_v_tolerance));
+    if (__pyx_t_1) {
+
+      /* "sirius_decomposer.pyx":654
+ *             current_mass = self._calculate_formula_mass(current_formula)
+ *             if current_mass > target_mass + tolerance:
+ *                 break  # Mass too high, no point in trying higher counts             # <<<<<<<<<<<<<<
+ * 
+ *             self._generate_subset_formulas(max_formula, current_formula, level + 1,
+*/
+      goto __pyx_L8_break;
+
+      /* "sirius_decomposer.pyx":653
+ *             # Early mass check to prune search space
+ *             current_mass = self._calculate_formula_mass(current_formula)
+ *             if current_mass > target_mass + tolerance:             # <<<<<<<<<<<<<<
+ *                 break  # Mass too high, no point in trying higher counts
+ * 
+*/
+    }
+
+    /* "sirius_decomposer.pyx":656
+ *                 break  # Mass too high, no point in trying higher counts
+ * 
+ *             self._generate_subset_formulas(max_formula, current_formula, level + 1,             # <<<<<<<<<<<<<<
+ *                                          target_mass, tolerance, results)
+ * 
+*/
+    ((struct __pyx_vtabstruct_17sirius_decomposer_CythonSpectrumDecomposer *)__pyx_v_self->__pyx_vtab)->_generate_subset_formulas(__pyx_v_self, __pyx_v_max_formula, __pyx_v_current_formula, (__pyx_v_level + 1), __pyx_v_target_mass, __pyx_v_tolerance, __pyx_v_results); if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 656, __pyx_L1_error)
+  }
+  __pyx_L8_break:;
+
+  /* "sirius_decomposer.pyx":625
+ *             free(fragment_formula)
+ * 
+ *     cdef void _generate_subset_formulas(self, int* max_formula, int* current_formula,             # <<<<<<<<<<<<<<
+ *                                        int level, double target_mass, double tolerance,
+ *                                        list results):
+*/
+
+  /* function exit code */
+  goto __pyx_L0;
+  __pyx_L1_error:;
+  __Pyx_XDECREF(__pyx_t_3);
+  __Pyx_AddTraceback("sirius_decomposer.CythonSpectrumDecomposer._generate_subset_formulas", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __pyx_L0:;
+  __Pyx_XDECREF(__pyx_v_formula_dict);
+  __Pyx_RefNannyFinishContext();
+}
+
+/* "sirius_decomposer.pyx":659
+ *                                          target_mass, tolerance, results)
+ * 
+ *     def decompose_spectrum(self, double precursor_mass, list fragment_masses):             # <<<<<<<<<<<<<<
+ *         """
+ *         Decompose a complete spectrum: first decompose precursor, then fragments.
+*/
+
+/* Python wrapper */
+static PyObject *__pyx_pw_17sirius_decomposer_24CythonSpectrumDecomposer_7decompose_spectrum(PyObject *__pyx_v_self, 
+#if CYTHON_METH_FASTCALL
+PyObject *const *__pyx_args, Py_ssize_t __pyx_nargs, PyObject *__pyx_kwds
+#else
+PyObject *__pyx_args, PyObject *__pyx_kwds
+#endif
+); /*proto*/
+PyDoc_STRVAR(__pyx_doc_17sirius_decomposer_24CythonSpectrumDecomposer_6decompose_spectrum, "\n        Decompose a complete spectrum: first decompose precursor, then fragments.\n        \n        Note: Fragment masses can be equal to the precursor mass (e.g., molecular ion peaks,\n        or cases with no fragmentation). The algorithm correctly handles this by allowing\n        fragment formulas to be identical to the precursor formula.\n        \n        Args:\n            precursor_mass: Mass of the precursor ion\n            fragment_masses: List of fragment masses (can include masses equal to precursor)\n            \n        Returns:\n            List of dictionaries, each containing:\n            - 'precursor_formula': The precursor formula\n            - 'fragment_decompositions': List of possible formulas for each fragment\n        ");
+static PyMethodDef __pyx_mdef_17sirius_decomposer_24CythonSpectrumDecomposer_7decompose_spectrum = {"decompose_spectrum", (PyCFunction)(void(*)(void))(__Pyx_PyCFunction_FastCallWithKeywords)__pyx_pw_17sirius_decomposer_24CythonSpectrumDecomposer_7decompose_spectrum, __Pyx_METH_FASTCALL|METH_KEYWORDS, __pyx_doc_17sirius_decomposer_24CythonSpectrumDecomposer_6decompose_spectrum};
+static PyObject *__pyx_pw_17sirius_decomposer_24CythonSpectrumDecomposer_7decompose_spectrum(PyObject *__pyx_v_self, 
+#if CYTHON_METH_FASTCALL
+PyObject *const *__pyx_args, Py_ssize_t __pyx_nargs, PyObject *__pyx_kwds
+#else
+PyObject *__pyx_args, PyObject *__pyx_kwds
+#endif
+) {
+  double __pyx_v_precursor_mass;
+  PyObject *__pyx_v_fragment_masses = 0;
+  #if !CYTHON_METH_FASTCALL
+  CYTHON_UNUSED Py_ssize_t __pyx_nargs;
+  #endif
+  CYTHON_UNUSED PyObject *const *__pyx_kwvalues;
+  PyObject* values[2] = {0,0};
+  int __pyx_lineno = 0;
+  const char *__pyx_filename = NULL;
+  int __pyx_clineno = 0;
+  PyObject *__pyx_r = 0;
+  __Pyx_RefNannyDeclarations
+  __Pyx_RefNannySetupContext("decompose_spectrum (wrapper)", 0);
+  #if !CYTHON_METH_FASTCALL
+  #if CYTHON_ASSUME_SAFE_SIZE
+  __pyx_nargs = PyTuple_GET_SIZE(__pyx_args);
+  #else
+  __pyx_nargs = PyTuple_Size(__pyx_args); if (unlikely(__pyx_nargs < 0)) return NULL;
+  #endif
+  #endif
+  __pyx_kwvalues = __Pyx_KwValues_FASTCALL(__pyx_args, __pyx_nargs);
+  {
+    PyObject ** const __pyx_pyargnames[] = {&__pyx_mstate_global->__pyx_n_u_precursor_mass,&__pyx_mstate_global->__pyx_n_u_fragment_masses,0};
+    const Py_ssize_t __pyx_kwds_len = (__pyx_kwds) ? __Pyx_NumKwargs_FASTCALL(__pyx_kwds) : 0;
+    if (unlikely(__pyx_kwds_len) < 0) __PYX_ERR(0, 659, __pyx_L3_error)
+    if (__pyx_kwds_len > 0) {
+      switch (__pyx_nargs) {
+        case  2:
+        values[1] = __Pyx_ArgRef_FASTCALL(__pyx_args, 1);
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[1])) __PYX_ERR(0, 659, __pyx_L3_error)
+        CYTHON_FALLTHROUGH;
+        case  1:
+        values[0] = __Pyx_ArgRef_FASTCALL(__pyx_args, 0);
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[0])) __PYX_ERR(0, 659, __pyx_L3_error)
+        CYTHON_FALLTHROUGH;
+        case  0: break;
+        default: goto __pyx_L5_argtuple_error;
+      }
+      const Py_ssize_t kwd_pos_args = __pyx_nargs;
+      if (__Pyx_ParseKeywords(__pyx_kwds, __pyx_kwvalues, __pyx_pyargnames, 0, values, kwd_pos_args, __pyx_kwds_len, "decompose_spectrum", 0) < 0) __PYX_ERR(0, 659, __pyx_L3_error)
+      for (Py_ssize_t i = __pyx_nargs; i < 2; i++) {
+        if (unlikely(!values[i])) { __Pyx_RaiseArgtupleInvalid("decompose_spectrum", 1, 2, 2, i); __PYX_ERR(0, 659, __pyx_L3_error) }
+      }
+    } else if (unlikely(__pyx_nargs != 2)) {
+      goto __pyx_L5_argtuple_error;
+    } else {
+      values[0] = __Pyx_ArgRef_FASTCALL(__pyx_args, 0);
+      if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[0])) __PYX_ERR(0, 659, __pyx_L3_error)
+      values[1] = __Pyx_ArgRef_FASTCALL(__pyx_args, 1);
+      if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[1])) __PYX_ERR(0, 659, __pyx_L3_error)
+    }
+    __pyx_v_precursor_mass = __Pyx_PyFloat_AsDouble(values[0]); if (unlikely((__pyx_v_precursor_mass == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 659, __pyx_L3_error)
+    __pyx_v_fragment_masses = ((PyObject*)values[1]);
+  }
+  goto __pyx_L6_skip;
+  __pyx_L5_argtuple_error:;
+  __Pyx_RaiseArgtupleInvalid("decompose_spectrum", 1, 2, 2, __pyx_nargs); __PYX_ERR(0, 659, __pyx_L3_error)
+  __pyx_L6_skip:;
+  goto __pyx_L4_argument_unpacking_done;
+  __pyx_L3_error:;
+  for (Py_ssize_t __pyx_temp=0; __pyx_temp < (Py_ssize_t)(sizeof(values)/sizeof(values[0])); ++__pyx_temp) {
+    Py_XDECREF(values[__pyx_temp]);
+  }
+  __Pyx_AddTraceback("sirius_decomposer.CythonSpectrumDecomposer.decompose_spectrum", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __Pyx_RefNannyFinishContext();
+  return NULL;
+  __pyx_L4_argument_unpacking_done:;
+  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_fragment_masses), (&PyList_Type), 1, "fragment_masses", 1))) __PYX_ERR(0, 659, __pyx_L1_error)
+  __pyx_r = __pyx_pf_17sirius_decomposer_24CythonSpectrumDecomposer_6decompose_spectrum(((struct __pyx_obj_17sirius_decomposer_CythonSpectrumDecomposer *)__pyx_v_self), __pyx_v_precursor_mass, __pyx_v_fragment_masses);
+
+  /* function exit code */
+  goto __pyx_L0;
+  __pyx_L1_error:;
+  __pyx_r = NULL;
+  for (Py_ssize_t __pyx_temp=0; __pyx_temp < (Py_ssize_t)(sizeof(values)/sizeof(values[0])); ++__pyx_temp) {
+    Py_XDECREF(values[__pyx_temp]);
+  }
+  goto __pyx_L7_cleaned_up;
+  __pyx_L0:;
+  for (Py_ssize_t __pyx_temp=0; __pyx_temp < (Py_ssize_t)(sizeof(values)/sizeof(values[0])); ++__pyx_temp) {
+    Py_XDECREF(values[__pyx_temp]);
+  }
+  __pyx_L7_cleaned_up:;
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+static PyObject *__pyx_pf_17sirius_decomposer_24CythonSpectrumDecomposer_6decompose_spectrum(struct __pyx_obj_17sirius_decomposer_CythonSpectrumDecomposer *__pyx_v_self, double __pyx_v_precursor_mass, PyObject *__pyx_v_fragment_masses) {
+  PyObject *__pyx_v_results = 0;
+  PyObject *__pyx_v_precursor_formulas = 0;
+  PyObject *__pyx_v_precursor_formula = 0;
+  PyObject *__pyx_v_fragment_decompositions = 0;
+  struct __pyx_obj_17sirius_decomposer_CythonSiriusDecomposer *__pyx_v_decomposer = NULL;
+  PyObject *__pyx_r = NULL;
+  __Pyx_RefNannyDeclarations
+  PyObject *__pyx_t_1 = NULL;
+  PyObject *__pyx_t_2 = NULL;
+  PyObject *__pyx_t_3 = NULL;
+  PyObject *__pyx_t_4 = NULL;
+  PyObject *__pyx_t_5 = NULL;
+  PyObject *__pyx_t_6 = NULL;
+  size_t __pyx_t_7;
+  Py_ssize_t __pyx_t_8;
+  int __pyx_t_9;
+  int __pyx_lineno = 0;
+  const char *__pyx_filename = NULL;
+  int __pyx_clineno = 0;
+  __Pyx_RefNannySetupContext("decompose_spectrum", 0);
+
+  /* "sirius_decomposer.pyx":676
+ *             - 'fragment_decompositions': List of possible formulas for each fragment
+ *         """
+ *         cdef list results = []             # <<<<<<<<<<<<<<
+ *         cdef list precursor_formulas
+ *         cdef dict precursor_formula
+*/
+  __pyx_t_1 = PyList_New(0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 676, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_1);
+  __pyx_v_results = ((PyObject*)__pyx_t_1);
+  __pyx_t_1 = 0;
+
+  /* "sirius_decomposer.pyx":682
+ * 
+ *         # First, decompose the precursor mass
+ *         decomposer = CythonSiriusDecomposer(self.element_bounds, precursor_mass,             # <<<<<<<<<<<<<<
+ *                                           self.tolerance * 1e6, self.max_results,
+ *                                           -1000.0, 1000.0, 1000.0)  # Use same defaults as cython_decompose_mass
+*/
+  __pyx_t_2 = NULL;
+  __Pyx_INCREF((PyObject *)__pyx_mstate_global->__pyx_ptype_17sirius_decomposer_CythonSiriusDecomposer);
+  __pyx_t_3 = ((PyObject *)__pyx_mstate_global->__pyx_ptype_17sirius_decomposer_CythonSiriusDecomposer); 
+  __pyx_t_4 = PyFloat_FromDouble(__pyx_v_precursor_mass); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 682, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_4);
+
+  /* "sirius_decomposer.pyx":683
+ *         # First, decompose the precursor mass
+ *         decomposer = CythonSiriusDecomposer(self.element_bounds, precursor_mass,
+ *                                           self.tolerance * 1e6, self.max_results,             # <<<<<<<<<<<<<<
+ *                                           -1000.0, 1000.0, 1000.0)  # Use same defaults as cython_decompose_mass
+ *         precursor_formulas = decomposer.decompose()
+*/
+  __pyx_t_5 = PyFloat_FromDouble((__pyx_v_self->tolerance * 1e6)); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 683, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_5);
+  __pyx_t_6 = __Pyx_PyLong_From_int(__pyx_v_self->max_results); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 683, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_6);
+  __pyx_t_7 = 1;
+  {
+    PyObject *__pyx_callargs[8] = {__pyx_t_2, __pyx_v_self->element_bounds, __pyx_t_4, __pyx_t_5, __pyx_t_6, __pyx_mstate_global->__pyx_float_neg_1000_0, __pyx_mstate_global->__pyx_float_1000_0, __pyx_mstate_global->__pyx_float_1000_0};
+    __pyx_t_1 = __Pyx_PyObject_FastCall(__pyx_t_3, __pyx_callargs+__pyx_t_7, (8-__pyx_t_7) | (__pyx_t_7*__Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET));
+    __Pyx_XDECREF(__pyx_t_2); __pyx_t_2 = 0;
+    __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
+    __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
+    __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
+    __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+    if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 682, __pyx_L1_error)
+    __Pyx_GOTREF((PyObject *)__pyx_t_1);
+  }
+  __pyx_v_decomposer = ((struct __pyx_obj_17sirius_decomposer_CythonSiriusDecomposer *)__pyx_t_1);
+  __pyx_t_1 = 0;
+
+  /* "sirius_decomposer.pyx":685
+ *                                           self.tolerance * 1e6, self.max_results,
+ *                                           -1000.0, 1000.0, 1000.0)  # Use same defaults as cython_decompose_mass
+ *         precursor_formulas = decomposer.decompose()             # <<<<<<<<<<<<<<
+ * 
+ *         # For each possible precursor formula, decompose the fragments
+*/
+  __pyx_t_3 = ((PyObject *)__pyx_v_decomposer);
+  __Pyx_INCREF(__pyx_t_3);
+  __pyx_t_7 = 0;
+  {
+    PyObject *__pyx_callargs[2] = {__pyx_t_3, NULL};
+    __pyx_t_1 = __Pyx_PyObject_FastCallMethod(__pyx_mstate_global->__pyx_n_u_decompose, __pyx_callargs+__pyx_t_7, (1-__pyx_t_7) | (1*__Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET));
+    __Pyx_XDECREF(__pyx_t_3); __pyx_t_3 = 0;
+    if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 685, __pyx_L1_error)
+    __Pyx_GOTREF(__pyx_t_1);
+  }
+  if (!(likely(PyList_CheckExact(__pyx_t_1))||((__pyx_t_1) == Py_None) || __Pyx_RaiseUnexpectedTypeError("list", __pyx_t_1))) __PYX_ERR(0, 685, __pyx_L1_error)
+  __pyx_v_precursor_formulas = ((PyObject*)__pyx_t_1);
+  __pyx_t_1 = 0;
+
+  /* "sirius_decomposer.pyx":688
+ * 
+ *         # For each possible precursor formula, decompose the fragments
+ *         for precursor_formula in precursor_formulas:             # <<<<<<<<<<<<<<
+ *             fragment_decompositions = self.decompose_given_formula_spectrum(
+ *                 precursor_formula, fragment_masses)
+*/
+  if (unlikely(__pyx_v_precursor_formulas == Py_None)) {
+    PyErr_SetString(PyExc_TypeError, "'NoneType' object is not iterable");
+    __PYX_ERR(0, 688, __pyx_L1_error)
+  }
+  __pyx_t_1 = __pyx_v_precursor_formulas; __Pyx_INCREF(__pyx_t_1);
+  __pyx_t_8 = 0;
+  for (;;) {
+    {
+      Py_ssize_t __pyx_temp = __Pyx_PyList_GET_SIZE(__pyx_t_1);
+      #if !CYTHON_ASSUME_SAFE_SIZE
+      if (unlikely((__pyx_temp < 0))) __PYX_ERR(0, 688, __pyx_L1_error)
+      #endif
+      if (__pyx_t_8 >= __pyx_temp) break;
+    }
+    __pyx_t_3 = __Pyx_PyList_GetItemRef(__pyx_t_1, __pyx_t_8);
+    ++__pyx_t_8;
+    if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 688, __pyx_L1_error)
+    __Pyx_GOTREF(__pyx_t_3);
+    if (!(likely(PyDict_CheckExact(__pyx_t_3))||((__pyx_t_3) == Py_None) || __Pyx_RaiseUnexpectedTypeError("dict", __pyx_t_3))) __PYX_ERR(0, 688, __pyx_L1_error)
+    __Pyx_XDECREF_SET(__pyx_v_precursor_formula, ((PyObject*)__pyx_t_3));
+    __pyx_t_3 = 0;
+
+    /* "sirius_decomposer.pyx":689
+ *         # For each possible precursor formula, decompose the fragments
+ *         for precursor_formula in precursor_formulas:
+ *             fragment_decompositions = self.decompose_given_formula_spectrum(             # <<<<<<<<<<<<<<
+ *                 precursor_formula, fragment_masses)
+ * 
+*/
+    __pyx_t_6 = ((PyObject *)__pyx_v_self);
+    __Pyx_INCREF(__pyx_t_6);
+
+    /* "sirius_decomposer.pyx":690
+ *         for precursor_formula in precursor_formulas:
+ *             fragment_decompositions = self.decompose_given_formula_spectrum(
+ *                 precursor_formula, fragment_masses)             # <<<<<<<<<<<<<<
+ * 
+ *             results.append({
+*/
+    __pyx_t_7 = 0;
+    {
+      PyObject *__pyx_callargs[3] = {__pyx_t_6, __pyx_v_precursor_formula, __pyx_v_fragment_masses};
+      __pyx_t_3 = __Pyx_PyObject_FastCallMethod(__pyx_mstate_global->__pyx_n_u_decompose_given_formula_spectrum, __pyx_callargs+__pyx_t_7, (3-__pyx_t_7) | (1*__Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET));
+      __Pyx_XDECREF(__pyx_t_6); __pyx_t_6 = 0;
+      if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 689, __pyx_L1_error)
+      __Pyx_GOTREF(__pyx_t_3);
+    }
+
+    /* "sirius_decomposer.pyx":689
+ *         # For each possible precursor formula, decompose the fragments
+ *         for precursor_formula in precursor_formulas:
+ *             fragment_decompositions = self.decompose_given_formula_spectrum(             # <<<<<<<<<<<<<<
+ *                 precursor_formula, fragment_masses)
+ * 
+*/
+    if (!(likely(PyList_CheckExact(__pyx_t_3))||((__pyx_t_3) == Py_None) || __Pyx_RaiseUnexpectedTypeError("list", __pyx_t_3))) __PYX_ERR(0, 689, __pyx_L1_error)
+    __Pyx_XDECREF_SET(__pyx_v_fragment_decompositions, ((PyObject*)__pyx_t_3));
+    __pyx_t_3 = 0;
+
+    /* "sirius_decomposer.pyx":693
+ * 
+ *             results.append({
+ *                 'precursor_formula': precursor_formula,             # <<<<<<<<<<<<<<
+ *                 'fragment_decompositions': fragment_decompositions
+ *             })
+*/
+    __pyx_t_3 = __Pyx_PyDict_NewPresized(2); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 693, __pyx_L1_error)
+    __Pyx_GOTREF(__pyx_t_3);
+    if (PyDict_SetItem(__pyx_t_3, __pyx_mstate_global->__pyx_n_u_precursor_formula, __pyx_v_precursor_formula) < 0) __PYX_ERR(0, 693, __pyx_L1_error)
+
+    /* "sirius_decomposer.pyx":694
+ *             results.append({
+ *                 'precursor_formula': precursor_formula,
+ *                 'fragment_decompositions': fragment_decompositions             # <<<<<<<<<<<<<<
+ *             })
+ * 
+*/
+    if (PyDict_SetItem(__pyx_t_3, __pyx_mstate_global->__pyx_n_u_fragment_decompositions, __pyx_v_fragment_decompositions) < 0) __PYX_ERR(0, 693, __pyx_L1_error)
+
+    /* "sirius_decomposer.pyx":692
+ *                 precursor_formula, fragment_masses)
+ * 
+ *             results.append({             # <<<<<<<<<<<<<<
+ *                 'precursor_formula': precursor_formula,
+ *                 'fragment_decompositions': fragment_decompositions
+*/
+    __pyx_t_9 = __Pyx_PyList_Append(__pyx_v_results, __pyx_t_3); if (unlikely(__pyx_t_9 == ((int)-1))) __PYX_ERR(0, 692, __pyx_L1_error)
+    __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+
+    /* "sirius_decomposer.pyx":688
+ * 
+ *         # For each possible precursor formula, decompose the fragments
+ *         for precursor_formula in precursor_formulas:             # <<<<<<<<<<<<<<
+ *             fragment_decompositions = self.decompose_given_formula_spectrum(
+ *                 precursor_formula, fragment_masses)
+*/
+  }
+  __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
+
+  /* "sirius_decomposer.pyx":697
+ *             })
+ * 
+ *         return results             # <<<<<<<<<<<<<<
+ * 
+ * 
+*/
+  __Pyx_XDECREF(__pyx_r);
+  __Pyx_INCREF(__pyx_v_results);
+  __pyx_r = __pyx_v_results;
+  goto __pyx_L0;
+
+  /* "sirius_decomposer.pyx":659
+ *                                          target_mass, tolerance, results)
+ * 
+ *     def decompose_spectrum(self, double precursor_mass, list fragment_masses):             # <<<<<<<<<<<<<<
+ *         """
+ *         Decompose a complete spectrum: first decompose precursor, then fragments.
+*/
+
+  /* function exit code */
+  __pyx_L1_error:;
+  __Pyx_XDECREF(__pyx_t_1);
+  __Pyx_XDECREF(__pyx_t_2);
+  __Pyx_XDECREF(__pyx_t_3);
+  __Pyx_XDECREF(__pyx_t_4);
+  __Pyx_XDECREF(__pyx_t_5);
+  __Pyx_XDECREF(__pyx_t_6);
+  __Pyx_AddTraceback("sirius_decomposer.CythonSpectrumDecomposer.decompose_spectrum", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __pyx_r = NULL;
+  __pyx_L0:;
+  __Pyx_XDECREF(__pyx_v_results);
+  __Pyx_XDECREF(__pyx_v_precursor_formulas);
+  __Pyx_XDECREF(__pyx_v_precursor_formula);
+  __Pyx_XDECREF(__pyx_v_fragment_decompositions);
+  __Pyx_XDECREF((PyObject *)__pyx_v_decomposer);
+  __Pyx_XGIVEREF(__pyx_r);
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+/* "(tree fragment)":1
+ * def __reduce_cython__(self):             # <<<<<<<<<<<<<<
+ *     raise TypeError, "no default __reduce__ due to non-trivial __cinit__"
+ * def __setstate_cython__(self, __pyx_state):
+*/
+
+/* Python wrapper */
+static PyObject *__pyx_pw_17sirius_decomposer_24CythonSpectrumDecomposer_9__reduce_cython__(PyObject *__pyx_v_self, 
+#if CYTHON_METH_FASTCALL
+PyObject *const *__pyx_args, Py_ssize_t __pyx_nargs, PyObject *__pyx_kwds
+#else
+PyObject *__pyx_args, PyObject *__pyx_kwds
+#endif
+); /*proto*/
+static PyMethodDef __pyx_mdef_17sirius_decomposer_24CythonSpectrumDecomposer_9__reduce_cython__ = {"__reduce_cython__", (PyCFunction)(void(*)(void))(__Pyx_PyCFunction_FastCallWithKeywords)__pyx_pw_17sirius_decomposer_24CythonSpectrumDecomposer_9__reduce_cython__, __Pyx_METH_FASTCALL|METH_KEYWORDS, 0};
+static PyObject *__pyx_pw_17sirius_decomposer_24CythonSpectrumDecomposer_9__reduce_cython__(PyObject *__pyx_v_self, 
+#if CYTHON_METH_FASTCALL
+PyObject *const *__pyx_args, Py_ssize_t __pyx_nargs, PyObject *__pyx_kwds
+#else
+PyObject *__pyx_args, PyObject *__pyx_kwds
+#endif
+) {
+  #if !CYTHON_METH_FASTCALL
+  CYTHON_UNUSED Py_ssize_t __pyx_nargs;
+  #endif
+  CYTHON_UNUSED PyObject *const *__pyx_kwvalues;
+  PyObject *__pyx_r = 0;
+  __Pyx_RefNannyDeclarations
+  __Pyx_RefNannySetupContext("__reduce_cython__ (wrapper)", 0);
+  #if !CYTHON_METH_FASTCALL
+  #if CYTHON_ASSUME_SAFE_SIZE
+  __pyx_nargs = PyTuple_GET_SIZE(__pyx_args);
+  #else
+  __pyx_nargs = PyTuple_Size(__pyx_args); if (unlikely(__pyx_nargs < 0)) return NULL;
+  #endif
+  #endif
+  __pyx_kwvalues = __Pyx_KwValues_FASTCALL(__pyx_args, __pyx_nargs);
+  if (unlikely(__pyx_nargs > 0)) { __Pyx_RaiseArgtupleInvalid("__reduce_cython__", 1, 0, 0, __pyx_nargs); return NULL; }
+  const Py_ssize_t __pyx_kwds_len = unlikely(__pyx_kwds) ? __Pyx_NumKwargs_FASTCALL(__pyx_kwds) : 0;
+  if (unlikely(__pyx_kwds_len < 0)) return NULL;
+  if (unlikely(__pyx_kwds_len > 0)) {__Pyx_RejectKeywords("__reduce_cython__", __pyx_kwds); return NULL;}
+  __pyx_r = __pyx_pf_17sirius_decomposer_24CythonSpectrumDecomposer_8__reduce_cython__(((struct __pyx_obj_17sirius_decomposer_CythonSpectrumDecomposer *)__pyx_v_self));
+
+  /* function exit code */
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+static PyObject *__pyx_pf_17sirius_decomposer_24CythonSpectrumDecomposer_8__reduce_cython__(CYTHON_UNUSED struct __pyx_obj_17sirius_decomposer_CythonSpectrumDecomposer *__pyx_v_self) {
+  PyObject *__pyx_r = NULL;
+  __Pyx_RefNannyDeclarations
+  int __pyx_lineno = 0;
+  const char *__pyx_filename = NULL;
+  int __pyx_clineno = 0;
+  __Pyx_RefNannySetupContext("__reduce_cython__", 0);
+
+  /* "(tree fragment)":2
+ * def __reduce_cython__(self):
+ *     raise TypeError, "no default __reduce__ due to non-trivial __cinit__"             # <<<<<<<<<<<<<<
+ * def __setstate_cython__(self, __pyx_state):
+ *     raise TypeError, "no default __reduce__ due to non-trivial __cinit__"
+*/
+  __Pyx_Raise(__pyx_builtin_TypeError, __pyx_mstate_global->__pyx_kp_u_no_default___reduce___due_to_non, 0, 0);
+  __PYX_ERR(1, 2, __pyx_L1_error)
+
+  /* "(tree fragment)":1
+ * def __reduce_cython__(self):             # <<<<<<<<<<<<<<
+ *     raise TypeError, "no default __reduce__ due to non-trivial __cinit__"
+ * def __setstate_cython__(self, __pyx_state):
+*/
+
+  /* function exit code */
+  __pyx_L1_error:;
+  __Pyx_AddTraceback("sirius_decomposer.CythonSpectrumDecomposer.__reduce_cython__", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __pyx_r = NULL;
+  __Pyx_XGIVEREF(__pyx_r);
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+/* "(tree fragment)":3
+ * def __reduce_cython__(self):
+ *     raise TypeError, "no default __reduce__ due to non-trivial __cinit__"
+ * def __setstate_cython__(self, __pyx_state):             # <<<<<<<<<<<<<<
+ *     raise TypeError, "no default __reduce__ due to non-trivial __cinit__"
+*/
+
+/* Python wrapper */
+static PyObject *__pyx_pw_17sirius_decomposer_24CythonSpectrumDecomposer_11__setstate_cython__(PyObject *__pyx_v_self, 
+#if CYTHON_METH_FASTCALL
+PyObject *const *__pyx_args, Py_ssize_t __pyx_nargs, PyObject *__pyx_kwds
+#else
+PyObject *__pyx_args, PyObject *__pyx_kwds
+#endif
+); /*proto*/
+static PyMethodDef __pyx_mdef_17sirius_decomposer_24CythonSpectrumDecomposer_11__setstate_cython__ = {"__setstate_cython__", (PyCFunction)(void(*)(void))(__Pyx_PyCFunction_FastCallWithKeywords)__pyx_pw_17sirius_decomposer_24CythonSpectrumDecomposer_11__setstate_cython__, __Pyx_METH_FASTCALL|METH_KEYWORDS, 0};
+static PyObject *__pyx_pw_17sirius_decomposer_24CythonSpectrumDecomposer_11__setstate_cython__(PyObject *__pyx_v_self, 
+#if CYTHON_METH_FASTCALL
+PyObject *const *__pyx_args, Py_ssize_t __pyx_nargs, PyObject *__pyx_kwds
+#else
+PyObject *__pyx_args, PyObject *__pyx_kwds
+#endif
+) {
+  CYTHON_UNUSED PyObject *__pyx_v___pyx_state = 0;
+  #if !CYTHON_METH_FASTCALL
+  CYTHON_UNUSED Py_ssize_t __pyx_nargs;
+  #endif
+  CYTHON_UNUSED PyObject *const *__pyx_kwvalues;
+  PyObject* values[1] = {0};
+  int __pyx_lineno = 0;
+  const char *__pyx_filename = NULL;
+  int __pyx_clineno = 0;
+  PyObject *__pyx_r = 0;
+  __Pyx_RefNannyDeclarations
+  __Pyx_RefNannySetupContext("__setstate_cython__ (wrapper)", 0);
+  #if !CYTHON_METH_FASTCALL
+  #if CYTHON_ASSUME_SAFE_SIZE
+  __pyx_nargs = PyTuple_GET_SIZE(__pyx_args);
+  #else
+  __pyx_nargs = PyTuple_Size(__pyx_args); if (unlikely(__pyx_nargs < 0)) return NULL;
+  #endif
+  #endif
+  __pyx_kwvalues = __Pyx_KwValues_FASTCALL(__pyx_args, __pyx_nargs);
+  {
+    PyObject ** const __pyx_pyargnames[] = {&__pyx_mstate_global->__pyx_n_u_pyx_state,0};
+    const Py_ssize_t __pyx_kwds_len = (__pyx_kwds) ? __Pyx_NumKwargs_FASTCALL(__pyx_kwds) : 0;
+    if (unlikely(__pyx_kwds_len) < 0) __PYX_ERR(1, 3, __pyx_L3_error)
+    if (__pyx_kwds_len > 0) {
+      switch (__pyx_nargs) {
+        case  1:
+        values[0] = __Pyx_ArgRef_FASTCALL(__pyx_args, 0);
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[0])) __PYX_ERR(1, 3, __pyx_L3_error)
+        CYTHON_FALLTHROUGH;
+        case  0: break;
+        default: goto __pyx_L5_argtuple_error;
+      }
+      const Py_ssize_t kwd_pos_args = __pyx_nargs;
+      if (__Pyx_ParseKeywords(__pyx_kwds, __pyx_kwvalues, __pyx_pyargnames, 0, values, kwd_pos_args, __pyx_kwds_len, "__setstate_cython__", 0) < 0) __PYX_ERR(1, 3, __pyx_L3_error)
+      for (Py_ssize_t i = __pyx_nargs; i < 1; i++) {
+        if (unlikely(!values[i])) { __Pyx_RaiseArgtupleInvalid("__setstate_cython__", 1, 1, 1, i); __PYX_ERR(1, 3, __pyx_L3_error) }
+      }
+    } else if (unlikely(__pyx_nargs != 1)) {
+      goto __pyx_L5_argtuple_error;
+    } else {
+      values[0] = __Pyx_ArgRef_FASTCALL(__pyx_args, 0);
+      if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[0])) __PYX_ERR(1, 3, __pyx_L3_error)
+    }
+    __pyx_v___pyx_state = values[0];
+  }
+  goto __pyx_L6_skip;
+  __pyx_L5_argtuple_error:;
+  __Pyx_RaiseArgtupleInvalid("__setstate_cython__", 1, 1, 1, __pyx_nargs); __PYX_ERR(1, 3, __pyx_L3_error)
+  __pyx_L6_skip:;
+  goto __pyx_L4_argument_unpacking_done;
+  __pyx_L3_error:;
+  for (Py_ssize_t __pyx_temp=0; __pyx_temp < (Py_ssize_t)(sizeof(values)/sizeof(values[0])); ++__pyx_temp) {
+    Py_XDECREF(values[__pyx_temp]);
+  }
+  __Pyx_AddTraceback("sirius_decomposer.CythonSpectrumDecomposer.__setstate_cython__", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __Pyx_RefNannyFinishContext();
+  return NULL;
+  __pyx_L4_argument_unpacking_done:;
+  __pyx_r = __pyx_pf_17sirius_decomposer_24CythonSpectrumDecomposer_10__setstate_cython__(((struct __pyx_obj_17sirius_decomposer_CythonSpectrumDecomposer *)__pyx_v_self), __pyx_v___pyx_state);
+
+  /* function exit code */
+  for (Py_ssize_t __pyx_temp=0; __pyx_temp < (Py_ssize_t)(sizeof(values)/sizeof(values[0])); ++__pyx_temp) {
+    Py_XDECREF(values[__pyx_temp]);
+  }
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+static PyObject *__pyx_pf_17sirius_decomposer_24CythonSpectrumDecomposer_10__setstate_cython__(CYTHON_UNUSED struct __pyx_obj_17sirius_decomposer_CythonSpectrumDecomposer *__pyx_v_self, CYTHON_UNUSED PyObject *__pyx_v___pyx_state) {
+  PyObject *__pyx_r = NULL;
+  __Pyx_RefNannyDeclarations
+  int __pyx_lineno = 0;
+  const char *__pyx_filename = NULL;
+  int __pyx_clineno = 0;
+  __Pyx_RefNannySetupContext("__setstate_cython__", 0);
+
+  /* "(tree fragment)":4
+ *     raise TypeError, "no default __reduce__ due to non-trivial __cinit__"
+ * def __setstate_cython__(self, __pyx_state):
+ *     raise TypeError, "no default __reduce__ due to non-trivial __cinit__"             # <<<<<<<<<<<<<<
+*/
+  __Pyx_Raise(__pyx_builtin_TypeError, __pyx_mstate_global->__pyx_kp_u_no_default___reduce___due_to_non, 0, 0);
+  __PYX_ERR(1, 4, __pyx_L1_error)
+
+  /* "(tree fragment)":3
+ * def __reduce_cython__(self):
+ *     raise TypeError, "no default __reduce__ due to non-trivial __cinit__"
+ * def __setstate_cython__(self, __pyx_state):             # <<<<<<<<<<<<<<
+ *     raise TypeError, "no default __reduce__ due to non-trivial __cinit__"
+*/
+
+  /* function exit code */
+  __pyx_L1_error:;
+  __Pyx_AddTraceback("sirius_decomposer.CythonSpectrumDecomposer.__setstate_cython__", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __pyx_r = NULL;
+  __Pyx_XGIVEREF(__pyx_r);
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+/* "sirius_decomposer.pyx":700
+ * 
+ * 
+ * def cython_decompose_mass(double target_mass,             # <<<<<<<<<<<<<<
+ *                           dict element_bounds,
+ *                           double tolerance_ppm = 5.0,
 */
 
 /* Python wrapper */
@@ -9314,7 +12123,7 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
   double __pyx_v_target_mass;
   PyObject *__pyx_v_element_bounds = 0;
   double __pyx_v_tolerance_ppm;
-  PyObject *__pyx_v_max_results = 0;
+  int __pyx_v_max_results;
   PyObject *__pyx_v_min_dbe = 0;
   PyObject *__pyx_v_max_dbe = 0;
   PyObject *__pyx_v_max_hetero_ratio = 0;
@@ -9340,147 +12149,149 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
   {
     PyObject ** const __pyx_pyargnames[] = {&__pyx_mstate_global->__pyx_n_u_target_mass,&__pyx_mstate_global->__pyx_n_u_element_bounds,&__pyx_mstate_global->__pyx_n_u_tolerance_ppm,&__pyx_mstate_global->__pyx_n_u_max_results,&__pyx_mstate_global->__pyx_n_u_min_dbe,&__pyx_mstate_global->__pyx_n_u_max_dbe,&__pyx_mstate_global->__pyx_n_u_max_hetero_ratio,0};
     const Py_ssize_t __pyx_kwds_len = (__pyx_kwds) ? __Pyx_NumKwargs_FASTCALL(__pyx_kwds) : 0;
-    if (unlikely(__pyx_kwds_len) < 0) __PYX_ERR(0, 468, __pyx_L3_error)
+    if (unlikely(__pyx_kwds_len) < 0) __PYX_ERR(0, 700, __pyx_L3_error)
     if (__pyx_kwds_len > 0) {
       switch (__pyx_nargs) {
         case  7:
         values[6] = __Pyx_ArgRef_FASTCALL(__pyx_args, 6);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[6])) __PYX_ERR(0, 468, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[6])) __PYX_ERR(0, 700, __pyx_L3_error)
         CYTHON_FALLTHROUGH;
         case  6:
         values[5] = __Pyx_ArgRef_FASTCALL(__pyx_args, 5);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[5])) __PYX_ERR(0, 468, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[5])) __PYX_ERR(0, 700, __pyx_L3_error)
         CYTHON_FALLTHROUGH;
         case  5:
         values[4] = __Pyx_ArgRef_FASTCALL(__pyx_args, 4);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[4])) __PYX_ERR(0, 468, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[4])) __PYX_ERR(0, 700, __pyx_L3_error)
         CYTHON_FALLTHROUGH;
         case  4:
         values[3] = __Pyx_ArgRef_FASTCALL(__pyx_args, 3);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[3])) __PYX_ERR(0, 468, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[3])) __PYX_ERR(0, 700, __pyx_L3_error)
         CYTHON_FALLTHROUGH;
         case  3:
         values[2] = __Pyx_ArgRef_FASTCALL(__pyx_args, 2);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[2])) __PYX_ERR(0, 468, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[2])) __PYX_ERR(0, 700, __pyx_L3_error)
         CYTHON_FALLTHROUGH;
         case  2:
         values[1] = __Pyx_ArgRef_FASTCALL(__pyx_args, 1);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[1])) __PYX_ERR(0, 468, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[1])) __PYX_ERR(0, 700, __pyx_L3_error)
         CYTHON_FALLTHROUGH;
         case  1:
         values[0] = __Pyx_ArgRef_FASTCALL(__pyx_args, 0);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[0])) __PYX_ERR(0, 468, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[0])) __PYX_ERR(0, 700, __pyx_L3_error)
         CYTHON_FALLTHROUGH;
         case  0: break;
         default: goto __pyx_L5_argtuple_error;
       }
       const Py_ssize_t kwd_pos_args = __pyx_nargs;
-      if (__Pyx_ParseKeywords(__pyx_kwds, __pyx_kwvalues, __pyx_pyargnames, 0, values, kwd_pos_args, __pyx_kwds_len, "cython_decompose_mass", 0) < 0) __PYX_ERR(0, 468, __pyx_L3_error)
-      if (!values[3]) values[3] = __Pyx_NewRef(((PyObject*)((PyObject*)__pyx_mstate_global->__pyx_int_1000000)));
+      if (__Pyx_ParseKeywords(__pyx_kwds, __pyx_kwvalues, __pyx_pyargnames, 0, values, kwd_pos_args, __pyx_kwds_len, "cython_decompose_mass", 0) < 0) __PYX_ERR(0, 700, __pyx_L3_error)
 
-      /* "sirius_decomposer.pyx":472
- *                           tolerance_ppm: float = 5.0,
- *                           max_results: int = 1000000,
- *                           min_dbe: Optional[float] = None,             # <<<<<<<<<<<<<<
- *                           max_dbe: Optional[float] = None,
- *                           max_hetero_ratio: Optional[float] = None) -> List[Dict[str, int]]:
+      /* "sirius_decomposer.pyx":704
+ *                           double tolerance_ppm = 5.0,
+ *                           int max_results = 1000000,
+ *                           min_dbe = None,             # <<<<<<<<<<<<<<
+ *                           max_dbe = None,
+ *                           max_hetero_ratio = None):
 */
-      if (!values[4]) values[4] = __Pyx_NewRef(((PyObject*)Py_None));
+      if (!values[4]) values[4] = __Pyx_NewRef(((PyObject *)Py_None));
 
-      /* "sirius_decomposer.pyx":473
- *                           max_results: int = 1000000,
- *                           min_dbe: Optional[float] = None,
- *                           max_dbe: Optional[float] = None,             # <<<<<<<<<<<<<<
- *                           max_hetero_ratio: Optional[float] = None) -> List[Dict[str, int]]:
+      /* "sirius_decomposer.pyx":705
+ *                           int max_results = 1000000,
+ *                           min_dbe = None,
+ *                           max_dbe = None,             # <<<<<<<<<<<<<<
+ *                           max_hetero_ratio = None):
  *     """
 */
-      if (!values[5]) values[5] = __Pyx_NewRef(((PyObject*)Py_None));
+      if (!values[5]) values[5] = __Pyx_NewRef(((PyObject *)Py_None));
 
-      /* "sirius_decomposer.pyx":474
- *                           min_dbe: Optional[float] = None,
- *                           max_dbe: Optional[float] = None,
- *                           max_hetero_ratio: Optional[float] = None) -> List[Dict[str, int]]:             # <<<<<<<<<<<<<<
+      /* "sirius_decomposer.pyx":706
+ *                           min_dbe = None,
+ *                           max_dbe = None,
+ *                           max_hetero_ratio = None):             # <<<<<<<<<<<<<<
  *     """
  *     High-level function for ultra-fast mass decomposition using Cython with chemical constraints.
 */
-      if (!values[6]) values[6] = __Pyx_NewRef(((PyObject*)Py_None));
+      if (!values[6]) values[6] = __Pyx_NewRef(((PyObject *)Py_None));
       for (Py_ssize_t i = __pyx_nargs; i < 2; i++) {
-        if (unlikely(!values[i])) { __Pyx_RaiseArgtupleInvalid("cython_decompose_mass", 0, 2, 7, i); __PYX_ERR(0, 468, __pyx_L3_error) }
+        if (unlikely(!values[i])) { __Pyx_RaiseArgtupleInvalid("cython_decompose_mass", 0, 2, 7, i); __PYX_ERR(0, 700, __pyx_L3_error) }
       }
     } else {
       switch (__pyx_nargs) {
         case  7:
         values[6] = __Pyx_ArgRef_FASTCALL(__pyx_args, 6);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[6])) __PYX_ERR(0, 468, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[6])) __PYX_ERR(0, 700, __pyx_L3_error)
         CYTHON_FALLTHROUGH;
         case  6:
         values[5] = __Pyx_ArgRef_FASTCALL(__pyx_args, 5);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[5])) __PYX_ERR(0, 468, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[5])) __PYX_ERR(0, 700, __pyx_L3_error)
         CYTHON_FALLTHROUGH;
         case  5:
         values[4] = __Pyx_ArgRef_FASTCALL(__pyx_args, 4);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[4])) __PYX_ERR(0, 468, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[4])) __PYX_ERR(0, 700, __pyx_L3_error)
         CYTHON_FALLTHROUGH;
         case  4:
         values[3] = __Pyx_ArgRef_FASTCALL(__pyx_args, 3);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[3])) __PYX_ERR(0, 468, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[3])) __PYX_ERR(0, 700, __pyx_L3_error)
         CYTHON_FALLTHROUGH;
         case  3:
         values[2] = __Pyx_ArgRef_FASTCALL(__pyx_args, 2);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[2])) __PYX_ERR(0, 468, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[2])) __PYX_ERR(0, 700, __pyx_L3_error)
         CYTHON_FALLTHROUGH;
         case  2:
         values[1] = __Pyx_ArgRef_FASTCALL(__pyx_args, 1);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[1])) __PYX_ERR(0, 468, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[1])) __PYX_ERR(0, 700, __pyx_L3_error)
         values[0] = __Pyx_ArgRef_FASTCALL(__pyx_args, 0);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[0])) __PYX_ERR(0, 468, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[0])) __PYX_ERR(0, 700, __pyx_L3_error)
         break;
         default: goto __pyx_L5_argtuple_error;
       }
-      if (!values[3]) values[3] = __Pyx_NewRef(((PyObject*)((PyObject*)__pyx_mstate_global->__pyx_int_1000000)));
 
-      /* "sirius_decomposer.pyx":472
- *                           tolerance_ppm: float = 5.0,
- *                           max_results: int = 1000000,
- *                           min_dbe: Optional[float] = None,             # <<<<<<<<<<<<<<
- *                           max_dbe: Optional[float] = None,
- *                           max_hetero_ratio: Optional[float] = None) -> List[Dict[str, int]]:
+      /* "sirius_decomposer.pyx":704
+ *                           double tolerance_ppm = 5.0,
+ *                           int max_results = 1000000,
+ *                           min_dbe = None,             # <<<<<<<<<<<<<<
+ *                           max_dbe = None,
+ *                           max_hetero_ratio = None):
 */
-      if (!values[4]) values[4] = __Pyx_NewRef(((PyObject*)Py_None));
+      if (!values[4]) values[4] = __Pyx_NewRef(((PyObject *)Py_None));
 
-      /* "sirius_decomposer.pyx":473
- *                           max_results: int = 1000000,
- *                           min_dbe: Optional[float] = None,
- *                           max_dbe: Optional[float] = None,             # <<<<<<<<<<<<<<
- *                           max_hetero_ratio: Optional[float] = None) -> List[Dict[str, int]]:
+      /* "sirius_decomposer.pyx":705
+ *                           int max_results = 1000000,
+ *                           min_dbe = None,
+ *                           max_dbe = None,             # <<<<<<<<<<<<<<
+ *                           max_hetero_ratio = None):
  *     """
 */
-      if (!values[5]) values[5] = __Pyx_NewRef(((PyObject*)Py_None));
+      if (!values[5]) values[5] = __Pyx_NewRef(((PyObject *)Py_None));
 
-      /* "sirius_decomposer.pyx":474
- *                           min_dbe: Optional[float] = None,
- *                           max_dbe: Optional[float] = None,
- *                           max_hetero_ratio: Optional[float] = None) -> List[Dict[str, int]]:             # <<<<<<<<<<<<<<
+      /* "sirius_decomposer.pyx":706
+ *                           min_dbe = None,
+ *                           max_dbe = None,
+ *                           max_hetero_ratio = None):             # <<<<<<<<<<<<<<
  *     """
  *     High-level function for ultra-fast mass decomposition using Cython with chemical constraints.
 */
-      if (!values[6]) values[6] = __Pyx_NewRef(((PyObject*)Py_None));
+      if (!values[6]) values[6] = __Pyx_NewRef(((PyObject *)Py_None));
     }
-    __pyx_v_target_mass = __Pyx_PyFloat_AsDouble(values[0]); if (unlikely((__pyx_v_target_mass == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 468, __pyx_L3_error)
+    __pyx_v_target_mass = __Pyx_PyFloat_AsDouble(values[0]); if (unlikely((__pyx_v_target_mass == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 700, __pyx_L3_error)
     __pyx_v_element_bounds = ((PyObject*)values[1]);
     if (values[2]) {
-      __pyx_v_tolerance_ppm = __Pyx_PyFloat_AsDouble(values[2]); if (unlikely((__pyx_v_tolerance_ppm == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 470, __pyx_L3_error)
+      __pyx_v_tolerance_ppm = __Pyx_PyFloat_AsDouble(values[2]); if (unlikely((__pyx_v_tolerance_ppm == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 702, __pyx_L3_error)
     } else {
       __pyx_v_tolerance_ppm = ((double)((double)5.0));
     }
-    __pyx_v_max_results = ((PyObject*)values[3]);
-    __pyx_v_min_dbe = ((PyObject*)values[4]);
-    __pyx_v_max_dbe = ((PyObject*)values[5]);
-    __pyx_v_max_hetero_ratio = ((PyObject*)values[6]);
+    if (values[3]) {
+      __pyx_v_max_results = __Pyx_PyLong_As_int(values[3]); if (unlikely((__pyx_v_max_results == (int)-1) && PyErr_Occurred())) __PYX_ERR(0, 703, __pyx_L3_error)
+    } else {
+      __pyx_v_max_results = ((int)((int)0xF4240));
+    }
+    __pyx_v_min_dbe = values[4];
+    __pyx_v_max_dbe = values[5];
+    __pyx_v_max_hetero_ratio = values[6];
   }
   goto __pyx_L6_skip;
   __pyx_L5_argtuple_error:;
-  __Pyx_RaiseArgtupleInvalid("cython_decompose_mass", 0, 2, 7, __pyx_nargs); __PYX_ERR(0, 468, __pyx_L3_error)
+  __Pyx_RaiseArgtupleInvalid("cython_decompose_mass", 0, 2, 7, __pyx_nargs); __PYX_ERR(0, 700, __pyx_L3_error)
   __pyx_L6_skip:;
   goto __pyx_L4_argument_unpacking_done;
   __pyx_L3_error:;
@@ -9491,19 +12302,15 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
   __Pyx_RefNannyFinishContext();
   return NULL;
   __pyx_L4_argument_unpacking_done:;
-  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_element_bounds), (&PyDict_Type), 0, "element_bounds", 2))) __PYX_ERR(0, 469, __pyx_L1_error)
-  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_max_results), (&PyLong_Type), 0, "max_results", 2))) __PYX_ERR(0, 471, __pyx_L1_error)
-  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_min_dbe), (&PyFloat_Type), 1, "min_dbe", 2))) __PYX_ERR(0, 472, __pyx_L1_error)
-  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_max_dbe), (&PyFloat_Type), 1, "max_dbe", 2))) __PYX_ERR(0, 473, __pyx_L1_error)
-  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_max_hetero_ratio), (&PyFloat_Type), 1, "max_hetero_ratio", 2))) __PYX_ERR(0, 474, __pyx_L1_error)
+  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_element_bounds), (&PyDict_Type), 1, "element_bounds", 1))) __PYX_ERR(0, 701, __pyx_L1_error)
   __pyx_r = __pyx_pf_17sirius_decomposer_cython_decompose_mass(__pyx_self, __pyx_v_target_mass, __pyx_v_element_bounds, __pyx_v_tolerance_ppm, __pyx_v_max_results, __pyx_v_min_dbe, __pyx_v_max_dbe, __pyx_v_max_hetero_ratio);
 
-  /* "sirius_decomposer.pyx":468
- *             free(formula)
+  /* "sirius_decomposer.pyx":700
  * 
- * def cython_decompose_mass(target_mass: float,             # <<<<<<<<<<<<<<
- *                           element_bounds: Dict[str, Tuple[int, int]],
- *                           tolerance_ppm: float = 5.0,
+ * 
+ * def cython_decompose_mass(double target_mass,             # <<<<<<<<<<<<<<
+ *                           dict element_bounds,
+ *                           double tolerance_ppm = 5.0,
 */
 
   /* function exit code */
@@ -9523,7 +12330,7 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
   return __pyx_r;
 }
 
-static PyObject *__pyx_pf_17sirius_decomposer_cython_decompose_mass(CYTHON_UNUSED PyObject *__pyx_self, double __pyx_v_target_mass, PyObject *__pyx_v_element_bounds, double __pyx_v_tolerance_ppm, PyObject *__pyx_v_max_results, PyObject *__pyx_v_min_dbe, PyObject *__pyx_v_max_dbe, PyObject *__pyx_v_max_hetero_ratio) {
+static PyObject *__pyx_pf_17sirius_decomposer_cython_decompose_mass(CYTHON_UNUSED PyObject *__pyx_self, double __pyx_v_target_mass, PyObject *__pyx_v_element_bounds, double __pyx_v_tolerance_ppm, int __pyx_v_max_results, PyObject *__pyx_v_min_dbe, PyObject *__pyx_v_max_dbe, PyObject *__pyx_v_max_hetero_ratio) {
   double __pyx_v_c_min_dbe;
   double __pyx_v_c_max_dbe;
   double __pyx_v_c_max_hetero_ratio;
@@ -9541,61 +12348,62 @@ static PyObject *__pyx_pf_17sirius_decomposer_cython_decompose_mass(CYTHON_UNUSE
   PyObject *__pyx_t_9 = NULL;
   PyObject *__pyx_t_10 = NULL;
   PyObject *__pyx_t_11 = NULL;
-  size_t __pyx_t_12;
+  PyObject *__pyx_t_12 = NULL;
+  size_t __pyx_t_13;
   int __pyx_lineno = 0;
   const char *__pyx_filename = NULL;
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("cython_decompose_mass", 0);
 
-  /* "sirius_decomposer.pyx":491
+  /* "sirius_decomposer.pyx":723
  *     """
  *     # Set default values for constraints
  *     cdef double c_min_dbe = min_dbe if min_dbe is not None else -1000.0             # <<<<<<<<<<<<<<
  *     cdef double c_max_dbe = max_dbe if max_dbe is not None else 1000.0
  *     cdef double c_max_hetero_ratio = max_hetero_ratio if max_hetero_ratio is not None else 1000.0
 */
-  __pyx_t_2 = (__pyx_v_min_dbe != ((PyObject*)Py_None));
+  __pyx_t_2 = (__pyx_v_min_dbe != Py_None);
   if (__pyx_t_2) {
-    __pyx_t_3 = __Pyx_PyFloat_AsDouble(__pyx_v_min_dbe); if (unlikely((__pyx_t_3 == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 491, __pyx_L1_error)
+    __pyx_t_3 = __Pyx_PyFloat_AsDouble(__pyx_v_min_dbe); if (unlikely((__pyx_t_3 == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 723, __pyx_L1_error)
     __pyx_t_1 = __pyx_t_3;
   } else {
     __pyx_t_1 = -1000.0;
   }
   __pyx_v_c_min_dbe = __pyx_t_1;
 
-  /* "sirius_decomposer.pyx":492
+  /* "sirius_decomposer.pyx":724
  *     # Set default values for constraints
  *     cdef double c_min_dbe = min_dbe if min_dbe is not None else -1000.0
  *     cdef double c_max_dbe = max_dbe if max_dbe is not None else 1000.0             # <<<<<<<<<<<<<<
  *     cdef double c_max_hetero_ratio = max_hetero_ratio if max_hetero_ratio is not None else 1000.0
  * 
 */
-  __pyx_t_2 = (__pyx_v_max_dbe != ((PyObject*)Py_None));
+  __pyx_t_2 = (__pyx_v_max_dbe != Py_None);
   if (__pyx_t_2) {
-    __pyx_t_3 = __Pyx_PyFloat_AsDouble(__pyx_v_max_dbe); if (unlikely((__pyx_t_3 == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 492, __pyx_L1_error)
+    __pyx_t_3 = __Pyx_PyFloat_AsDouble(__pyx_v_max_dbe); if (unlikely((__pyx_t_3 == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 724, __pyx_L1_error)
     __pyx_t_1 = __pyx_t_3;
   } else {
     __pyx_t_1 = 1000.0;
   }
   __pyx_v_c_max_dbe = __pyx_t_1;
 
-  /* "sirius_decomposer.pyx":493
+  /* "sirius_decomposer.pyx":725
  *     cdef double c_min_dbe = min_dbe if min_dbe is not None else -1000.0
  *     cdef double c_max_dbe = max_dbe if max_dbe is not None else 1000.0
  *     cdef double c_max_hetero_ratio = max_hetero_ratio if max_hetero_ratio is not None else 1000.0             # <<<<<<<<<<<<<<
  * 
  *     decomposer = CythonSiriusDecomposer(element_bounds, target_mass, tolerance_ppm, max_results,
 */
-  __pyx_t_2 = (__pyx_v_max_hetero_ratio != ((PyObject*)Py_None));
+  __pyx_t_2 = (__pyx_v_max_hetero_ratio != Py_None);
   if (__pyx_t_2) {
-    __pyx_t_3 = __Pyx_PyFloat_AsDouble(__pyx_v_max_hetero_ratio); if (unlikely((__pyx_t_3 == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 493, __pyx_L1_error)
+    __pyx_t_3 = __Pyx_PyFloat_AsDouble(__pyx_v_max_hetero_ratio); if (unlikely((__pyx_t_3 == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 725, __pyx_L1_error)
     __pyx_t_1 = __pyx_t_3;
   } else {
     __pyx_t_1 = 1000.0;
   }
   __pyx_v_c_max_hetero_ratio = __pyx_t_1;
 
-  /* "sirius_decomposer.pyx":495
+  /* "sirius_decomposer.pyx":727
  *     cdef double c_max_hetero_ratio = max_hetero_ratio if max_hetero_ratio is not None else 1000.0
  * 
  *     decomposer = CythonSiriusDecomposer(element_bounds, target_mass, tolerance_ppm, max_results,             # <<<<<<<<<<<<<<
@@ -9605,67 +12413,72 @@ static PyObject *__pyx_pf_17sirius_decomposer_cython_decompose_mass(CYTHON_UNUSE
   __pyx_t_5 = NULL;
   __Pyx_INCREF((PyObject *)__pyx_mstate_global->__pyx_ptype_17sirius_decomposer_CythonSiriusDecomposer);
   __pyx_t_6 = ((PyObject *)__pyx_mstate_global->__pyx_ptype_17sirius_decomposer_CythonSiriusDecomposer); 
-  __pyx_t_7 = PyFloat_FromDouble(__pyx_v_target_mass); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 495, __pyx_L1_error)
+  __pyx_t_7 = PyFloat_FromDouble(__pyx_v_target_mass); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 727, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_7);
-  __pyx_t_8 = PyFloat_FromDouble(__pyx_v_tolerance_ppm); if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 495, __pyx_L1_error)
+  __pyx_t_8 = PyFloat_FromDouble(__pyx_v_tolerance_ppm); if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 727, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_8);
+  __pyx_t_9 = __Pyx_PyLong_From_int(__pyx_v_max_results); if (unlikely(!__pyx_t_9)) __PYX_ERR(0, 727, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_9);
 
-  /* "sirius_decomposer.pyx":496
+  /* "sirius_decomposer.pyx":728
  * 
  *     decomposer = CythonSiriusDecomposer(element_bounds, target_mass, tolerance_ppm, max_results,
  *                                        c_min_dbe, c_max_dbe, c_max_hetero_ratio)             # <<<<<<<<<<<<<<
  *     return decomposer.decompose()
+ * 
 */
-  __pyx_t_9 = PyFloat_FromDouble(__pyx_v_c_min_dbe); if (unlikely(!__pyx_t_9)) __PYX_ERR(0, 496, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_t_9);
-  __pyx_t_10 = PyFloat_FromDouble(__pyx_v_c_max_dbe); if (unlikely(!__pyx_t_10)) __PYX_ERR(0, 496, __pyx_L1_error)
+  __pyx_t_10 = PyFloat_FromDouble(__pyx_v_c_min_dbe); if (unlikely(!__pyx_t_10)) __PYX_ERR(0, 728, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_10);
-  __pyx_t_11 = PyFloat_FromDouble(__pyx_v_c_max_hetero_ratio); if (unlikely(!__pyx_t_11)) __PYX_ERR(0, 496, __pyx_L1_error)
+  __pyx_t_11 = PyFloat_FromDouble(__pyx_v_c_max_dbe); if (unlikely(!__pyx_t_11)) __PYX_ERR(0, 728, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_11);
-  __pyx_t_12 = 1;
+  __pyx_t_12 = PyFloat_FromDouble(__pyx_v_c_max_hetero_ratio); if (unlikely(!__pyx_t_12)) __PYX_ERR(0, 728, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_12);
+  __pyx_t_13 = 1;
   {
-    PyObject *__pyx_callargs[8] = {__pyx_t_5, __pyx_v_element_bounds, __pyx_t_7, __pyx_t_8, __pyx_v_max_results, __pyx_t_9, __pyx_t_10, __pyx_t_11};
-    __pyx_t_4 = __Pyx_PyObject_FastCall(__pyx_t_6, __pyx_callargs+__pyx_t_12, (8-__pyx_t_12) | (__pyx_t_12*__Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET));
+    PyObject *__pyx_callargs[8] = {__pyx_t_5, __pyx_v_element_bounds, __pyx_t_7, __pyx_t_8, __pyx_t_9, __pyx_t_10, __pyx_t_11, __pyx_t_12};
+    __pyx_t_4 = __Pyx_PyObject_FastCall(__pyx_t_6, __pyx_callargs+__pyx_t_13, (8-__pyx_t_13) | (__pyx_t_13*__Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET));
     __Pyx_XDECREF(__pyx_t_5); __pyx_t_5 = 0;
     __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
     __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
     __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
     __Pyx_DECREF(__pyx_t_10); __pyx_t_10 = 0;
     __Pyx_DECREF(__pyx_t_11); __pyx_t_11 = 0;
+    __Pyx_DECREF(__pyx_t_12); __pyx_t_12 = 0;
     __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
-    if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 495, __pyx_L1_error)
+    if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 727, __pyx_L1_error)
     __Pyx_GOTREF((PyObject *)__pyx_t_4);
   }
   __pyx_v_decomposer = ((struct __pyx_obj_17sirius_decomposer_CythonSiriusDecomposer *)__pyx_t_4);
   __pyx_t_4 = 0;
 
-  /* "sirius_decomposer.pyx":497
+  /* "sirius_decomposer.pyx":729
  *     decomposer = CythonSiriusDecomposer(element_bounds, target_mass, tolerance_ppm, max_results,
  *                                        c_min_dbe, c_max_dbe, c_max_hetero_ratio)
  *     return decomposer.decompose()             # <<<<<<<<<<<<<<
+ * 
+ * def decompose_spectrum_cython(double precursor_mass, list fragment_masses,
 */
   __Pyx_XDECREF(__pyx_r);
   __pyx_t_6 = ((PyObject *)__pyx_v_decomposer);
   __Pyx_INCREF(__pyx_t_6);
-  __pyx_t_12 = 0;
+  __pyx_t_13 = 0;
   {
     PyObject *__pyx_callargs[2] = {__pyx_t_6, NULL};
-    __pyx_t_4 = __Pyx_PyObject_FastCallMethod(__pyx_mstate_global->__pyx_n_u_decompose, __pyx_callargs+__pyx_t_12, (1-__pyx_t_12) | (1*__Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET));
+    __pyx_t_4 = __Pyx_PyObject_FastCallMethod(__pyx_mstate_global->__pyx_n_u_decompose, __pyx_callargs+__pyx_t_13, (1-__pyx_t_13) | (1*__Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET));
     __Pyx_XDECREF(__pyx_t_6); __pyx_t_6 = 0;
-    if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 497, __pyx_L1_error)
+    if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 729, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_4);
   }
-  if (!(likely(PyList_CheckExact(__pyx_t_4))||((__pyx_t_4) == Py_None) || __Pyx_RaiseUnexpectedTypeError("list", __pyx_t_4))) __PYX_ERR(0, 497, __pyx_L1_error)
-  __pyx_r = ((PyObject*)__pyx_t_4);
+  __pyx_r = __pyx_t_4;
   __pyx_t_4 = 0;
   goto __pyx_L0;
 
-  /* "sirius_decomposer.pyx":468
- *             free(formula)
+  /* "sirius_decomposer.pyx":700
  * 
- * def cython_decompose_mass(target_mass: float,             # <<<<<<<<<<<<<<
- *                           element_bounds: Dict[str, Tuple[int, int]],
- *                           tolerance_ppm: float = 5.0,
+ * 
+ * def cython_decompose_mass(double target_mass,             # <<<<<<<<<<<<<<
+ *                           dict element_bounds,
+ *                           double tolerance_ppm = 5.0,
 */
 
   /* function exit code */
@@ -9678,7 +12491,491 @@ static PyObject *__pyx_pf_17sirius_decomposer_cython_decompose_mass(CYTHON_UNUSE
   __Pyx_XDECREF(__pyx_t_9);
   __Pyx_XDECREF(__pyx_t_10);
   __Pyx_XDECREF(__pyx_t_11);
+  __Pyx_XDECREF(__pyx_t_12);
   __Pyx_AddTraceback("sirius_decomposer.cython_decompose_mass", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __pyx_r = NULL;
+  __pyx_L0:;
+  __Pyx_XDECREF((PyObject *)__pyx_v_decomposer);
+  __Pyx_XGIVEREF(__pyx_r);
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+/* "sirius_decomposer.pyx":731
+ *     return decomposer.decompose()
+ * 
+ * def decompose_spectrum_cython(double precursor_mass, list fragment_masses,             # <<<<<<<<<<<<<<
+ *                              dict element_bounds,
+ *                              double tolerance_ppm = 5.0,
+*/
+
+/* Python wrapper */
+static PyObject *__pyx_pw_17sirius_decomposer_3decompose_spectrum_cython(PyObject *__pyx_self, 
+#if CYTHON_METH_FASTCALL
+PyObject *const *__pyx_args, Py_ssize_t __pyx_nargs, PyObject *__pyx_kwds
+#else
+PyObject *__pyx_args, PyObject *__pyx_kwds
+#endif
+); /*proto*/
+PyDoc_STRVAR(__pyx_doc_17sirius_decomposer_2decompose_spectrum_cython, "\n    High-level function for spectrum decomposition using Cython.\n    \n    Args:\n        precursor_mass: Mass of the precursor ion\n        fragment_masses: List of fragment masses to decompose\n        element_bounds: Dictionary mapping element symbols to (min_count, max_count)\n        tolerance_ppm: Mass tolerance in parts per million\n        max_results: Maximum number of results to return\n    \n    Returns:\n        List of dictionaries containing precursor formulas and fragment decompositions\n    ");
+static PyMethodDef __pyx_mdef_17sirius_decomposer_3decompose_spectrum_cython = {"decompose_spectrum_cython", (PyCFunction)(void(*)(void))(__Pyx_PyCFunction_FastCallWithKeywords)__pyx_pw_17sirius_decomposer_3decompose_spectrum_cython, __Pyx_METH_FASTCALL|METH_KEYWORDS, __pyx_doc_17sirius_decomposer_2decompose_spectrum_cython};
+static PyObject *__pyx_pw_17sirius_decomposer_3decompose_spectrum_cython(PyObject *__pyx_self, 
+#if CYTHON_METH_FASTCALL
+PyObject *const *__pyx_args, Py_ssize_t __pyx_nargs, PyObject *__pyx_kwds
+#else
+PyObject *__pyx_args, PyObject *__pyx_kwds
+#endif
+) {
+  double __pyx_v_precursor_mass;
+  PyObject *__pyx_v_fragment_masses = 0;
+  PyObject *__pyx_v_element_bounds = 0;
+  double __pyx_v_tolerance_ppm;
+  int __pyx_v_max_results;
+  #if !CYTHON_METH_FASTCALL
+  CYTHON_UNUSED Py_ssize_t __pyx_nargs;
+  #endif
+  CYTHON_UNUSED PyObject *const *__pyx_kwvalues;
+  PyObject* values[5] = {0,0,0,0,0};
+  int __pyx_lineno = 0;
+  const char *__pyx_filename = NULL;
+  int __pyx_clineno = 0;
+  PyObject *__pyx_r = 0;
+  __Pyx_RefNannyDeclarations
+  __Pyx_RefNannySetupContext("decompose_spectrum_cython (wrapper)", 0);
+  #if !CYTHON_METH_FASTCALL
+  #if CYTHON_ASSUME_SAFE_SIZE
+  __pyx_nargs = PyTuple_GET_SIZE(__pyx_args);
+  #else
+  __pyx_nargs = PyTuple_Size(__pyx_args); if (unlikely(__pyx_nargs < 0)) return NULL;
+  #endif
+  #endif
+  __pyx_kwvalues = __Pyx_KwValues_FASTCALL(__pyx_args, __pyx_nargs);
+  {
+    PyObject ** const __pyx_pyargnames[] = {&__pyx_mstate_global->__pyx_n_u_precursor_mass,&__pyx_mstate_global->__pyx_n_u_fragment_masses,&__pyx_mstate_global->__pyx_n_u_element_bounds,&__pyx_mstate_global->__pyx_n_u_tolerance_ppm,&__pyx_mstate_global->__pyx_n_u_max_results,0};
+    const Py_ssize_t __pyx_kwds_len = (__pyx_kwds) ? __Pyx_NumKwargs_FASTCALL(__pyx_kwds) : 0;
+    if (unlikely(__pyx_kwds_len) < 0) __PYX_ERR(0, 731, __pyx_L3_error)
+    if (__pyx_kwds_len > 0) {
+      switch (__pyx_nargs) {
+        case  5:
+        values[4] = __Pyx_ArgRef_FASTCALL(__pyx_args, 4);
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[4])) __PYX_ERR(0, 731, __pyx_L3_error)
+        CYTHON_FALLTHROUGH;
+        case  4:
+        values[3] = __Pyx_ArgRef_FASTCALL(__pyx_args, 3);
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[3])) __PYX_ERR(0, 731, __pyx_L3_error)
+        CYTHON_FALLTHROUGH;
+        case  3:
+        values[2] = __Pyx_ArgRef_FASTCALL(__pyx_args, 2);
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[2])) __PYX_ERR(0, 731, __pyx_L3_error)
+        CYTHON_FALLTHROUGH;
+        case  2:
+        values[1] = __Pyx_ArgRef_FASTCALL(__pyx_args, 1);
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[1])) __PYX_ERR(0, 731, __pyx_L3_error)
+        CYTHON_FALLTHROUGH;
+        case  1:
+        values[0] = __Pyx_ArgRef_FASTCALL(__pyx_args, 0);
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[0])) __PYX_ERR(0, 731, __pyx_L3_error)
+        CYTHON_FALLTHROUGH;
+        case  0: break;
+        default: goto __pyx_L5_argtuple_error;
+      }
+      const Py_ssize_t kwd_pos_args = __pyx_nargs;
+      if (__Pyx_ParseKeywords(__pyx_kwds, __pyx_kwvalues, __pyx_pyargnames, 0, values, kwd_pos_args, __pyx_kwds_len, "decompose_spectrum_cython", 0) < 0) __PYX_ERR(0, 731, __pyx_L3_error)
+      for (Py_ssize_t i = __pyx_nargs; i < 3; i++) {
+        if (unlikely(!values[i])) { __Pyx_RaiseArgtupleInvalid("decompose_spectrum_cython", 0, 3, 5, i); __PYX_ERR(0, 731, __pyx_L3_error) }
+      }
+    } else {
+      switch (__pyx_nargs) {
+        case  5:
+        values[4] = __Pyx_ArgRef_FASTCALL(__pyx_args, 4);
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[4])) __PYX_ERR(0, 731, __pyx_L3_error)
+        CYTHON_FALLTHROUGH;
+        case  4:
+        values[3] = __Pyx_ArgRef_FASTCALL(__pyx_args, 3);
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[3])) __PYX_ERR(0, 731, __pyx_L3_error)
+        CYTHON_FALLTHROUGH;
+        case  3:
+        values[2] = __Pyx_ArgRef_FASTCALL(__pyx_args, 2);
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[2])) __PYX_ERR(0, 731, __pyx_L3_error)
+        values[1] = __Pyx_ArgRef_FASTCALL(__pyx_args, 1);
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[1])) __PYX_ERR(0, 731, __pyx_L3_error)
+        values[0] = __Pyx_ArgRef_FASTCALL(__pyx_args, 0);
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[0])) __PYX_ERR(0, 731, __pyx_L3_error)
+        break;
+        default: goto __pyx_L5_argtuple_error;
+      }
+    }
+    __pyx_v_precursor_mass = __Pyx_PyFloat_AsDouble(values[0]); if (unlikely((__pyx_v_precursor_mass == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 731, __pyx_L3_error)
+    __pyx_v_fragment_masses = ((PyObject*)values[1]);
+    __pyx_v_element_bounds = ((PyObject*)values[2]);
+    if (values[3]) {
+      __pyx_v_tolerance_ppm = __Pyx_PyFloat_AsDouble(values[3]); if (unlikely((__pyx_v_tolerance_ppm == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 733, __pyx_L3_error)
+    } else {
+      __pyx_v_tolerance_ppm = ((double)((double)5.0));
+    }
+    if (values[4]) {
+      __pyx_v_max_results = __Pyx_PyLong_As_int(values[4]); if (unlikely((__pyx_v_max_results == (int)-1) && PyErr_Occurred())) __PYX_ERR(0, 734, __pyx_L3_error)
+    } else {
+      __pyx_v_max_results = ((int)((int)0xF4240));
+    }
+  }
+  goto __pyx_L6_skip;
+  __pyx_L5_argtuple_error:;
+  __Pyx_RaiseArgtupleInvalid("decompose_spectrum_cython", 0, 3, 5, __pyx_nargs); __PYX_ERR(0, 731, __pyx_L3_error)
+  __pyx_L6_skip:;
+  goto __pyx_L4_argument_unpacking_done;
+  __pyx_L3_error:;
+  for (Py_ssize_t __pyx_temp=0; __pyx_temp < (Py_ssize_t)(sizeof(values)/sizeof(values[0])); ++__pyx_temp) {
+    Py_XDECREF(values[__pyx_temp]);
+  }
+  __Pyx_AddTraceback("sirius_decomposer.decompose_spectrum_cython", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __Pyx_RefNannyFinishContext();
+  return NULL;
+  __pyx_L4_argument_unpacking_done:;
+  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_fragment_masses), (&PyList_Type), 1, "fragment_masses", 1))) __PYX_ERR(0, 731, __pyx_L1_error)
+  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_element_bounds), (&PyDict_Type), 1, "element_bounds", 1))) __PYX_ERR(0, 732, __pyx_L1_error)
+  __pyx_r = __pyx_pf_17sirius_decomposer_2decompose_spectrum_cython(__pyx_self, __pyx_v_precursor_mass, __pyx_v_fragment_masses, __pyx_v_element_bounds, __pyx_v_tolerance_ppm, __pyx_v_max_results);
+
+  /* function exit code */
+  goto __pyx_L0;
+  __pyx_L1_error:;
+  __pyx_r = NULL;
+  for (Py_ssize_t __pyx_temp=0; __pyx_temp < (Py_ssize_t)(sizeof(values)/sizeof(values[0])); ++__pyx_temp) {
+    Py_XDECREF(values[__pyx_temp]);
+  }
+  goto __pyx_L7_cleaned_up;
+  __pyx_L0:;
+  for (Py_ssize_t __pyx_temp=0; __pyx_temp < (Py_ssize_t)(sizeof(values)/sizeof(values[0])); ++__pyx_temp) {
+    Py_XDECREF(values[__pyx_temp]);
+  }
+  __pyx_L7_cleaned_up:;
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+static PyObject *__pyx_pf_17sirius_decomposer_2decompose_spectrum_cython(CYTHON_UNUSED PyObject *__pyx_self, double __pyx_v_precursor_mass, PyObject *__pyx_v_fragment_masses, PyObject *__pyx_v_element_bounds, double __pyx_v_tolerance_ppm, int __pyx_v_max_results) {
+  struct __pyx_obj_17sirius_decomposer_CythonSpectrumDecomposer *__pyx_v_decomposer = NULL;
+  PyObject *__pyx_r = NULL;
+  __Pyx_RefNannyDeclarations
+  PyObject *__pyx_t_1 = NULL;
+  PyObject *__pyx_t_2 = NULL;
+  PyObject *__pyx_t_3 = NULL;
+  PyObject *__pyx_t_4 = NULL;
+  PyObject *__pyx_t_5 = NULL;
+  size_t __pyx_t_6;
+  int __pyx_lineno = 0;
+  const char *__pyx_filename = NULL;
+  int __pyx_clineno = 0;
+  __Pyx_RefNannySetupContext("decompose_spectrum_cython", 0);
+
+  /* "sirius_decomposer.pyx":748
+ *         List of dictionaries containing precursor formulas and fragment decompositions
+ *     """
+ *     decomposer = CythonSpectrumDecomposer(element_bounds, tolerance_ppm, max_results)             # <<<<<<<<<<<<<<
+ *     return decomposer.decompose_spectrum(precursor_mass, fragment_masses)
+ * 
+*/
+  __pyx_t_2 = NULL;
+  __Pyx_INCREF((PyObject *)__pyx_mstate_global->__pyx_ptype_17sirius_decomposer_CythonSpectrumDecomposer);
+  __pyx_t_3 = ((PyObject *)__pyx_mstate_global->__pyx_ptype_17sirius_decomposer_CythonSpectrumDecomposer); 
+  __pyx_t_4 = PyFloat_FromDouble(__pyx_v_tolerance_ppm); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 748, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_4);
+  __pyx_t_5 = __Pyx_PyLong_From_int(__pyx_v_max_results); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 748, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_5);
+  __pyx_t_6 = 1;
+  {
+    PyObject *__pyx_callargs[4] = {__pyx_t_2, __pyx_v_element_bounds, __pyx_t_4, __pyx_t_5};
+    __pyx_t_1 = __Pyx_PyObject_FastCall(__pyx_t_3, __pyx_callargs+__pyx_t_6, (4-__pyx_t_6) | (__pyx_t_6*__Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET));
+    __Pyx_XDECREF(__pyx_t_2); __pyx_t_2 = 0;
+    __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
+    __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
+    __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+    if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 748, __pyx_L1_error)
+    __Pyx_GOTREF((PyObject *)__pyx_t_1);
+  }
+  __pyx_v_decomposer = ((struct __pyx_obj_17sirius_decomposer_CythonSpectrumDecomposer *)__pyx_t_1);
+  __pyx_t_1 = 0;
+
+  /* "sirius_decomposer.pyx":749
+ *     """
+ *     decomposer = CythonSpectrumDecomposer(element_bounds, tolerance_ppm, max_results)
+ *     return decomposer.decompose_spectrum(precursor_mass, fragment_masses)             # <<<<<<<<<<<<<<
+ * 
+ * 
+*/
+  __Pyx_XDECREF(__pyx_r);
+  __pyx_t_3 = ((PyObject *)__pyx_v_decomposer);
+  __Pyx_INCREF(__pyx_t_3);
+  __pyx_t_5 = PyFloat_FromDouble(__pyx_v_precursor_mass); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 749, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_5);
+  __pyx_t_6 = 0;
+  {
+    PyObject *__pyx_callargs[3] = {__pyx_t_3, __pyx_t_5, __pyx_v_fragment_masses};
+    __pyx_t_1 = __Pyx_PyObject_FastCallMethod(__pyx_mstate_global->__pyx_n_u_decompose_spectrum, __pyx_callargs+__pyx_t_6, (3-__pyx_t_6) | (1*__Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET));
+    __Pyx_XDECREF(__pyx_t_3); __pyx_t_3 = 0;
+    __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
+    if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 749, __pyx_L1_error)
+    __Pyx_GOTREF(__pyx_t_1);
+  }
+  __pyx_r = __pyx_t_1;
+  __pyx_t_1 = 0;
+  goto __pyx_L0;
+
+  /* "sirius_decomposer.pyx":731
+ *     return decomposer.decompose()
+ * 
+ * def decompose_spectrum_cython(double precursor_mass, list fragment_masses,             # <<<<<<<<<<<<<<
+ *                              dict element_bounds,
+ *                              double tolerance_ppm = 5.0,
+*/
+
+  /* function exit code */
+  __pyx_L1_error:;
+  __Pyx_XDECREF(__pyx_t_1);
+  __Pyx_XDECREF(__pyx_t_2);
+  __Pyx_XDECREF(__pyx_t_3);
+  __Pyx_XDECREF(__pyx_t_4);
+  __Pyx_XDECREF(__pyx_t_5);
+  __Pyx_AddTraceback("sirius_decomposer.decompose_spectrum_cython", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __pyx_r = NULL;
+  __pyx_L0:;
+  __Pyx_XDECREF((PyObject *)__pyx_v_decomposer);
+  __Pyx_XGIVEREF(__pyx_r);
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+/* "sirius_decomposer.pyx":752
+ * 
+ * 
+ * def decompose_given_formula_spectrum_cython(dict given_formula, list fragment_masses,             # <<<<<<<<<<<<<<
+ *                                            dict element_bounds,
+ *                                            double tolerance_ppm = 5.0,
+*/
+
+/* Python wrapper */
+static PyObject *__pyx_pw_17sirius_decomposer_5decompose_given_formula_spectrum_cython(PyObject *__pyx_self, 
+#if CYTHON_METH_FASTCALL
+PyObject *const *__pyx_args, Py_ssize_t __pyx_nargs, PyObject *__pyx_kwds
+#else
+PyObject *__pyx_args, PyObject *__pyx_kwds
+#endif
+); /*proto*/
+PyDoc_STRVAR(__pyx_doc_17sirius_decomposer_4decompose_given_formula_spectrum_cython, "\n    High-level function for decomposing fragments given a known precursor formula.\n    \n    Args:\n        given_formula: Dictionary representing the precursor formula\n        fragment_masses: List of fragment masses to decompose\n        element_bounds: Dictionary mapping element symbols to (min_count, max_count)\n        tolerance_ppm: Mass tolerance in parts per million\n        max_results: Maximum number of results to return\n    \n    Returns:\n        List of possible fragment formulas for each mass\n    ");
+static PyMethodDef __pyx_mdef_17sirius_decomposer_5decompose_given_formula_spectrum_cython = {"decompose_given_formula_spectrum_cython", (PyCFunction)(void(*)(void))(__Pyx_PyCFunction_FastCallWithKeywords)__pyx_pw_17sirius_decomposer_5decompose_given_formula_spectrum_cython, __Pyx_METH_FASTCALL|METH_KEYWORDS, __pyx_doc_17sirius_decomposer_4decompose_given_formula_spectrum_cython};
+static PyObject *__pyx_pw_17sirius_decomposer_5decompose_given_formula_spectrum_cython(PyObject *__pyx_self, 
+#if CYTHON_METH_FASTCALL
+PyObject *const *__pyx_args, Py_ssize_t __pyx_nargs, PyObject *__pyx_kwds
+#else
+PyObject *__pyx_args, PyObject *__pyx_kwds
+#endif
+) {
+  PyObject *__pyx_v_given_formula = 0;
+  PyObject *__pyx_v_fragment_masses = 0;
+  PyObject *__pyx_v_element_bounds = 0;
+  double __pyx_v_tolerance_ppm;
+  int __pyx_v_max_results;
+  #if !CYTHON_METH_FASTCALL
+  CYTHON_UNUSED Py_ssize_t __pyx_nargs;
+  #endif
+  CYTHON_UNUSED PyObject *const *__pyx_kwvalues;
+  PyObject* values[5] = {0,0,0,0,0};
+  int __pyx_lineno = 0;
+  const char *__pyx_filename = NULL;
+  int __pyx_clineno = 0;
+  PyObject *__pyx_r = 0;
+  __Pyx_RefNannyDeclarations
+  __Pyx_RefNannySetupContext("decompose_given_formula_spectrum_cython (wrapper)", 0);
+  #if !CYTHON_METH_FASTCALL
+  #if CYTHON_ASSUME_SAFE_SIZE
+  __pyx_nargs = PyTuple_GET_SIZE(__pyx_args);
+  #else
+  __pyx_nargs = PyTuple_Size(__pyx_args); if (unlikely(__pyx_nargs < 0)) return NULL;
+  #endif
+  #endif
+  __pyx_kwvalues = __Pyx_KwValues_FASTCALL(__pyx_args, __pyx_nargs);
+  {
+    PyObject ** const __pyx_pyargnames[] = {&__pyx_mstate_global->__pyx_n_u_given_formula,&__pyx_mstate_global->__pyx_n_u_fragment_masses,&__pyx_mstate_global->__pyx_n_u_element_bounds,&__pyx_mstate_global->__pyx_n_u_tolerance_ppm,&__pyx_mstate_global->__pyx_n_u_max_results,0};
+    const Py_ssize_t __pyx_kwds_len = (__pyx_kwds) ? __Pyx_NumKwargs_FASTCALL(__pyx_kwds) : 0;
+    if (unlikely(__pyx_kwds_len) < 0) __PYX_ERR(0, 752, __pyx_L3_error)
+    if (__pyx_kwds_len > 0) {
+      switch (__pyx_nargs) {
+        case  5:
+        values[4] = __Pyx_ArgRef_FASTCALL(__pyx_args, 4);
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[4])) __PYX_ERR(0, 752, __pyx_L3_error)
+        CYTHON_FALLTHROUGH;
+        case  4:
+        values[3] = __Pyx_ArgRef_FASTCALL(__pyx_args, 3);
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[3])) __PYX_ERR(0, 752, __pyx_L3_error)
+        CYTHON_FALLTHROUGH;
+        case  3:
+        values[2] = __Pyx_ArgRef_FASTCALL(__pyx_args, 2);
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[2])) __PYX_ERR(0, 752, __pyx_L3_error)
+        CYTHON_FALLTHROUGH;
+        case  2:
+        values[1] = __Pyx_ArgRef_FASTCALL(__pyx_args, 1);
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[1])) __PYX_ERR(0, 752, __pyx_L3_error)
+        CYTHON_FALLTHROUGH;
+        case  1:
+        values[0] = __Pyx_ArgRef_FASTCALL(__pyx_args, 0);
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[0])) __PYX_ERR(0, 752, __pyx_L3_error)
+        CYTHON_FALLTHROUGH;
+        case  0: break;
+        default: goto __pyx_L5_argtuple_error;
+      }
+      const Py_ssize_t kwd_pos_args = __pyx_nargs;
+      if (__Pyx_ParseKeywords(__pyx_kwds, __pyx_kwvalues, __pyx_pyargnames, 0, values, kwd_pos_args, __pyx_kwds_len, "decompose_given_formula_spectrum_cython", 0) < 0) __PYX_ERR(0, 752, __pyx_L3_error)
+      for (Py_ssize_t i = __pyx_nargs; i < 3; i++) {
+        if (unlikely(!values[i])) { __Pyx_RaiseArgtupleInvalid("decompose_given_formula_spectrum_cython", 0, 3, 5, i); __PYX_ERR(0, 752, __pyx_L3_error) }
+      }
+    } else {
+      switch (__pyx_nargs) {
+        case  5:
+        values[4] = __Pyx_ArgRef_FASTCALL(__pyx_args, 4);
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[4])) __PYX_ERR(0, 752, __pyx_L3_error)
+        CYTHON_FALLTHROUGH;
+        case  4:
+        values[3] = __Pyx_ArgRef_FASTCALL(__pyx_args, 3);
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[3])) __PYX_ERR(0, 752, __pyx_L3_error)
+        CYTHON_FALLTHROUGH;
+        case  3:
+        values[2] = __Pyx_ArgRef_FASTCALL(__pyx_args, 2);
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[2])) __PYX_ERR(0, 752, __pyx_L3_error)
+        values[1] = __Pyx_ArgRef_FASTCALL(__pyx_args, 1);
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[1])) __PYX_ERR(0, 752, __pyx_L3_error)
+        values[0] = __Pyx_ArgRef_FASTCALL(__pyx_args, 0);
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[0])) __PYX_ERR(0, 752, __pyx_L3_error)
+        break;
+        default: goto __pyx_L5_argtuple_error;
+      }
+    }
+    __pyx_v_given_formula = ((PyObject*)values[0]);
+    __pyx_v_fragment_masses = ((PyObject*)values[1]);
+    __pyx_v_element_bounds = ((PyObject*)values[2]);
+    if (values[3]) {
+      __pyx_v_tolerance_ppm = __Pyx_PyFloat_AsDouble(values[3]); if (unlikely((__pyx_v_tolerance_ppm == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 754, __pyx_L3_error)
+    } else {
+      __pyx_v_tolerance_ppm = ((double)((double)5.0));
+    }
+    if (values[4]) {
+      __pyx_v_max_results = __Pyx_PyLong_As_int(values[4]); if (unlikely((__pyx_v_max_results == (int)-1) && PyErr_Occurred())) __PYX_ERR(0, 755, __pyx_L3_error)
+    } else {
+      __pyx_v_max_results = ((int)((int)0xF4240));
+    }
+  }
+  goto __pyx_L6_skip;
+  __pyx_L5_argtuple_error:;
+  __Pyx_RaiseArgtupleInvalid("decompose_given_formula_spectrum_cython", 0, 3, 5, __pyx_nargs); __PYX_ERR(0, 752, __pyx_L3_error)
+  __pyx_L6_skip:;
+  goto __pyx_L4_argument_unpacking_done;
+  __pyx_L3_error:;
+  for (Py_ssize_t __pyx_temp=0; __pyx_temp < (Py_ssize_t)(sizeof(values)/sizeof(values[0])); ++__pyx_temp) {
+    Py_XDECREF(values[__pyx_temp]);
+  }
+  __Pyx_AddTraceback("sirius_decomposer.decompose_given_formula_spectrum_cython", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __Pyx_RefNannyFinishContext();
+  return NULL;
+  __pyx_L4_argument_unpacking_done:;
+  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_given_formula), (&PyDict_Type), 1, "given_formula", 1))) __PYX_ERR(0, 752, __pyx_L1_error)
+  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_fragment_masses), (&PyList_Type), 1, "fragment_masses", 1))) __PYX_ERR(0, 752, __pyx_L1_error)
+  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_element_bounds), (&PyDict_Type), 1, "element_bounds", 1))) __PYX_ERR(0, 753, __pyx_L1_error)
+  __pyx_r = __pyx_pf_17sirius_decomposer_4decompose_given_formula_spectrum_cython(__pyx_self, __pyx_v_given_formula, __pyx_v_fragment_masses, __pyx_v_element_bounds, __pyx_v_tolerance_ppm, __pyx_v_max_results);
+
+  /* function exit code */
+  goto __pyx_L0;
+  __pyx_L1_error:;
+  __pyx_r = NULL;
+  for (Py_ssize_t __pyx_temp=0; __pyx_temp < (Py_ssize_t)(sizeof(values)/sizeof(values[0])); ++__pyx_temp) {
+    Py_XDECREF(values[__pyx_temp]);
+  }
+  goto __pyx_L7_cleaned_up;
+  __pyx_L0:;
+  for (Py_ssize_t __pyx_temp=0; __pyx_temp < (Py_ssize_t)(sizeof(values)/sizeof(values[0])); ++__pyx_temp) {
+    Py_XDECREF(values[__pyx_temp]);
+  }
+  __pyx_L7_cleaned_up:;
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+static PyObject *__pyx_pf_17sirius_decomposer_4decompose_given_formula_spectrum_cython(CYTHON_UNUSED PyObject *__pyx_self, PyObject *__pyx_v_given_formula, PyObject *__pyx_v_fragment_masses, PyObject *__pyx_v_element_bounds, double __pyx_v_tolerance_ppm, int __pyx_v_max_results) {
+  struct __pyx_obj_17sirius_decomposer_CythonSpectrumDecomposer *__pyx_v_decomposer = NULL;
+  PyObject *__pyx_r = NULL;
+  __Pyx_RefNannyDeclarations
+  PyObject *__pyx_t_1 = NULL;
+  PyObject *__pyx_t_2 = NULL;
+  PyObject *__pyx_t_3 = NULL;
+  PyObject *__pyx_t_4 = NULL;
+  PyObject *__pyx_t_5 = NULL;
+  size_t __pyx_t_6;
+  int __pyx_lineno = 0;
+  const char *__pyx_filename = NULL;
+  int __pyx_clineno = 0;
+  __Pyx_RefNannySetupContext("decompose_given_formula_spectrum_cython", 0);
+
+  /* "sirius_decomposer.pyx":769
+ *         List of possible fragment formulas for each mass
+ *     """
+ *     decomposer = CythonSpectrumDecomposer(element_bounds, tolerance_ppm, max_results)             # <<<<<<<<<<<<<<
+ *     return decomposer.decompose_given_formula_spectrum(given_formula, fragment_masses)
+*/
+  __pyx_t_2 = NULL;
+  __Pyx_INCREF((PyObject *)__pyx_mstate_global->__pyx_ptype_17sirius_decomposer_CythonSpectrumDecomposer);
+  __pyx_t_3 = ((PyObject *)__pyx_mstate_global->__pyx_ptype_17sirius_decomposer_CythonSpectrumDecomposer); 
+  __pyx_t_4 = PyFloat_FromDouble(__pyx_v_tolerance_ppm); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 769, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_4);
+  __pyx_t_5 = __Pyx_PyLong_From_int(__pyx_v_max_results); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 769, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_5);
+  __pyx_t_6 = 1;
+  {
+    PyObject *__pyx_callargs[4] = {__pyx_t_2, __pyx_v_element_bounds, __pyx_t_4, __pyx_t_5};
+    __pyx_t_1 = __Pyx_PyObject_FastCall(__pyx_t_3, __pyx_callargs+__pyx_t_6, (4-__pyx_t_6) | (__pyx_t_6*__Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET));
+    __Pyx_XDECREF(__pyx_t_2); __pyx_t_2 = 0;
+    __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
+    __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
+    __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+    if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 769, __pyx_L1_error)
+    __Pyx_GOTREF((PyObject *)__pyx_t_1);
+  }
+  __pyx_v_decomposer = ((struct __pyx_obj_17sirius_decomposer_CythonSpectrumDecomposer *)__pyx_t_1);
+  __pyx_t_1 = 0;
+
+  /* "sirius_decomposer.pyx":770
+ *     """
+ *     decomposer = CythonSpectrumDecomposer(element_bounds, tolerance_ppm, max_results)
+ *     return decomposer.decompose_given_formula_spectrum(given_formula, fragment_masses)             # <<<<<<<<<<<<<<
+*/
+  __Pyx_XDECREF(__pyx_r);
+  __pyx_t_3 = ((PyObject *)__pyx_v_decomposer);
+  __Pyx_INCREF(__pyx_t_3);
+  __pyx_t_6 = 0;
+  {
+    PyObject *__pyx_callargs[3] = {__pyx_t_3, __pyx_v_given_formula, __pyx_v_fragment_masses};
+    __pyx_t_1 = __Pyx_PyObject_FastCallMethod(__pyx_mstate_global->__pyx_n_u_decompose_given_formula_spectrum, __pyx_callargs+__pyx_t_6, (3-__pyx_t_6) | (1*__Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET));
+    __Pyx_XDECREF(__pyx_t_3); __pyx_t_3 = 0;
+    if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 770, __pyx_L1_error)
+    __Pyx_GOTREF(__pyx_t_1);
+  }
+  __pyx_r = __pyx_t_1;
+  __pyx_t_1 = 0;
+  goto __pyx_L0;
+
+  /* "sirius_decomposer.pyx":752
+ * 
+ * 
+ * def decompose_given_formula_spectrum_cython(dict given_formula, list fragment_masses,             # <<<<<<<<<<<<<<
+ *                                            dict element_bounds,
+ *                                            double tolerance_ppm = 5.0,
+*/
+
+  /* function exit code */
+  __pyx_L1_error:;
+  __Pyx_XDECREF(__pyx_t_1);
+  __Pyx_XDECREF(__pyx_t_2);
+  __Pyx_XDECREF(__pyx_t_3);
+  __Pyx_XDECREF(__pyx_t_4);
+  __Pyx_XDECREF(__pyx_t_5);
+  __Pyx_AddTraceback("sirius_decomposer.decompose_given_formula_spectrum_cython", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __pyx_r = NULL;
   __pyx_L0:;
   __Pyx_XDECREF((PyObject *)__pyx_v_decomposer);
@@ -9866,6 +13163,186 @@ static PyTypeObject __pyx_type_17sirius_decomposer_CythonSiriusDecomposer = {
   #endif
 };
 #endif
+static struct __pyx_vtabstruct_17sirius_decomposer_CythonSpectrumDecomposer __pyx_vtable_17sirius_decomposer_CythonSpectrumDecomposer;
+
+static PyObject *__pyx_tp_new_17sirius_decomposer_CythonSpectrumDecomposer(PyTypeObject *t, PyObject *a, PyObject *k) {
+  struct __pyx_obj_17sirius_decomposer_CythonSpectrumDecomposer *p;
+  PyObject *o;
+  #if CYTHON_COMPILING_IN_LIMITED_API
+  allocfunc alloc_func = (allocfunc)PyType_GetSlot(t, Py_tp_alloc);
+  o = alloc_func(t, 0);
+  #else
+  if (likely(!__Pyx_PyType_HasFeature(t, Py_TPFLAGS_IS_ABSTRACT))) {
+    o = (*t->tp_alloc)(t, 0);
+  } else {
+    o = (PyObject *) PyBaseObject_Type.tp_new(t, __pyx_mstate_global->__pyx_empty_tuple, 0);
+  }
+  if (unlikely(!o)) return 0;
+  #endif
+  p = ((struct __pyx_obj_17sirius_decomposer_CythonSpectrumDecomposer *)o);
+  p->__pyx_vtab = __pyx_vtabptr_17sirius_decomposer_CythonSpectrumDecomposer;
+  p->element_bounds = ((PyObject*)Py_None); Py_INCREF(Py_None);
+  if (unlikely(__pyx_pw_17sirius_decomposer_24CythonSpectrumDecomposer_1__cinit__(o, a, k) < 0)) goto bad;
+  return o;
+  bad:
+  Py_DECREF(o); o = 0;
+  return NULL;
+}
+
+static void __pyx_tp_dealloc_17sirius_decomposer_CythonSpectrumDecomposer(PyObject *o) {
+  struct __pyx_obj_17sirius_decomposer_CythonSpectrumDecomposer *p = (struct __pyx_obj_17sirius_decomposer_CythonSpectrumDecomposer *)o;
+  #if CYTHON_USE_TP_FINALIZE
+  if (unlikely((PY_VERSION_HEX >= 0x03080000 || __Pyx_PyType_HasFeature(Py_TYPE(o), Py_TPFLAGS_HAVE_FINALIZE)) && __Pyx_PyObject_GetSlot(o, tp_finalize, destructor)) && !__Pyx_PyObject_GC_IsFinalized(o)) {
+    if (__Pyx_PyObject_GetSlot(o, tp_dealloc, destructor) == __pyx_tp_dealloc_17sirius_decomposer_CythonSpectrumDecomposer) {
+      if (PyObject_CallFinalizerFromDealloc(o)) return;
+    }
+  }
+  #endif
+  PyObject_GC_UnTrack(o);
+  {
+    PyObject *etype, *eval, *etb;
+    PyErr_Fetch(&etype, &eval, &etb);
+    __Pyx_SET_REFCNT(o, Py_REFCNT(o) + 1);
+    __pyx_pw_17sirius_decomposer_24CythonSpectrumDecomposer_3__dealloc__(o);
+    __Pyx_SET_REFCNT(o, Py_REFCNT(o) - 1);
+    PyErr_Restore(etype, eval, etb);
+  }
+  Py_CLEAR(p->element_bounds);
+  #if CYTHON_USE_TYPE_SLOTS
+  (*Py_TYPE(o)->tp_free)(o);
+  #else
+  {
+    freefunc tp_free = (freefunc)PyType_GetSlot(Py_TYPE(o), Py_tp_free);
+    if (tp_free) tp_free(o);
+  }
+  #endif
+}
+
+static int __pyx_tp_traverse_17sirius_decomposer_CythonSpectrumDecomposer(PyObject *o, visitproc v, void *a) {
+  int e;
+  struct __pyx_obj_17sirius_decomposer_CythonSpectrumDecomposer *p = (struct __pyx_obj_17sirius_decomposer_CythonSpectrumDecomposer *)o;
+  {
+    e = __Pyx_call_type_traverse(o, 1, v, a);
+    if (e) return e;
+  }
+  if (p->element_bounds) {
+    e = (*v)(p->element_bounds, a); if (e) return e;
+  }
+  return 0;
+}
+
+static int __pyx_tp_clear_17sirius_decomposer_CythonSpectrumDecomposer(PyObject *o) {
+  PyObject* tmp;
+  struct __pyx_obj_17sirius_decomposer_CythonSpectrumDecomposer *p = (struct __pyx_obj_17sirius_decomposer_CythonSpectrumDecomposer *)o;
+  tmp = ((PyObject*)p->element_bounds);
+  p->element_bounds = ((PyObject*)Py_None); Py_INCREF(Py_None);
+  Py_XDECREF(tmp);
+  return 0;
+}
+
+static PyMethodDef __pyx_methods_17sirius_decomposer_CythonSpectrumDecomposer[] = {
+  {"decompose_given_formula_spectrum", (PyCFunction)(void(*)(void))(__Pyx_PyCFunction_FastCallWithKeywords)__pyx_pw_17sirius_decomposer_24CythonSpectrumDecomposer_5decompose_given_formula_spectrum, __Pyx_METH_FASTCALL|METH_KEYWORDS, __pyx_doc_17sirius_decomposer_24CythonSpectrumDecomposer_4decompose_given_formula_spectrum},
+  {"decompose_spectrum", (PyCFunction)(void(*)(void))(__Pyx_PyCFunction_FastCallWithKeywords)__pyx_pw_17sirius_decomposer_24CythonSpectrumDecomposer_7decompose_spectrum, __Pyx_METH_FASTCALL|METH_KEYWORDS, __pyx_doc_17sirius_decomposer_24CythonSpectrumDecomposer_6decompose_spectrum},
+  {"__reduce_cython__", (PyCFunction)(void(*)(void))(__Pyx_PyCFunction_FastCallWithKeywords)__pyx_pw_17sirius_decomposer_24CythonSpectrumDecomposer_9__reduce_cython__, __Pyx_METH_FASTCALL|METH_KEYWORDS, 0},
+  {"__setstate_cython__", (PyCFunction)(void(*)(void))(__Pyx_PyCFunction_FastCallWithKeywords)__pyx_pw_17sirius_decomposer_24CythonSpectrumDecomposer_11__setstate_cython__, __Pyx_METH_FASTCALL|METH_KEYWORDS, 0},
+  {0, 0, 0, 0}
+};
+#if CYTHON_USE_TYPE_SPECS
+static PyType_Slot __pyx_type_17sirius_decomposer_CythonSpectrumDecomposer_slots[] = {
+  {Py_tp_dealloc, (void *)__pyx_tp_dealloc_17sirius_decomposer_CythonSpectrumDecomposer},
+  {Py_tp_doc, (void *)PyDoc_STR("\n    Cython implementation for decomposing mass spectra with precursor constraints.\n    ")},
+  {Py_tp_traverse, (void *)__pyx_tp_traverse_17sirius_decomposer_CythonSpectrumDecomposer},
+  {Py_tp_clear, (void *)__pyx_tp_clear_17sirius_decomposer_CythonSpectrumDecomposer},
+  {Py_tp_methods, (void *)__pyx_methods_17sirius_decomposer_CythonSpectrumDecomposer},
+  {Py_tp_new, (void *)__pyx_tp_new_17sirius_decomposer_CythonSpectrumDecomposer},
+  {0, 0},
+};
+static PyType_Spec __pyx_type_17sirius_decomposer_CythonSpectrumDecomposer_spec = {
+  "sirius_decomposer.CythonSpectrumDecomposer",
+  sizeof(struct __pyx_obj_17sirius_decomposer_CythonSpectrumDecomposer),
+  0,
+  Py_TPFLAGS_DEFAULT|Py_TPFLAGS_HAVE_VERSION_TAG|Py_TPFLAGS_CHECKTYPES|Py_TPFLAGS_HAVE_NEWBUFFER|Py_TPFLAGS_BASETYPE|Py_TPFLAGS_HAVE_GC,
+  __pyx_type_17sirius_decomposer_CythonSpectrumDecomposer_slots,
+};
+#else
+
+static PyTypeObject __pyx_type_17sirius_decomposer_CythonSpectrumDecomposer = {
+  PyVarObject_HEAD_INIT(0, 0)
+  "sirius_decomposer.""CythonSpectrumDecomposer", /*tp_name*/
+  sizeof(struct __pyx_obj_17sirius_decomposer_CythonSpectrumDecomposer), /*tp_basicsize*/
+  0, /*tp_itemsize*/
+  __pyx_tp_dealloc_17sirius_decomposer_CythonSpectrumDecomposer, /*tp_dealloc*/
+  #if PY_VERSION_HEX < 0x030800b4
+  0, /*tp_print*/
+  #endif
+  #if PY_VERSION_HEX >= 0x030800b4
+  0, /*tp_vectorcall_offset*/
+  #endif
+  0, /*tp_getattr*/
+  0, /*tp_setattr*/
+  0, /*tp_as_async*/
+  0, /*tp_repr*/
+  0, /*tp_as_number*/
+  0, /*tp_as_sequence*/
+  0, /*tp_as_mapping*/
+  0, /*tp_hash*/
+  0, /*tp_call*/
+  0, /*tp_str*/
+  0, /*tp_getattro*/
+  0, /*tp_setattro*/
+  0, /*tp_as_buffer*/
+  Py_TPFLAGS_DEFAULT|Py_TPFLAGS_HAVE_VERSION_TAG|Py_TPFLAGS_CHECKTYPES|Py_TPFLAGS_HAVE_NEWBUFFER|Py_TPFLAGS_BASETYPE|Py_TPFLAGS_HAVE_GC, /*tp_flags*/
+  PyDoc_STR("\n    Cython implementation for decomposing mass spectra with precursor constraints.\n    "), /*tp_doc*/
+  __pyx_tp_traverse_17sirius_decomposer_CythonSpectrumDecomposer, /*tp_traverse*/
+  __pyx_tp_clear_17sirius_decomposer_CythonSpectrumDecomposer, /*tp_clear*/
+  0, /*tp_richcompare*/
+  0, /*tp_weaklistoffset*/
+  0, /*tp_iter*/
+  0, /*tp_iternext*/
+  __pyx_methods_17sirius_decomposer_CythonSpectrumDecomposer, /*tp_methods*/
+  0, /*tp_members*/
+  0, /*tp_getset*/
+  0, /*tp_base*/
+  0, /*tp_dict*/
+  0, /*tp_descr_get*/
+  0, /*tp_descr_set*/
+  #if !CYTHON_USE_TYPE_SPECS
+  0, /*tp_dictoffset*/
+  #endif
+  0, /*tp_init*/
+  0, /*tp_alloc*/
+  __pyx_tp_new_17sirius_decomposer_CythonSpectrumDecomposer, /*tp_new*/
+  0, /*tp_free*/
+  0, /*tp_is_gc*/
+  0, /*tp_bases*/
+  0, /*tp_mro*/
+  0, /*tp_cache*/
+  0, /*tp_subclasses*/
+  0, /*tp_weaklist*/
+  0, /*tp_del*/
+  0, /*tp_version_tag*/
+  #if CYTHON_USE_TP_FINALIZE
+  0, /*tp_finalize*/
+  #else
+  NULL, /*tp_finalize*/
+  #endif
+  #if PY_VERSION_HEX >= 0x030800b1 && (!CYTHON_COMPILING_IN_PYPY || PYPY_VERSION_NUM >= 0x07030800)
+  0, /*tp_vectorcall*/
+  #endif
+  #if __PYX_NEED_TP_PRINT_SLOT == 1
+  0, /*tp_print*/
+  #endif
+  #if PY_VERSION_HEX >= 0x030C0000
+  0, /*tp_watched*/
+  #endif
+  #if PY_VERSION_HEX >= 0x030d00A4
+  0, /*tp_versions_used*/
+  #endif
+  #if CYTHON_COMPILING_IN_PYPY && PY_VERSION_HEX >= 0x03090000 && PY_VERSION_HEX < 0x030a0000
+  0, /*tp_pypy_flags*/
+  #endif
+};
+#endif
 
 static PyMethodDef __pyx_methods[] = {
   {0, 0, 0, 0}
@@ -9948,6 +13425,31 @@ static int __Pyx_modinit_type_init_code(__pyx_mstatetype *__pyx_mstate) {
   if (__Pyx_MergeVtables(__pyx_mstate->__pyx_ptype_17sirius_decomposer_CythonSiriusDecomposer) < 0) __PYX_ERR(0, 43, __pyx_L1_error)
   if (PyObject_SetAttr(__pyx_m, __pyx_mstate_global->__pyx_n_u_CythonSiriusDecomposer, (PyObject *) __pyx_mstate->__pyx_ptype_17sirius_decomposer_CythonSiriusDecomposer) < 0) __PYX_ERR(0, 43, __pyx_L1_error)
   if (__Pyx_setup_reduce((PyObject *) __pyx_mstate->__pyx_ptype_17sirius_decomposer_CythonSiriusDecomposer) < 0) __PYX_ERR(0, 43, __pyx_L1_error)
+  __pyx_vtabptr_17sirius_decomposer_CythonSpectrumDecomposer = &__pyx_vtable_17sirius_decomposer_CythonSpectrumDecomposer;
+  __pyx_vtable_17sirius_decomposer_CythonSpectrumDecomposer._formula_array_to_dict = (PyObject *(*)(struct __pyx_obj_17sirius_decomposer_CythonSpectrumDecomposer *, int *))__pyx_f_17sirius_decomposer_24CythonSpectrumDecomposer__formula_array_to_dict;
+  __pyx_vtable_17sirius_decomposer_CythonSpectrumDecomposer._is_subset_formula = (int (*)(struct __pyx_obj_17sirius_decomposer_CythonSpectrumDecomposer *, int *, int *))__pyx_f_17sirius_decomposer_24CythonSpectrumDecomposer__is_subset_formula;
+  __pyx_vtable_17sirius_decomposer_CythonSpectrumDecomposer._calculate_formula_mass = (double (*)(struct __pyx_obj_17sirius_decomposer_CythonSpectrumDecomposer *, int *))__pyx_f_17sirius_decomposer_24CythonSpectrumDecomposer__calculate_formula_mass;
+  __pyx_vtable_17sirius_decomposer_CythonSpectrumDecomposer._generate_subset_formulas = (void (*)(struct __pyx_obj_17sirius_decomposer_CythonSpectrumDecomposer *, int *, int *, int, double, double, PyObject *))__pyx_f_17sirius_decomposer_24CythonSpectrumDecomposer__generate_subset_formulas;
+  #if CYTHON_USE_TYPE_SPECS
+  __pyx_mstate->__pyx_ptype_17sirius_decomposer_CythonSpectrumDecomposer = (PyTypeObject *) __Pyx_PyType_FromModuleAndSpec(__pyx_m, &__pyx_type_17sirius_decomposer_CythonSpectrumDecomposer_spec, NULL); if (unlikely(!__pyx_mstate->__pyx_ptype_17sirius_decomposer_CythonSpectrumDecomposer)) __PYX_ERR(0, 468, __pyx_L1_error)
+  if (__Pyx_fix_up_extension_type_from_spec(&__pyx_type_17sirius_decomposer_CythonSpectrumDecomposer_spec, __pyx_mstate->__pyx_ptype_17sirius_decomposer_CythonSpectrumDecomposer) < 0) __PYX_ERR(0, 468, __pyx_L1_error)
+  #else
+  __pyx_mstate->__pyx_ptype_17sirius_decomposer_CythonSpectrumDecomposer = &__pyx_type_17sirius_decomposer_CythonSpectrumDecomposer;
+  #endif
+  #if !CYTHON_COMPILING_IN_LIMITED_API
+  #endif
+  #if !CYTHON_USE_TYPE_SPECS
+  if (__Pyx_PyType_Ready(__pyx_mstate->__pyx_ptype_17sirius_decomposer_CythonSpectrumDecomposer) < 0) __PYX_ERR(0, 468, __pyx_L1_error)
+  #endif
+  #if !CYTHON_COMPILING_IN_LIMITED_API
+  if ((CYTHON_USE_TYPE_SLOTS && CYTHON_USE_PYTYPE_LOOKUP) && likely(!__pyx_mstate->__pyx_ptype_17sirius_decomposer_CythonSpectrumDecomposer->tp_dictoffset && __pyx_mstate->__pyx_ptype_17sirius_decomposer_CythonSpectrumDecomposer->tp_getattro == PyObject_GenericGetAttr)) {
+    __pyx_mstate->__pyx_ptype_17sirius_decomposer_CythonSpectrumDecomposer->tp_getattro = PyObject_GenericGetAttr;
+  }
+  #endif
+  if (__Pyx_SetVtable(__pyx_mstate->__pyx_ptype_17sirius_decomposer_CythonSpectrumDecomposer, __pyx_vtabptr_17sirius_decomposer_CythonSpectrumDecomposer) < 0) __PYX_ERR(0, 468, __pyx_L1_error)
+  if (__Pyx_MergeVtables(__pyx_mstate->__pyx_ptype_17sirius_decomposer_CythonSpectrumDecomposer) < 0) __PYX_ERR(0, 468, __pyx_L1_error)
+  if (PyObject_SetAttr(__pyx_m, __pyx_mstate_global->__pyx_n_u_CythonSpectrumDecomposer, (PyObject *) __pyx_mstate->__pyx_ptype_17sirius_decomposer_CythonSpectrumDecomposer) < 0) __PYX_ERR(0, 468, __pyx_L1_error)
+  if (__Pyx_setup_reduce((PyObject *) __pyx_mstate->__pyx_ptype_17sirius_decomposer_CythonSpectrumDecomposer) < 0) __PYX_ERR(0, 468, __pyx_L1_error)
   __Pyx_RefNannyFinishContext();
   return 0;
   __pyx_L1_error:;
@@ -10508,7 +14010,7 @@ __Pyx_RefNannySetupContext("PyInit_sirius_decomposer", 0);
   __pyx_t_3 = __Pyx_PyDict_NewPresized(1); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 445, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_3);
   if (PyDict_SetItem(__pyx_t_3, __pyx_mstate_global->__pyx_n_u_return, __pyx_mstate_global->__pyx_kp_u_List_Dict_str_int) < 0) __PYX_ERR(0, 445, __pyx_L1_error)
-  __pyx_t_2 = __Pyx_CyFunction_New(&__pyx_mdef_17sirius_decomposer_22CythonSiriusDecomposer_5decompose, __Pyx_CYFUNCTION_CCLASS, __pyx_mstate_global->__pyx_n_u_CythonSiriusDecomposer_decompose, NULL, __pyx_mstate_global->__pyx_n_u_sirius_decomposer, __pyx_mstate_global->__pyx_d, ((PyObject *)__pyx_mstate_global->__pyx_codeobj_tab[1])); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 445, __pyx_L1_error)
+  __pyx_t_2 = __Pyx_CyFunction_New(&__pyx_mdef_17sirius_decomposer_22CythonSiriusDecomposer_5decompose, __Pyx_CYFUNCTION_CCLASS, __pyx_mstate_global->__pyx_n_u_CythonSiriusDecomposer_decompose, NULL, __pyx_mstate_global->__pyx_n_u_sirius_decomposer, __pyx_mstate_global->__pyx_d, ((PyObject *)__pyx_mstate_global->__pyx_codeobj_tab[2])); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 445, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
   __Pyx_CyFunction_SetAnnotationsDict(__pyx_t_2, __pyx_t_3);
   __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
@@ -10520,7 +14022,7 @@ __Pyx_RefNannySetupContext("PyInit_sirius_decomposer", 0);
  *     raise TypeError, "no default __reduce__ due to non-trivial __cinit__"
  * def __setstate_cython__(self, __pyx_state):
 */
-  __pyx_t_2 = __Pyx_CyFunction_New(&__pyx_mdef_17sirius_decomposer_22CythonSiriusDecomposer_7__reduce_cython__, __Pyx_CYFUNCTION_CCLASS, __pyx_mstate_global->__pyx_n_u_CythonSiriusDecomposer___reduce, NULL, __pyx_mstate_global->__pyx_n_u_sirius_decomposer, __pyx_mstate_global->__pyx_d, ((PyObject *)__pyx_mstate_global->__pyx_codeobj_tab[2])); if (unlikely(!__pyx_t_2)) __PYX_ERR(1, 1, __pyx_L1_error)
+  __pyx_t_2 = __Pyx_CyFunction_New(&__pyx_mdef_17sirius_decomposer_22CythonSiriusDecomposer_7__reduce_cython__, __Pyx_CYFUNCTION_CCLASS, __pyx_mstate_global->__pyx_n_u_CythonSiriusDecomposer___reduce, NULL, __pyx_mstate_global->__pyx_n_u_sirius_decomposer, __pyx_mstate_global->__pyx_d, ((PyObject *)__pyx_mstate_global->__pyx_codeobj_tab[3])); if (unlikely(!__pyx_t_2)) __PYX_ERR(1, 1, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
   if (PyDict_SetItem(__pyx_mstate_global->__pyx_d, __pyx_mstate_global->__pyx_n_u_reduce_cython, __pyx_t_2) < 0) __PYX_ERR(1, 1, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
@@ -10531,59 +14033,179 @@ __Pyx_RefNannySetupContext("PyInit_sirius_decomposer", 0);
  * def __setstate_cython__(self, __pyx_state):             # <<<<<<<<<<<<<<
  *     raise TypeError, "no default __reduce__ due to non-trivial __cinit__"
 */
-  __pyx_t_2 = __Pyx_CyFunction_New(&__pyx_mdef_17sirius_decomposer_22CythonSiriusDecomposer_9__setstate_cython__, __Pyx_CYFUNCTION_CCLASS, __pyx_mstate_global->__pyx_n_u_CythonSiriusDecomposer___setstat, NULL, __pyx_mstate_global->__pyx_n_u_sirius_decomposer, __pyx_mstate_global->__pyx_d, ((PyObject *)__pyx_mstate_global->__pyx_codeobj_tab[3])); if (unlikely(!__pyx_t_2)) __PYX_ERR(1, 3, __pyx_L1_error)
+  __pyx_t_2 = __Pyx_CyFunction_New(&__pyx_mdef_17sirius_decomposer_22CythonSiriusDecomposer_9__setstate_cython__, __Pyx_CYFUNCTION_CCLASS, __pyx_mstate_global->__pyx_n_u_CythonSiriusDecomposer___setstat, NULL, __pyx_mstate_global->__pyx_n_u_sirius_decomposer, __pyx_mstate_global->__pyx_d, ((PyObject *)__pyx_mstate_global->__pyx_codeobj_tab[4])); if (unlikely(!__pyx_t_2)) __PYX_ERR(1, 3, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
   if (PyDict_SetItem(__pyx_mstate_global->__pyx_d, __pyx_mstate_global->__pyx_n_u_setstate_cython, __pyx_t_2) < 0) __PYX_ERR(1, 3, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
 
-  /* "sirius_decomposer.pyx":470
- * def cython_decompose_mass(target_mass: float,
- *                           element_bounds: Dict[str, Tuple[int, int]],
- *                           tolerance_ppm: float = 5.0,             # <<<<<<<<<<<<<<
- *                           max_results: int = 1000000,
- *                           min_dbe: Optional[float] = None,
+  /* "sirius_decomposer.pyx":574
+ *         return mass
+ * 
+ *     def decompose_given_formula_spectrum(self, dict given_formula, list fragment_masses):             # <<<<<<<<<<<<<<
+ *         """
+ *         Decompose a spectrum given a specific precursor formula.
 */
-  __pyx_t_2 = PyFloat_FromDouble(((double)5.0)); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 470, __pyx_L1_error)
+  __pyx_t_2 = __Pyx_CyFunction_New(&__pyx_mdef_17sirius_decomposer_24CythonSpectrumDecomposer_5decompose_given_formula_spectrum, __Pyx_CYFUNCTION_CCLASS, __pyx_mstate_global->__pyx_n_u_CythonSpectrumDecomposer_decompo, NULL, __pyx_mstate_global->__pyx_n_u_sirius_decomposer, __pyx_mstate_global->__pyx_d, ((PyObject *)__pyx_mstate_global->__pyx_codeobj_tab[5])); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 574, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_2);
+  if (__Pyx_SetItemOnTypeDict(__pyx_mstate_global->__pyx_ptype_17sirius_decomposer_CythonSpectrumDecomposer, __pyx_mstate_global->__pyx_n_u_decompose_given_formula_spectrum, __pyx_t_2) < 0) __PYX_ERR(0, 574, __pyx_L1_error)
+  __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+
+  /* "sirius_decomposer.pyx":659
+ *                                          target_mass, tolerance, results)
+ * 
+ *     def decompose_spectrum(self, double precursor_mass, list fragment_masses):             # <<<<<<<<<<<<<<
+ *         """
+ *         Decompose a complete spectrum: first decompose precursor, then fragments.
+*/
+  __pyx_t_2 = __Pyx_CyFunction_New(&__pyx_mdef_17sirius_decomposer_24CythonSpectrumDecomposer_7decompose_spectrum, __Pyx_CYFUNCTION_CCLASS, __pyx_mstate_global->__pyx_n_u_CythonSpectrumDecomposer_decompo_2, NULL, __pyx_mstate_global->__pyx_n_u_sirius_decomposer, __pyx_mstate_global->__pyx_d, ((PyObject *)__pyx_mstate_global->__pyx_codeobj_tab[6])); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 659, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_2);
+  if (__Pyx_SetItemOnTypeDict(__pyx_mstate_global->__pyx_ptype_17sirius_decomposer_CythonSpectrumDecomposer, __pyx_mstate_global->__pyx_n_u_decompose_spectrum, __pyx_t_2) < 0) __PYX_ERR(0, 659, __pyx_L1_error)
+  __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+
+  /* "(tree fragment)":1
+ * def __reduce_cython__(self):             # <<<<<<<<<<<<<<
+ *     raise TypeError, "no default __reduce__ due to non-trivial __cinit__"
+ * def __setstate_cython__(self, __pyx_state):
+*/
+  __pyx_t_2 = __Pyx_CyFunction_New(&__pyx_mdef_17sirius_decomposer_24CythonSpectrumDecomposer_9__reduce_cython__, __Pyx_CYFUNCTION_CCLASS, __pyx_mstate_global->__pyx_n_u_CythonSpectrumDecomposer___reduc, NULL, __pyx_mstate_global->__pyx_n_u_sirius_decomposer, __pyx_mstate_global->__pyx_d, ((PyObject *)__pyx_mstate_global->__pyx_codeobj_tab[7])); if (unlikely(!__pyx_t_2)) __PYX_ERR(1, 1, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_2);
+  if (PyDict_SetItem(__pyx_mstate_global->__pyx_d, __pyx_mstate_global->__pyx_n_u_reduce_cython, __pyx_t_2) < 0) __PYX_ERR(1, 1, __pyx_L1_error)
+  __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+
+  /* "(tree fragment)":3
+ * def __reduce_cython__(self):
+ *     raise TypeError, "no default __reduce__ due to non-trivial __cinit__"
+ * def __setstate_cython__(self, __pyx_state):             # <<<<<<<<<<<<<<
+ *     raise TypeError, "no default __reduce__ due to non-trivial __cinit__"
+*/
+  __pyx_t_2 = __Pyx_CyFunction_New(&__pyx_mdef_17sirius_decomposer_24CythonSpectrumDecomposer_11__setstate_cython__, __Pyx_CYFUNCTION_CCLASS, __pyx_mstate_global->__pyx_n_u_CythonSpectrumDecomposer___setst, NULL, __pyx_mstate_global->__pyx_n_u_sirius_decomposer, __pyx_mstate_global->__pyx_d, ((PyObject *)__pyx_mstate_global->__pyx_codeobj_tab[8])); if (unlikely(!__pyx_t_2)) __PYX_ERR(1, 3, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_2);
+  if (PyDict_SetItem(__pyx_mstate_global->__pyx_d, __pyx_mstate_global->__pyx_n_u_setstate_cython, __pyx_t_2) < 0) __PYX_ERR(1, 3, __pyx_L1_error)
+  __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+
+  /* "sirius_decomposer.pyx":702
+ * def cython_decompose_mass(double target_mass,
+ *                           dict element_bounds,
+ *                           double tolerance_ppm = 5.0,             # <<<<<<<<<<<<<<
+ *                           int max_results = 1000000,
+ *                           min_dbe = None,
+*/
+  __pyx_t_2 = PyFloat_FromDouble(((double)5.0)); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 702, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
 
-  /* "sirius_decomposer.pyx":468
- *             free(formula)
- * 
- * def cython_decompose_mass(target_mass: float,             # <<<<<<<<<<<<<<
- *                           element_bounds: Dict[str, Tuple[int, int]],
- *                           tolerance_ppm: float = 5.0,
+  /* "sirius_decomposer.pyx":703
+ *                           dict element_bounds,
+ *                           double tolerance_ppm = 5.0,
+ *                           int max_results = 1000000,             # <<<<<<<<<<<<<<
+ *                           min_dbe = None,
+ *                           max_dbe = None,
 */
-  __pyx_t_3 = PyTuple_Pack(5, __pyx_t_2, ((PyObject*)__pyx_mstate_global->__pyx_int_1000000), Py_None, Py_None, Py_None); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 468, __pyx_L1_error)
+  __pyx_t_3 = __Pyx_PyLong_From_int(((int)0xF4240)); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 703, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_3);
-  __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
-  __pyx_t_2 = __Pyx_PyDict_NewPresized(8); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 468, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_t_2);
-  if (PyDict_SetItem(__pyx_t_2, __pyx_mstate_global->__pyx_n_u_target_mass, __pyx_mstate_global->__pyx_n_u_float) < 0) __PYX_ERR(0, 468, __pyx_L1_error)
-  if (PyDict_SetItem(__pyx_t_2, __pyx_mstate_global->__pyx_n_u_element_bounds, __pyx_mstate_global->__pyx_kp_u_Dict_str_Tuple_int_int) < 0) __PYX_ERR(0, 468, __pyx_L1_error)
-  if (PyDict_SetItem(__pyx_t_2, __pyx_mstate_global->__pyx_n_u_tolerance_ppm, __pyx_mstate_global->__pyx_n_u_float) < 0) __PYX_ERR(0, 468, __pyx_L1_error)
-  if (PyDict_SetItem(__pyx_t_2, __pyx_mstate_global->__pyx_n_u_max_results, __pyx_mstate_global->__pyx_n_u_int) < 0) __PYX_ERR(0, 468, __pyx_L1_error)
-  if (PyDict_SetItem(__pyx_t_2, __pyx_mstate_global->__pyx_n_u_min_dbe, __pyx_mstate_global->__pyx_kp_u_Optional_float) < 0) __PYX_ERR(0, 468, __pyx_L1_error)
-  if (PyDict_SetItem(__pyx_t_2, __pyx_mstate_global->__pyx_n_u_max_dbe, __pyx_mstate_global->__pyx_kp_u_Optional_float) < 0) __PYX_ERR(0, 468, __pyx_L1_error)
-  if (PyDict_SetItem(__pyx_t_2, __pyx_mstate_global->__pyx_n_u_max_hetero_ratio, __pyx_mstate_global->__pyx_kp_u_Optional_float) < 0) __PYX_ERR(0, 468, __pyx_L1_error)
-  if (PyDict_SetItem(__pyx_t_2, __pyx_mstate_global->__pyx_n_u_return, __pyx_mstate_global->__pyx_kp_u_List_Dict_str_int) < 0) __PYX_ERR(0, 468, __pyx_L1_error)
-  __pyx_t_4 = __Pyx_CyFunction_New(&__pyx_mdef_17sirius_decomposer_1cython_decompose_mass, 0, __pyx_mstate_global->__pyx_n_u_cython_decompose_mass, NULL, __pyx_mstate_global->__pyx_n_u_sirius_decomposer, __pyx_mstate_global->__pyx_d, ((PyObject *)__pyx_mstate_global->__pyx_codeobj_tab[4])); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 468, __pyx_L1_error)
+
+  /* "sirius_decomposer.pyx":700
+ * 
+ * 
+ * def cython_decompose_mass(double target_mass,             # <<<<<<<<<<<<<<
+ *                           dict element_bounds,
+ *                           double tolerance_ppm = 5.0,
+*/
+  __pyx_t_4 = PyTuple_Pack(5, __pyx_t_2, __pyx_t_3, Py_None, Py_None, Py_None); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 700, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_4);
-  __Pyx_CyFunction_SetDefaultsTuple(__pyx_t_4, __pyx_t_3);
-  __Pyx_CyFunction_SetAnnotationsDict(__pyx_t_4, __pyx_t_2);
-  __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
-  if (PyDict_SetItem(__pyx_mstate_global->__pyx_d, __pyx_mstate_global->__pyx_n_u_cython_decompose_mass, __pyx_t_4) < 0) __PYX_ERR(0, 468, __pyx_L1_error)
+  __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+  __pyx_t_3 = __Pyx_CyFunction_New(&__pyx_mdef_17sirius_decomposer_1cython_decompose_mass, 0, __pyx_mstate_global->__pyx_n_u_cython_decompose_mass, NULL, __pyx_mstate_global->__pyx_n_u_sirius_decomposer, __pyx_mstate_global->__pyx_d, ((PyObject *)__pyx_mstate_global->__pyx_codeobj_tab[9])); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 700, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_3);
+  __Pyx_CyFunction_SetDefaultsTuple(__pyx_t_3, __pyx_t_4);
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
+  if (PyDict_SetItem(__pyx_mstate_global->__pyx_d, __pyx_mstate_global->__pyx_n_u_cython_decompose_mass, __pyx_t_3) < 0) __PYX_ERR(0, 700, __pyx_L1_error)
+  __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+
+  /* "sirius_decomposer.pyx":733
+ * def decompose_spectrum_cython(double precursor_mass, list fragment_masses,
+ *                              dict element_bounds,
+ *                              double tolerance_ppm = 5.0,             # <<<<<<<<<<<<<<
+ *                              int max_results = 1000000):
+ *     """
+*/
+  __pyx_t_3 = PyFloat_FromDouble(((double)5.0)); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 733, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_3);
+
+  /* "sirius_decomposer.pyx":734
+ *                              dict element_bounds,
+ *                              double tolerance_ppm = 5.0,
+ *                              int max_results = 1000000):             # <<<<<<<<<<<<<<
+ *     """
+ *     High-level function for spectrum decomposition using Cython.
+*/
+  __pyx_t_4 = __Pyx_PyLong_From_int(((int)0xF4240)); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 734, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_4);
+
+  /* "sirius_decomposer.pyx":731
+ *     return decomposer.decompose()
+ * 
+ * def decompose_spectrum_cython(double precursor_mass, list fragment_masses,             # <<<<<<<<<<<<<<
+ *                              dict element_bounds,
+ *                              double tolerance_ppm = 5.0,
+*/
+  __pyx_t_2 = PyTuple_Pack(2, __pyx_t_3, __pyx_t_4); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 731, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_2);
+  __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+  __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
+  __pyx_t_4 = __Pyx_CyFunction_New(&__pyx_mdef_17sirius_decomposer_3decompose_spectrum_cython, 0, __pyx_mstate_global->__pyx_n_u_decompose_spectrum_cython, NULL, __pyx_mstate_global->__pyx_n_u_sirius_decomposer, __pyx_mstate_global->__pyx_d, ((PyObject *)__pyx_mstate_global->__pyx_codeobj_tab[10])); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 731, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_4);
+  __Pyx_CyFunction_SetDefaultsTuple(__pyx_t_4, __pyx_t_2);
+  __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+  if (PyDict_SetItem(__pyx_mstate_global->__pyx_d, __pyx_mstate_global->__pyx_n_u_decompose_spectrum_cython, __pyx_t_4) < 0) __PYX_ERR(0, 731, __pyx_L1_error)
+  __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
+
+  /* "sirius_decomposer.pyx":754
+ * def decompose_given_formula_spectrum_cython(dict given_formula, list fragment_masses,
+ *                                            dict element_bounds,
+ *                                            double tolerance_ppm = 5.0,             # <<<<<<<<<<<<<<
+ *                                            int max_results = 1000000):
+ *     """
+*/
+  __pyx_t_4 = PyFloat_FromDouble(((double)5.0)); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 754, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_4);
+
+  /* "sirius_decomposer.pyx":755
+ *                                            dict element_bounds,
+ *                                            double tolerance_ppm = 5.0,
+ *                                            int max_results = 1000000):             # <<<<<<<<<<<<<<
+ *     """
+ *     High-level function for decomposing fragments given a known precursor formula.
+*/
+  __pyx_t_2 = __Pyx_PyLong_From_int(((int)0xF4240)); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 755, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_2);
+
+  /* "sirius_decomposer.pyx":752
+ * 
+ * 
+ * def decompose_given_formula_spectrum_cython(dict given_formula, list fragment_masses,             # <<<<<<<<<<<<<<
+ *                                            dict element_bounds,
+ *                                            double tolerance_ppm = 5.0,
+*/
+  __pyx_t_3 = PyTuple_Pack(2, __pyx_t_4, __pyx_t_2); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 752, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_3);
+  __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
+  __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+  __pyx_t_2 = __Pyx_CyFunction_New(&__pyx_mdef_17sirius_decomposer_5decompose_given_formula_spectrum_cython, 0, __pyx_mstate_global->__pyx_n_u_decompose_given_formula_spectrum_2, NULL, __pyx_mstate_global->__pyx_n_u_sirius_decomposer, __pyx_mstate_global->__pyx_d, ((PyObject *)__pyx_mstate_global->__pyx_codeobj_tab[11])); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 752, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_2);
+  __Pyx_CyFunction_SetDefaultsTuple(__pyx_t_2, __pyx_t_3);
+  __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+  if (PyDict_SetItem(__pyx_mstate_global->__pyx_d, __pyx_mstate_global->__pyx_n_u_decompose_given_formula_spectrum_2, __pyx_t_2) < 0) __PYX_ERR(0, 752, __pyx_L1_error)
+  __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
 
   /* "sirius_decomposer.pyx":1
  * # cython: language_level=3, boundscheck=False, wraparound=False             # <<<<<<<<<<<<<<
  * """
  * High-performance Cython implementation of the SIRIUS mass decomposition algorithm with chemical constraints.
 */
-  __pyx_t_4 = __Pyx_PyDict_NewPresized(0); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 1, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_t_4);
-  if (PyDict_SetItem(__pyx_mstate_global->__pyx_d, __pyx_mstate_global->__pyx_n_u_test, __pyx_t_4) < 0) __PYX_ERR(0, 1, __pyx_L1_error)
-  __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
+  __pyx_t_2 = __Pyx_PyDict_NewPresized(0); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 1, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_2);
+  if (PyDict_SetItem(__pyx_mstate_global->__pyx_d, __pyx_mstate_global->__pyx_n_u_test, __pyx_t_2) < 0) __PYX_ERR(0, 1, __pyx_L1_error)
+  __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
 
   /*--- Wrapped vars code ---*/
 
@@ -10657,8 +14279,12 @@ static const __Pyx_StringTabEntry __pyx_string_tab[] = {
   {__pyx_k_CythonSiriusDecomposer___reduce, sizeof(__pyx_k_CythonSiriusDecomposer___reduce), 0, 1, 1}, /* PyObject cname: __pyx_n_u_CythonSiriusDecomposer___reduce */
   {__pyx_k_CythonSiriusDecomposer___setstat, sizeof(__pyx_k_CythonSiriusDecomposer___setstat), 0, 1, 1}, /* PyObject cname: __pyx_n_u_CythonSiriusDecomposer___setstat */
   {__pyx_k_CythonSiriusDecomposer_decompose, sizeof(__pyx_k_CythonSiriusDecomposer_decompose), 0, 1, 1}, /* PyObject cname: __pyx_n_u_CythonSiriusDecomposer_decompose */
+  {__pyx_k_CythonSpectrumDecomposer, sizeof(__pyx_k_CythonSpectrumDecomposer), 0, 1, 1}, /* PyObject cname: __pyx_n_u_CythonSpectrumDecomposer */
+  {__pyx_k_CythonSpectrumDecomposer___reduc, sizeof(__pyx_k_CythonSpectrumDecomposer___reduc), 0, 1, 1}, /* PyObject cname: __pyx_n_u_CythonSpectrumDecomposer___reduc */
+  {__pyx_k_CythonSpectrumDecomposer___setst, sizeof(__pyx_k_CythonSpectrumDecomposer___setst), 0, 1, 1}, /* PyObject cname: __pyx_n_u_CythonSpectrumDecomposer___setst */
+  {__pyx_k_CythonSpectrumDecomposer_decompo, sizeof(__pyx_k_CythonSpectrumDecomposer_decompo), 0, 1, 1}, /* PyObject cname: __pyx_n_u_CythonSpectrumDecomposer_decompo */
+  {__pyx_k_CythonSpectrumDecomposer_decompo_2, sizeof(__pyx_k_CythonSpectrumDecomposer_decompo_2), 0, 1, 1}, /* PyObject cname: __pyx_n_u_CythonSpectrumDecomposer_decompo_2 */
   {__pyx_k_Dict, sizeof(__pyx_k_Dict), 0, 1, 1}, /* PyObject cname: __pyx_n_u_Dict */
-  {__pyx_k_Dict_str_Tuple_int_int, sizeof(__pyx_k_Dict_str_Tuple_int_int), 0, 1, 0}, /* PyObject cname: __pyx_kp_u_Dict_str_Tuple_int_int */
   {__pyx_k_F, sizeof(__pyx_k_F), 0, 1, 1}, /* PyObject cname: __pyx_n_u_F */
   {__pyx_k_Fe, sizeof(__pyx_k_Fe), 0, 1, 1}, /* PyObject cname: __pyx_n_u_Fe */
   {__pyx_k_H, sizeof(__pyx_k_H), 0, 1, 1}, /* PyObject cname: __pyx_n_u_H */
@@ -10673,7 +14299,6 @@ static const __Pyx_StringTabEntry __pyx_string_tab[] = {
   {__pyx_k_Note_that_Cython_is_deliberately, sizeof(__pyx_k_Note_that_Cython_is_deliberately), 0, 1, 0}, /* PyObject cname: __pyx_kp_u_Note_that_Cython_is_deliberately */
   {__pyx_k_O, sizeof(__pyx_k_O), 0, 1, 1}, /* PyObject cname: __pyx_n_u_O */
   {__pyx_k_Optional, sizeof(__pyx_k_Optional), 0, 1, 1}, /* PyObject cname: __pyx_n_u_Optional */
-  {__pyx_k_Optional_float, sizeof(__pyx_k_Optional_float), 0, 1, 0}, /* PyObject cname: __pyx_kp_u_Optional_float */
   {__pyx_k_P, sizeof(__pyx_k_P), 0, 1, 1}, /* PyObject cname: __pyx_n_u_P */
   {__pyx_k_S, sizeof(__pyx_k_S), 0, 1, 1}, /* PyObject cname: __pyx_n_u_S */
   {__pyx_k_Se, sizeof(__pyx_k_Se), 0, 1, 1}, /* PyObject cname: __pyx_n_u_Se */
@@ -10691,32 +14316,44 @@ static const __Pyx_StringTabEntry __pyx_string_tab[] = {
   {__pyx_k_c_max_dbe, sizeof(__pyx_k_c_max_dbe), 0, 1, 1}, /* PyObject cname: __pyx_n_u_c_max_dbe */
   {__pyx_k_c_max_hetero_ratio, sizeof(__pyx_k_c_max_hetero_ratio), 0, 1, 1}, /* PyObject cname: __pyx_n_u_c_max_hetero_ratio */
   {__pyx_k_c_min_dbe, sizeof(__pyx_k_c_min_dbe), 0, 1, 1}, /* PyObject cname: __pyx_n_u_c_min_dbe */
+  {__pyx_k_calculated_mass, sizeof(__pyx_k_calculated_mass), 0, 1, 1}, /* PyObject cname: __pyx_n_u_calculated_mass */
   {__pyx_k_cinit___locals_lambda, sizeof(__pyx_k_cinit___locals_lambda), 0, 1, 1}, /* PyObject cname: __pyx_n_u_cinit___locals_lambda */
   {__pyx_k_cline_in_traceback, sizeof(__pyx_k_cline_in_traceback), 0, 1, 1}, /* PyObject cname: __pyx_n_u_cline_in_traceback */
   {__pyx_k_copy, sizeof(__pyx_k_copy), 0, 1, 1}, /* PyObject cname: __pyx_n_u_copy */
   {__pyx_k_cython_decompose_mass, sizeof(__pyx_k_cython_decompose_mass), 0, 1, 1}, /* PyObject cname: __pyx_n_u_cython_decompose_mass */
   {__pyx_k_decompose, sizeof(__pyx_k_decompose), 0, 1, 1}, /* PyObject cname: __pyx_n_u_decompose */
+  {__pyx_k_decompose_given_formula_spectrum, sizeof(__pyx_k_decompose_given_formula_spectrum), 0, 1, 1}, /* PyObject cname: __pyx_n_u_decompose_given_formula_spectrum */
+  {__pyx_k_decompose_given_formula_spectrum_2, sizeof(__pyx_k_decompose_given_formula_spectrum_2), 0, 1, 1}, /* PyObject cname: __pyx_n_u_decompose_given_formula_spectrum_2 */
+  {__pyx_k_decompose_spectrum, sizeof(__pyx_k_decompose_spectrum), 0, 1, 1}, /* PyObject cname: __pyx_n_u_decompose_spectrum */
+  {__pyx_k_decompose_spectrum_cython, sizeof(__pyx_k_decompose_spectrum_cython), 0, 1, 1}, /* PyObject cname: __pyx_n_u_decompose_spectrum_cython */
   {__pyx_k_decomposer, sizeof(__pyx_k_decomposer), 0, 1, 1}, /* PyObject cname: __pyx_n_u_decomposer */
   {__pyx_k_disable, sizeof(__pyx_k_disable), 0, 1, 0}, /* PyObject cname: __pyx_kp_u_disable */
   {__pyx_k_element_bounds, sizeof(__pyx_k_element_bounds), 0, 1, 1}, /* PyObject cname: __pyx_n_u_element_bounds */
+  {__pyx_k_element_idx, sizeof(__pyx_k_element_idx), 0, 1, 1}, /* PyObject cname: __pyx_n_u_element_idx */
   {__pyx_k_enable, sizeof(__pyx_k_enable), 0, 1, 0}, /* PyObject cname: __pyx_kp_u_enable */
   {__pyx_k_encode, sizeof(__pyx_k_encode), 0, 1, 1}, /* PyObject cname: __pyx_n_u_encode */
   {__pyx_k_enumerate, sizeof(__pyx_k_enumerate), 0, 1, 1}, /* PyObject cname: __pyx_n_u_enumerate */
-  {__pyx_k_float, sizeof(__pyx_k_float), 0, 1, 1}, /* PyObject cname: __pyx_n_u_float */
   {__pyx_k_formula, sizeof(__pyx_k_formula), 0, 1, 1}, /* PyObject cname: __pyx_n_u_formula */
+  {__pyx_k_fragment_decompositions, sizeof(__pyx_k_fragment_decompositions), 0, 1, 1}, /* PyObject cname: __pyx_n_u_fragment_decompositions */
+  {__pyx_k_fragment_formula, sizeof(__pyx_k_fragment_formula), 0, 1, 1}, /* PyObject cname: __pyx_n_u_fragment_formula */
+  {__pyx_k_fragment_mass, sizeof(__pyx_k_fragment_mass), 0, 1, 1}, /* PyObject cname: __pyx_n_u_fragment_mass */
+  {__pyx_k_fragment_masses, sizeof(__pyx_k_fragment_masses), 0, 1, 1}, /* PyObject cname: __pyx_n_u_fragment_masses */
+  {__pyx_k_fragment_results, sizeof(__pyx_k_fragment_results), 0, 1, 1}, /* PyObject cname: __pyx_n_u_fragment_results */
   {__pyx_k_func, sizeof(__pyx_k_func), 0, 1, 1}, /* PyObject cname: __pyx_n_u_func */
   {__pyx_k_gc, sizeof(__pyx_k_gc), 0, 1, 0}, /* PyObject cname: __pyx_kp_u_gc */
   {__pyx_k_get, sizeof(__pyx_k_get), 0, 1, 1}, /* PyObject cname: __pyx_n_u_get */
   {__pyx_k_getstate, sizeof(__pyx_k_getstate), 0, 1, 1}, /* PyObject cname: __pyx_n_u_getstate */
+  {__pyx_k_given_formula, sizeof(__pyx_k_given_formula), 0, 1, 1}, /* PyObject cname: __pyx_n_u_given_formula */
   {__pyx_k_i, sizeof(__pyx_k_i), 0, 1, 1}, /* PyObject cname: __pyx_n_u_i */
   {__pyx_k_initializing, sizeof(__pyx_k_initializing), 0, 1, 1}, /* PyObject cname: __pyx_n_u_initializing */
-  {__pyx_k_int, sizeof(__pyx_k_int), 0, 1, 1}, /* PyObject cname: __pyx_n_u_int */
   {__pyx_k_is_coroutine, sizeof(__pyx_k_is_coroutine), 0, 1, 1}, /* PyObject cname: __pyx_n_u_is_coroutine */
   {__pyx_k_isenabled, sizeof(__pyx_k_isenabled), 0, 1, 0}, /* PyObject cname: __pyx_kp_u_isenabled */
   {__pyx_k_items, sizeof(__pyx_k_items), 0, 1, 1}, /* PyObject cname: __pyx_n_u_items */
+  {__pyx_k_j, sizeof(__pyx_k_j), 0, 1, 1}, /* PyObject cname: __pyx_n_u_j */
   {__pyx_k_key, sizeof(__pyx_k_key), 0, 1, 1}, /* PyObject cname: __pyx_n_u_key */
   {__pyx_k_lambda, sizeof(__pyx_k_lambda), 0, 1, 1}, /* PyObject cname: __pyx_n_u_lambda */
   {__pyx_k_main, sizeof(__pyx_k_main), 0, 1, 1}, /* PyObject cname: __pyx_n_u_main */
+  {__pyx_k_mass_tolerance, sizeof(__pyx_k_mass_tolerance), 0, 1, 1}, /* PyObject cname: __pyx_n_u_mass_tolerance */
   {__pyx_k_max_dbe, sizeof(__pyx_k_max_dbe), 0, 1, 1}, /* PyObject cname: __pyx_n_u_max_dbe */
   {__pyx_k_max_hetero_ratio, sizeof(__pyx_k_max_hetero_ratio), 0, 1, 1}, /* PyObject cname: __pyx_n_u_max_hetero_ratio */
   {__pyx_k_max_results, sizeof(__pyx_k_max_results), 0, 1, 1}, /* PyObject cname: __pyx_n_u_max_results */
@@ -10729,6 +14366,9 @@ static const __Pyx_StringTabEntry __pyx_string_tab[] = {
   {__pyx_k_numpy__core_multiarray_failed_to, sizeof(__pyx_k_numpy__core_multiarray_failed_to), 0, 1, 0}, /* PyObject cname: __pyx_kp_u_numpy__core_multiarray_failed_to */
   {__pyx_k_numpy__core_umath_failed_to_impo, sizeof(__pyx_k_numpy__core_umath_failed_to_impo), 0, 1, 0}, /* PyObject cname: __pyx_kp_u_numpy__core_umath_failed_to_impo */
   {__pyx_k_pop, sizeof(__pyx_k_pop), 0, 1, 1}, /* PyObject cname: __pyx_n_u_pop */
+  {__pyx_k_precursor_formula, sizeof(__pyx_k_precursor_formula), 0, 1, 1}, /* PyObject cname: __pyx_n_u_precursor_formula */
+  {__pyx_k_precursor_formulas, sizeof(__pyx_k_precursor_formulas), 0, 1, 1}, /* PyObject cname: __pyx_n_u_precursor_formulas */
+  {__pyx_k_precursor_mass, sizeof(__pyx_k_precursor_mass), 0, 1, 1}, /* PyObject cname: __pyx_n_u_precursor_mass */
   {__pyx_k_pyx_state, sizeof(__pyx_k_pyx_state), 0, 1, 1}, /* PyObject cname: __pyx_n_u_pyx_state */
   {__pyx_k_pyx_vtable, sizeof(__pyx_k_pyx_vtable), 0, 1, 1}, /* PyObject cname: __pyx_n_u_pyx_vtable */
   {__pyx_k_qualname, sizeof(__pyx_k_qualname), 0, 1, 1}, /* PyObject cname: __pyx_n_u_qualname */
@@ -10736,6 +14376,7 @@ static const __Pyx_StringTabEntry __pyx_string_tab[] = {
   {__pyx_k_reduce, sizeof(__pyx_k_reduce), 0, 1, 1}, /* PyObject cname: __pyx_n_u_reduce */
   {__pyx_k_reduce_cython, sizeof(__pyx_k_reduce_cython), 0, 1, 1}, /* PyObject cname: __pyx_n_u_reduce_cython */
   {__pyx_k_reduce_ex, sizeof(__pyx_k_reduce_ex), 0, 1, 1}, /* PyObject cname: __pyx_n_u_reduce_ex */
+  {__pyx_k_results, sizeof(__pyx_k_results), 0, 1, 1}, /* PyObject cname: __pyx_n_u_results */
   {__pyx_k_return, sizeof(__pyx_k_return), 0, 1, 1}, /* PyObject cname: __pyx_n_u_return */
   {__pyx_k_reverse, sizeof(__pyx_k_reverse), 0, 1, 1}, /* PyObject cname: __pyx_n_u_reverse */
   {__pyx_k_rstrip, sizeof(__pyx_k_rstrip), 0, 1, 1}, /* PyObject cname: __pyx_n_u_rstrip */
@@ -10748,6 +14389,8 @@ static const __Pyx_StringTabEntry __pyx_string_tab[] = {
   {__pyx_k_sorted, sizeof(__pyx_k_sorted), 0, 1, 1}, /* PyObject cname: __pyx_n_u_sorted */
   {__pyx_k_spec, sizeof(__pyx_k_spec), 0, 1, 1}, /* PyObject cname: __pyx_n_u_spec */
   {__pyx_k_stringsource, sizeof(__pyx_k_stringsource), 0, 1, 0}, /* PyObject cname: __pyx_kp_u_stringsource */
+  {__pyx_k_symbol, sizeof(__pyx_k_symbol), 0, 1, 1}, /* PyObject cname: __pyx_n_u_symbol */
+  {__pyx_k_symbol_bytes, sizeof(__pyx_k_symbol_bytes), 0, 1, 1}, /* PyObject cname: __pyx_n_u_symbol_bytes */
   {__pyx_k_target_mass, sizeof(__pyx_k_target_mass), 0, 1, 1}, /* PyObject cname: __pyx_n_u_target_mass */
   {__pyx_k_test, sizeof(__pyx_k_test), 0, 1, 1}, /* PyObject cname: __pyx_n_u_test */
   {__pyx_k_tolerance_ppm, sizeof(__pyx_k_tolerance_ppm), 0, 1, 1}, /* PyObject cname: __pyx_n_u_tolerance_ppm */
@@ -10791,6 +14434,7 @@ static int __Pyx_InitConstants(__pyx_mstatetype *__pyx_mstate) {
   __pyx_mstate->__pyx_umethod_PyDict_Type_pop.method_name = &__pyx_mstate->__pyx_n_u_pop;
   if (__Pyx_InitStrings(__pyx_string_tab, __pyx_mstate->__pyx_string_tab, __pyx_string_tab_encodings) < 0) __PYX_ERR(0, 1, __pyx_L1_error);
   __pyx_mstate->__pyx_float_0_0 = PyFloat_FromDouble(0.0); if (unlikely(!__pyx_mstate->__pyx_float_0_0)) __PYX_ERR(0, 1, __pyx_L1_error)
+  __pyx_mstate->__pyx_float_1000_0 = PyFloat_FromDouble(1000.0); if (unlikely(!__pyx_mstate->__pyx_float_1000_0)) __PYX_ERR(0, 1, __pyx_L1_error)
   __pyx_mstate->__pyx_float_1_0078250 = PyFloat_FromDouble(1.0078250); if (unlikely(!__pyx_mstate->__pyx_float_1_0078250)) __PYX_ERR(0, 1, __pyx_L1_error)
   __pyx_mstate->__pyx_float_11_0093054 = PyFloat_FromDouble(11.0093054); if (unlikely(!__pyx_mstate->__pyx_float_11_0093054)) __PYX_ERR(0, 1, __pyx_L1_error)
   __pyx_mstate->__pyx_float_12_0000000 = PyFloat_FromDouble(12.0000000); if (unlikely(!__pyx_mstate->__pyx_float_12_0000000)) __PYX_ERR(0, 1, __pyx_L1_error)
@@ -10811,8 +14455,8 @@ static int __Pyx_InitConstants(__pyx_mstatetype *__pyx_mstate) {
   __pyx_mstate->__pyx_float_78_9183376 = PyFloat_FromDouble(78.9183376); if (unlikely(!__pyx_mstate->__pyx_float_78_9183376)) __PYX_ERR(0, 1, __pyx_L1_error)
   __pyx_mstate->__pyx_float_79_9165218 = PyFloat_FromDouble(79.9165218); if (unlikely(!__pyx_mstate->__pyx_float_79_9165218)) __PYX_ERR(0, 1, __pyx_L1_error)
   __pyx_mstate->__pyx_float_126_9044719 = PyFloat_FromDouble(126.9044719); if (unlikely(!__pyx_mstate->__pyx_float_126_9044719)) __PYX_ERR(0, 1, __pyx_L1_error)
+  __pyx_mstate->__pyx_float_neg_1000_0 = PyFloat_FromDouble(-1000.0); if (unlikely(!__pyx_mstate->__pyx_float_neg_1000_0)) __PYX_ERR(0, 1, __pyx_L1_error)
   __pyx_mstate->__pyx_int_0 = PyLong_FromLong(0); if (unlikely(!__pyx_mstate->__pyx_int_0)) __PYX_ERR(0, 1, __pyx_L1_error)
-  __pyx_mstate->__pyx_int_1000000 = PyLong_FromLong(1000000L); if (unlikely(!__pyx_mstate->__pyx_int_1000000)) __PYX_ERR(0, 1, __pyx_L1_error)
   return 0;
   __pyx_L1_error:;
   return -1;
@@ -10825,8 +14469,8 @@ static int __Pyx_InitConstants(__pyx_mstatetype *__pyx_mstate) {
             unsigned int num_kwonly_args : 1;
             unsigned int nlocals : 4;
             unsigned int flags : 10;
-            unsigned int first_line : 9;
-            unsigned int line_table_length : 12;
+            unsigned int first_line : 10;
+            unsigned int line_table_length : 13;
         } __Pyx_PyCode_New_function_description;
 /* NewCodeObj.proto */
 static PyObject* __Pyx_PyCode_New(
@@ -10848,24 +14492,59 @@ static int __Pyx_CreateCodeObjects(__pyx_mstatetype *__pyx_mstate) {
     __pyx_mstate_global->__pyx_codeobj_tab[0] = __Pyx_PyCode_New(descr, varnames, __pyx_mstate->__pyx_kp_u_sirius_decomposer_pyx, __pyx_mstate->__pyx_n_u_lambda, __pyx_k_aq_Q, tuple_dedup_map); if (unlikely(!__pyx_mstate_global->__pyx_codeobj_tab[0])) goto bad;
   }
   {
+    const __Pyx_PyCode_New_function_description descr = {1, 0, 0, 1, (unsigned int)(CO_OPTIMIZED|CO_NEWLOCALS), 501, 16};
+    PyObject* const varnames[] = {__pyx_mstate->__pyx_n_u_x};
+    __pyx_mstate_global->__pyx_codeobj_tab[1] = __Pyx_PyCode_New(descr, varnames, __pyx_mstate->__pyx_kp_u_sirius_decomposer_pyx, __pyx_mstate->__pyx_n_u_lambda, __pyx_k_aq_Q, tuple_dedup_map); if (unlikely(!__pyx_mstate_global->__pyx_codeobj_tab[1])) goto bad;
+  }
+  {
     const __Pyx_PyCode_New_function_description descr = {1, 0, 0, 3, (unsigned int)(CO_OPTIMIZED|CO_NEWLOCALS), 445, 94};
     PyObject* const varnames[] = {__pyx_mstate->__pyx_n_u_self, __pyx_mstate->__pyx_n_u_formula, __pyx_mstate->__pyx_n_u_i};
-    __pyx_mstate_global->__pyx_codeobj_tab[1] = __Pyx_PyCode_New(descr, varnames, __pyx_mstate->__pyx_kp_u_sirius_decomposer_pyx, __pyx_mstate->__pyx_n_u_decompose, __pyx_k_1_F_1_E_at1_1E_1_QiuA_4xuA, tuple_dedup_map); if (unlikely(!__pyx_mstate_global->__pyx_codeobj_tab[1])) goto bad;
+    __pyx_mstate_global->__pyx_codeobj_tab[2] = __Pyx_PyCode_New(descr, varnames, __pyx_mstate->__pyx_kp_u_sirius_decomposer_pyx, __pyx_mstate->__pyx_n_u_decompose, __pyx_k_1_F_1_E_at1_1E_1_QiuA_4xuA, tuple_dedup_map); if (unlikely(!__pyx_mstate_global->__pyx_codeobj_tab[2])) goto bad;
   }
   {
     const __Pyx_PyCode_New_function_description descr = {1, 0, 0, 1, (unsigned int)(CO_OPTIMIZED|CO_NEWLOCALS), 1, 9};
     PyObject* const varnames[] = {__pyx_mstate->__pyx_n_u_self};
-    __pyx_mstate_global->__pyx_codeobj_tab[2] = __Pyx_PyCode_New(descr, varnames, __pyx_mstate->__pyx_kp_u_stringsource, __pyx_mstate->__pyx_n_u_reduce_cython, __pyx_k_Q, tuple_dedup_map); if (unlikely(!__pyx_mstate_global->__pyx_codeobj_tab[2])) goto bad;
+    __pyx_mstate_global->__pyx_codeobj_tab[3] = __Pyx_PyCode_New(descr, varnames, __pyx_mstate->__pyx_kp_u_stringsource, __pyx_mstate->__pyx_n_u_reduce_cython, __pyx_k_Q, tuple_dedup_map); if (unlikely(!__pyx_mstate_global->__pyx_codeobj_tab[3])) goto bad;
   }
   {
     const __Pyx_PyCode_New_function_description descr = {2, 0, 0, 2, (unsigned int)(CO_OPTIMIZED|CO_NEWLOCALS), 3, 9};
     PyObject* const varnames[] = {__pyx_mstate->__pyx_n_u_self, __pyx_mstate->__pyx_n_u_pyx_state};
-    __pyx_mstate_global->__pyx_codeobj_tab[3] = __Pyx_PyCode_New(descr, varnames, __pyx_mstate->__pyx_kp_u_stringsource, __pyx_mstate->__pyx_n_u_setstate_cython, __pyx_k_Q, tuple_dedup_map); if (unlikely(!__pyx_mstate_global->__pyx_codeobj_tab[3])) goto bad;
+    __pyx_mstate_global->__pyx_codeobj_tab[4] = __Pyx_PyCode_New(descr, varnames, __pyx_mstate->__pyx_kp_u_stringsource, __pyx_mstate->__pyx_n_u_setstate_cython, __pyx_k_Q, tuple_dedup_map); if (unlikely(!__pyx_mstate_global->__pyx_codeobj_tab[4])) goto bad;
   }
   {
-    const __Pyx_PyCode_New_function_description descr = {7, 0, 0, 11, (unsigned int)(CO_OPTIMIZED|CO_NEWLOCALS), 468, 115};
+    const __Pyx_PyCode_New_function_description descr = {3, 0, 0, 15, (unsigned int)(CO_OPTIMIZED|CO_NEWLOCALS), 574, 231};
+    PyObject* const varnames[] = {__pyx_mstate->__pyx_n_u_self, __pyx_mstate->__pyx_n_u_given_formula, __pyx_mstate->__pyx_n_u_fragment_masses, __pyx_mstate->__pyx_n_u_precursor_formula, __pyx_mstate->__pyx_n_u_fragment_formula, __pyx_mstate->__pyx_n_u_i, __pyx_mstate->__pyx_n_u_j, __pyx_mstate->__pyx_n_u_element_idx, __pyx_mstate->__pyx_n_u_fragment_mass, __pyx_mstate->__pyx_n_u_calculated_mass, __pyx_mstate->__pyx_n_u_mass_tolerance, __pyx_mstate->__pyx_n_u_results, __pyx_mstate->__pyx_n_u_fragment_results, __pyx_mstate->__pyx_n_u_symbol_bytes, __pyx_mstate->__pyx_n_u_symbol};
+    __pyx_mstate_global->__pyx_codeobj_tab[5] = __Pyx_PyCode_New(descr, varnames, __pyx_mstate->__pyx_kp_u_sirius_decomposer_pyx, __pyx_mstate->__pyx_n_u_decompose_given_formula_spectrum, __pyx_k_A_fF_4_2Q_V6_l_A_A_U_4q_q_a_U_4q, tuple_dedup_map); if (unlikely(!__pyx_mstate_global->__pyx_codeobj_tab[5])) goto bad;
+  }
+  {
+    const __Pyx_PyCode_New_function_description descr = {3, 0, 0, 8, (unsigned int)(CO_OPTIMIZED|CO_NEWLOCALS), 659, 104};
+    PyObject* const varnames[] = {__pyx_mstate->__pyx_n_u_self, __pyx_mstate->__pyx_n_u_precursor_mass, __pyx_mstate->__pyx_n_u_fragment_masses, __pyx_mstate->__pyx_n_u_results, __pyx_mstate->__pyx_n_u_precursor_formulas, __pyx_mstate->__pyx_n_u_precursor_formula, __pyx_mstate->__pyx_n_u_fragment_decompositions, __pyx_mstate->__pyx_n_u_decomposer};
+    __pyx_mstate_global->__pyx_codeobj_tab[6] = __Pyx_PyCode_New(descr, varnames, __pyx_mstate->__pyx_kp_u_sirius_decomposer_pyx, __pyx_mstate->__pyx_n_u_decompose_spectrum, __pyx_k_A_A_1D0A_k_5_A_381_Zz_d_K1_1_7_Q, tuple_dedup_map); if (unlikely(!__pyx_mstate_global->__pyx_codeobj_tab[6])) goto bad;
+  }
+  {
+    const __Pyx_PyCode_New_function_description descr = {1, 0, 0, 1, (unsigned int)(CO_OPTIMIZED|CO_NEWLOCALS), 1, 9};
+    PyObject* const varnames[] = {__pyx_mstate->__pyx_n_u_self};
+    __pyx_mstate_global->__pyx_codeobj_tab[7] = __Pyx_PyCode_New(descr, varnames, __pyx_mstate->__pyx_kp_u_stringsource, __pyx_mstate->__pyx_n_u_reduce_cython, __pyx_k_Q, tuple_dedup_map); if (unlikely(!__pyx_mstate_global->__pyx_codeobj_tab[7])) goto bad;
+  }
+  {
+    const __Pyx_PyCode_New_function_description descr = {2, 0, 0, 2, (unsigned int)(CO_OPTIMIZED|CO_NEWLOCALS), 3, 9};
+    PyObject* const varnames[] = {__pyx_mstate->__pyx_n_u_self, __pyx_mstate->__pyx_n_u_pyx_state};
+    __pyx_mstate_global->__pyx_codeobj_tab[8] = __Pyx_PyCode_New(descr, varnames, __pyx_mstate->__pyx_kp_u_stringsource, __pyx_mstate->__pyx_n_u_setstate_cython, __pyx_k_Q, tuple_dedup_map); if (unlikely(!__pyx_mstate_global->__pyx_codeobj_tab[8])) goto bad;
+  }
+  {
+    const __Pyx_PyCode_New_function_description descr = {7, 0, 0, 11, (unsigned int)(CO_OPTIMIZED|CO_NEWLOCALS), 700, 96};
     PyObject* const varnames[] = {__pyx_mstate->__pyx_n_u_target_mass, __pyx_mstate->__pyx_n_u_element_bounds, __pyx_mstate->__pyx_n_u_tolerance_ppm, __pyx_mstate->__pyx_n_u_max_results, __pyx_mstate->__pyx_n_u_min_dbe, __pyx_mstate->__pyx_n_u_max_dbe, __pyx_mstate->__pyx_n_u_max_hetero_ratio, __pyx_mstate->__pyx_n_u_c_min_dbe, __pyx_mstate->__pyx_n_u_c_max_dbe, __pyx_mstate->__pyx_n_u_c_max_hetero_ratio, __pyx_mstate->__pyx_n_u_decomposer};
-    __pyx_mstate_global->__pyx_codeobj_tab[4] = __Pyx_PyCode_New(descr, varnames, __pyx_mstate->__pyx_kp_u_sirius_decomposer_pyx, __pyx_mstate->__pyx_n_u_cython_decompose_mass, __pyx_k_q_q_1_1_Gq_Kxwj_Kxwj_99J_Q_q_8, tuple_dedup_map); if (unlikely(!__pyx_mstate_global->__pyx_codeobj_tab[4])) goto bad;
+    __pyx_mstate_global->__pyx_codeobj_tab[9] = __Pyx_PyCode_New(descr, varnames, __pyx_mstate->__pyx_kp_u_sirius_decomposer_pyx, __pyx_mstate->__pyx_n_u_cython_decompose_mass, __pyx_k_Kxwj_Kxwj_99J_Q_q_8__TU_2_Q_Zq, tuple_dedup_map); if (unlikely(!__pyx_mstate_global->__pyx_codeobj_tab[9])) goto bad;
+  }
+  {
+    const __Pyx_PyCode_New_function_description descr = {5, 0, 0, 6, (unsigned int)(CO_OPTIMIZED|CO_NEWLOCALS), 731, 40};
+    PyObject* const varnames[] = {__pyx_mstate->__pyx_n_u_precursor_mass, __pyx_mstate->__pyx_n_u_fragment_masses, __pyx_mstate->__pyx_n_u_element_bounds, __pyx_mstate->__pyx_n_u_tolerance_ppm, __pyx_mstate->__pyx_n_u_max_results, __pyx_mstate->__pyx_n_u_decomposer};
+    __pyx_mstate_global->__pyx_codeobj_tab[10] = __Pyx_PyCode_New(descr, varnames, __pyx_mstate->__pyx_kp_u_sirius_decomposer_pyx, __pyx_mstate->__pyx_n_u_decompose_spectrum_cython, __pyx_k_9, tuple_dedup_map); if (unlikely(!__pyx_mstate_global->__pyx_codeobj_tab[10])) goto bad;
+  }
+  {
+    const __Pyx_PyCode_New_function_description descr = {5, 0, 0, 6, (unsigned int)(CO_OPTIMIZED|CO_NEWLOCALS), 752, 39};
+    PyObject* const varnames[] = {__pyx_mstate->__pyx_n_u_given_formula, __pyx_mstate->__pyx_n_u_fragment_masses, __pyx_mstate->__pyx_n_u_element_bounds, __pyx_mstate->__pyx_n_u_tolerance_ppm, __pyx_mstate->__pyx_n_u_max_results, __pyx_mstate->__pyx_n_u_decomposer};
+    __pyx_mstate_global->__pyx_codeobj_tab[11] = __Pyx_PyCode_New(descr, varnames, __pyx_mstate->__pyx_kp_u_sirius_decomposer_pyx, __pyx_mstate->__pyx_n_u_decompose_given_formula_spectrum_2, __pyx_k_6a_a, tuple_dedup_map); if (unlikely(!__pyx_mstate_global->__pyx_codeobj_tab[11])) goto bad;
   }
   Py_DECREF(tuple_dedup_map);
   return 0;
@@ -14378,6 +18057,58 @@ static CYTHON_INLINE void __Pyx_ExceptionSwap(PyObject **type, PyObject **value,
     *type = tmp_type;
     *value = tmp_value;
     *tb = tmp_tb;
+}
+#endif
+
+/* decode_c_string */
+static CYTHON_INLINE PyObject* __Pyx_decode_c_string(
+         const char* cstring, Py_ssize_t start, Py_ssize_t stop,
+         const char* encoding, const char* errors,
+         PyObject* (*decode_func)(const char *s, Py_ssize_t size, const char *errors)) {
+    Py_ssize_t length;
+    if (unlikely((start < 0) | (stop < 0))) {
+        size_t slen = strlen(cstring);
+        if (unlikely(slen > (size_t) PY_SSIZE_T_MAX)) {
+            PyErr_SetString(PyExc_OverflowError,
+                            "c-string too long to convert to Python");
+            return NULL;
+        }
+        length = (Py_ssize_t) slen;
+        if (start < 0) {
+            start += length;
+            if (start < 0)
+                start = 0;
+        }
+        if (stop < 0)
+            stop += length;
+    }
+    if (unlikely(stop <= start))
+        return __Pyx_NewRef(__pyx_mstate_global->__pyx_empty_unicode);
+    length = stop - start;
+    cstring += start;
+    if (decode_func) {
+        return decode_func(cstring, length, errors);
+    } else {
+        return PyUnicode_Decode(cstring, length, encoding, errors);
+    }
+}
+
+/* DictGetItem */
+#if !CYTHON_COMPILING_IN_PYPY
+static PyObject *__Pyx_PyDict_GetItem(PyObject *d, PyObject* key) {
+    PyObject *value;
+    if (unlikely(__Pyx_PyDict_GetItemRef(d, key, &value) == 0)) { // no value, no error
+        if (unlikely(PyTuple_Check(key))) {
+            PyObject* args = PyTuple_Pack(1, key);
+            if (likely(args)) {
+                PyErr_SetObject(PyExc_KeyError, args);
+                Py_DECREF(args);
+            }
+        } else {
+            PyErr_SetObject(PyExc_KeyError, key);
+        }
+    }
+    return value;
 }
 #endif
 
