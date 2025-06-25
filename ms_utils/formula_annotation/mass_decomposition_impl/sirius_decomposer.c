@@ -4,14 +4,14 @@
 {
     "distutils": {
         "depends": [
-            "/gpfs01/work/nircoh/MS_utils/.venv/lib/python3.12/site-packages/numpy/_core/include/numpy/arrayobject.h",
-            "/gpfs01/work/nircoh/MS_utils/.venv/lib/python3.12/site-packages/numpy/_core/include/numpy/arrayscalars.h",
-            "/gpfs01/work/nircoh/MS_utils/.venv/lib/python3.12/site-packages/numpy/_core/include/numpy/ndarrayobject.h",
-            "/gpfs01/work/nircoh/MS_utils/.venv/lib/python3.12/site-packages/numpy/_core/include/numpy/ndarraytypes.h",
-            "/gpfs01/work/nircoh/MS_utils/.venv/lib/python3.12/site-packages/numpy/_core/include/numpy/ufuncobject.h"
+            "/home/analytit_admin/dev/MS_utils/.venv/lib/python3.12/site-packages/numpy/_core/include/numpy/arrayobject.h",
+            "/home/analytit_admin/dev/MS_utils/.venv/lib/python3.12/site-packages/numpy/_core/include/numpy/arrayscalars.h",
+            "/home/analytit_admin/dev/MS_utils/.venv/lib/python3.12/site-packages/numpy/_core/include/numpy/ndarrayobject.h",
+            "/home/analytit_admin/dev/MS_utils/.venv/lib/python3.12/site-packages/numpy/_core/include/numpy/ndarraytypes.h",
+            "/home/analytit_admin/dev/MS_utils/.venv/lib/python3.12/site-packages/numpy/_core/include/numpy/ufuncobject.h"
         ],
         "include_dirs": [
-            "/gpfs01/work/nircoh/MS_utils/.venv/lib/python3.12/site-packages/numpy/_core/include"
+            "/home/analytit_admin/dev/MS_utils/.venv/lib/python3.12/site-packages/numpy/_core/include"
         ],
         "name": "sirius_decomposer",
         "sources": [

@@ -17,22 +17,26 @@ extensions = [
     Extension(
         "sirius_decomposer",
         ["sirius_decomposer.pyx"],
-        include_dirs=[numpy.get_include()],
-        language_level=3,
-        compiler_directives={
-            'boundscheck': False,
-            'wraparound': False,
-            'initializedcheck': False,
-            'cdivision': True,
-            'embedsignature': True
-        }
+        include_dirs=[numpy.get_include()]
+    ),
+    Extension(
+        "java_inspired_decomposer",
+        ["java_inspired_decomposer.pyx"],
+        include_dirs=[numpy.get_include()]
     )
 ]
 
 setup(
     name="mass_decomposer_suite",
     ext_modules=cythonize(extensions, 
-                         compiler_directives={'language_level': 3}),
+                         compiler_directives={
+                             'language_level': 3,
+                             'boundscheck': False,
+                             'wraparound': False,
+                             'initializedcheck': False,
+                             'cdivision': True,
+                             'embedsignature': True
+                         }),
     zip_safe=False,
     install_requires=[
         "numpy",

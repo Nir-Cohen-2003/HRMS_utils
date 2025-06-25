@@ -14,9 +14,13 @@ from base_data import ATOMIC_MASSES
 from python_impl import SiriusMassDecomposer, decompose_mass_fast, add_chemical_constraints
 try:
     from sirius_decomposer import cython_decompose_mass
+    from java_inspired_decomposer import CythonJavaStyleDecomposer
 except ImportError:
     def cython_decompose_mass(*args, **kwargs):
         raise NotImplementedError("Cython version not available")
+    class CythonJavaStyleDecomposer:
+        def __init__(self, *args, **kwargs):
+            raise NotImplementedError("Cython version not available")
 
 # Standard atomic masses (most abundant isotopes)
 
@@ -148,11 +152,40 @@ def benchmark_algorithms(num_parallel_runs=2000):
         cython_time = None
         cython_available = False
     
+    # Test Java-style Cython algorithm (if available)
+    try:
+        print("Java-style Cython algorithm:")
+        start_time = time.time()
+        
+        # Initialization is a one-time cost, but the decompose method handles it.
+        # We time the whole process including the first-time init.
+        java_style_decomposer = CythonJavaStyleDecomposer(element_bounds)
+        java_style_results = java_style_decomposer.decompose(target_mass, tolerance_ppm=5.0, min_dbe=min_dbe, max_dbe=max_dbe)
+        
+        java_style_time = time.time() - start_time
+        
+        print(f"  Total time: {java_style_time:.3f} seconds")
+        print(f"  Results found: {len(java_style_results)} formulas")
+        
+        java_style_available = True
+    except NotImplementedError:
+        print("Java-style Cython algorithm: Not compiled (run 'python setup.py build_ext --inplace')")
+        java_style_results = []
+        java_style_time = None
+        java_style_available = False
+    except Exception as e:
+        print(f"Java-style Cython algorithm: Error occurred - {type(e).__name__}: {e}")
+        java_style_results = []
+        java_style_time = None
+        java_style_available = False
+    
     # Verify results are the same
     recursive_set = {frozenset(formula.items()) for formula in recursive_results}
     iterative_set = {frozenset(formula.items()) for formula in iterative_results}
     if cython_available:
         cython_set = {frozenset(formula.items()) for formula in cython_results}
+    if java_style_available:
+        java_style_set = {frozenset(formula.items()) for formula in java_style_results}
     
     print("\nPerformance Comparison:")
     print("-" * 60)
@@ -184,6 +217,17 @@ def benchmark_algorithms(num_parallel_runs=2000):
                 print(f"  Common results: {len(recursive_set & cython_set)}")
                 print(f"  Python only: {len(recursive_set - cython_set)}")
                 print(f"  Cython only: {len(cython_set - recursive_set)}")
+        
+        if java_style_available:
+            if recursive_set == java_style_set:
+                print("✓ Java-style Cython algorithm produces identical results")
+                java_style_speedup = recursive_time / java_style_time if java_style_time > 0 else float('inf')
+                print(f"  Java-style speedup vs recursive: {java_style_speedup:.1f}x")
+            else:
+                print("✗ Java-style Cython results differ!")
+                print(f"  Common results: {len(recursive_set & java_style_set)}")
+                print(f"  Python only: {len(recursive_set - java_style_set)}")
+                print(f"  Java-style Cython only: {len(java_style_set - recursive_set)}")
     else:
         print("✗ Results differ!")
         print(f"  Recursive only: {len(recursive_set - iterative_set)}")
@@ -216,4 +260,3 @@ if __name__ == "__main__":
     
     # Run benchmark
     benchmark_algorithms(num_runs)
-    
