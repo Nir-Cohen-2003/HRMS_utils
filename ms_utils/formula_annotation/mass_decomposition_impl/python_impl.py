@@ -309,7 +309,12 @@ def add_chemical_constraints(formulas: List[Dict[str, int]],
         if c == 0:
             continue  # Skip formulas without carbon
         
-        dbe = c + 1 - (h - x + n + p) / 2.0
+        # Match DBE calculation with Cython implementations for consistency
+        dbe = (2 + 2*c + 3*p + n - h - x) / 2.0
+        
+        # Check if DBE is an integer (consistency with Cython)
+        if abs(dbe - round(dbe)) > 1e-8:
+            continue
         
         # Apply DBE constraints
         if min_dbe is not None and dbe < min_dbe:
