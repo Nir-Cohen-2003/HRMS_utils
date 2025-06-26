@@ -232,9 +232,21 @@ def benchmark_algorithms(num_parallel_runs=2000):
             
             # Show sample results
             if multi_spectrum_results:
-                sample_result = multi_spectrum_results[0]
-                print(f"  Sample result - Precursor: {len(sample_result['precursor'])} formulas")
-                print(f"  Sample result - Fragments: {[len(frag) for frag in sample_result['fragments']]}")
+                sample_result = multi_spectrum_results[0]  # Get first spectrum's results
+                if isinstance(sample_result, list) and sample_result:
+                    # New format: each spectrum returns a list of decomposition results
+                    total_precursors = len(sample_result)
+                    total_fragment_sets = sum(len(decomp['fragments']) for decomp in sample_result)
+                    print(f"  Sample result - Precursor candidates: {total_precursors}")
+                    print(f"  Sample result - Total fragment sets: {total_fragment_sets}")
+                elif isinstance(sample_result, dict) and 'precursor' in sample_result:
+                    # Old format: each spectrum returns a dictionary
+                    print(f"  Sample result - Precursor: {len(sample_result['precursor'])} formulas")
+                    print(f"  Sample result - Fragments: {[len(frag) for frag in sample_result['fragments']]}")
+                else:
+                    print(f"  Sample result - Unexpected format: {type(sample_result)}")
+            else:
+                print("  No results returned")
             
             # Compare single vs batch processing efficiency
             single_spectrum_time_estimate = spectrum_cpp_time * num_spectra
@@ -556,4 +568,4 @@ if __name__ == "__main__":
     print("=" * 50)
     
     # Run benchmark
-    benchmark_algorithms(20000)
+    benchmark_algorithms(200)
