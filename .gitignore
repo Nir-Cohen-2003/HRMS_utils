@@ -9,3 +9,4 @@ build/
 **.pyc
 **.so
 ms_utils/formula_annotation/mass_decomposition_impl/sirius_java_impl/
+ms_utils/formula_annotation/mass_decomposition_impl/benchmark_results.txt

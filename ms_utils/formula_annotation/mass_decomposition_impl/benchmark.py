@@ -12,19 +12,6 @@ For maximum performance, compile the Cython version using the provided setup.py
 from base_data import ATOMIC_MASSES
 from python_impl import SiriusMassDecomposer, decompose_mass_fast, add_chemical_constraints
 
-# Try to import unified Cython implementation
-try:
-    from mass_decomposer import decompose_mass as decompose_mass_cython, decompose_mass_parallel as decompose_mass_parallel_cython, decompose_spectrum_parallel as decompose_spectrum_parallel_cython
-    unified_cython_available = True
-except ImportError:
-    unified_cython_available = False
-    def decompose_mass_cython(*args, **kwargs):
-        raise NotImplementedError("Unified Cython decomposer not available")
-    def decompose_mass_parallel_cython(*args, **kwargs):
-        raise NotImplementedError("Unified Cython decomposer not available")
-    def decompose_spectrum_parallel_cython(*args, **kwargs):
-        raise NotImplementedError("Unified Cython decomposer not available")
-
 # Try to import new C++ implementation
 try:
     from mass_decomposer_cpp import decompose_mass, decompose_mass_parallel, decompose_spectrum_parallel
@@ -73,12 +60,8 @@ def benchmark_algorithms(num_parallel_runs=2000):
     print("-" * 60)
     
     # Initialize variables for better scope handling
-    recursive_cython_results = []
-    money_changing_cython_results = []
     recursive_cpp_results = []
     money_changing_cpp_results = []
-    recursive_cython_time = 0
-    money_changing_cython_time = 0
     recursive_cpp_time = 0
     money_changing_cpp_time = 0
     
@@ -119,153 +102,99 @@ def benchmark_algorithms(num_parallel_runs=2000):
     print(f"  Results before constraints: {len(iterative_results_raw)} formulas")
     print(f"  Results after constraints: {len(iterative_results)} formulas")
     
-    # Test unified algorithms (if available)
-    if unified_cython_available or cpp_available:
+    # Test advanced algorithms (C++ only)
+    if cpp_available:
         print("Advanced algorithms:")
+        print("  C++ OpenMP implementations:")
         
-        # Test Cython algorithms if available
-        if unified_cython_available:
-            print("  Cython implementations:")
-            
-            # Test recursive Cython strategy
-            try:
-                start_time = time.time()
-                recursive_cython_results = decompose_mass_cython(target_mass, element_bounds, 
-                                                        strategy="recursive", tolerance_ppm=tolerance_ppm, 
-                                                        min_dbe=min_dbe, max_dbe=max_dbe, max_hetero_ratio=1000.0)
-                recursive_cython_time = time.time() - start_time
-                print(f"    Recursive Cython: {recursive_cython_time:.3f} seconds")
-                print(f"    Results: {len(recursive_cython_results)} formulas")
-            except Exception as e:
-                print(f"    Recursive Cython: Error - {e}")
-                recursive_cython_results = []
-            
-            # Test money-changing strategy (single run)
-            try:
-                start_time = time.time()
-                money_changing_cython_results = decompose_mass_cython(target_mass, element_bounds,
-                                                              strategy="money_changing", tolerance_ppm=tolerance_ppm, 
-                                                              min_dbe=min_dbe, max_dbe=max_dbe, max_hetero_ratio=1000.0)
-                money_changing_cython_time = time.time() - start_time
-                print(f"    Money-changing Cython: {money_changing_cython_time:.3f} seconds")
-                print(f"    Results: {len(money_changing_cython_results)} formulas")
-            except Exception as e:
-                print(f"    Money-changing Cython: Error - {e}")
-                money_changing_cython_results = []
+        # Test recursive C++ strategy
+        try:
+            start_time = time.time()
+            recursive_cpp_results = decompose_mass(target_mass, element_bounds, 
+                                                  strategy="recursive", tolerance_ppm=tolerance_ppm, 
+                                                  min_dbe=min_dbe, max_dbe=max_dbe, max_hetero_ratio=1000.0)
+            recursive_cpp_time = time.time() - start_time
+            print(f"    Recursive C++: {recursive_cpp_time:.3f} seconds")
+            print(f"    Results: {len(recursive_cpp_results)} formulas")
+        except Exception as e:
+            print(f"    Recursive C++: Error - {e}")
+            recursive_cpp_results = []
         
-        # Test C++ algorithms if available
-        if cpp_available:
-            print("  C++ OpenMP implementations:")
-            
-            # Test recursive C++ strategy
-            try:
-                start_time = time.time()
-                recursive_cpp_results = decompose_mass(target_mass, element_bounds, 
-                                                      strategy="recursive", tolerance_ppm=tolerance_ppm, 
-                                                      min_dbe=min_dbe, max_dbe=max_dbe, max_hetero_ratio=1000.0)
-                recursive_cpp_time = time.time() - start_time
-                print(f"    Recursive C++: {recursive_cpp_time:.3f} seconds")
-                print(f"    Results: {len(recursive_cpp_results)} formulas")
-            except Exception as e:
-                print(f"    Recursive C++: Error - {e}")
-                recursive_cpp_results = []
-            
-            # Test money-changing C++ strategy
-            try:
-                start_time = time.time()
-                money_changing_cpp_results = decompose_mass(target_mass, element_bounds,
-                                                           strategy="money_changing", tolerance_ppm=tolerance_ppm, 
-                                                           min_dbe=min_dbe, max_dbe=max_dbe, max_hetero_ratio=1000.0)
-                money_changing_cpp_time = time.time() - start_time
-                print(f"    Money-changing C++: {money_changing_cpp_time:.3f} seconds")
-                print(f"    Results: {len(money_changing_cpp_results)} formulas")
-            except Exception as e:
-                print(f"    Money-changing C++: Error - {e}")
-                money_changing_cpp_results = []
+        # Test money-changing C++ strategy
+        try:
+            start_time = time.time()
+            money_changing_cpp_results = decompose_mass(target_mass, element_bounds,
+                                                       strategy="money_changing", tolerance_ppm=tolerance_ppm, 
+                                                       min_dbe=min_dbe, max_dbe=max_dbe, max_hetero_ratio=1000.0)
+            money_changing_cpp_time = time.time() - start_time
+            print(f"    Money-changing C++: {money_changing_cpp_time:.3f} seconds")
+            print(f"    Results: {len(money_changing_cpp_results)} formulas")
+        except Exception as e:
+            print(f"    Money-changing C++: Error - {e}")
+            money_changing_cpp_results = []
         
         # Test parallel processing with C++ implementation
-        if cpp_available:
-            try:
-                print(f"C++ OpenMP parallel processing ({num_parallel_runs} masses):")
-                target_masses = [target_mass] * num_parallel_runs
-                
-                # Parallel recursive C++
-                start_time = time.time()
-                parallel_recursive_cpp_results = decompose_mass_parallel(
-                    target_masses, element_bounds, strategy="recursive", tolerance_ppm=tolerance_ppm,
-                    min_dbe=min_dbe, max_dbe=max_dbe, max_hetero_ratio=1000.0)
-                parallel_recursive_cpp_time = time.time() - start_time
-                print(f"  Parallel recursive C++: {parallel_recursive_cpp_time:.3f} seconds")
-                print(f"  Average per mass: {parallel_recursive_cpp_time/num_parallel_runs:.6f} seconds")
-                print(f"  Throughput: {num_parallel_runs/parallel_recursive_cpp_time:.1f} decompositions/second")
-                
-                # Parallel money-changing C++
-                start_time = time.time()
-                parallel_money_cpp_results = decompose_mass_parallel(
-                    target_masses, element_bounds, strategy="money_changing", tolerance_ppm=tolerance_ppm,
-                    min_dbe=min_dbe, max_dbe=max_dbe, max_hetero_ratio=1000.0)
-                parallel_money_cpp_time = time.time() - start_time
-                print(f"  Parallel money-changing C++: {parallel_money_cpp_time:.3f} seconds")
-                print(f"  Average per mass: {parallel_money_cpp_time/num_parallel_runs:.6f} seconds")
-                print(f"  Throughput: {num_parallel_runs/parallel_money_cpp_time:.1f} decompositions/second")
-                
-                # Verify parallel results consistency
-                first_recursive_cpp = parallel_recursive_cpp_results[0] if parallel_recursive_cpp_results else []
-                first_money_cpp = parallel_money_cpp_results[0] if parallel_money_cpp_results else []
-                
-                if first_recursive_cpp and first_money_cpp:
-                    recursive_cpp_set = {frozenset(f.items()) for f in first_recursive_cpp}
-                    money_cpp_set = {frozenset(f.items()) for f in first_money_cpp}
-                    if recursive_cpp_set == money_cpp_set:
-                        print("  ✓ C++ parallel strategies produce identical results")
-                    else:
-                        print("  ✗ C++ parallel strategies produce different results")
-                        print(f"    Recursive: {len(first_recursive_cpp)} results, Money-changing: {len(first_money_cpp)} results")
-                        common = recursive_cpp_set & money_cpp_set
-                        print(f"    Common results: {len(common)}")
-                        
-            except Exception as e:
-                print(f"  C++ parallel processing: Error - {e}")
-
-        # Test parallel processing with Cython implementation (for comparison)
-        if unified_cython_available:
-            try:
-                print(f"Cython parallel processing ({num_parallel_runs} masses):")
-                target_masses = [target_mass] * num_parallel_runs
-                
-                # Parallel recursive Cython
-                start_time = time.time()
-                parallel_recursive_cython_results = decompose_mass_parallel_cython(
-                    target_masses, element_bounds, strategy="recursive", tolerance_ppm=tolerance_ppm,
-                    min_dbe=min_dbe, max_dbe=max_dbe, max_hetero_ratio=1000.0)
-                parallel_recursive_cython_time = time.time() - start_time
-                print(f"  Parallel recursive Cython: {parallel_recursive_cython_time:.3f} seconds")
-                print(f"  Average per mass: {parallel_recursive_cython_time/num_parallel_runs:.6f} seconds")
-                print(f"  Throughput: {num_parallel_runs/parallel_recursive_cython_time:.1f} decompositions/second")
-                
-            except Exception as e:
-                print(f"  Cython parallel processing: Error - {e}")
+        try:
+            print(f"C++ OpenMP parallel processing ({num_parallel_runs} masses):")
+            target_masses = [target_mass] * num_parallel_runs
+            
+            # Parallel recursive C++
+            start_time = time.time()
+            parallel_recursive_cpp_results = decompose_mass_parallel(
+                target_masses, element_bounds, strategy="recursive", tolerance_ppm=tolerance_ppm,
+                min_dbe=min_dbe, max_dbe=max_dbe, max_hetero_ratio=1000.0)
+            parallel_recursive_cpp_time = time.time() - start_time
+            print(f"  Parallel recursive C++: {parallel_recursive_cpp_time:.3f} seconds")
+            print(f"  Average per mass: {parallel_recursive_cpp_time/num_parallel_runs:.6f} seconds")
+            print(f"  Throughput: {num_parallel_runs/parallel_recursive_cpp_time:.1f} decompositions/second")
+            
+            # Parallel money-changing C++
+            start_time = time.time()
+            parallel_money_cpp_results = decompose_mass_parallel(
+                target_masses, element_bounds, strategy="money_changing", tolerance_ppm=tolerance_ppm,
+                min_dbe=min_dbe, max_dbe=max_dbe, max_hetero_ratio=1000.0)
+            parallel_money_cpp_time = time.time() - start_time
+            print(f"  Parallel money-changing C++: {parallel_money_cpp_time:.3f} seconds")
+            print(f"  Average per mass: {parallel_money_cpp_time/num_parallel_runs:.6f} seconds")
+            print(f"  Throughput: {num_parallel_runs/parallel_money_cpp_time:.1f} decompositions/second")
+            
+            # Verify parallel results consistency
+            first_recursive_cpp = parallel_recursive_cpp_results[0] if parallel_recursive_cpp_results else []
+            first_money_cpp = parallel_money_cpp_results[0] if parallel_money_cpp_results else []
+            
+            if first_recursive_cpp and first_money_cpp:
+                recursive_cpp_set = {frozenset(f.items()) for f in first_recursive_cpp}
+                money_cpp_set = {frozenset(f.items()) for f in first_money_cpp}
+                if recursive_cpp_set == money_cpp_set:
+                    print("  ✓ C++ parallel strategies produce identical results")
+                else:
+                    print("  ✗ C++ parallel strategies produce different results")
+                    print(f"    Recursive: {len(first_recursive_cpp)} results, Money-changing: {len(first_money_cpp)} results")
+                    common = recursive_cpp_set & money_cpp_set
+                    print(f"    Common results: {len(common)}")
+                    
+        except Exception as e:
+            print(f"  C++ parallel processing: Error - {e}")
         
         # Test spectrum decomposition with C++
-        if cpp_available:
-            try:
-                print("C++ spectrum decomposition test:")
-                fragment_masses = [target_mass * 0.8, target_mass * 0.6, target_mass * 0.4]
+        try:
+            print("C++ spectrum decomposition test:")
+            fragment_masses = [target_mass * 0.8, target_mass * 0.6, target_mass * 0.4]
+            
+            start_time = time.time()
+            spectrum_cpp_results = decompose_spectrum_parallel(
+                target_mass, fragment_masses, element_bounds,
+                strategy="money_changing", tolerance_ppm=tolerance_ppm,
+                min_dbe=min_dbe, max_dbe=max_dbe, max_hetero_ratio=1000.0)
+            spectrum_cpp_time = time.time() - start_time
+            
+            print(f"  C++ spectrum decomposition: {spectrum_cpp_time:.3f} seconds")
+            print(f"  Precursor candidates: {len(spectrum_cpp_results['precursor'])}")
+            print(f"  Fragment sets: {len(spectrum_cpp_results['fragments'])}")
                 
-                start_time = time.time()
-                spectrum_cpp_results = decompose_spectrum_parallel(
-                    target_mass, fragment_masses, element_bounds,
-                    strategy="money_changing", tolerance_ppm=tolerance_ppm,
-                    min_dbe=min_dbe, max_dbe=max_dbe, max_hetero_ratio=1000.0)
-                spectrum_cpp_time = time.time() - start_time
-                
-                print(f"  C++ spectrum decomposition: {spectrum_cpp_time:.3f} seconds")
-                print(f"  Precursor candidates: {len(spectrum_cpp_results['precursor'])}")
-                print(f"  Fragment sets: {len(spectrum_cpp_results['fragments'])}")
-                    
-            except Exception as e:
-                print(f"  C++ spectrum decomposition: Error - {e}")
-                
+        except Exception as e:
+            print(f"  C++ spectrum decomposition: Error - {e}")
+            
     else:
         print("Advanced algorithms: Not compiled (run 'python setup.py build_ext --inplace')")
     
@@ -293,13 +222,6 @@ def benchmark_algorithms(num_parallel_runs=2000):
     recursive_set = {frozenset(formula.items()) for formula in recursive_results}
     iterative_set = {frozenset(formula.items()) for formula in iterative_results}
     
-    # Add advanced algorithm results for comparison
-    if unified_cython_available:
-        if recursive_cython_results:
-            recursive_cython_set = {frozenset(formula.items()) for formula in recursive_cython_results}
-        if money_changing_cython_results:
-            money_changing_cython_set = {frozenset(formula.items()) for formula in money_changing_cython_results}
-    
     if cpp_available:
         if recursive_cpp_results:
             recursive_cpp_set = {frozenset(formula.items()) for formula in recursive_cpp_results}
@@ -313,30 +235,6 @@ def benchmark_algorithms(num_parallel_runs=2000):
         print("✓ Recursive and iterative algorithms produce identical results")
         speedup = recursive_time / iterative_time if iterative_time > 0 else float('inf')
         print(f"  Iterative speedup: {speedup:.1f}x")
-        
-        # Compare with Cython implementations
-        if unified_cython_available:
-            # Compare with recursive Cython
-            if recursive_cython_results and recursive_set == recursive_cython_set:
-                print("✓ Recursive Cython produces identical results")
-                cython_speedup = recursive_time / recursive_cython_time if recursive_cython_time > 0 else float('inf')
-                iter_speedup = iterative_time / recursive_cython_time if recursive_cython_time > 0 else float('inf')
-                print(f"  Recursive Cython speedup vs recursive Python: {cython_speedup:.1f}x")
-                print(f"  Recursive Cython speedup vs iterative Python: {iter_speedup:.1f}x")
-            elif recursive_cython_results:
-                print("✗ Recursive Cython results differ!")
-                print(f"  Common results: {len(recursive_set & recursive_cython_set)}")
-                print_formula_differences(recursive_set, recursive_cython_set, "Python", "Recursive Cython", target_mass)
-            
-            # Compare with money-changing Cython
-            if money_changing_cython_results and recursive_set == money_changing_cython_set:
-                print("✓ Money-changing Cython produces identical results")
-                money_cython_speedup = recursive_time / money_changing_cython_time if money_changing_cython_time > 0 else float('inf')
-                print(f"  Money-changing Cython speedup vs recursive Python: {money_cython_speedup:.1f}x")
-            elif money_changing_cython_results:
-                print("✗ Money-changing Cython results differ!")
-                print(f"  Common results: {len(recursive_set & money_changing_cython_set)}")
-                print_formula_differences(recursive_set, money_changing_cython_set, "Python", "Money-changing Cython", target_mass)
         
         # Compare with C++ implementations
         if cpp_available:
@@ -370,12 +268,6 @@ def benchmark_algorithms(num_parallel_runs=2000):
         "Recursive Python": recursive_results,
         "Iterative Python": iterative_results,
     }
-    
-    if unified_cython_available:
-        if recursive_cython_results:
-            all_results["Recursive Cython"] = recursive_cython_results
-        if money_changing_cython_results:
-            all_results["Money-changing Cython"] = money_changing_cython_results
     
     if cpp_available:
         if recursive_cpp_results:
@@ -424,4 +316,4 @@ if __name__ == "__main__":
     print("=" * 50)
     
     # Run benchmark
-    benchmark_algorithms(200)
+    benchmark_algorithms(200000)
