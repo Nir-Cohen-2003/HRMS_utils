@@ -506,39 +506,30 @@ ProperSpectrumResults MassDecomposer::decompose_spectrum(
         // Create bounds for fragment decomposition based on precursor formula
         std::vector<Element> fragment_bounds = create_bounds_from_formula(precursor_formula);
 
-        // Create a temporary decomposer with fragment bounds
-        MassDecomposer fragment_decomposer(fragment_bounds, params.strategy);
+        // Fragments will be batch-decomposed below using shared bounds
 
-        // Decompose each fragment mass
-        decomp.fragments.resize(fragment_masses.size());
+        // Batch-decompose all fragments with shared bounds
+        MassDecomposer fragment_decomposer(fragment_bounds, params.strategy);
+        DecompositionParams fragment_params = params;
+        fragment_params.min_dbe = 0.0;  // relaxed DBE for fragments
+        // run in parallel across fragments for this precursor
+        auto batched = fragment_decomposer.decompose_parallel(fragment_masses, fragment_params);
+        // move results and compute masses/errors
+        decomp.fragments = std::move(batched);
         decomp.fragment_masses.resize(fragment_masses.size());
         decomp.fragment_errors_ppm.resize(fragment_masses.size());
-
-        for (size_t i = 0; i < fragment_masses.size(); ++i) {
-            double fragment_mass = fragment_masses[i];
-
-            // Use relaxed DBE constraints for fragments (they can be lower)
-            DecompositionParams fragment_params = params;
-            fragment_params.min_dbe = 0.0;  // Fragments can have lower DBE
-
-            std::vector<Formula> fragment_formulas = fragment_decomposer.decompose(fragment_mass, fragment_params);
-
-            // Calculate masses and errors for each fragment formula
-            for (const Formula& frag_formula : fragment_formulas) {
+        for (size_t j = 0; j < fragment_masses.size(); ++j) {
+            double target = fragment_masses[j];
+            for (const auto& frag_formula : decomp.fragments[j]) {
                 double calc_mass = 0.0;
-                for (const auto& pair : frag_formula) {
-                    auto it = atomic_masses_.find(pair.first);
-                    if (it != atomic_masses_.end()) {
-                        calc_mass += it->second * pair.second;
-                    }
+                for (const auto& pr : frag_formula) {
+                    auto it = atomic_masses_.find(pr.first);
+                    if (it != atomic_masses_.end()) calc_mass += it->second * pr.second;
                 }
-                double error_ppm = std::abs(calc_mass - fragment_mass) / fragment_mass * 1e6;
-
-                decomp.fragment_masses[i].push_back(calc_mass);
-                decomp.fragment_errors_ppm[i].push_back(error_ppm);
+                double error_ppm = std::abs(calc_mass - target) / target * 1e6;
+                decomp.fragment_masses[j].push_back(calc_mass);
+                decomp.fragment_errors_ppm[j].push_back(error_ppm);
             }
-
-            decomp.fragments[i] = std::move(fragment_formulas);
         }
 
         results.decompositions.push_back(std::move(decomp));
