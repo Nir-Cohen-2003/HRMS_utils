@@ -506,30 +506,31 @@ ProperSpectrumResults MassDecomposer::decompose_spectrum(
         // Create bounds for fragment decomposition based on precursor formula
         std::vector<Element> fragment_bounds = create_bounds_from_formula(precursor_formula);
 
-        // Fragments will be batch-decomposed below using shared bounds
-
-        // Batch-decompose all fragments with shared bounds
+        // Create a decomposer for the fragments with the specific bounds from the precursor
         MassDecomposer fragment_decomposer(fragment_bounds, params.strategy);
         DecompositionParams fragment_params = params;
         fragment_params.min_dbe = 0.0;  // relaxed DBE for fragments
-        // run in parallel across fragments for this precursor
-        auto batched = fragment_decomposer.decompose_parallel(fragment_masses, fragment_params);
-        // move results and compute masses/errors
-        decomp.fragments = std::move(batched);
+        
+        // Decompose each fragment serially for this precursor candidate
+        decomp.fragments.resize(fragment_masses.size());
         decomp.fragment_masses.resize(fragment_masses.size());
         decomp.fragment_errors_ppm.resize(fragment_masses.size());
+
         for (size_t j = 0; j < fragment_masses.size(); ++j) {
-            double target = fragment_masses[j];
-            for (const auto& frag_formula : decomp.fragments[j]) {
+            auto fragment_solutions = fragment_decomposer.decompose(fragment_masses[j], fragment_params);
+            
+            // Compute masses and errors for the found fragment formulas
+            for (const auto& frag_formula : fragment_solutions) {
                 double calc_mass = 0.0;
                 for (const auto& pr : frag_formula) {
                     auto it = atomic_masses_.find(pr.first);
                     if (it != atomic_masses_.end()) calc_mass += it->second * pr.second;
                 }
-                double error_ppm = std::abs(calc_mass - target) / target * 1e6;
+                double error_ppm = std::abs(calc_mass - fragment_masses[j]) / fragment_masses[j] * 1e6;
                 decomp.fragment_masses[j].push_back(calc_mass);
                 decomp.fragment_errors_ppm[j].push_back(error_ppm);
             }
+            decomp.fragments[j] = std::move(fragment_solutions);
         }
 
         results.decompositions.push_back(std::move(decomp));
