@@ -2082,12 +2082,6 @@ static PyObject *__Pyx_GetItemInt_Generic(PyObject *o, PyObject* j);
 static CYTHON_INLINE PyObject *__Pyx_GetItemInt_Fast(PyObject *o, Py_ssize_t i,
                                                      int is_list, int wraparound, int boundscheck);
 
-/* SliceObject.proto */
-static CYTHON_INLINE PyObject* __Pyx_PyObject_GetSlice(
-        PyObject* obj, Py_ssize_t cstart, Py_ssize_t cstop,
-        PyObject** py_start, PyObject** py_stop, PyObject** py_slice,
-        int has_cstart, int has_cstop, int wraparound);
-
 /* ListPack.proto */
 static PyObject *__Pyx_PyList_Pack(Py_ssize_t n, ...);
 
@@ -2489,6 +2483,8 @@ static const char __pyx_k_P[] = "P";
 static const char __pyx_k_S[] = "S";
 static const char __pyx_k_i[] = "i";
 static const char __pyx_k_j[] = "j";
+static const char __pyx_k_k[] = "k";
+static const char __pyx_k_l[] = "l";
 static const char __pyx_k_Al[] = "Al";
 static const char __pyx_k_Br[] = "Br";
 static const char __pyx_k_Ca[] = "Ca";
@@ -2513,6 +2509,7 @@ static const char __pyx_k_Tuple[] = "Tuple";
 static const char __pyx_k_items[] = "items";
 static const char __pyx_k_range[] = "range";
 static const char __pyx_k_utf_8[] = "utf-8";
+static const char __pyx_k_decomp[] = "decomp";
 static const char __pyx_k_encode[] = "encode";
 static const char __pyx_k_module[] = "__module__";
 static const char __pyx_k_params[] = "params";
@@ -2524,44 +2521,71 @@ static const char __pyx_k_add_note[] = "add_note";
 static const char __pyx_k_elements[] = "elements";
 static const char __pyx_k_qualname[] = "__qualname__";
 static const char __pyx_k_set_name[] = "__set_name__";
+static const char __pyx_k_spectrum[] = "spectrum";
 static const char __pyx_k_strategy[] = "strategy";
+static const char __pyx_k_frag_mass[] = "frag_mass";
 static const char __pyx_k_fragments[] = "fragments";
+static const char __pyx_k_mass_list[] = "mass_list";
 static const char __pyx_k_precursor[] = "precursor";
-static const char __pyx_k_all_masses[] = "all_masses";
 static const char __pyx_k_decomposer[] = "decomposer";
+static const char __pyx_k_error_list[] = "error_list";
 static const char __pyx_k_masses_vec[] = "masses_vec";
 static const char __pyx_k_all_results[] = "all_results";
+static const char __pyx_k_cpp_results[] = "cpp_results";
 static const char __pyx_k_max_results[] = "max_results";
+static const char __pyx_k_result_dict[] = "result_dict";
+static const char __pyx_k_spectra_vec[] = "spectra_vec";
 static const char __pyx_k_target_mass[] = "target_mass";
 static const char __pyx_k_is_coroutine[] = "_is_coroutine";
 static const char __pyx_k_mass_results[] = "mass_results";
+static const char __pyx_k_spectra_data[] = "spectra_data";
 static const char __pyx_k_ATOMIC_MASSES[] = "ATOMIC_MASSES";
+static const char __pyx_k_frag_formulas[] = "frag_formulas";
+static const char __pyx_k_spectrum_data[] = "spectrum_data";
 static const char __pyx_k_target_masses[] = "target_masses";
 static const char __pyx_k_tolerance_ppm[] = "tolerance_ppm";
 static const char __pyx_k_decompose_mass[] = "decompose_mass";
 static const char __pyx_k_element_bounds[] = "element_bounds";
+static const char __pyx_k_fragment_lists[] = "fragment_lists";
 static const char __pyx_k_money_changing[] = "money_changing";
+static const char __pyx_k_precursor_dict[] = "precursor_dict";
 static const char __pyx_k_precursor_mass[] = "precursor_mass";
 static const char __pyx_k_python_results[] = "python_results";
+static const char __pyx_k_frag_masses_vec[] = "frag_masses_vec";
 static const char __pyx_k_fragment_masses[] = "fragment_masses";
 static const char __pyx_k_fragment_results[] = "fragment_results";
 static const char __pyx_k_max_hetero_ratio[] = "max_hetero_ratio";
+static const char __pyx_k_spectrum_results[] = "spectrum_results";
 static const char __pyx_k_precursor_results[] = "precursor_results";
 static const char __pyx_k_asyncio_coroutines[] = "asyncio.coroutines";
 static const char __pyx_k_cline_in_traceback[] = "cline_in_traceback";
+static const char __pyx_k_fragment_errors_ppm[] = "fragment_errors_ppm";
+static const char __pyx_k_fragment_mass_lists[] = "fragment_mass_lists";
 static const char __pyx_k_mass_decomposer_cpp[] = "mass_decomposer_cpp";
+static const char __pyx_k_precursor_error_ppm[] = "precursor_error_ppm";
+static const char __pyx_k_fragment_error_lists[] = "fragment_error_lists";
+static const char __pyx_k_fragment_mass_results[] = "fragment_mass_results";
 static const char __pyx_k_decompose_mass_parallel[] = "decompose_mass_parallel";
 static const char __pyx_k_mass_decomposer_cpp_pyx[] = "mass_decomposer_cpp.pyx";
+static const char __pyx_k_decompose_spectra_parallel[] = "decompose_spectra_parallel";
 static const char __pyx_k_decompose_spectrum_parallel[] = "decompose_spectrum_parallel";
+static const char __pyx_k_decompose_spectrum_properly[] = "decompose_spectrum_properly";
+static const char __pyx_k_45_9_4A_2_Q_7Gq_6iq_9_7_6_D_Q[] = "\200\001\33045\330\0379\270\021\330\0374\260A\330\037 \360,\000\005\024\2202\320\025%\240Q\330\004\016\320\016(\250\001\250\036\3207G\300q\330'6\260i\270q\330'9\270\021\340\004\013\2107\220!\2206\230\036\240}\260D\270\r\300Q";
+static const char __pyx_k_EQ_Fa_t1_q_aq__A_IQ_a_M_Jaq_Qa[] = "\200\001\330&E\300Q\330&:\270!\330&F\300a\360\"\000\005\010\200t\2101\330\010\017\210q\360\024\000\005\020\320\017&\240a\240q\330\004\r\210_\230A\230_\250I\260Q\330\033-\250]\270!\360\006\000\005\t\320\010\031\230\021\330\010\030\320\030*\250!\330\010\020\320\020\"\240!\330\010\020\320\020 \240\006\240a\330\010\014\210M\230\021\330\014\024\320\024$\240J\250a\250q\330\010\023\220:\230Q\230a\340\004\021\320\021#\2401\240J\250h\260g\270Q\270a\340\004\005\330\010\026\220j\320 D\300A\300]\320RS\360\006\000\t\032\230\021\330\010\014\210E\220\025\220a\220{\240%\240q\330\014\037\230q\340\014\020\220\005\220U\230!\230;\240a\240r\250\037\270\005\270Q\330\020\031\230\033\240A\240R\240\260a\260q\360\006\000\021\"\320!8\270\001\270\026\270|\3101\360\006\000\021\"\240\021\330\020&\240a\330\020'\240q\340\020\024\220E\230\025\230a\230v\240Z\250u\260A\340\024$\240A\330\024\030\230\005\230U\240!\2406\250\032\2601\260B\260e\2701\330\030%\240W\250A\320-D\300A\300V\310:\320UV\320VX\320XY\320Y]\320]^\330\024\"\240'\250\021\250!\360\006\000\025!\240\001\330\024!\240\021\330\024\030\230\005\230U\240!\2406\320)9\270\021\270\"\270E\300\021\330\030!\240\027\250\001\250\026\320/?\270q\300\002\300!\3001\330\024\030\230\005\230U\240!\2406\320)=\270Q\270b\300\005\300Q\330\030\"\240'\250\021\250&\3200D\300A\300R\300q\310\001\340\024'\240w\250a\250q\330\024(\250\007\250q\260\001\340\020\021\330\024!\240\021\330\024!\240\021\330\024&\240f\250A\330\024+\2506\260\021\330\024'\240q\330\024+\2501\340\020 \240\007\240q\250\001\340\014\032\230'\240\021\240!\340\010\017\210q\360\006\000\t\r\210A";
+static const char __pyx_k_Q_2_a_t1_q_aq__A_IQ_a_M_Jaq_Qa[] = "\200\001\330\036=\270Q\330\0362\260!\330\036>\270a\360\"\000\005\010\200t\2101\330\010\017\210q\360\024\000\005\020\320\017&\240a\240q\330\004\r\210_\230A\230_\250I\260Q\330\033-\250]\270!\360\006\000\005\t\320\010\031\230\021\330\010\030\320\030*\250!\330\010\020\320\020\"\240!\330\010\020\320\020 \240\006\240a\330\010\014\210M\230\021\330\014\024\320\024$\240J\250a\250q\330\010\023\220:\230Q\230a\340\004\021\320\021#\2401\240J\250h\260g\270Q\270a\330\004\022\220*\320\0347\260q\270\r\300Q\340\004\005\340\010\031\230\021\330\010\014\210E\220\025\220a\220{\240%\240q\340\014 \240\001\330\014\020\220\005\220U\230!\230;\240a\240r\320);\2705\300\001\330\020!\240\027\250\001\320)@\300\001\300\033\310A\310R\320Oa\320ab\320bf\320fg\360\006\000\r \230q\330\014\020\220\005\220U\230!\230;\240a\240r\320):\270%\270q\330\020(\250\001\330\020\024\220E\230\025\230a\230{\250!\2502\320->\270a\270r\300\025\300a\330\024)\250\027\260\001\3201H\310\001\310\033\320TU\320UW\320Wh\320hi\320ik\320kl\320lp\320pq\330\020 \240\007\240q\250\001\340\014\032\230'\240\021\330\020\035\230Q\330\020\035\230Q\360\006\000\t\020\210q\340\010\014\210A";
 static const char __pyx_k_2_q_31_aq__A_IQ_1JhgQa_j_E_awe1[] = "\200\001\330\0232\260!\330\023'\240q\330\0233\2601\360.\000\005\020\320\017&\240a\240q\330\004\r\210_\230A\230_\250I\260Q\330\033-\250]\270!\340\004\021\320\021#\2401\240J\250h\260g\270Q\270a\330\004\016\210j\230\n\240!\240=\260\001\340\004\005\340\010\031\230\021\330\010\014\210E\220\025\220a\220w\230e\2401\330\014\032\230'\240\021\320\"9\270\021\270'\300\021\300$\300a\340\010\017\210q\340\010\014\210A";
-static const char __pyx_k_45_9_4A_A_6Fa_7y_1F_1_7_Qm2WA_Q[] = "\200\001\33045\330\0379\270\021\330\0374\260A\330\037 \360&\000\005\022\220\021\320\022\"\240\"\240A\360\006\000\005\023\320\022)\250\021\250,\3206F\300a\330(7\260y\300\001\330(:\270!\360\006\000\005\031\230\013\2401\240F\320*;\2701\330\004\027\220{\240!\2407\250#\250Q\250m\2702\270W\300A\340\004\005\330\010\025\220Q\330\010\025\220Q";
+static const char __pyx_k_45_9_4A_4_t1_q_aq__A_IQ_Q_z_1Jh[] = "\200\001\33045\330\0379\270\021\330\0374\260A\330\037 \3604\000\005\010\200t\2101\330\010\017\210q\360\022\000\005\020\320\017&\240a\240q\330\004\r\210_\230A\230_\250I\260Q\330\033-\250]\270!\360\006\000\005\t\210\r\220Q\330\010\027\220z\240\021\240!\340\004\021\320\021#\2401\240J\250h\260g\270Q\270a\340\004\005\330\010\026\220j\320 <\270A\320=M\320M^\320^_\360\006\000\t\032\230\021\330\010\014\210E\220\025\220a\220{\240/\260\025\260a\330\014\025\220[\240\017\250q\260\001\360\006\000\r\036\320\0354\260A\260V\270<\300q\360\006\000\r\036\230Q\330\014\"\240!\330\014#\2401\340\014\020\220\005\220U\230!\2306\240\032\2505\260\001\340\020 \240\001\330\020\024\220E\230\025\230a\230v\240Z\250q\260\002\260%\260q\330\024!\240\027\250\001\320)@\300\001\300\026\300z\320QR\320RT\320TU\320UY\320YZ\330\020\036\230g\240Q\240a\360\006\000\021\035\230A\330\020\035\230Q\330\020\024\220E\230\025\230a\230v\320%5\260Q\260b\270\005\270Q\330\024\035\230W\240A\240V\320+;\2701\270B\270a\270q\330\020\024\220E\230\025\230a\230v\320%9\270\021\270\"\270E\300\021\330\024\036\230g\240Q\240f\320,@\300\001\300\022\3001\300A\340\020#\2407\250!\2501\330\020$\240G\2501\250A\340\014\r\330\020\035\230Q\330\020\035\230Q\330\020\"\240&\250\001\330\020'\240v\250Q\330\020#\2401\330\020'\240q\340\014\032\230'\240\021\240!\340\010\017\210q\360\006\000\t\r\210A";
 static const char __pyx_k_Cython_wrapper_for_the_C_mass_d[] = "\nCython wrapper for the C++ mass decomposition implementation with OpenMP parallelization.\n";
 static const char __pyx_k_q_1_t1_q_aq__A_IQ_AQ_1JhgQa_q_A[] = "\200\001\330\033:\270!\330\033/\250q\330\033;\2701\360\"\000\005\010\200t\2101\330\010\017\210q\360\022\000\005\020\320\017&\240a\240q\330\004\r\210_\230A\230_\250I\260Q\330\033-\250]\270!\360\006\000\005\t\210\010\220\001\330\010\022\220*\230A\230Q\340\004\021\320\021#\2401\240J\250h\260g\270Q\270a\330\004\022\220*\320\034/\250q\260\014\270A\340\004\005\340\010\031\230\021\330\010\014\210E\220\025\220a\220{\240%\240q\330\014\033\2301\330\014\020\220\005\220U\230!\230;\240a\240r\250\025\250a\330\020\034\230G\2401\320$;\2701\270K\300q\310\002\310!\3104\310q\330\014\032\230'\240\021\240!\340\010\017\210q\340\010\014\210A";
 static const char __pyx_k_Note_that_Cython_is_deliberately[] = "Note that Cython is deliberately stricter than PEP-484 and rejects subclasses of builtin types. If you need to pass subclasses then set the 'annotation_typing' directive to False.";
+static const char __pyx_k_decompose_spectra_properly_paral[] = "decompose_spectra_properly_parallel";
 /* #### Code section: decls ### */
 static PyObject *__pyx_pf_19mass_decomposer_cpp_decompose_mass(CYTHON_UNUSED PyObject *__pyx_self, double __pyx_v_target_mass, PyObject *__pyx_v_element_bounds, PyObject *__pyx_v_strategy, double __pyx_v_tolerance_ppm, double __pyx_v_min_dbe, double __pyx_v_max_dbe, double __pyx_v_max_hetero_ratio, int __pyx_v_max_results); /* proto */
 static PyObject *__pyx_pf_19mass_decomposer_cpp_2decompose_mass_parallel(CYTHON_UNUSED PyObject *__pyx_self, PyObject *__pyx_v_target_masses, PyObject *__pyx_v_element_bounds, PyObject *__pyx_v_strategy, double __pyx_v_tolerance_ppm, double __pyx_v_min_dbe, double __pyx_v_max_dbe, double __pyx_v_max_hetero_ratio, int __pyx_v_max_results); /* proto */
-static PyObject *__pyx_pf_19mass_decomposer_cpp_4decompose_spectrum_parallel(CYTHON_UNUSED PyObject *__pyx_self, double __pyx_v_precursor_mass, PyObject *__pyx_v_fragment_masses, PyObject *__pyx_v_element_bounds, PyObject *__pyx_v_strategy, double __pyx_v_tolerance_ppm, double __pyx_v_min_dbe, double __pyx_v_max_dbe, double __pyx_v_max_hetero_ratio, int __pyx_v_max_results); /* proto */
+static PyObject *__pyx_pf_19mass_decomposer_cpp_4decompose_spectra_parallel(CYTHON_UNUSED PyObject *__pyx_self, PyObject *__pyx_v_spectra_data, PyObject *__pyx_v_element_bounds, PyObject *__pyx_v_strategy, double __pyx_v_tolerance_ppm, double __pyx_v_min_dbe, double __pyx_v_max_dbe, double __pyx_v_max_hetero_ratio, int __pyx_v_max_results); /* proto */
+static PyObject *__pyx_pf_19mass_decomposer_cpp_6decompose_spectrum_parallel(CYTHON_UNUSED PyObject *__pyx_self, double __pyx_v_precursor_mass, PyObject *__pyx_v_fragment_masses, PyObject *__pyx_v_element_bounds, PyObject *__pyx_v_strategy, double __pyx_v_tolerance_ppm, double __pyx_v_min_dbe, double __pyx_v_max_dbe, double __pyx_v_max_hetero_ratio, int __pyx_v_max_results); /* proto */
+static PyObject *__pyx_pf_19mass_decomposer_cpp_8decompose_spectrum_properly(CYTHON_UNUSED PyObject *__pyx_self, double __pyx_v_precursor_mass, PyObject *__pyx_v_fragment_masses, PyObject *__pyx_v_element_bounds, PyObject *__pyx_v_strategy, double __pyx_v_tolerance_ppm, double __pyx_v_min_dbe, double __pyx_v_max_dbe, double __pyx_v_max_hetero_ratio, int __pyx_v_max_results); /* proto */
+static PyObject *__pyx_pf_19mass_decomposer_cpp_10decompose_spectra_properly_parallel(CYTHON_UNUSED PyObject *__pyx_self, PyObject *__pyx_v_spectra_data, PyObject *__pyx_v_element_bounds, PyObject *__pyx_v_strategy, double __pyx_v_tolerance_ppm, double __pyx_v_min_dbe, double __pyx_v_max_dbe, double __pyx_v_max_hetero_ratio, int __pyx_v_max_results); /* proto */
 /* #### Code section: late_includes ### */
 /* #### Code section: module_state ### */
 /* SmallCodeConfig */
@@ -2601,9 +2625,8 @@ typedef struct {
   PyTypeObject *__pyx_CoroutineType;
   #endif
   __Pyx_CachedCFunction __pyx_umethod_PyDict_Type_pop;
-  PyObject *__pyx_slice[1];
-  PyObject *__pyx_codeobj_tab[3];
-  PyObject *__pyx_string_tab[78];
+  PyObject *__pyx_codeobj_tab[6];
+  PyObject *__pyx_string_tab[102];
   PyObject *__pyx_float_0_0;
   PyObject *__pyx_float_1_0078250;
   PyObject *__pyx_float_11_0093054;
@@ -2625,7 +2648,6 @@ typedef struct {
   PyObject *__pyx_float_78_9183376;
   PyObject *__pyx_float_79_9165218;
   PyObject *__pyx_float_126_9044719;
-  PyObject *__pyx_int_1;
 /* #### Code section: module_state_contents ### */
 /* CommonTypesMetaclass.module_state_decls */
 PyTypeObject *__pyx_CommonTypesMetaclassType;
@@ -2691,56 +2713,80 @@ static __pyx_mstatetype * const __pyx_mstate_global = &__pyx_mstate_global_stati
 #define __pyx_n_u_Zn __pyx_string_tab[25]
 #define __pyx_kp_u__2 __pyx_string_tab[26]
 #define __pyx_kp_u_add_note __pyx_string_tab[27]
-#define __pyx_n_u_all_masses __pyx_string_tab[28]
-#define __pyx_n_u_all_results __pyx_string_tab[29]
-#define __pyx_n_u_asyncio_coroutines __pyx_string_tab[30]
-#define __pyx_n_u_cline_in_traceback __pyx_string_tab[31]
-#define __pyx_n_u_decompose_mass __pyx_string_tab[32]
-#define __pyx_n_u_decompose_mass_parallel __pyx_string_tab[33]
-#define __pyx_n_u_decompose_spectrum_parallel __pyx_string_tab[34]
-#define __pyx_n_u_decomposer __pyx_string_tab[35]
-#define __pyx_n_u_element_bounds __pyx_string_tab[36]
-#define __pyx_n_u_elements __pyx_string_tab[37]
-#define __pyx_n_u_encode __pyx_string_tab[38]
-#define __pyx_n_u_fragment_masses __pyx_string_tab[39]
-#define __pyx_n_u_fragment_results __pyx_string_tab[40]
-#define __pyx_n_u_fragments __pyx_string_tab[41]
-#define __pyx_n_u_func __pyx_string_tab[42]
-#define __pyx_n_u_get __pyx_string_tab[43]
-#define __pyx_n_u_i __pyx_string_tab[44]
-#define __pyx_n_u_is_coroutine __pyx_string_tab[45]
-#define __pyx_n_u_items __pyx_string_tab[46]
-#define __pyx_n_u_j __pyx_string_tab[47]
-#define __pyx_n_u_main __pyx_string_tab[48]
-#define __pyx_n_u_mass __pyx_string_tab[49]
-#define __pyx_n_u_mass_decomposer_cpp __pyx_string_tab[50]
-#define __pyx_kp_u_mass_decomposer_cpp_pyx __pyx_string_tab[51]
-#define __pyx_n_u_mass_results __pyx_string_tab[52]
-#define __pyx_n_u_masses_vec __pyx_string_tab[53]
-#define __pyx_n_u_max_dbe __pyx_string_tab[54]
-#define __pyx_n_u_max_hetero_ratio __pyx_string_tab[55]
-#define __pyx_n_u_max_results __pyx_string_tab[56]
-#define __pyx_n_u_min_dbe __pyx_string_tab[57]
-#define __pyx_n_u_module __pyx_string_tab[58]
-#define __pyx_n_u_money_changing __pyx_string_tab[59]
-#define __pyx_n_u_name __pyx_string_tab[60]
-#define __pyx_n_u_params __pyx_string_tab[61]
-#define __pyx_n_u_pop __pyx_string_tab[62]
-#define __pyx_n_u_precursor __pyx_string_tab[63]
-#define __pyx_n_u_precursor_mass __pyx_string_tab[64]
-#define __pyx_n_u_precursor_results __pyx_string_tab[65]
-#define __pyx_n_u_python_results __pyx_string_tab[66]
-#define __pyx_n_u_qualname __pyx_string_tab[67]
-#define __pyx_n_u_range __pyx_string_tab[68]
-#define __pyx_n_u_results __pyx_string_tab[69]
-#define __pyx_n_u_set_name __pyx_string_tab[70]
-#define __pyx_n_u_strategy __pyx_string_tab[71]
-#define __pyx_n_u_target_mass __pyx_string_tab[72]
-#define __pyx_n_u_target_masses __pyx_string_tab[73]
-#define __pyx_n_u_test __pyx_string_tab[74]
-#define __pyx_n_u_tolerance_ppm __pyx_string_tab[75]
-#define __pyx_n_u_typing __pyx_string_tab[76]
-#define __pyx_kp_u_utf_8 __pyx_string_tab[77]
+#define __pyx_n_u_all_results __pyx_string_tab[28]
+#define __pyx_n_u_asyncio_coroutines __pyx_string_tab[29]
+#define __pyx_n_u_cline_in_traceback __pyx_string_tab[30]
+#define __pyx_n_u_cpp_results __pyx_string_tab[31]
+#define __pyx_n_u_decomp __pyx_string_tab[32]
+#define __pyx_n_u_decompose_mass __pyx_string_tab[33]
+#define __pyx_n_u_decompose_mass_parallel __pyx_string_tab[34]
+#define __pyx_n_u_decompose_spectra_parallel __pyx_string_tab[35]
+#define __pyx_n_u_decompose_spectra_properly_paral __pyx_string_tab[36]
+#define __pyx_n_u_decompose_spectrum_parallel __pyx_string_tab[37]
+#define __pyx_n_u_decompose_spectrum_properly __pyx_string_tab[38]
+#define __pyx_n_u_decomposer __pyx_string_tab[39]
+#define __pyx_n_u_element_bounds __pyx_string_tab[40]
+#define __pyx_n_u_elements __pyx_string_tab[41]
+#define __pyx_n_u_encode __pyx_string_tab[42]
+#define __pyx_n_u_error_list __pyx_string_tab[43]
+#define __pyx_n_u_frag_formulas __pyx_string_tab[44]
+#define __pyx_n_u_frag_mass __pyx_string_tab[45]
+#define __pyx_n_u_frag_masses_vec __pyx_string_tab[46]
+#define __pyx_n_u_fragment_error_lists __pyx_string_tab[47]
+#define __pyx_n_u_fragment_errors_ppm __pyx_string_tab[48]
+#define __pyx_n_u_fragment_lists __pyx_string_tab[49]
+#define __pyx_n_u_fragment_mass_lists __pyx_string_tab[50]
+#define __pyx_n_u_fragment_mass_results __pyx_string_tab[51]
+#define __pyx_n_u_fragment_masses __pyx_string_tab[52]
+#define __pyx_n_u_fragment_results __pyx_string_tab[53]
+#define __pyx_n_u_fragments __pyx_string_tab[54]
+#define __pyx_n_u_func __pyx_string_tab[55]
+#define __pyx_n_u_get __pyx_string_tab[56]
+#define __pyx_n_u_i __pyx_string_tab[57]
+#define __pyx_n_u_is_coroutine __pyx_string_tab[58]
+#define __pyx_n_u_items __pyx_string_tab[59]
+#define __pyx_n_u_j __pyx_string_tab[60]
+#define __pyx_n_u_k __pyx_string_tab[61]
+#define __pyx_n_u_l __pyx_string_tab[62]
+#define __pyx_n_u_main __pyx_string_tab[63]
+#define __pyx_n_u_mass __pyx_string_tab[64]
+#define __pyx_n_u_mass_decomposer_cpp __pyx_string_tab[65]
+#define __pyx_kp_u_mass_decomposer_cpp_pyx __pyx_string_tab[66]
+#define __pyx_n_u_mass_list __pyx_string_tab[67]
+#define __pyx_n_u_mass_results __pyx_string_tab[68]
+#define __pyx_n_u_masses_vec __pyx_string_tab[69]
+#define __pyx_n_u_max_dbe __pyx_string_tab[70]
+#define __pyx_n_u_max_hetero_ratio __pyx_string_tab[71]
+#define __pyx_n_u_max_results __pyx_string_tab[72]
+#define __pyx_n_u_min_dbe __pyx_string_tab[73]
+#define __pyx_n_u_module __pyx_string_tab[74]
+#define __pyx_n_u_money_changing __pyx_string_tab[75]
+#define __pyx_n_u_name __pyx_string_tab[76]
+#define __pyx_n_u_params __pyx_string_tab[77]
+#define __pyx_n_u_pop __pyx_string_tab[78]
+#define __pyx_n_u_precursor __pyx_string_tab[79]
+#define __pyx_n_u_precursor_dict __pyx_string_tab[80]
+#define __pyx_n_u_precursor_error_ppm __pyx_string_tab[81]
+#define __pyx_n_u_precursor_mass __pyx_string_tab[82]
+#define __pyx_n_u_precursor_results __pyx_string_tab[83]
+#define __pyx_n_u_python_results __pyx_string_tab[84]
+#define __pyx_n_u_qualname __pyx_string_tab[85]
+#define __pyx_n_u_range __pyx_string_tab[86]
+#define __pyx_n_u_result_dict __pyx_string_tab[87]
+#define __pyx_n_u_results __pyx_string_tab[88]
+#define __pyx_n_u_set_name __pyx_string_tab[89]
+#define __pyx_n_u_spectra_data __pyx_string_tab[90]
+#define __pyx_n_u_spectra_vec __pyx_string_tab[91]
+#define __pyx_n_u_spectrum __pyx_string_tab[92]
+#define __pyx_n_u_spectrum_data __pyx_string_tab[93]
+#define __pyx_n_u_spectrum_results __pyx_string_tab[94]
+#define __pyx_n_u_strategy __pyx_string_tab[95]
+#define __pyx_n_u_target_mass __pyx_string_tab[96]
+#define __pyx_n_u_target_masses __pyx_string_tab[97]
+#define __pyx_n_u_test __pyx_string_tab[98]
+#define __pyx_n_u_tolerance_ppm __pyx_string_tab[99]
+#define __pyx_n_u_typing __pyx_string_tab[100]
+#define __pyx_kp_u_utf_8 __pyx_string_tab[101]
 /* #### Code section: module_state_clear ### */
 #if CYTHON_USE_MODULE_STATE
 static CYTHON_SMALL_CODE int __pyx_m_clear(PyObject *m) {
@@ -2761,9 +2807,8 @@ static CYTHON_SMALL_CODE int __pyx_m_clear(PyObject *m) {
   #if CYTHON_PEP489_MULTI_PHASE_INIT
   __Pyx_State_RemoveModule(NULL);
   #endif
-  for (int i=0; i<1; ++i) { Py_CLEAR(clear_module_state->__pyx_slice[i]); }
-  for (int i=0; i<3; ++i) { Py_CLEAR(clear_module_state->__pyx_codeobj_tab[i]); }
-  for (int i=0; i<78; ++i) { Py_CLEAR(clear_module_state->__pyx_string_tab[i]); }
+  for (int i=0; i<6; ++i) { Py_CLEAR(clear_module_state->__pyx_codeobj_tab[i]); }
+  for (int i=0; i<102; ++i) { Py_CLEAR(clear_module_state->__pyx_string_tab[i]); }
   Py_CLEAR(clear_module_state->__pyx_float_0_0);
   Py_CLEAR(clear_module_state->__pyx_float_1_0078250);
   Py_CLEAR(clear_module_state->__pyx_float_11_0093054);
@@ -2785,7 +2830,6 @@ static CYTHON_SMALL_CODE int __pyx_m_clear(PyObject *m) {
   Py_CLEAR(clear_module_state->__pyx_float_78_9183376);
   Py_CLEAR(clear_module_state->__pyx_float_79_9165218);
   Py_CLEAR(clear_module_state->__pyx_float_126_9044719);
-  Py_CLEAR(clear_module_state->__pyx_int_1);
   return 0;
 }
 #endif
@@ -2806,9 +2850,8 @@ static CYTHON_SMALL_CODE int __pyx_m_traverse(PyObject *m, visitproc visit, void
   #ifdef __Pyx_FusedFunction_USED
   Py_VISIT(traverse_module_state->__pyx_FusedFunctionType);
   #endif
-  for (int i=0; i<1; ++i) { __Pyx_VISIT_CONST(traverse_module_state->__pyx_slice[i]); }
-  for (int i=0; i<3; ++i) { __Pyx_VISIT_CONST(traverse_module_state->__pyx_codeobj_tab[i]); }
-  for (int i=0; i<78; ++i) { __Pyx_VISIT_CONST(traverse_module_state->__pyx_string_tab[i]); }
+  for (int i=0; i<6; ++i) { __Pyx_VISIT_CONST(traverse_module_state->__pyx_codeobj_tab[i]); }
+  for (int i=0; i<102; ++i) { __Pyx_VISIT_CONST(traverse_module_state->__pyx_string_tab[i]); }
   __Pyx_VISIT_CONST(traverse_module_state->__pyx_float_0_0);
   __Pyx_VISIT_CONST(traverse_module_state->__pyx_float_1_0078250);
   __Pyx_VISIT_CONST(traverse_module_state->__pyx_float_11_0093054);
@@ -2830,7 +2873,6 @@ static CYTHON_SMALL_CODE int __pyx_m_traverse(PyObject *m, visitproc visit, void
   __Pyx_VISIT_CONST(traverse_module_state->__pyx_float_78_9183376);
   __Pyx_VISIT_CONST(traverse_module_state->__pyx_float_79_9165218);
   __Pyx_VISIT_CONST(traverse_module_state->__pyx_float_126_9044719);
-  __Pyx_VISIT_CONST(traverse_module_state->__pyx_int_1);
   return 0;
 }
 #endif
@@ -3104,7 +3146,7 @@ static CYTHON_INLINE PyObject *__pyx_convert_PyByteArray_string_to_py_6libcpp_6s
   return __pyx_r;
 }
 
-/* "mass_decomposer_cpp.pyx":46
+/* "mass_decomposer_cpp.pyx":72
  * }
  * 
  * cdef vector[Element] _convert_element_bounds(dict element_bounds):             # <<<<<<<<<<<<<<
@@ -3138,7 +3180,7 @@ static std::vector<struct Element>  __pyx_f_19mass_decomposer_cpp__convert_eleme
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("_convert_element_bounds", 0);
 
-  /* "mass_decomposer_cpp.pyx":51
+  /* "mass_decomposer_cpp.pyx":77
  *     cdef Element elem
  * 
  *     for symbol, (min_count, max_count) in element_bounds.items():             # <<<<<<<<<<<<<<
@@ -3148,9 +3190,9 @@ static std::vector<struct Element>  __pyx_f_19mass_decomposer_cpp__convert_eleme
   __pyx_t_2 = 0;
   if (unlikely(__pyx_v_element_bounds == Py_None)) {
     PyErr_Format(PyExc_AttributeError, "'NoneType' object has no attribute '%.30s'", "items");
-    __PYX_ERR(0, 51, __pyx_L1_error)
+    __PYX_ERR(0, 77, __pyx_L1_error)
   }
-  __pyx_t_5 = __Pyx_dict_iterator(__pyx_v_element_bounds, 1, __pyx_mstate_global->__pyx_n_u_items, (&__pyx_t_3), (&__pyx_t_4)); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 51, __pyx_L1_error)
+  __pyx_t_5 = __Pyx_dict_iterator(__pyx_v_element_bounds, 1, __pyx_mstate_global->__pyx_n_u_items, (&__pyx_t_3), (&__pyx_t_4)); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 77, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_5);
   __Pyx_XDECREF(__pyx_t_1);
   __pyx_t_1 = __pyx_t_5;
@@ -3158,7 +3200,7 @@ static std::vector<struct Element>  __pyx_f_19mass_decomposer_cpp__convert_eleme
   while (1) {
     __pyx_t_7 = __Pyx_dict_iter_next(__pyx_t_1, __pyx_t_3, &__pyx_t_2, &__pyx_t_5, &__pyx_t_6, NULL, __pyx_t_4);
     if (unlikely(__pyx_t_7 == 0)) break;
-    if (unlikely(__pyx_t_7 == -1)) __PYX_ERR(0, 51, __pyx_L1_error)
+    if (unlikely(__pyx_t_7 == -1)) __PYX_ERR(0, 77, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_5);
     __Pyx_GOTREF(__pyx_t_6);
     __Pyx_XDECREF_SET(__pyx_v_symbol, __pyx_t_5);
@@ -3169,7 +3211,7 @@ static std::vector<struct Element>  __pyx_f_19mass_decomposer_cpp__convert_eleme
       if (unlikely(size != 2)) {
         if (size > 2) __Pyx_RaiseTooManyValuesError(2);
         else if (size >= 0) __Pyx_RaiseNeedMoreValuesError(size);
-        __PYX_ERR(0, 51, __pyx_L1_error)
+        __PYX_ERR(0, 77, __pyx_L1_error)
       }
       #if CYTHON_ASSUME_SAFE_MACROS && !CYTHON_AVOID_BORROWED_REFS
       if (likely(PyTuple_CheckExact(sequence))) {
@@ -3179,22 +3221,22 @@ static std::vector<struct Element>  __pyx_f_19mass_decomposer_cpp__convert_eleme
         __Pyx_INCREF(__pyx_t_8);
       } else {
         __pyx_t_5 = __Pyx_PyList_GetItemRef(sequence, 0);
-        if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 51, __pyx_L1_error)
+        if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 77, __pyx_L1_error)
         __Pyx_XGOTREF(__pyx_t_5);
         __pyx_t_8 = __Pyx_PyList_GetItemRef(sequence, 1);
-        if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 51, __pyx_L1_error)
+        if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 77, __pyx_L1_error)
         __Pyx_XGOTREF(__pyx_t_8);
       }
       #else
-      __pyx_t_5 = __Pyx_PySequence_ITEM(sequence, 0); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 51, __pyx_L1_error)
+      __pyx_t_5 = __Pyx_PySequence_ITEM(sequence, 0); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 77, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_5);
-      __pyx_t_8 = __Pyx_PySequence_ITEM(sequence, 1); if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 51, __pyx_L1_error)
+      __pyx_t_8 = __Pyx_PySequence_ITEM(sequence, 1); if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 77, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_8);
       #endif
       __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
     } else {
       Py_ssize_t index = -1;
-      __pyx_t_9 = PyObject_GetIter(__pyx_t_6); if (unlikely(!__pyx_t_9)) __PYX_ERR(0, 51, __pyx_L1_error)
+      __pyx_t_9 = PyObject_GetIter(__pyx_t_6); if (unlikely(!__pyx_t_9)) __PYX_ERR(0, 77, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_9);
       __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
       __pyx_t_10 = (CYTHON_COMPILING_IN_LIMITED_API) ? PyIter_Next : __Pyx_PyObject_GetIterNextFunc(__pyx_t_9);
@@ -3202,7 +3244,7 @@ static std::vector<struct Element>  __pyx_f_19mass_decomposer_cpp__convert_eleme
       __Pyx_GOTREF(__pyx_t_5);
       index = 1; __pyx_t_8 = __pyx_t_10(__pyx_t_9); if (unlikely(!__pyx_t_8)) goto __pyx_L5_unpacking_failed;
       __Pyx_GOTREF(__pyx_t_8);
-      if (__Pyx_IternextUnpackEndCheck(__pyx_t_10(__pyx_t_9), 2) < 0) __PYX_ERR(0, 51, __pyx_L1_error)
+      if (__Pyx_IternextUnpackEndCheck(__pyx_t_10(__pyx_t_9), 2) < 0) __PYX_ERR(0, 77, __pyx_L1_error)
       __pyx_t_10 = NULL;
       __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
       goto __pyx_L6_unpacking_done;
@@ -3210,7 +3252,7 @@ static std::vector<struct Element>  __pyx_f_19mass_decomposer_cpp__convert_eleme
       __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
       __pyx_t_10 = NULL;
       if (__Pyx_IterFinish() == 0) __Pyx_RaiseNeedMoreValuesError(index);
-      __PYX_ERR(0, 51, __pyx_L1_error)
+      __PYX_ERR(0, 77, __pyx_L1_error)
       __pyx_L6_unpacking_done:;
     }
     __Pyx_XDECREF_SET(__pyx_v_min_count, __pyx_t_5);
@@ -3218,7 +3260,7 @@ static std::vector<struct Element>  __pyx_f_19mass_decomposer_cpp__convert_eleme
     __Pyx_XDECREF_SET(__pyx_v_max_count, __pyx_t_8);
     __pyx_t_8 = 0;
 
-    /* "mass_decomposer_cpp.pyx":52
+    /* "mass_decomposer_cpp.pyx":78
  * 
  *     for symbol, (min_count, max_count) in element_bounds.items():
  *         elem.symbol = symbol.encode('utf-8')             # <<<<<<<<<<<<<<
@@ -3232,14 +3274,14 @@ static std::vector<struct Element>  __pyx_f_19mass_decomposer_cpp__convert_eleme
       PyObject *__pyx_callargs[2] = {__pyx_t_8, __pyx_mstate_global->__pyx_kp_u_utf_8};
       __pyx_t_6 = __Pyx_PyObject_FastCallMethod(__pyx_mstate_global->__pyx_n_u_encode, __pyx_callargs+__pyx_t_11, (2-__pyx_t_11) | (1*__Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET));
       __Pyx_XDECREF(__pyx_t_8); __pyx_t_8 = 0;
-      if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 52, __pyx_L1_error)
+      if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 78, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_6);
     }
-    __pyx_t_12 = __pyx_convert_string_from_py_6libcpp_6string_std__in_string(__pyx_t_6); if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 52, __pyx_L1_error)
+    __pyx_t_12 = __pyx_convert_string_from_py_6libcpp_6string_std__in_string(__pyx_t_6); if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 78, __pyx_L1_error)
     __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
     __pyx_v_elem.symbol = __PYX_STD_MOVE_IF_SUPPORTED(__pyx_t_12);
 
-    /* "mass_decomposer_cpp.pyx":53
+    /* "mass_decomposer_cpp.pyx":79
  *     for symbol, (min_count, max_count) in element_bounds.items():
  *         elem.symbol = symbol.encode('utf-8')
  *         elem.mass = ATOMIC_MASSES.get(symbol, 0.0)             # <<<<<<<<<<<<<<
@@ -3247,9 +3289,9 @@ static std::vector<struct Element>  __pyx_f_19mass_decomposer_cpp__convert_eleme
  *         elem.max_count = max_count
 */
     __pyx_t_8 = NULL;
-    __Pyx_GetModuleGlobalName(__pyx_t_5, __pyx_mstate_global->__pyx_n_u_ATOMIC_MASSES); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 53, __pyx_L1_error)
+    __Pyx_GetModuleGlobalName(__pyx_t_5, __pyx_mstate_global->__pyx_n_u_ATOMIC_MASSES); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 79, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_5);
-    __pyx_t_9 = __Pyx_PyObject_GetAttrStr(__pyx_t_5, __pyx_mstate_global->__pyx_n_u_get); if (unlikely(!__pyx_t_9)) __PYX_ERR(0, 53, __pyx_L1_error)
+    __pyx_t_9 = __Pyx_PyObject_GetAttrStr(__pyx_t_5, __pyx_mstate_global->__pyx_n_u_get); if (unlikely(!__pyx_t_9)) __PYX_ERR(0, 79, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_9);
     __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
     __pyx_t_11 = 1;
@@ -3269,34 +3311,34 @@ static std::vector<struct Element>  __pyx_f_19mass_decomposer_cpp__convert_eleme
       __pyx_t_6 = __Pyx_PyObject_FastCall(__pyx_t_9, __pyx_callargs+__pyx_t_11, (3-__pyx_t_11) | (__pyx_t_11*__Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET));
       __Pyx_XDECREF(__pyx_t_8); __pyx_t_8 = 0;
       __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
-      if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 53, __pyx_L1_error)
+      if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 79, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_6);
     }
-    __pyx_t_13 = __Pyx_PyFloat_AsDouble(__pyx_t_6); if (unlikely((__pyx_t_13 == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 53, __pyx_L1_error)
+    __pyx_t_13 = __Pyx_PyFloat_AsDouble(__pyx_t_6); if (unlikely((__pyx_t_13 == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 79, __pyx_L1_error)
     __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
     __pyx_v_elem.mass = __pyx_t_13;
 
-    /* "mass_decomposer_cpp.pyx":54
+    /* "mass_decomposer_cpp.pyx":80
  *         elem.symbol = symbol.encode('utf-8')
  *         elem.mass = ATOMIC_MASSES.get(symbol, 0.0)
  *         elem.min_count = min_count             # <<<<<<<<<<<<<<
  *         elem.max_count = max_count
  *         elements.push_back(elem)
 */
-    __pyx_t_7 = __Pyx_PyLong_As_int(__pyx_v_min_count); if (unlikely((__pyx_t_7 == (int)-1) && PyErr_Occurred())) __PYX_ERR(0, 54, __pyx_L1_error)
+    __pyx_t_7 = __Pyx_PyLong_As_int(__pyx_v_min_count); if (unlikely((__pyx_t_7 == (int)-1) && PyErr_Occurred())) __PYX_ERR(0, 80, __pyx_L1_error)
     __pyx_v_elem.min_count = __pyx_t_7;
 
-    /* "mass_decomposer_cpp.pyx":55
+    /* "mass_decomposer_cpp.pyx":81
  *         elem.mass = ATOMIC_MASSES.get(symbol, 0.0)
  *         elem.min_count = min_count
  *         elem.max_count = max_count             # <<<<<<<<<<<<<<
  *         elements.push_back(elem)
  * 
 */
-    __pyx_t_7 = __Pyx_PyLong_As_int(__pyx_v_max_count); if (unlikely((__pyx_t_7 == (int)-1) && PyErr_Occurred())) __PYX_ERR(0, 55, __pyx_L1_error)
+    __pyx_t_7 = __Pyx_PyLong_As_int(__pyx_v_max_count); if (unlikely((__pyx_t_7 == (int)-1) && PyErr_Occurred())) __PYX_ERR(0, 81, __pyx_L1_error)
     __pyx_v_elem.max_count = __pyx_t_7;
 
-    /* "mass_decomposer_cpp.pyx":56
+    /* "mass_decomposer_cpp.pyx":82
  *         elem.min_count = min_count
  *         elem.max_count = max_count
  *         elements.push_back(elem)             # <<<<<<<<<<<<<<
@@ -3307,12 +3349,12 @@ static std::vector<struct Element>  __pyx_f_19mass_decomposer_cpp__convert_eleme
       __pyx_v_elements.push_back(__pyx_v_elem);
     } catch(...) {
       __Pyx_CppExn2PyErr();
-      __PYX_ERR(0, 56, __pyx_L1_error)
+      __PYX_ERR(0, 82, __pyx_L1_error)
     }
   }
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-  /* "mass_decomposer_cpp.pyx":58
+  /* "mass_decomposer_cpp.pyx":84
  *         elements.push_back(elem)
  * 
  *     return elements             # <<<<<<<<<<<<<<
@@ -3322,7 +3364,7 @@ static std::vector<struct Element>  __pyx_f_19mass_decomposer_cpp__convert_eleme
   __pyx_r = __pyx_v_elements;
   goto __pyx_L0;
 
-  /* "mass_decomposer_cpp.pyx":46
+  /* "mass_decomposer_cpp.pyx":72
  * }
  * 
  * cdef vector[Element] _convert_element_bounds(dict element_bounds):             # <<<<<<<<<<<<<<
@@ -3347,7 +3389,7 @@ static std::vector<struct Element>  __pyx_f_19mass_decomposer_cpp__convert_eleme
   return __pyx_r;
 }
 
-/* "mass_decomposer_cpp.pyx":60
+/* "mass_decomposer_cpp.pyx":86
  *     return elements
  * 
  * cdef DecompositionParams _convert_params(double tolerance_ppm, double min_dbe, double max_dbe,             # <<<<<<<<<<<<<<
@@ -3366,7 +3408,7 @@ static struct DecompositionParams __pyx_f_19mass_decomposer_cpp__convert_params(
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("_convert_params", 0);
 
-  /* "mass_decomposer_cpp.pyx":64
+  /* "mass_decomposer_cpp.pyx":90
  *     """Convert Python parameters to C++ DecompositionParams."""
  *     cdef DecompositionParams params
  *     params.tolerance_ppm = tolerance_ppm             # <<<<<<<<<<<<<<
@@ -3375,7 +3417,7 @@ static struct DecompositionParams __pyx_f_19mass_decomposer_cpp__convert_params(
 */
   __pyx_v_params.tolerance_ppm = __pyx_v_tolerance_ppm;
 
-  /* "mass_decomposer_cpp.pyx":65
+  /* "mass_decomposer_cpp.pyx":91
  *     cdef DecompositionParams params
  *     params.tolerance_ppm = tolerance_ppm
  *     params.min_dbe = min_dbe             # <<<<<<<<<<<<<<
@@ -3384,7 +3426,7 @@ static struct DecompositionParams __pyx_f_19mass_decomposer_cpp__convert_params(
 */
   __pyx_v_params.min_dbe = __pyx_v_min_dbe;
 
-  /* "mass_decomposer_cpp.pyx":66
+  /* "mass_decomposer_cpp.pyx":92
  *     params.tolerance_ppm = tolerance_ppm
  *     params.min_dbe = min_dbe
  *     params.max_dbe = max_dbe             # <<<<<<<<<<<<<<
@@ -3393,7 +3435,7 @@ static struct DecompositionParams __pyx_f_19mass_decomposer_cpp__convert_params(
 */
   __pyx_v_params.max_dbe = __pyx_v_max_dbe;
 
-  /* "mass_decomposer_cpp.pyx":67
+  /* "mass_decomposer_cpp.pyx":93
  *     params.min_dbe = min_dbe
  *     params.max_dbe = max_dbe
  *     params.max_hetero_ratio = max_hetero_ratio             # <<<<<<<<<<<<<<
@@ -3402,7 +3444,7 @@ static struct DecompositionParams __pyx_f_19mass_decomposer_cpp__convert_params(
 */
   __pyx_v_params.max_hetero_ratio = __pyx_v_max_hetero_ratio;
 
-  /* "mass_decomposer_cpp.pyx":68
+  /* "mass_decomposer_cpp.pyx":94
  *     params.max_dbe = max_dbe
  *     params.max_hetero_ratio = max_hetero_ratio
  *     params.max_results = max_results             # <<<<<<<<<<<<<<
@@ -3411,7 +3453,7 @@ static struct DecompositionParams __pyx_f_19mass_decomposer_cpp__convert_params(
 */
   __pyx_v_params.max_results = __pyx_v_max_results;
 
-  /* "mass_decomposer_cpp.pyx":69
+  /* "mass_decomposer_cpp.pyx":95
  *     params.max_hetero_ratio = max_hetero_ratio
  *     params.max_results = max_results
  *     params.strategy = strategy.encode('utf-8')             # <<<<<<<<<<<<<<
@@ -3420,15 +3462,15 @@ static struct DecompositionParams __pyx_f_19mass_decomposer_cpp__convert_params(
 */
   if (unlikely(__pyx_v_strategy == Py_None)) {
     PyErr_Format(PyExc_AttributeError, "'NoneType' object has no attribute '%.30s'", "encode");
-    __PYX_ERR(0, 69, __pyx_L1_error)
+    __PYX_ERR(0, 95, __pyx_L1_error)
   }
-  __pyx_t_1 = PyUnicode_AsUTF8String(__pyx_v_strategy); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 69, __pyx_L1_error)
+  __pyx_t_1 = PyUnicode_AsUTF8String(__pyx_v_strategy); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 95, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
-  __pyx_t_2 = __pyx_convert_string_from_py_6libcpp_6string_std__in_string(__pyx_t_1); if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 69, __pyx_L1_error)
+  __pyx_t_2 = __pyx_convert_string_from_py_6libcpp_6string_std__in_string(__pyx_t_1); if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 95, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   __pyx_v_params.strategy = __PYX_STD_MOVE_IF_SUPPORTED(__pyx_t_2);
 
-  /* "mass_decomposer_cpp.pyx":70
+  /* "mass_decomposer_cpp.pyx":96
  *     params.max_results = max_results
  *     params.strategy = strategy.encode('utf-8')
  *     return params             # <<<<<<<<<<<<<<
@@ -3438,7 +3480,7 @@ static struct DecompositionParams __pyx_f_19mass_decomposer_cpp__convert_params(
   __pyx_r = __pyx_v_params;
   goto __pyx_L0;
 
-  /* "mass_decomposer_cpp.pyx":60
+  /* "mass_decomposer_cpp.pyx":86
  *     return elements
  * 
  * cdef DecompositionParams _convert_params(double tolerance_ppm, double min_dbe, double max_dbe,             # <<<<<<<<<<<<<<
@@ -3456,7 +3498,7 @@ static struct DecompositionParams __pyx_f_19mass_decomposer_cpp__convert_params(
   return __pyx_r;
 }
 
-/* "mass_decomposer_cpp.pyx":72
+/* "mass_decomposer_cpp.pyx":98
  *     return params
  * 
  * cdef dict _convert_formula_result(const Formula& formula, MassDecomposer* decomposer):             # <<<<<<<<<<<<<<
@@ -3482,19 +3524,19 @@ static PyObject *__pyx_f_19mass_decomposer_cpp__convert_formula_result(Formula c
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("_convert_formula_result", 0);
 
-  /* "mass_decomposer_cpp.pyx":74
+  /* "mass_decomposer_cpp.pyx":100
  * cdef dict _convert_formula_result(const Formula& formula, MassDecomposer* decomposer):
  *     """Convert C++ Formula to Python dict using helper function."""
  *     result = {}             # <<<<<<<<<<<<<<
  *     cdef vector[pair[string, int]] pairs = decomposer.formula_to_pairs(formula)
  *     cdef size_t i
 */
-  __pyx_t_1 = __Pyx_PyDict_NewPresized(0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 74, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_PyDict_NewPresized(0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 100, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_v_result = ((PyObject*)__pyx_t_1);
   __pyx_t_1 = 0;
 
-  /* "mass_decomposer_cpp.pyx":75
+  /* "mass_decomposer_cpp.pyx":101
  *     """Convert C++ Formula to Python dict using helper function."""
  *     result = {}
  *     cdef vector[pair[string, int]] pairs = decomposer.formula_to_pairs(formula)             # <<<<<<<<<<<<<<
@@ -3503,7 +3545,7 @@ static PyObject *__pyx_f_19mass_decomposer_cpp__convert_formula_result(Formula c
 */
   __pyx_v_pairs = __pyx_v_decomposer->formula_to_pairs(__pyx_v_formula);
 
-  /* "mass_decomposer_cpp.pyx":78
+  /* "mass_decomposer_cpp.pyx":104
  *     cdef size_t i
  * 
  *     for i in range(pairs.size()):             # <<<<<<<<<<<<<<
@@ -3515,19 +3557,19 @@ static PyObject *__pyx_f_19mass_decomposer_cpp__convert_formula_result(Formula c
   for (__pyx_t_4 = 0; __pyx_t_4 < __pyx_t_3; __pyx_t_4+=1) {
     __pyx_v_i = __pyx_t_4;
 
-    /* "mass_decomposer_cpp.pyx":79
+    /* "mass_decomposer_cpp.pyx":105
  * 
  *     for i in range(pairs.size()):
  *         symbol = pairs[i].first.decode('utf-8')             # <<<<<<<<<<<<<<
  *         count = pairs[i].second
  *         result[symbol] = count
 */
-    __pyx_t_1 = __Pyx_decode_cpp_string((__pyx_v_pairs[__pyx_v_i]).first, 0, PY_SSIZE_T_MAX, NULL, NULL, PyUnicode_DecodeUTF8); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 79, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_decode_cpp_string((__pyx_v_pairs[__pyx_v_i]).first, 0, PY_SSIZE_T_MAX, NULL, NULL, PyUnicode_DecodeUTF8); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 105, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     __Pyx_XDECREF_SET(__pyx_v_symbol, __pyx_t_1);
     __pyx_t_1 = 0;
 
-    /* "mass_decomposer_cpp.pyx":80
+    /* "mass_decomposer_cpp.pyx":106
  *     for i in range(pairs.size()):
  *         symbol = pairs[i].first.decode('utf-8')
  *         count = pairs[i].second             # <<<<<<<<<<<<<<
@@ -3537,20 +3579,20 @@ static PyObject *__pyx_f_19mass_decomposer_cpp__convert_formula_result(Formula c
     __pyx_t_5 = (__pyx_v_pairs[__pyx_v_i]).second;
     __pyx_v_count = __pyx_t_5;
 
-    /* "mass_decomposer_cpp.pyx":81
+    /* "mass_decomposer_cpp.pyx":107
  *         symbol = pairs[i].first.decode('utf-8')
  *         count = pairs[i].second
  *         result[symbol] = count             # <<<<<<<<<<<<<<
  * 
  *     return result
 */
-    __pyx_t_1 = __Pyx_PyLong_From_int(__pyx_v_count); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 81, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_PyLong_From_int(__pyx_v_count); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 107, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
-    if (unlikely((PyDict_SetItem(__pyx_v_result, __pyx_v_symbol, __pyx_t_1) < 0))) __PYX_ERR(0, 81, __pyx_L1_error)
+    if (unlikely((PyDict_SetItem(__pyx_v_result, __pyx_v_symbol, __pyx_t_1) < 0))) __PYX_ERR(0, 107, __pyx_L1_error)
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   }
 
-  /* "mass_decomposer_cpp.pyx":83
+  /* "mass_decomposer_cpp.pyx":109
  *         result[symbol] = count
  * 
  *     return result             # <<<<<<<<<<<<<<
@@ -3562,7 +3604,7 @@ static PyObject *__pyx_f_19mass_decomposer_cpp__convert_formula_result(Formula c
   __pyx_r = __pyx_v_result;
   goto __pyx_L0;
 
-  /* "mass_decomposer_cpp.pyx":72
+  /* "mass_decomposer_cpp.pyx":98
  *     return params
  * 
  * cdef dict _convert_formula_result(const Formula& formula, MassDecomposer* decomposer):             # <<<<<<<<<<<<<<
@@ -3583,7 +3625,7 @@ static PyObject *__pyx_f_19mass_decomposer_cpp__convert_formula_result(Formula c
   return __pyx_r;
 }
 
-/* "mass_decomposer_cpp.pyx":85
+/* "mass_decomposer_cpp.pyx":111
  *     return result
  * 
  * def decompose_mass(double target_mass, dict element_bounds,             # <<<<<<<<<<<<<<
@@ -3638,118 +3680,118 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
   {
     PyObject ** const __pyx_pyargnames[] = {&__pyx_mstate_global->__pyx_n_u_target_mass,&__pyx_mstate_global->__pyx_n_u_element_bounds,&__pyx_mstate_global->__pyx_n_u_strategy,&__pyx_mstate_global->__pyx_n_u_tolerance_ppm,&__pyx_mstate_global->__pyx_n_u_min_dbe,&__pyx_mstate_global->__pyx_n_u_max_dbe,&__pyx_mstate_global->__pyx_n_u_max_hetero_ratio,&__pyx_mstate_global->__pyx_n_u_max_results,0};
     const Py_ssize_t __pyx_kwds_len = (__pyx_kwds) ? __Pyx_NumKwargs_FASTCALL(__pyx_kwds) : 0;
-    if (unlikely(__pyx_kwds_len) < 0) __PYX_ERR(0, 85, __pyx_L3_error)
+    if (unlikely(__pyx_kwds_len) < 0) __PYX_ERR(0, 111, __pyx_L3_error)
     if (__pyx_kwds_len > 0) {
       switch (__pyx_nargs) {
         case  8:
         values[7] = __Pyx_ArgRef_FASTCALL(__pyx_args, 7);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[7])) __PYX_ERR(0, 85, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[7])) __PYX_ERR(0, 111, __pyx_L3_error)
         CYTHON_FALLTHROUGH;
         case  7:
         values[6] = __Pyx_ArgRef_FASTCALL(__pyx_args, 6);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[6])) __PYX_ERR(0, 85, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[6])) __PYX_ERR(0, 111, __pyx_L3_error)
         CYTHON_FALLTHROUGH;
         case  6:
         values[5] = __Pyx_ArgRef_FASTCALL(__pyx_args, 5);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[5])) __PYX_ERR(0, 85, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[5])) __PYX_ERR(0, 111, __pyx_L3_error)
         CYTHON_FALLTHROUGH;
         case  5:
         values[4] = __Pyx_ArgRef_FASTCALL(__pyx_args, 4);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[4])) __PYX_ERR(0, 85, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[4])) __PYX_ERR(0, 111, __pyx_L3_error)
         CYTHON_FALLTHROUGH;
         case  4:
         values[3] = __Pyx_ArgRef_FASTCALL(__pyx_args, 3);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[3])) __PYX_ERR(0, 85, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[3])) __PYX_ERR(0, 111, __pyx_L3_error)
         CYTHON_FALLTHROUGH;
         case  3:
         values[2] = __Pyx_ArgRef_FASTCALL(__pyx_args, 2);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[2])) __PYX_ERR(0, 85, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[2])) __PYX_ERR(0, 111, __pyx_L3_error)
         CYTHON_FALLTHROUGH;
         case  2:
         values[1] = __Pyx_ArgRef_FASTCALL(__pyx_args, 1);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[1])) __PYX_ERR(0, 85, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[1])) __PYX_ERR(0, 111, __pyx_L3_error)
         CYTHON_FALLTHROUGH;
         case  1:
         values[0] = __Pyx_ArgRef_FASTCALL(__pyx_args, 0);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[0])) __PYX_ERR(0, 85, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[0])) __PYX_ERR(0, 111, __pyx_L3_error)
         CYTHON_FALLTHROUGH;
         case  0: break;
         default: goto __pyx_L5_argtuple_error;
       }
       const Py_ssize_t kwd_pos_args = __pyx_nargs;
-      if (__Pyx_ParseKeywords(__pyx_kwds, __pyx_kwvalues, __pyx_pyargnames, 0, values, kwd_pos_args, __pyx_kwds_len, "decompose_mass", 0) < 0) __PYX_ERR(0, 85, __pyx_L3_error)
+      if (__Pyx_ParseKeywords(__pyx_kwds, __pyx_kwvalues, __pyx_pyargnames, 0, values, kwd_pos_args, __pyx_kwds_len, "decompose_mass", 0) < 0) __PYX_ERR(0, 111, __pyx_L3_error)
       if (!values[2]) values[2] = __Pyx_NewRef(((PyObject*)((PyObject*)__pyx_mstate_global->__pyx_n_u_money_changing)));
       for (Py_ssize_t i = __pyx_nargs; i < 2; i++) {
-        if (unlikely(!values[i])) { __Pyx_RaiseArgtupleInvalid("decompose_mass", 0, 2, 8, i); __PYX_ERR(0, 85, __pyx_L3_error) }
+        if (unlikely(!values[i])) { __Pyx_RaiseArgtupleInvalid("decompose_mass", 0, 2, 8, i); __PYX_ERR(0, 111, __pyx_L3_error) }
       }
     } else {
       switch (__pyx_nargs) {
         case  8:
         values[7] = __Pyx_ArgRef_FASTCALL(__pyx_args, 7);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[7])) __PYX_ERR(0, 85, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[7])) __PYX_ERR(0, 111, __pyx_L3_error)
         CYTHON_FALLTHROUGH;
         case  7:
         values[6] = __Pyx_ArgRef_FASTCALL(__pyx_args, 6);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[6])) __PYX_ERR(0, 85, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[6])) __PYX_ERR(0, 111, __pyx_L3_error)
         CYTHON_FALLTHROUGH;
         case  6:
         values[5] = __Pyx_ArgRef_FASTCALL(__pyx_args, 5);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[5])) __PYX_ERR(0, 85, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[5])) __PYX_ERR(0, 111, __pyx_L3_error)
         CYTHON_FALLTHROUGH;
         case  5:
         values[4] = __Pyx_ArgRef_FASTCALL(__pyx_args, 4);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[4])) __PYX_ERR(0, 85, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[4])) __PYX_ERR(0, 111, __pyx_L3_error)
         CYTHON_FALLTHROUGH;
         case  4:
         values[3] = __Pyx_ArgRef_FASTCALL(__pyx_args, 3);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[3])) __PYX_ERR(0, 85, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[3])) __PYX_ERR(0, 111, __pyx_L3_error)
         CYTHON_FALLTHROUGH;
         case  3:
         values[2] = __Pyx_ArgRef_FASTCALL(__pyx_args, 2);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[2])) __PYX_ERR(0, 85, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[2])) __PYX_ERR(0, 111, __pyx_L3_error)
         CYTHON_FALLTHROUGH;
         case  2:
         values[1] = __Pyx_ArgRef_FASTCALL(__pyx_args, 1);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[1])) __PYX_ERR(0, 85, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[1])) __PYX_ERR(0, 111, __pyx_L3_error)
         values[0] = __Pyx_ArgRef_FASTCALL(__pyx_args, 0);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[0])) __PYX_ERR(0, 85, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[0])) __PYX_ERR(0, 111, __pyx_L3_error)
         break;
         default: goto __pyx_L5_argtuple_error;
       }
       if (!values[2]) values[2] = __Pyx_NewRef(((PyObject*)((PyObject*)__pyx_mstate_global->__pyx_n_u_money_changing)));
     }
-    __pyx_v_target_mass = __Pyx_PyFloat_AsDouble(values[0]); if (unlikely((__pyx_v_target_mass == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 85, __pyx_L3_error)
+    __pyx_v_target_mass = __Pyx_PyFloat_AsDouble(values[0]); if (unlikely((__pyx_v_target_mass == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 111, __pyx_L3_error)
     __pyx_v_element_bounds = ((PyObject*)values[1]);
     __pyx_v_strategy = ((PyObject*)values[2]);
     if (values[3]) {
-      __pyx_v_tolerance_ppm = __Pyx_PyFloat_AsDouble(values[3]); if (unlikely((__pyx_v_tolerance_ppm == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 86, __pyx_L3_error)
+      __pyx_v_tolerance_ppm = __Pyx_PyFloat_AsDouble(values[3]); if (unlikely((__pyx_v_tolerance_ppm == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 112, __pyx_L3_error)
     } else {
       __pyx_v_tolerance_ppm = ((double)((double)5.0));
     }
     if (values[4]) {
-      __pyx_v_min_dbe = __Pyx_PyFloat_AsDouble(values[4]); if (unlikely((__pyx_v_min_dbe == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 87, __pyx_L3_error)
+      __pyx_v_min_dbe = __Pyx_PyFloat_AsDouble(values[4]); if (unlikely((__pyx_v_min_dbe == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 113, __pyx_L3_error)
     } else {
       __pyx_v_min_dbe = ((double)((double)0.0));
     }
     if (values[5]) {
-      __pyx_v_max_dbe = __Pyx_PyFloat_AsDouble(values[5]); if (unlikely((__pyx_v_max_dbe == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 87, __pyx_L3_error)
+      __pyx_v_max_dbe = __Pyx_PyFloat_AsDouble(values[5]); if (unlikely((__pyx_v_max_dbe == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 113, __pyx_L3_error)
     } else {
       __pyx_v_max_dbe = ((double)((double)40.0));
     }
     if (values[6]) {
-      __pyx_v_max_hetero_ratio = __Pyx_PyFloat_AsDouble(values[6]); if (unlikely((__pyx_v_max_hetero_ratio == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 88, __pyx_L3_error)
+      __pyx_v_max_hetero_ratio = __Pyx_PyFloat_AsDouble(values[6]); if (unlikely((__pyx_v_max_hetero_ratio == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 114, __pyx_L3_error)
     } else {
       __pyx_v_max_hetero_ratio = ((double)((double)1000.0));
     }
     if (values[7]) {
-      __pyx_v_max_results = __Pyx_PyLong_As_int(values[7]); if (unlikely((__pyx_v_max_results == (int)-1) && PyErr_Occurred())) __PYX_ERR(0, 88, __pyx_L3_error)
+      __pyx_v_max_results = __Pyx_PyLong_As_int(values[7]); if (unlikely((__pyx_v_max_results == (int)-1) && PyErr_Occurred())) __PYX_ERR(0, 114, __pyx_L3_error)
     } else {
       __pyx_v_max_results = ((int)((int)0x2710));
     }
   }
   goto __pyx_L6_skip;
   __pyx_L5_argtuple_error:;
-  __Pyx_RaiseArgtupleInvalid("decompose_mass", 0, 2, 8, __pyx_nargs); __PYX_ERR(0, 85, __pyx_L3_error)
+  __Pyx_RaiseArgtupleInvalid("decompose_mass", 0, 2, 8, __pyx_nargs); __PYX_ERR(0, 111, __pyx_L3_error)
   __pyx_L6_skip:;
   goto __pyx_L4_argument_unpacking_done;
   __pyx_L3_error:;
@@ -3760,8 +3802,8 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
   __Pyx_RefNannyFinishContext();
   return NULL;
   __pyx_L4_argument_unpacking_done:;
-  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_element_bounds), (&PyDict_Type), 1, "element_bounds", 1))) __PYX_ERR(0, 85, __pyx_L1_error)
-  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_strategy), (&PyUnicode_Type), 1, "strategy", 1))) __PYX_ERR(0, 86, __pyx_L1_error)
+  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_element_bounds), (&PyDict_Type), 1, "element_bounds", 1))) __PYX_ERR(0, 111, __pyx_L1_error)
+  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_strategy), (&PyUnicode_Type), 1, "strategy", 1))) __PYX_ERR(0, 112, __pyx_L1_error)
   __pyx_r = __pyx_pf_19mass_decomposer_cpp_decompose_mass(__pyx_self, __pyx_v_target_mass, __pyx_v_element_bounds, __pyx_v_strategy, __pyx_v_tolerance_ppm, __pyx_v_min_dbe, __pyx_v_max_dbe, __pyx_v_max_hetero_ratio, __pyx_v_max_results);
 
   /* function exit code */
@@ -3812,27 +3854,27 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_decompose_mass(CYTHON_UNUSED PyO
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("decompose_mass", 0);
 
-  /* "mass_decomposer_cpp.pyx":111
+  /* "mass_decomposer_cpp.pyx":137
  *     cdef size_t i
  * 
  *     elements = _convert_element_bounds(element_bounds)             # <<<<<<<<<<<<<<
  *     params = _convert_params(tolerance_ppm, min_dbe, max_dbe,
  *                            max_hetero_ratio, max_results, strategy)
 */
-  __pyx_t_1 = __pyx_f_19mass_decomposer_cpp__convert_element_bounds(__pyx_v_element_bounds); if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 111, __pyx_L1_error)
+  __pyx_t_1 = __pyx_f_19mass_decomposer_cpp__convert_element_bounds(__pyx_v_element_bounds); if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 137, __pyx_L1_error)
   __pyx_v_elements = __PYX_STD_MOVE_IF_SUPPORTED(__pyx_t_1);
 
-  /* "mass_decomposer_cpp.pyx":112
+  /* "mass_decomposer_cpp.pyx":138
  * 
  *     elements = _convert_element_bounds(element_bounds)
  *     params = _convert_params(tolerance_ppm, min_dbe, max_dbe,             # <<<<<<<<<<<<<<
  *                            max_hetero_ratio, max_results, strategy)
  * 
 */
-  __pyx_t_2 = __pyx_f_19mass_decomposer_cpp__convert_params(__pyx_v_tolerance_ppm, __pyx_v_min_dbe, __pyx_v_max_dbe, __pyx_v_max_hetero_ratio, __pyx_v_max_results, __pyx_v_strategy); if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 112, __pyx_L1_error)
+  __pyx_t_2 = __pyx_f_19mass_decomposer_cpp__convert_params(__pyx_v_tolerance_ppm, __pyx_v_min_dbe, __pyx_v_max_dbe, __pyx_v_max_hetero_ratio, __pyx_v_max_results, __pyx_v_strategy); if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 138, __pyx_L1_error)
   __pyx_v_params = __pyx_t_2;
 
-  /* "mass_decomposer_cpp.pyx":115
+  /* "mass_decomposer_cpp.pyx":141
  *                            max_hetero_ratio, max_results, strategy)
  * 
  *     decomposer = new MassDecomposer(elements, strategy.encode('utf-8'))             # <<<<<<<<<<<<<<
@@ -3841,15 +3883,15 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_decompose_mass(CYTHON_UNUSED PyO
 */
   if (unlikely(__pyx_v_strategy == Py_None)) {
     PyErr_Format(PyExc_AttributeError, "'NoneType' object has no attribute '%.30s'", "encode");
-    __PYX_ERR(0, 115, __pyx_L1_error)
+    __PYX_ERR(0, 141, __pyx_L1_error)
   }
-  __pyx_t_3 = PyUnicode_AsUTF8String(__pyx_v_strategy); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 115, __pyx_L1_error)
+  __pyx_t_3 = PyUnicode_AsUTF8String(__pyx_v_strategy); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 141, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_3);
-  __pyx_t_4 = __pyx_convert_string_from_py_6libcpp_6string_std__in_string(__pyx_t_3); if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 115, __pyx_L1_error)
+  __pyx_t_4 = __pyx_convert_string_from_py_6libcpp_6string_std__in_string(__pyx_t_3); if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 141, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
   __pyx_v_decomposer = new MassDecomposer(__pyx_v_elements, __pyx_t_4);
 
-  /* "mass_decomposer_cpp.pyx":116
+  /* "mass_decomposer_cpp.pyx":142
  * 
  *     decomposer = new MassDecomposer(elements, strategy.encode('utf-8'))
  *     results = decomposer.decompose(target_mass, params)             # <<<<<<<<<<<<<<
@@ -3858,7 +3900,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_decompose_mass(CYTHON_UNUSED PyO
 */
   __pyx_v_results = __pyx_v_decomposer->decompose(__pyx_v_target_mass, __pyx_v_params);
 
-  /* "mass_decomposer_cpp.pyx":118
+  /* "mass_decomposer_cpp.pyx":144
  *     results = decomposer.decompose(target_mass, params)
  * 
  *     try:             # <<<<<<<<<<<<<<
@@ -3867,19 +3909,19 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_decompose_mass(CYTHON_UNUSED PyO
 */
   /*try:*/ {
 
-    /* "mass_decomposer_cpp.pyx":120
+    /* "mass_decomposer_cpp.pyx":146
  *     try:
  *         # Convert results to Python
  *         python_results = []             # <<<<<<<<<<<<<<
  *         for i in range(results.size()):
  *             python_results.append(_convert_formula_result(results[i], decomposer))
 */
-    __pyx_t_3 = PyList_New(0); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 120, __pyx_L4_error)
+    __pyx_t_3 = PyList_New(0); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 146, __pyx_L4_error)
     __Pyx_GOTREF(__pyx_t_3);
     __pyx_v_python_results = ((PyObject*)__pyx_t_3);
     __pyx_t_3 = 0;
 
-    /* "mass_decomposer_cpp.pyx":121
+    /* "mass_decomposer_cpp.pyx":147
  *         # Convert results to Python
  *         python_results = []
  *         for i in range(results.size()):             # <<<<<<<<<<<<<<
@@ -3891,20 +3933,20 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_decompose_mass(CYTHON_UNUSED PyO
     for (__pyx_t_7 = 0; __pyx_t_7 < __pyx_t_6; __pyx_t_7+=1) {
       __pyx_v_i = __pyx_t_7;
 
-      /* "mass_decomposer_cpp.pyx":122
+      /* "mass_decomposer_cpp.pyx":148
  *         python_results = []
  *         for i in range(results.size()):
  *             python_results.append(_convert_formula_result(results[i], decomposer))             # <<<<<<<<<<<<<<
  * 
  *         return python_results
 */
-      __pyx_t_3 = __pyx_f_19mass_decomposer_cpp__convert_formula_result((__pyx_v_results[__pyx_v_i]), __pyx_v_decomposer); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 122, __pyx_L4_error)
+      __pyx_t_3 = __pyx_f_19mass_decomposer_cpp__convert_formula_result((__pyx_v_results[__pyx_v_i]), __pyx_v_decomposer); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 148, __pyx_L4_error)
       __Pyx_GOTREF(__pyx_t_3);
-      __pyx_t_8 = __Pyx_PyList_Append(__pyx_v_python_results, __pyx_t_3); if (unlikely(__pyx_t_8 == ((int)-1))) __PYX_ERR(0, 122, __pyx_L4_error)
+      __pyx_t_8 = __Pyx_PyList_Append(__pyx_v_python_results, __pyx_t_3); if (unlikely(__pyx_t_8 == ((int)-1))) __PYX_ERR(0, 148, __pyx_L4_error)
       __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
     }
 
-    /* "mass_decomposer_cpp.pyx":124
+    /* "mass_decomposer_cpp.pyx":150
  *             python_results.append(_convert_formula_result(results[i], decomposer))
  * 
  *         return python_results             # <<<<<<<<<<<<<<
@@ -3917,7 +3959,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_decompose_mass(CYTHON_UNUSED PyO
     goto __pyx_L3_return;
   }
 
-  /* "mass_decomposer_cpp.pyx":126
+  /* "mass_decomposer_cpp.pyx":152
  *         return python_results
  *     finally:
  *         del decomposer             # <<<<<<<<<<<<<<
@@ -3965,7 +4007,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_decompose_mass(CYTHON_UNUSED PyO
     }
   }
 
-  /* "mass_decomposer_cpp.pyx":85
+  /* "mass_decomposer_cpp.pyx":111
  *     return result
  * 
  * def decompose_mass(double target_mass, dict element_bounds,             # <<<<<<<<<<<<<<
@@ -3985,7 +4027,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_decompose_mass(CYTHON_UNUSED PyO
   return __pyx_r;
 }
 
-/* "mass_decomposer_cpp.pyx":128
+/* "mass_decomposer_cpp.pyx":154
  *         del decomposer
  * 
  * def decompose_mass_parallel(list target_masses, dict element_bounds,             # <<<<<<<<<<<<<<
@@ -4040,81 +4082,81 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
   {
     PyObject ** const __pyx_pyargnames[] = {&__pyx_mstate_global->__pyx_n_u_target_masses,&__pyx_mstate_global->__pyx_n_u_element_bounds,&__pyx_mstate_global->__pyx_n_u_strategy,&__pyx_mstate_global->__pyx_n_u_tolerance_ppm,&__pyx_mstate_global->__pyx_n_u_min_dbe,&__pyx_mstate_global->__pyx_n_u_max_dbe,&__pyx_mstate_global->__pyx_n_u_max_hetero_ratio,&__pyx_mstate_global->__pyx_n_u_max_results,0};
     const Py_ssize_t __pyx_kwds_len = (__pyx_kwds) ? __Pyx_NumKwargs_FASTCALL(__pyx_kwds) : 0;
-    if (unlikely(__pyx_kwds_len) < 0) __PYX_ERR(0, 128, __pyx_L3_error)
+    if (unlikely(__pyx_kwds_len) < 0) __PYX_ERR(0, 154, __pyx_L3_error)
     if (__pyx_kwds_len > 0) {
       switch (__pyx_nargs) {
         case  8:
         values[7] = __Pyx_ArgRef_FASTCALL(__pyx_args, 7);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[7])) __PYX_ERR(0, 128, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[7])) __PYX_ERR(0, 154, __pyx_L3_error)
         CYTHON_FALLTHROUGH;
         case  7:
         values[6] = __Pyx_ArgRef_FASTCALL(__pyx_args, 6);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[6])) __PYX_ERR(0, 128, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[6])) __PYX_ERR(0, 154, __pyx_L3_error)
         CYTHON_FALLTHROUGH;
         case  6:
         values[5] = __Pyx_ArgRef_FASTCALL(__pyx_args, 5);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[5])) __PYX_ERR(0, 128, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[5])) __PYX_ERR(0, 154, __pyx_L3_error)
         CYTHON_FALLTHROUGH;
         case  5:
         values[4] = __Pyx_ArgRef_FASTCALL(__pyx_args, 4);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[4])) __PYX_ERR(0, 128, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[4])) __PYX_ERR(0, 154, __pyx_L3_error)
         CYTHON_FALLTHROUGH;
         case  4:
         values[3] = __Pyx_ArgRef_FASTCALL(__pyx_args, 3);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[3])) __PYX_ERR(0, 128, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[3])) __PYX_ERR(0, 154, __pyx_L3_error)
         CYTHON_FALLTHROUGH;
         case  3:
         values[2] = __Pyx_ArgRef_FASTCALL(__pyx_args, 2);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[2])) __PYX_ERR(0, 128, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[2])) __PYX_ERR(0, 154, __pyx_L3_error)
         CYTHON_FALLTHROUGH;
         case  2:
         values[1] = __Pyx_ArgRef_FASTCALL(__pyx_args, 1);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[1])) __PYX_ERR(0, 128, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[1])) __PYX_ERR(0, 154, __pyx_L3_error)
         CYTHON_FALLTHROUGH;
         case  1:
         values[0] = __Pyx_ArgRef_FASTCALL(__pyx_args, 0);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[0])) __PYX_ERR(0, 128, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[0])) __PYX_ERR(0, 154, __pyx_L3_error)
         CYTHON_FALLTHROUGH;
         case  0: break;
         default: goto __pyx_L5_argtuple_error;
       }
       const Py_ssize_t kwd_pos_args = __pyx_nargs;
-      if (__Pyx_ParseKeywords(__pyx_kwds, __pyx_kwvalues, __pyx_pyargnames, 0, values, kwd_pos_args, __pyx_kwds_len, "decompose_mass_parallel", 0) < 0) __PYX_ERR(0, 128, __pyx_L3_error)
+      if (__Pyx_ParseKeywords(__pyx_kwds, __pyx_kwvalues, __pyx_pyargnames, 0, values, kwd_pos_args, __pyx_kwds_len, "decompose_mass_parallel", 0) < 0) __PYX_ERR(0, 154, __pyx_L3_error)
       if (!values[2]) values[2] = __Pyx_NewRef(((PyObject*)((PyObject*)__pyx_mstate_global->__pyx_n_u_money_changing)));
       for (Py_ssize_t i = __pyx_nargs; i < 2; i++) {
-        if (unlikely(!values[i])) { __Pyx_RaiseArgtupleInvalid("decompose_mass_parallel", 0, 2, 8, i); __PYX_ERR(0, 128, __pyx_L3_error) }
+        if (unlikely(!values[i])) { __Pyx_RaiseArgtupleInvalid("decompose_mass_parallel", 0, 2, 8, i); __PYX_ERR(0, 154, __pyx_L3_error) }
       }
     } else {
       switch (__pyx_nargs) {
         case  8:
         values[7] = __Pyx_ArgRef_FASTCALL(__pyx_args, 7);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[7])) __PYX_ERR(0, 128, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[7])) __PYX_ERR(0, 154, __pyx_L3_error)
         CYTHON_FALLTHROUGH;
         case  7:
         values[6] = __Pyx_ArgRef_FASTCALL(__pyx_args, 6);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[6])) __PYX_ERR(0, 128, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[6])) __PYX_ERR(0, 154, __pyx_L3_error)
         CYTHON_FALLTHROUGH;
         case  6:
         values[5] = __Pyx_ArgRef_FASTCALL(__pyx_args, 5);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[5])) __PYX_ERR(0, 128, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[5])) __PYX_ERR(0, 154, __pyx_L3_error)
         CYTHON_FALLTHROUGH;
         case  5:
         values[4] = __Pyx_ArgRef_FASTCALL(__pyx_args, 4);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[4])) __PYX_ERR(0, 128, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[4])) __PYX_ERR(0, 154, __pyx_L3_error)
         CYTHON_FALLTHROUGH;
         case  4:
         values[3] = __Pyx_ArgRef_FASTCALL(__pyx_args, 3);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[3])) __PYX_ERR(0, 128, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[3])) __PYX_ERR(0, 154, __pyx_L3_error)
         CYTHON_FALLTHROUGH;
         case  3:
         values[2] = __Pyx_ArgRef_FASTCALL(__pyx_args, 2);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[2])) __PYX_ERR(0, 128, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[2])) __PYX_ERR(0, 154, __pyx_L3_error)
         CYTHON_FALLTHROUGH;
         case  2:
         values[1] = __Pyx_ArgRef_FASTCALL(__pyx_args, 1);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[1])) __PYX_ERR(0, 128, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[1])) __PYX_ERR(0, 154, __pyx_L3_error)
         values[0] = __Pyx_ArgRef_FASTCALL(__pyx_args, 0);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[0])) __PYX_ERR(0, 128, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[0])) __PYX_ERR(0, 154, __pyx_L3_error)
         break;
         default: goto __pyx_L5_argtuple_error;
       }
@@ -4124,34 +4166,34 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
     __pyx_v_element_bounds = ((PyObject*)values[1]);
     __pyx_v_strategy = ((PyObject*)values[2]);
     if (values[3]) {
-      __pyx_v_tolerance_ppm = __Pyx_PyFloat_AsDouble(values[3]); if (unlikely((__pyx_v_tolerance_ppm == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 129, __pyx_L3_error)
+      __pyx_v_tolerance_ppm = __Pyx_PyFloat_AsDouble(values[3]); if (unlikely((__pyx_v_tolerance_ppm == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 155, __pyx_L3_error)
     } else {
       __pyx_v_tolerance_ppm = ((double)((double)5.0));
     }
     if (values[4]) {
-      __pyx_v_min_dbe = __Pyx_PyFloat_AsDouble(values[4]); if (unlikely((__pyx_v_min_dbe == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 130, __pyx_L3_error)
+      __pyx_v_min_dbe = __Pyx_PyFloat_AsDouble(values[4]); if (unlikely((__pyx_v_min_dbe == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 156, __pyx_L3_error)
     } else {
       __pyx_v_min_dbe = ((double)((double)0.0));
     }
     if (values[5]) {
-      __pyx_v_max_dbe = __Pyx_PyFloat_AsDouble(values[5]); if (unlikely((__pyx_v_max_dbe == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 130, __pyx_L3_error)
+      __pyx_v_max_dbe = __Pyx_PyFloat_AsDouble(values[5]); if (unlikely((__pyx_v_max_dbe == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 156, __pyx_L3_error)
     } else {
       __pyx_v_max_dbe = ((double)((double)40.0));
     }
     if (values[6]) {
-      __pyx_v_max_hetero_ratio = __Pyx_PyFloat_AsDouble(values[6]); if (unlikely((__pyx_v_max_hetero_ratio == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 131, __pyx_L3_error)
+      __pyx_v_max_hetero_ratio = __Pyx_PyFloat_AsDouble(values[6]); if (unlikely((__pyx_v_max_hetero_ratio == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 157, __pyx_L3_error)
     } else {
       __pyx_v_max_hetero_ratio = ((double)((double)1000.0));
     }
     if (values[7]) {
-      __pyx_v_max_results = __Pyx_PyLong_As_int(values[7]); if (unlikely((__pyx_v_max_results == (int)-1) && PyErr_Occurred())) __PYX_ERR(0, 131, __pyx_L3_error)
+      __pyx_v_max_results = __Pyx_PyLong_As_int(values[7]); if (unlikely((__pyx_v_max_results == (int)-1) && PyErr_Occurred())) __PYX_ERR(0, 157, __pyx_L3_error)
     } else {
       __pyx_v_max_results = ((int)((int)0x2710));
     }
   }
   goto __pyx_L6_skip;
   __pyx_L5_argtuple_error:;
-  __Pyx_RaiseArgtupleInvalid("decompose_mass_parallel", 0, 2, 8, __pyx_nargs); __PYX_ERR(0, 128, __pyx_L3_error)
+  __Pyx_RaiseArgtupleInvalid("decompose_mass_parallel", 0, 2, 8, __pyx_nargs); __PYX_ERR(0, 154, __pyx_L3_error)
   __pyx_L6_skip:;
   goto __pyx_L4_argument_unpacking_done;
   __pyx_L3_error:;
@@ -4162,9 +4204,9 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
   __Pyx_RefNannyFinishContext();
   return NULL;
   __pyx_L4_argument_unpacking_done:;
-  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_target_masses), (&PyList_Type), 1, "target_masses", 1))) __PYX_ERR(0, 128, __pyx_L1_error)
-  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_element_bounds), (&PyDict_Type), 1, "element_bounds", 1))) __PYX_ERR(0, 128, __pyx_L1_error)
-  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_strategy), (&PyUnicode_Type), 1, "strategy", 1))) __PYX_ERR(0, 129, __pyx_L1_error)
+  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_target_masses), (&PyList_Type), 1, "target_masses", 1))) __PYX_ERR(0, 154, __pyx_L1_error)
+  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_element_bounds), (&PyDict_Type), 1, "element_bounds", 1))) __PYX_ERR(0, 154, __pyx_L1_error)
+  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_strategy), (&PyUnicode_Type), 1, "strategy", 1))) __PYX_ERR(0, 155, __pyx_L1_error)
   __pyx_r = __pyx_pf_19mass_decomposer_cpp_2decompose_mass_parallel(__pyx_self, __pyx_v_target_masses, __pyx_v_element_bounds, __pyx_v_strategy, __pyx_v_tolerance_ppm, __pyx_v_min_dbe, __pyx_v_max_dbe, __pyx_v_max_hetero_ratio, __pyx_v_max_results);
 
   /* function exit code */
@@ -4227,7 +4269,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_2decompose_mass_parallel(CYTHON_
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("decompose_mass_parallel", 0);
 
-  /* "mass_decomposer_cpp.pyx":148
+  /* "mass_decomposer_cpp.pyx":174
  *         List of lists of formula dictionaries
  *     """
  *     if not target_masses:             # <<<<<<<<<<<<<<
@@ -4235,11 +4277,11 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_2decompose_mass_parallel(CYTHON_
  * 
 */
   __pyx_t_1 = (__pyx_v_target_masses != Py_None)&&(__Pyx_PyList_GET_SIZE(__pyx_v_target_masses) != 0);
-  if (unlikely(((!CYTHON_ASSUME_SAFE_MACROS) && __pyx_t_1 < 0))) __PYX_ERR(0, 148, __pyx_L1_error)
+  if (unlikely(((!CYTHON_ASSUME_SAFE_MACROS) && __pyx_t_1 < 0))) __PYX_ERR(0, 174, __pyx_L1_error)
   __pyx_t_2 = (!__pyx_t_1);
   if (__pyx_t_2) {
 
-    /* "mass_decomposer_cpp.pyx":149
+    /* "mass_decomposer_cpp.pyx":175
  *     """
  *     if not target_masses:
  *         return []             # <<<<<<<<<<<<<<
@@ -4247,13 +4289,13 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_2decompose_mass_parallel(CYTHON_
  *     cdef vector[Element] elements
 */
     __Pyx_XDECREF(__pyx_r);
-    __pyx_t_3 = PyList_New(0); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 149, __pyx_L1_error)
+    __pyx_t_3 = PyList_New(0); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 175, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_3);
     __pyx_r = __pyx_t_3;
     __pyx_t_3 = 0;
     goto __pyx_L0;
 
-    /* "mass_decomposer_cpp.pyx":148
+    /* "mass_decomposer_cpp.pyx":174
  *         List of lists of formula dictionaries
  *     """
  *     if not target_masses:             # <<<<<<<<<<<<<<
@@ -4262,27 +4304,27 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_2decompose_mass_parallel(CYTHON_
 */
   }
 
-  /* "mass_decomposer_cpp.pyx":158
+  /* "mass_decomposer_cpp.pyx":184
  *     cdef size_t i, j
  * 
  *     elements = _convert_element_bounds(element_bounds)             # <<<<<<<<<<<<<<
  *     params = _convert_params(tolerance_ppm, min_dbe, max_dbe,
  *                            max_hetero_ratio, max_results, strategy)
 */
-  __pyx_t_4 = __pyx_f_19mass_decomposer_cpp__convert_element_bounds(__pyx_v_element_bounds); if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 158, __pyx_L1_error)
+  __pyx_t_4 = __pyx_f_19mass_decomposer_cpp__convert_element_bounds(__pyx_v_element_bounds); if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 184, __pyx_L1_error)
   __pyx_v_elements = __PYX_STD_MOVE_IF_SUPPORTED(__pyx_t_4);
 
-  /* "mass_decomposer_cpp.pyx":159
+  /* "mass_decomposer_cpp.pyx":185
  * 
  *     elements = _convert_element_bounds(element_bounds)
  *     params = _convert_params(tolerance_ppm, min_dbe, max_dbe,             # <<<<<<<<<<<<<<
  *                            max_hetero_ratio, max_results, strategy)
  * 
 */
-  __pyx_t_5 = __pyx_f_19mass_decomposer_cpp__convert_params(__pyx_v_tolerance_ppm, __pyx_v_min_dbe, __pyx_v_max_dbe, __pyx_v_max_hetero_ratio, __pyx_v_max_results, __pyx_v_strategy); if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 159, __pyx_L1_error)
+  __pyx_t_5 = __pyx_f_19mass_decomposer_cpp__convert_params(__pyx_v_tolerance_ppm, __pyx_v_min_dbe, __pyx_v_max_dbe, __pyx_v_max_hetero_ratio, __pyx_v_max_results, __pyx_v_strategy); if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 185, __pyx_L1_error)
   __pyx_v_params = __pyx_t_5;
 
-  /* "mass_decomposer_cpp.pyx":163
+  /* "mass_decomposer_cpp.pyx":189
  * 
  *     # Convert target masses to C++ vector
  *     for mass in target_masses:             # <<<<<<<<<<<<<<
@@ -4291,7 +4333,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_2decompose_mass_parallel(CYTHON_
 */
   if (unlikely(__pyx_v_target_masses == Py_None)) {
     PyErr_SetString(PyExc_TypeError, "'NoneType' object is not iterable");
-    __PYX_ERR(0, 163, __pyx_L1_error)
+    __PYX_ERR(0, 189, __pyx_L1_error)
   }
   __pyx_t_3 = __pyx_v_target_masses; __Pyx_INCREF(__pyx_t_3);
   __pyx_t_6 = 0;
@@ -4299,33 +4341,33 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_2decompose_mass_parallel(CYTHON_
     {
       Py_ssize_t __pyx_temp = __Pyx_PyList_GET_SIZE(__pyx_t_3);
       #if !CYTHON_ASSUME_SAFE_SIZE
-      if (unlikely((__pyx_temp < 0))) __PYX_ERR(0, 163, __pyx_L1_error)
+      if (unlikely((__pyx_temp < 0))) __PYX_ERR(0, 189, __pyx_L1_error)
       #endif
       if (__pyx_t_6 >= __pyx_temp) break;
     }
     __pyx_t_7 = __Pyx_PyList_GetItemRef(__pyx_t_3, __pyx_t_6);
     ++__pyx_t_6;
-    if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 163, __pyx_L1_error)
+    if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 189, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_7);
     __Pyx_XDECREF_SET(__pyx_v_mass, __pyx_t_7);
     __pyx_t_7 = 0;
 
-    /* "mass_decomposer_cpp.pyx":164
+    /* "mass_decomposer_cpp.pyx":190
  *     # Convert target masses to C++ vector
  *     for mass in target_masses:
  *         masses_vec.push_back(mass)             # <<<<<<<<<<<<<<
  * 
  *     decomposer = new MassDecomposer(elements, strategy.encode('utf-8'))
 */
-    __pyx_t_8 = __Pyx_PyFloat_AsDouble(__pyx_v_mass); if (unlikely((__pyx_t_8 == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 164, __pyx_L1_error)
+    __pyx_t_8 = __Pyx_PyFloat_AsDouble(__pyx_v_mass); if (unlikely((__pyx_t_8 == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 190, __pyx_L1_error)
     try {
       __pyx_v_masses_vec.push_back(__pyx_t_8);
     } catch(...) {
       __Pyx_CppExn2PyErr();
-      __PYX_ERR(0, 164, __pyx_L1_error)
+      __PYX_ERR(0, 190, __pyx_L1_error)
     }
 
-    /* "mass_decomposer_cpp.pyx":163
+    /* "mass_decomposer_cpp.pyx":189
  * 
  *     # Convert target masses to C++ vector
  *     for mass in target_masses:             # <<<<<<<<<<<<<<
@@ -4335,7 +4377,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_2decompose_mass_parallel(CYTHON_
   }
   __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
 
-  /* "mass_decomposer_cpp.pyx":166
+  /* "mass_decomposer_cpp.pyx":192
  *         masses_vec.push_back(mass)
  * 
  *     decomposer = new MassDecomposer(elements, strategy.encode('utf-8'))             # <<<<<<<<<<<<<<
@@ -4344,15 +4386,15 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_2decompose_mass_parallel(CYTHON_
 */
   if (unlikely(__pyx_v_strategy == Py_None)) {
     PyErr_Format(PyExc_AttributeError, "'NoneType' object has no attribute '%.30s'", "encode");
-    __PYX_ERR(0, 166, __pyx_L1_error)
+    __PYX_ERR(0, 192, __pyx_L1_error)
   }
-  __pyx_t_3 = PyUnicode_AsUTF8String(__pyx_v_strategy); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 166, __pyx_L1_error)
+  __pyx_t_3 = PyUnicode_AsUTF8String(__pyx_v_strategy); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 192, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_3);
-  __pyx_t_9 = __pyx_convert_string_from_py_6libcpp_6string_std__in_string(__pyx_t_3); if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 166, __pyx_L1_error)
+  __pyx_t_9 = __pyx_convert_string_from_py_6libcpp_6string_std__in_string(__pyx_t_3); if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 192, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
   __pyx_v_decomposer = new MassDecomposer(__pyx_v_elements, __pyx_t_9);
 
-  /* "mass_decomposer_cpp.pyx":167
+  /* "mass_decomposer_cpp.pyx":193
  * 
  *     decomposer = new MassDecomposer(elements, strategy.encode('utf-8'))
  *     all_results = decomposer.decompose_parallel(masses_vec, params)             # <<<<<<<<<<<<<<
@@ -4361,7 +4403,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_2decompose_mass_parallel(CYTHON_
 */
   __pyx_v_all_results = __pyx_v_decomposer->decompose_parallel(__pyx_v_masses_vec, __pyx_v_params);
 
-  /* "mass_decomposer_cpp.pyx":169
+  /* "mass_decomposer_cpp.pyx":195
  *     all_results = decomposer.decompose_parallel(masses_vec, params)
  * 
  *     try:             # <<<<<<<<<<<<<<
@@ -4370,19 +4412,19 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_2decompose_mass_parallel(CYTHON_
 */
   /*try:*/ {
 
-    /* "mass_decomposer_cpp.pyx":171
+    /* "mass_decomposer_cpp.pyx":197
  *     try:
  *         # Convert results to Python
  *         python_results = []             # <<<<<<<<<<<<<<
  *         for i in range(all_results.size()):
  *             mass_results = []
 */
-    __pyx_t_3 = PyList_New(0); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 171, __pyx_L8_error)
+    __pyx_t_3 = PyList_New(0); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 197, __pyx_L8_error)
     __Pyx_GOTREF(__pyx_t_3);
     __pyx_v_python_results = ((PyObject*)__pyx_t_3);
     __pyx_t_3 = 0;
 
-    /* "mass_decomposer_cpp.pyx":172
+    /* "mass_decomposer_cpp.pyx":198
  *         # Convert results to Python
  *         python_results = []
  *         for i in range(all_results.size()):             # <<<<<<<<<<<<<<
@@ -4394,19 +4436,19 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_2decompose_mass_parallel(CYTHON_
     for (__pyx_t_12 = 0; __pyx_t_12 < __pyx_t_11; __pyx_t_12+=1) {
       __pyx_v_i = __pyx_t_12;
 
-      /* "mass_decomposer_cpp.pyx":173
+      /* "mass_decomposer_cpp.pyx":199
  *         python_results = []
  *         for i in range(all_results.size()):
  *             mass_results = []             # <<<<<<<<<<<<<<
  *             for j in range(all_results[i].size()):
  *                 mass_results.append(_convert_formula_result(all_results[i][j], decomposer))
 */
-      __pyx_t_3 = PyList_New(0); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 173, __pyx_L8_error)
+      __pyx_t_3 = PyList_New(0); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 199, __pyx_L8_error)
       __Pyx_GOTREF(__pyx_t_3);
       __Pyx_XDECREF_SET(__pyx_v_mass_results, ((PyObject*)__pyx_t_3));
       __pyx_t_3 = 0;
 
-      /* "mass_decomposer_cpp.pyx":174
+      /* "mass_decomposer_cpp.pyx":200
  *         for i in range(all_results.size()):
  *             mass_results = []
  *             for j in range(all_results[i].size()):             # <<<<<<<<<<<<<<
@@ -4418,30 +4460,30 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_2decompose_mass_parallel(CYTHON_
       for (__pyx_t_15 = 0; __pyx_t_15 < __pyx_t_14; __pyx_t_15+=1) {
         __pyx_v_j = __pyx_t_15;
 
-        /* "mass_decomposer_cpp.pyx":175
+        /* "mass_decomposer_cpp.pyx":201
  *             mass_results = []
  *             for j in range(all_results[i].size()):
  *                 mass_results.append(_convert_formula_result(all_results[i][j], decomposer))             # <<<<<<<<<<<<<<
  *             python_results.append(mass_results)
  * 
 */
-        __pyx_t_3 = __pyx_f_19mass_decomposer_cpp__convert_formula_result(((__pyx_v_all_results[__pyx_v_i])[__pyx_v_j]), __pyx_v_decomposer); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 175, __pyx_L8_error)
+        __pyx_t_3 = __pyx_f_19mass_decomposer_cpp__convert_formula_result(((__pyx_v_all_results[__pyx_v_i])[__pyx_v_j]), __pyx_v_decomposer); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 201, __pyx_L8_error)
         __Pyx_GOTREF(__pyx_t_3);
-        __pyx_t_16 = __Pyx_PyList_Append(__pyx_v_mass_results, __pyx_t_3); if (unlikely(__pyx_t_16 == ((int)-1))) __PYX_ERR(0, 175, __pyx_L8_error)
+        __pyx_t_16 = __Pyx_PyList_Append(__pyx_v_mass_results, __pyx_t_3); if (unlikely(__pyx_t_16 == ((int)-1))) __PYX_ERR(0, 201, __pyx_L8_error)
         __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
       }
 
-      /* "mass_decomposer_cpp.pyx":176
+      /* "mass_decomposer_cpp.pyx":202
  *             for j in range(all_results[i].size()):
  *                 mass_results.append(_convert_formula_result(all_results[i][j], decomposer))
  *             python_results.append(mass_results)             # <<<<<<<<<<<<<<
  * 
  *         return python_results
 */
-      __pyx_t_16 = __Pyx_PyList_Append(__pyx_v_python_results, __pyx_v_mass_results); if (unlikely(__pyx_t_16 == ((int)-1))) __PYX_ERR(0, 176, __pyx_L8_error)
+      __pyx_t_16 = __Pyx_PyList_Append(__pyx_v_python_results, __pyx_v_mass_results); if (unlikely(__pyx_t_16 == ((int)-1))) __PYX_ERR(0, 202, __pyx_L8_error)
     }
 
-    /* "mass_decomposer_cpp.pyx":178
+    /* "mass_decomposer_cpp.pyx":204
  *             python_results.append(mass_results)
  * 
  *         return python_results             # <<<<<<<<<<<<<<
@@ -4454,12 +4496,12 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_2decompose_mass_parallel(CYTHON_
     goto __pyx_L7_return;
   }
 
-  /* "mass_decomposer_cpp.pyx":180
+  /* "mass_decomposer_cpp.pyx":206
  *         return python_results
  *     finally:
  *         del decomposer             # <<<<<<<<<<<<<<
  * 
- * def decompose_spectrum_parallel(double precursor_mass, list fragment_masses,
+ * def decompose_spectra_parallel(list spectra_data, dict element_bounds,
 */
   /*finally:*/ {
     __pyx_L8_error:;
@@ -4503,7 +4545,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_2decompose_mass_parallel(CYTHON_
     }
   }
 
-  /* "mass_decomposer_cpp.pyx":128
+  /* "mass_decomposer_cpp.pyx":154
  *         del decomposer
  * 
  * def decompose_mass_parallel(list target_masses, dict element_bounds,             # <<<<<<<<<<<<<<
@@ -4526,7 +4568,826 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_2decompose_mass_parallel(CYTHON_
   return __pyx_r;
 }
 
-/* "mass_decomposer_cpp.pyx":182
+/* "mass_decomposer_cpp.pyx":208
+ *         del decomposer
+ * 
+ * def decompose_spectra_parallel(list spectra_data, dict element_bounds,             # <<<<<<<<<<<<<<
+ *                               str strategy="money_changing", double tolerance_ppm=5.0,
+ *                               double min_dbe=0.0, double max_dbe=40.0,
+*/
+
+/* Python wrapper */
+static PyObject *__pyx_pw_19mass_decomposer_cpp_5decompose_spectra_parallel(PyObject *__pyx_self, 
+#if CYTHON_METH_FASTCALL
+PyObject *const *__pyx_args, Py_ssize_t __pyx_nargs, PyObject *__pyx_kwds
+#else
+PyObject *__pyx_args, PyObject *__pyx_kwds
+#endif
+); /*proto*/
+PyDoc_STRVAR(__pyx_doc_19mass_decomposer_cpp_4decompose_spectra_parallel, "decompose_spectra_parallel(list spectra_data, dict element_bounds, str strategy='money_changing', double tolerance_ppm=5.0, double min_dbe=0.0, double max_dbe=40.0, double max_hetero_ratio=1000.0, int max_results=10000)\n\nDecompose multiple spectra in parallel using C++ OpenMP implementation.\n\nArgs:\n    spectra_data: List of tuples [(precursor_mass, [fragment_masses]), ...]\n    element_bounds: Dictionary of element bounds {element: (min, max)}\n    strategy: \"recursive\" or \"money_changing\"\n    tolerance_ppm: Mass tolerance in ppm\n    min_dbe: Minimum double bond equivalents\n    max_dbe: Maximum double bond equivalents\n    max_hetero_ratio: Maximum heteroatom to carbon ratio\n    max_results: Maximum number of results to return per mass\n    \nReturns:\n    List of dictionaries with 'precursor' and 'fragments' keys");
+static PyMethodDef __pyx_mdef_19mass_decomposer_cpp_5decompose_spectra_parallel = {"decompose_spectra_parallel", (PyCFunction)(void(*)(void))(__Pyx_PyCFunction_FastCallWithKeywords)__pyx_pw_19mass_decomposer_cpp_5decompose_spectra_parallel, __Pyx_METH_FASTCALL|METH_KEYWORDS, __pyx_doc_19mass_decomposer_cpp_4decompose_spectra_parallel};
+static PyObject *__pyx_pw_19mass_decomposer_cpp_5decompose_spectra_parallel(PyObject *__pyx_self, 
+#if CYTHON_METH_FASTCALL
+PyObject *const *__pyx_args, Py_ssize_t __pyx_nargs, PyObject *__pyx_kwds
+#else
+PyObject *__pyx_args, PyObject *__pyx_kwds
+#endif
+) {
+  PyObject *__pyx_v_spectra_data = 0;
+  PyObject *__pyx_v_element_bounds = 0;
+  PyObject *__pyx_v_strategy = 0;
+  double __pyx_v_tolerance_ppm;
+  double __pyx_v_min_dbe;
+  double __pyx_v_max_dbe;
+  double __pyx_v_max_hetero_ratio;
+  int __pyx_v_max_results;
+  #if !CYTHON_METH_FASTCALL
+  CYTHON_UNUSED Py_ssize_t __pyx_nargs;
+  #endif
+  CYTHON_UNUSED PyObject *const *__pyx_kwvalues;
+  PyObject* values[8] = {0,0,0,0,0,0,0,0};
+  int __pyx_lineno = 0;
+  const char *__pyx_filename = NULL;
+  int __pyx_clineno = 0;
+  PyObject *__pyx_r = 0;
+  __Pyx_RefNannyDeclarations
+  __Pyx_RefNannySetupContext("decompose_spectra_parallel (wrapper)", 0);
+  #if !CYTHON_METH_FASTCALL
+  #if CYTHON_ASSUME_SAFE_SIZE
+  __pyx_nargs = PyTuple_GET_SIZE(__pyx_args);
+  #else
+  __pyx_nargs = PyTuple_Size(__pyx_args); if (unlikely(__pyx_nargs < 0)) return NULL;
+  #endif
+  #endif
+  __pyx_kwvalues = __Pyx_KwValues_FASTCALL(__pyx_args, __pyx_nargs);
+  {
+    PyObject ** const __pyx_pyargnames[] = {&__pyx_mstate_global->__pyx_n_u_spectra_data,&__pyx_mstate_global->__pyx_n_u_element_bounds,&__pyx_mstate_global->__pyx_n_u_strategy,&__pyx_mstate_global->__pyx_n_u_tolerance_ppm,&__pyx_mstate_global->__pyx_n_u_min_dbe,&__pyx_mstate_global->__pyx_n_u_max_dbe,&__pyx_mstate_global->__pyx_n_u_max_hetero_ratio,&__pyx_mstate_global->__pyx_n_u_max_results,0};
+    const Py_ssize_t __pyx_kwds_len = (__pyx_kwds) ? __Pyx_NumKwargs_FASTCALL(__pyx_kwds) : 0;
+    if (unlikely(__pyx_kwds_len) < 0) __PYX_ERR(0, 208, __pyx_L3_error)
+    if (__pyx_kwds_len > 0) {
+      switch (__pyx_nargs) {
+        case  8:
+        values[7] = __Pyx_ArgRef_FASTCALL(__pyx_args, 7);
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[7])) __PYX_ERR(0, 208, __pyx_L3_error)
+        CYTHON_FALLTHROUGH;
+        case  7:
+        values[6] = __Pyx_ArgRef_FASTCALL(__pyx_args, 6);
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[6])) __PYX_ERR(0, 208, __pyx_L3_error)
+        CYTHON_FALLTHROUGH;
+        case  6:
+        values[5] = __Pyx_ArgRef_FASTCALL(__pyx_args, 5);
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[5])) __PYX_ERR(0, 208, __pyx_L3_error)
+        CYTHON_FALLTHROUGH;
+        case  5:
+        values[4] = __Pyx_ArgRef_FASTCALL(__pyx_args, 4);
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[4])) __PYX_ERR(0, 208, __pyx_L3_error)
+        CYTHON_FALLTHROUGH;
+        case  4:
+        values[3] = __Pyx_ArgRef_FASTCALL(__pyx_args, 3);
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[3])) __PYX_ERR(0, 208, __pyx_L3_error)
+        CYTHON_FALLTHROUGH;
+        case  3:
+        values[2] = __Pyx_ArgRef_FASTCALL(__pyx_args, 2);
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[2])) __PYX_ERR(0, 208, __pyx_L3_error)
+        CYTHON_FALLTHROUGH;
+        case  2:
+        values[1] = __Pyx_ArgRef_FASTCALL(__pyx_args, 1);
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[1])) __PYX_ERR(0, 208, __pyx_L3_error)
+        CYTHON_FALLTHROUGH;
+        case  1:
+        values[0] = __Pyx_ArgRef_FASTCALL(__pyx_args, 0);
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[0])) __PYX_ERR(0, 208, __pyx_L3_error)
+        CYTHON_FALLTHROUGH;
+        case  0: break;
+        default: goto __pyx_L5_argtuple_error;
+      }
+      const Py_ssize_t kwd_pos_args = __pyx_nargs;
+      if (__Pyx_ParseKeywords(__pyx_kwds, __pyx_kwvalues, __pyx_pyargnames, 0, values, kwd_pos_args, __pyx_kwds_len, "decompose_spectra_parallel", 0) < 0) __PYX_ERR(0, 208, __pyx_L3_error)
+      if (!values[2]) values[2] = __Pyx_NewRef(((PyObject*)((PyObject*)__pyx_mstate_global->__pyx_n_u_money_changing)));
+      for (Py_ssize_t i = __pyx_nargs; i < 2; i++) {
+        if (unlikely(!values[i])) { __Pyx_RaiseArgtupleInvalid("decompose_spectra_parallel", 0, 2, 8, i); __PYX_ERR(0, 208, __pyx_L3_error) }
+      }
+    } else {
+      switch (__pyx_nargs) {
+        case  8:
+        values[7] = __Pyx_ArgRef_FASTCALL(__pyx_args, 7);
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[7])) __PYX_ERR(0, 208, __pyx_L3_error)
+        CYTHON_FALLTHROUGH;
+        case  7:
+        values[6] = __Pyx_ArgRef_FASTCALL(__pyx_args, 6);
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[6])) __PYX_ERR(0, 208, __pyx_L3_error)
+        CYTHON_FALLTHROUGH;
+        case  6:
+        values[5] = __Pyx_ArgRef_FASTCALL(__pyx_args, 5);
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[5])) __PYX_ERR(0, 208, __pyx_L3_error)
+        CYTHON_FALLTHROUGH;
+        case  5:
+        values[4] = __Pyx_ArgRef_FASTCALL(__pyx_args, 4);
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[4])) __PYX_ERR(0, 208, __pyx_L3_error)
+        CYTHON_FALLTHROUGH;
+        case  4:
+        values[3] = __Pyx_ArgRef_FASTCALL(__pyx_args, 3);
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[3])) __PYX_ERR(0, 208, __pyx_L3_error)
+        CYTHON_FALLTHROUGH;
+        case  3:
+        values[2] = __Pyx_ArgRef_FASTCALL(__pyx_args, 2);
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[2])) __PYX_ERR(0, 208, __pyx_L3_error)
+        CYTHON_FALLTHROUGH;
+        case  2:
+        values[1] = __Pyx_ArgRef_FASTCALL(__pyx_args, 1);
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[1])) __PYX_ERR(0, 208, __pyx_L3_error)
+        values[0] = __Pyx_ArgRef_FASTCALL(__pyx_args, 0);
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[0])) __PYX_ERR(0, 208, __pyx_L3_error)
+        break;
+        default: goto __pyx_L5_argtuple_error;
+      }
+      if (!values[2]) values[2] = __Pyx_NewRef(((PyObject*)((PyObject*)__pyx_mstate_global->__pyx_n_u_money_changing)));
+    }
+    __pyx_v_spectra_data = ((PyObject*)values[0]);
+    __pyx_v_element_bounds = ((PyObject*)values[1]);
+    __pyx_v_strategy = ((PyObject*)values[2]);
+    if (values[3]) {
+      __pyx_v_tolerance_ppm = __Pyx_PyFloat_AsDouble(values[3]); if (unlikely((__pyx_v_tolerance_ppm == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 209, __pyx_L3_error)
+    } else {
+      __pyx_v_tolerance_ppm = ((double)((double)5.0));
+    }
+    if (values[4]) {
+      __pyx_v_min_dbe = __Pyx_PyFloat_AsDouble(values[4]); if (unlikely((__pyx_v_min_dbe == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 210, __pyx_L3_error)
+    } else {
+      __pyx_v_min_dbe = ((double)((double)0.0));
+    }
+    if (values[5]) {
+      __pyx_v_max_dbe = __Pyx_PyFloat_AsDouble(values[5]); if (unlikely((__pyx_v_max_dbe == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 210, __pyx_L3_error)
+    } else {
+      __pyx_v_max_dbe = ((double)((double)40.0));
+    }
+    if (values[6]) {
+      __pyx_v_max_hetero_ratio = __Pyx_PyFloat_AsDouble(values[6]); if (unlikely((__pyx_v_max_hetero_ratio == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 211, __pyx_L3_error)
+    } else {
+      __pyx_v_max_hetero_ratio = ((double)((double)1000.0));
+    }
+    if (values[7]) {
+      __pyx_v_max_results = __Pyx_PyLong_As_int(values[7]); if (unlikely((__pyx_v_max_results == (int)-1) && PyErr_Occurred())) __PYX_ERR(0, 211, __pyx_L3_error)
+    } else {
+      __pyx_v_max_results = ((int)((int)0x2710));
+    }
+  }
+  goto __pyx_L6_skip;
+  __pyx_L5_argtuple_error:;
+  __Pyx_RaiseArgtupleInvalid("decompose_spectra_parallel", 0, 2, 8, __pyx_nargs); __PYX_ERR(0, 208, __pyx_L3_error)
+  __pyx_L6_skip:;
+  goto __pyx_L4_argument_unpacking_done;
+  __pyx_L3_error:;
+  for (Py_ssize_t __pyx_temp=0; __pyx_temp < (Py_ssize_t)(sizeof(values)/sizeof(values[0])); ++__pyx_temp) {
+    Py_XDECREF(values[__pyx_temp]);
+  }
+  __Pyx_AddTraceback("mass_decomposer_cpp.decompose_spectra_parallel", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __Pyx_RefNannyFinishContext();
+  return NULL;
+  __pyx_L4_argument_unpacking_done:;
+  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_spectra_data), (&PyList_Type), 1, "spectra_data", 1))) __PYX_ERR(0, 208, __pyx_L1_error)
+  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_element_bounds), (&PyDict_Type), 1, "element_bounds", 1))) __PYX_ERR(0, 208, __pyx_L1_error)
+  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_strategy), (&PyUnicode_Type), 1, "strategy", 1))) __PYX_ERR(0, 209, __pyx_L1_error)
+  __pyx_r = __pyx_pf_19mass_decomposer_cpp_4decompose_spectra_parallel(__pyx_self, __pyx_v_spectra_data, __pyx_v_element_bounds, __pyx_v_strategy, __pyx_v_tolerance_ppm, __pyx_v_min_dbe, __pyx_v_max_dbe, __pyx_v_max_hetero_ratio, __pyx_v_max_results);
+
+  /* function exit code */
+  goto __pyx_L0;
+  __pyx_L1_error:;
+  __pyx_r = NULL;
+  for (Py_ssize_t __pyx_temp=0; __pyx_temp < (Py_ssize_t)(sizeof(values)/sizeof(values[0])); ++__pyx_temp) {
+    Py_XDECREF(values[__pyx_temp]);
+  }
+  goto __pyx_L7_cleaned_up;
+  __pyx_L0:;
+  for (Py_ssize_t __pyx_temp=0; __pyx_temp < (Py_ssize_t)(sizeof(values)/sizeof(values[0])); ++__pyx_temp) {
+    Py_XDECREF(values[__pyx_temp]);
+  }
+  __pyx_L7_cleaned_up:;
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+static PyObject *__pyx_pf_19mass_decomposer_cpp_4decompose_spectra_parallel(CYTHON_UNUSED PyObject *__pyx_self, PyObject *__pyx_v_spectra_data, PyObject *__pyx_v_element_bounds, PyObject *__pyx_v_strategy, double __pyx_v_tolerance_ppm, double __pyx_v_min_dbe, double __pyx_v_max_dbe, double __pyx_v_max_hetero_ratio, int __pyx_v_max_results) {
+  std::vector<struct Element>  __pyx_v_elements;
+  struct DecompositionParams __pyx_v_params;
+  std::vector<struct Spectrum>  __pyx_v_spectra_vec;
+  MassDecomposer *__pyx_v_decomposer;
+  std::vector<struct SpectrumResults>  __pyx_v_all_results;
+  size_t __pyx_v_i;
+  size_t __pyx_v_j;
+  size_t __pyx_v_k;
+  struct Spectrum __pyx_v_spectrum;
+  PyObject *__pyx_v_spectrum_data = NULL;
+  PyObject *__pyx_v_precursor_mass = NULL;
+  PyObject *__pyx_v_fragment_masses = NULL;
+  PyObject *__pyx_v_frag_mass = NULL;
+  PyObject *__pyx_v_python_results = NULL;
+  PyObject *__pyx_v_precursor_results = NULL;
+  PyObject *__pyx_v_fragment_results = NULL;
+  PyObject *__pyx_v_fragment_mass_results = NULL;
+  PyObject *__pyx_r = NULL;
+  __Pyx_RefNannyDeclarations
+  int __pyx_t_1;
+  int __pyx_t_2;
+  PyObject *__pyx_t_3 = NULL;
+  std::vector<struct Element>  __pyx_t_4;
+  struct DecompositionParams __pyx_t_5;
+  Py_ssize_t __pyx_t_6;
+  PyObject *__pyx_t_7 = NULL;
+  PyObject *__pyx_t_8 = NULL;
+  PyObject *__pyx_t_9 = NULL;
+  PyObject *(*__pyx_t_10)(PyObject *);
+  double __pyx_t_11;
+  Py_ssize_t __pyx_t_12;
+  PyObject *(*__pyx_t_13)(PyObject *);
+  std::string __pyx_t_14;
+  std::vector<struct SpectrumResults> ::size_type __pyx_t_15;
+  std::vector<struct SpectrumResults> ::size_type __pyx_t_16;
+  size_t __pyx_t_17;
+  std::vector<Formula> ::size_type __pyx_t_18;
+  std::vector<Formula> ::size_type __pyx_t_19;
+  size_t __pyx_t_20;
+  int __pyx_t_21;
+  std::vector<std::vector<Formula> > ::size_type __pyx_t_22;
+  std::vector<std::vector<Formula> > ::size_type __pyx_t_23;
+  size_t __pyx_t_24;
+  int __pyx_t_25;
+  int __pyx_t_26;
+  char const *__pyx_t_27;
+  PyObject *__pyx_t_28 = NULL;
+  PyObject *__pyx_t_29 = NULL;
+  PyObject *__pyx_t_30 = NULL;
+  PyObject *__pyx_t_31 = NULL;
+  PyObject *__pyx_t_32 = NULL;
+  PyObject *__pyx_t_33 = NULL;
+  int __pyx_lineno = 0;
+  const char *__pyx_filename = NULL;
+  int __pyx_clineno = 0;
+  __Pyx_RefNannySetupContext("decompose_spectra_parallel", 0);
+
+  /* "mass_decomposer_cpp.pyx":228
+ *         List of dictionaries with 'precursor' and 'fragments' keys
+ *     """
+ *     if not spectra_data:             # <<<<<<<<<<<<<<
+ *         return []
+ * 
+*/
+  __pyx_t_1 = (__pyx_v_spectra_data != Py_None)&&(__Pyx_PyList_GET_SIZE(__pyx_v_spectra_data) != 0);
+  if (unlikely(((!CYTHON_ASSUME_SAFE_MACROS) && __pyx_t_1 < 0))) __PYX_ERR(0, 228, __pyx_L1_error)
+  __pyx_t_2 = (!__pyx_t_1);
+  if (__pyx_t_2) {
+
+    /* "mass_decomposer_cpp.pyx":229
+ *     """
+ *     if not spectra_data:
+ *         return []             # <<<<<<<<<<<<<<
+ * 
+ *     cdef vector[Element] elements
+*/
+    __Pyx_XDECREF(__pyx_r);
+    __pyx_t_3 = PyList_New(0); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 229, __pyx_L1_error)
+    __Pyx_GOTREF(__pyx_t_3);
+    __pyx_r = __pyx_t_3;
+    __pyx_t_3 = 0;
+    goto __pyx_L0;
+
+    /* "mass_decomposer_cpp.pyx":228
+ *         List of dictionaries with 'precursor' and 'fragments' keys
+ *     """
+ *     if not spectra_data:             # <<<<<<<<<<<<<<
+ *         return []
+ * 
+*/
+  }
+
+  /* "mass_decomposer_cpp.pyx":239
+ *     cdef Spectrum spectrum
+ * 
+ *     elements = _convert_element_bounds(element_bounds)             # <<<<<<<<<<<<<<
+ *     params = _convert_params(tolerance_ppm, min_dbe, max_dbe,
+ *                            max_hetero_ratio, max_results, strategy)
+*/
+  __pyx_t_4 = __pyx_f_19mass_decomposer_cpp__convert_element_bounds(__pyx_v_element_bounds); if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 239, __pyx_L1_error)
+  __pyx_v_elements = __PYX_STD_MOVE_IF_SUPPORTED(__pyx_t_4);
+
+  /* "mass_decomposer_cpp.pyx":240
+ * 
+ *     elements = _convert_element_bounds(element_bounds)
+ *     params = _convert_params(tolerance_ppm, min_dbe, max_dbe,             # <<<<<<<<<<<<<<
+ *                            max_hetero_ratio, max_results, strategy)
+ * 
+*/
+  __pyx_t_5 = __pyx_f_19mass_decomposer_cpp__convert_params(__pyx_v_tolerance_ppm, __pyx_v_min_dbe, __pyx_v_max_dbe, __pyx_v_max_hetero_ratio, __pyx_v_max_results, __pyx_v_strategy); if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 240, __pyx_L1_error)
+  __pyx_v_params = __pyx_t_5;
+
+  /* "mass_decomposer_cpp.pyx":244
+ * 
+ *     # Convert spectra data to C++ vector
+ *     for spectrum_data in spectra_data:             # <<<<<<<<<<<<<<
+ *         precursor_mass, fragment_masses = spectrum_data
+ *         spectrum.precursor_mass = precursor_mass
+*/
+  if (unlikely(__pyx_v_spectra_data == Py_None)) {
+    PyErr_SetString(PyExc_TypeError, "'NoneType' object is not iterable");
+    __PYX_ERR(0, 244, __pyx_L1_error)
+  }
+  __pyx_t_3 = __pyx_v_spectra_data; __Pyx_INCREF(__pyx_t_3);
+  __pyx_t_6 = 0;
+  for (;;) {
+    {
+      Py_ssize_t __pyx_temp = __Pyx_PyList_GET_SIZE(__pyx_t_3);
+      #if !CYTHON_ASSUME_SAFE_SIZE
+      if (unlikely((__pyx_temp < 0))) __PYX_ERR(0, 244, __pyx_L1_error)
+      #endif
+      if (__pyx_t_6 >= __pyx_temp) break;
+    }
+    __pyx_t_7 = __Pyx_PyList_GetItemRef(__pyx_t_3, __pyx_t_6);
+    ++__pyx_t_6;
+    if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 244, __pyx_L1_error)
+    __Pyx_GOTREF(__pyx_t_7);
+    __Pyx_XDECREF_SET(__pyx_v_spectrum_data, __pyx_t_7);
+    __pyx_t_7 = 0;
+
+    /* "mass_decomposer_cpp.pyx":245
+ *     # Convert spectra data to C++ vector
+ *     for spectrum_data in spectra_data:
+ *         precursor_mass, fragment_masses = spectrum_data             # <<<<<<<<<<<<<<
+ *         spectrum.precursor_mass = precursor_mass
+ *         spectrum.fragment_masses.clear()
+*/
+    if ((likely(PyTuple_CheckExact(__pyx_v_spectrum_data))) || (PyList_CheckExact(__pyx_v_spectrum_data))) {
+      PyObject* sequence = __pyx_v_spectrum_data;
+      Py_ssize_t size = __Pyx_PySequence_SIZE(sequence);
+      if (unlikely(size != 2)) {
+        if (size > 2) __Pyx_RaiseTooManyValuesError(2);
+        else if (size >= 0) __Pyx_RaiseNeedMoreValuesError(size);
+        __PYX_ERR(0, 245, __pyx_L1_error)
+      }
+      #if CYTHON_ASSUME_SAFE_MACROS && !CYTHON_AVOID_BORROWED_REFS
+      if (likely(PyTuple_CheckExact(sequence))) {
+        __pyx_t_7 = PyTuple_GET_ITEM(sequence, 0);
+        __Pyx_INCREF(__pyx_t_7);
+        __pyx_t_8 = PyTuple_GET_ITEM(sequence, 1);
+        __Pyx_INCREF(__pyx_t_8);
+      } else {
+        __pyx_t_7 = __Pyx_PyList_GetItemRef(sequence, 0);
+        if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 245, __pyx_L1_error)
+        __Pyx_XGOTREF(__pyx_t_7);
+        __pyx_t_8 = __Pyx_PyList_GetItemRef(sequence, 1);
+        if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 245, __pyx_L1_error)
+        __Pyx_XGOTREF(__pyx_t_8);
+      }
+      #else
+      __pyx_t_7 = __Pyx_PySequence_ITEM(sequence, 0); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 245, __pyx_L1_error)
+      __Pyx_GOTREF(__pyx_t_7);
+      __pyx_t_8 = __Pyx_PySequence_ITEM(sequence, 1); if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 245, __pyx_L1_error)
+      __Pyx_GOTREF(__pyx_t_8);
+      #endif
+    } else {
+      Py_ssize_t index = -1;
+      __pyx_t_9 = PyObject_GetIter(__pyx_v_spectrum_data); if (unlikely(!__pyx_t_9)) __PYX_ERR(0, 245, __pyx_L1_error)
+      __Pyx_GOTREF(__pyx_t_9);
+      __pyx_t_10 = (CYTHON_COMPILING_IN_LIMITED_API) ? PyIter_Next : __Pyx_PyObject_GetIterNextFunc(__pyx_t_9);
+      index = 0; __pyx_t_7 = __pyx_t_10(__pyx_t_9); if (unlikely(!__pyx_t_7)) goto __pyx_L6_unpacking_failed;
+      __Pyx_GOTREF(__pyx_t_7);
+      index = 1; __pyx_t_8 = __pyx_t_10(__pyx_t_9); if (unlikely(!__pyx_t_8)) goto __pyx_L6_unpacking_failed;
+      __Pyx_GOTREF(__pyx_t_8);
+      if (__Pyx_IternextUnpackEndCheck(__pyx_t_10(__pyx_t_9), 2) < 0) __PYX_ERR(0, 245, __pyx_L1_error)
+      __pyx_t_10 = NULL;
+      __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
+      goto __pyx_L7_unpacking_done;
+      __pyx_L6_unpacking_failed:;
+      __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
+      __pyx_t_10 = NULL;
+      if (__Pyx_IterFinish() == 0) __Pyx_RaiseNeedMoreValuesError(index);
+      __PYX_ERR(0, 245, __pyx_L1_error)
+      __pyx_L7_unpacking_done:;
+    }
+    __Pyx_XDECREF_SET(__pyx_v_precursor_mass, __pyx_t_7);
+    __pyx_t_7 = 0;
+    __Pyx_XDECREF_SET(__pyx_v_fragment_masses, __pyx_t_8);
+    __pyx_t_8 = 0;
+
+    /* "mass_decomposer_cpp.pyx":246
+ *     for spectrum_data in spectra_data:
+ *         precursor_mass, fragment_masses = spectrum_data
+ *         spectrum.precursor_mass = precursor_mass             # <<<<<<<<<<<<<<
+ *         spectrum.fragment_masses.clear()
+ *         for frag_mass in fragment_masses:
+*/
+    __pyx_t_11 = __Pyx_PyFloat_AsDouble(__pyx_v_precursor_mass); if (unlikely((__pyx_t_11 == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 246, __pyx_L1_error)
+    __pyx_v_spectrum.precursor_mass = __pyx_t_11;
+
+    /* "mass_decomposer_cpp.pyx":247
+ *         precursor_mass, fragment_masses = spectrum_data
+ *         spectrum.precursor_mass = precursor_mass
+ *         spectrum.fragment_masses.clear()             # <<<<<<<<<<<<<<
+ *         for frag_mass in fragment_masses:
+ *             spectrum.fragment_masses.push_back(frag_mass)
+*/
+    __pyx_v_spectrum.fragment_masses.clear();
+
+    /* "mass_decomposer_cpp.pyx":248
+ *         spectrum.precursor_mass = precursor_mass
+ *         spectrum.fragment_masses.clear()
+ *         for frag_mass in fragment_masses:             # <<<<<<<<<<<<<<
+ *             spectrum.fragment_masses.push_back(frag_mass)
+ *         spectra_vec.push_back(spectrum)
+*/
+    if (likely(PyList_CheckExact(__pyx_v_fragment_masses)) || PyTuple_CheckExact(__pyx_v_fragment_masses)) {
+      __pyx_t_8 = __pyx_v_fragment_masses; __Pyx_INCREF(__pyx_t_8);
+      __pyx_t_12 = 0;
+      __pyx_t_13 = NULL;
+    } else {
+      __pyx_t_12 = -1; __pyx_t_8 = PyObject_GetIter(__pyx_v_fragment_masses); if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 248, __pyx_L1_error)
+      __Pyx_GOTREF(__pyx_t_8);
+      __pyx_t_13 = (CYTHON_COMPILING_IN_LIMITED_API) ? PyIter_Next : __Pyx_PyObject_GetIterNextFunc(__pyx_t_8); if (unlikely(!__pyx_t_13)) __PYX_ERR(0, 248, __pyx_L1_error)
+    }
+    for (;;) {
+      if (likely(!__pyx_t_13)) {
+        if (likely(PyList_CheckExact(__pyx_t_8))) {
+          {
+            Py_ssize_t __pyx_temp = __Pyx_PyList_GET_SIZE(__pyx_t_8);
+            #if !CYTHON_ASSUME_SAFE_SIZE
+            if (unlikely((__pyx_temp < 0))) __PYX_ERR(0, 248, __pyx_L1_error)
+            #endif
+            if (__pyx_t_12 >= __pyx_temp) break;
+          }
+          __pyx_t_7 = __Pyx_PyList_GetItemRef(__pyx_t_8, __pyx_t_12);
+          ++__pyx_t_12;
+        } else {
+          {
+            Py_ssize_t __pyx_temp = __Pyx_PyTuple_GET_SIZE(__pyx_t_8);
+            #if !CYTHON_ASSUME_SAFE_SIZE
+            if (unlikely((__pyx_temp < 0))) __PYX_ERR(0, 248, __pyx_L1_error)
+            #endif
+            if (__pyx_t_12 >= __pyx_temp) break;
+          }
+          #if CYTHON_ASSUME_SAFE_MACROS && !CYTHON_AVOID_BORROWED_REFS
+          __pyx_t_7 = __Pyx_NewRef(PyTuple_GET_ITEM(__pyx_t_8, __pyx_t_12));
+          #else
+          __pyx_t_7 = __Pyx_PySequence_ITEM(__pyx_t_8, __pyx_t_12);
+          #endif
+          ++__pyx_t_12;
+        }
+        if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 248, __pyx_L1_error)
+      } else {
+        __pyx_t_7 = __pyx_t_13(__pyx_t_8);
+        if (unlikely(!__pyx_t_7)) {
+          PyObject* exc_type = PyErr_Occurred();
+          if (exc_type) {
+            if (unlikely(!__Pyx_PyErr_GivenExceptionMatches(exc_type, PyExc_StopIteration))) __PYX_ERR(0, 248, __pyx_L1_error)
+            PyErr_Clear();
+          }
+          break;
+        }
+      }
+      __Pyx_GOTREF(__pyx_t_7);
+      __Pyx_XDECREF_SET(__pyx_v_frag_mass, __pyx_t_7);
+      __pyx_t_7 = 0;
+
+      /* "mass_decomposer_cpp.pyx":249
+ *         spectrum.fragment_masses.clear()
+ *         for frag_mass in fragment_masses:
+ *             spectrum.fragment_masses.push_back(frag_mass)             # <<<<<<<<<<<<<<
+ *         spectra_vec.push_back(spectrum)
+ * 
+*/
+      __pyx_t_11 = __Pyx_PyFloat_AsDouble(__pyx_v_frag_mass); if (unlikely((__pyx_t_11 == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 249, __pyx_L1_error)
+      try {
+        __pyx_v_spectrum.fragment_masses.push_back(__pyx_t_11);
+      } catch(...) {
+        __Pyx_CppExn2PyErr();
+        __PYX_ERR(0, 249, __pyx_L1_error)
+      }
+
+      /* "mass_decomposer_cpp.pyx":248
+ *         spectrum.precursor_mass = precursor_mass
+ *         spectrum.fragment_masses.clear()
+ *         for frag_mass in fragment_masses:             # <<<<<<<<<<<<<<
+ *             spectrum.fragment_masses.push_back(frag_mass)
+ *         spectra_vec.push_back(spectrum)
+*/
+    }
+    __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
+
+    /* "mass_decomposer_cpp.pyx":250
+ *         for frag_mass in fragment_masses:
+ *             spectrum.fragment_masses.push_back(frag_mass)
+ *         spectra_vec.push_back(spectrum)             # <<<<<<<<<<<<<<
+ * 
+ *     decomposer = new MassDecomposer(elements, strategy.encode('utf-8'))
+*/
+    try {
+      __pyx_v_spectra_vec.push_back(__pyx_v_spectrum);
+    } catch(...) {
+      __Pyx_CppExn2PyErr();
+      __PYX_ERR(0, 250, __pyx_L1_error)
+    }
+
+    /* "mass_decomposer_cpp.pyx":244
+ * 
+ *     # Convert spectra data to C++ vector
+ *     for spectrum_data in spectra_data:             # <<<<<<<<<<<<<<
+ *         precursor_mass, fragment_masses = spectrum_data
+ *         spectrum.precursor_mass = precursor_mass
+*/
+  }
+  __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+
+  /* "mass_decomposer_cpp.pyx":252
+ *         spectra_vec.push_back(spectrum)
+ * 
+ *     decomposer = new MassDecomposer(elements, strategy.encode('utf-8'))             # <<<<<<<<<<<<<<
+ *     all_results = decomposer.decompose_spectra_parallel(spectra_vec, params)
+ * 
+*/
+  if (unlikely(__pyx_v_strategy == Py_None)) {
+    PyErr_Format(PyExc_AttributeError, "'NoneType' object has no attribute '%.30s'", "encode");
+    __PYX_ERR(0, 252, __pyx_L1_error)
+  }
+  __pyx_t_3 = PyUnicode_AsUTF8String(__pyx_v_strategy); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 252, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_3);
+  __pyx_t_14 = __pyx_convert_string_from_py_6libcpp_6string_std__in_string(__pyx_t_3); if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 252, __pyx_L1_error)
+  __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+  __pyx_v_decomposer = new MassDecomposer(__pyx_v_elements, __pyx_t_14);
+
+  /* "mass_decomposer_cpp.pyx":253
+ * 
+ *     decomposer = new MassDecomposer(elements, strategy.encode('utf-8'))
+ *     all_results = decomposer.decompose_spectra_parallel(spectra_vec, params)             # <<<<<<<<<<<<<<
+ * 
+ *     try:
+*/
+  __pyx_v_all_results = __pyx_v_decomposer->decompose_spectra_parallel(__pyx_v_spectra_vec, __pyx_v_params);
+
+  /* "mass_decomposer_cpp.pyx":255
+ *     all_results = decomposer.decompose_spectra_parallel(spectra_vec, params)
+ * 
+ *     try:             # <<<<<<<<<<<<<<
+ *         # Convert results to Python
+ *         python_results = []
+*/
+  /*try:*/ {
+
+    /* "mass_decomposer_cpp.pyx":257
+ *     try:
+ *         # Convert results to Python
+ *         python_results = []             # <<<<<<<<<<<<<<
+ *         for i in range(all_results.size()):
+ *             # Convert precursor results
+*/
+    __pyx_t_3 = PyList_New(0); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 257, __pyx_L13_error)
+    __Pyx_GOTREF(__pyx_t_3);
+    __pyx_v_python_results = ((PyObject*)__pyx_t_3);
+    __pyx_t_3 = 0;
+
+    /* "mass_decomposer_cpp.pyx":258
+ *         # Convert results to Python
+ *         python_results = []
+ *         for i in range(all_results.size()):             # <<<<<<<<<<<<<<
+ *             # Convert precursor results
+ *             precursor_results = []
+*/
+    __pyx_t_15 = __pyx_v_all_results.size();
+    __pyx_t_16 = __pyx_t_15;
+    for (__pyx_t_17 = 0; __pyx_t_17 < __pyx_t_16; __pyx_t_17+=1) {
+      __pyx_v_i = __pyx_t_17;
+
+      /* "mass_decomposer_cpp.pyx":260
+ *         for i in range(all_results.size()):
+ *             # Convert precursor results
+ *             precursor_results = []             # <<<<<<<<<<<<<<
+ *             for j in range(all_results[i].precursor_results.size()):
+ *                 precursor_results.append(_convert_formula_result(all_results[i].precursor_results[j], decomposer))
+*/
+      __pyx_t_3 = PyList_New(0); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 260, __pyx_L13_error)
+      __Pyx_GOTREF(__pyx_t_3);
+      __Pyx_XDECREF_SET(__pyx_v_precursor_results, ((PyObject*)__pyx_t_3));
+      __pyx_t_3 = 0;
+
+      /* "mass_decomposer_cpp.pyx":261
+ *             # Convert precursor results
+ *             precursor_results = []
+ *             for j in range(all_results[i].precursor_results.size()):             # <<<<<<<<<<<<<<
+ *                 precursor_results.append(_convert_formula_result(all_results[i].precursor_results[j], decomposer))
+ * 
+*/
+      __pyx_t_18 = (__pyx_v_all_results[__pyx_v_i]).precursor_results.size();
+      __pyx_t_19 = __pyx_t_18;
+      for (__pyx_t_20 = 0; __pyx_t_20 < __pyx_t_19; __pyx_t_20+=1) {
+        __pyx_v_j = __pyx_t_20;
+
+        /* "mass_decomposer_cpp.pyx":262
+ *             precursor_results = []
+ *             for j in range(all_results[i].precursor_results.size()):
+ *                 precursor_results.append(_convert_formula_result(all_results[i].precursor_results[j], decomposer))             # <<<<<<<<<<<<<<
+ * 
+ *             # Convert fragment results
+*/
+        __pyx_t_3 = __pyx_f_19mass_decomposer_cpp__convert_formula_result(((__pyx_v_all_results[__pyx_v_i]).precursor_results[__pyx_v_j]), __pyx_v_decomposer); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 262, __pyx_L13_error)
+        __Pyx_GOTREF(__pyx_t_3);
+        __pyx_t_21 = __Pyx_PyList_Append(__pyx_v_precursor_results, __pyx_t_3); if (unlikely(__pyx_t_21 == ((int)-1))) __PYX_ERR(0, 262, __pyx_L13_error)
+        __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+      }
+
+      /* "mass_decomposer_cpp.pyx":265
+ * 
+ *             # Convert fragment results
+ *             fragment_results = []             # <<<<<<<<<<<<<<
+ *             for j in range(all_results[i].fragment_results.size()):
+ *                 fragment_mass_results = []
+*/
+      __pyx_t_3 = PyList_New(0); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 265, __pyx_L13_error)
+      __Pyx_GOTREF(__pyx_t_3);
+      __Pyx_XDECREF_SET(__pyx_v_fragment_results, ((PyObject*)__pyx_t_3));
+      __pyx_t_3 = 0;
+
+      /* "mass_decomposer_cpp.pyx":266
+ *             # Convert fragment results
+ *             fragment_results = []
+ *             for j in range(all_results[i].fragment_results.size()):             # <<<<<<<<<<<<<<
+ *                 fragment_mass_results = []
+ *                 for k in range(all_results[i].fragment_results[j].size()):
+*/
+      __pyx_t_22 = (__pyx_v_all_results[__pyx_v_i]).fragment_results.size();
+      __pyx_t_23 = __pyx_t_22;
+      for (__pyx_t_20 = 0; __pyx_t_20 < __pyx_t_23; __pyx_t_20+=1) {
+        __pyx_v_j = __pyx_t_20;
+
+        /* "mass_decomposer_cpp.pyx":267
+ *             fragment_results = []
+ *             for j in range(all_results[i].fragment_results.size()):
+ *                 fragment_mass_results = []             # <<<<<<<<<<<<<<
+ *                 for k in range(all_results[i].fragment_results[j].size()):
+ *                     fragment_mass_results.append(_convert_formula_result(all_results[i].fragment_results[j][k], decomposer))
+*/
+        __pyx_t_3 = PyList_New(0); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 267, __pyx_L13_error)
+        __Pyx_GOTREF(__pyx_t_3);
+        __Pyx_XDECREF_SET(__pyx_v_fragment_mass_results, ((PyObject*)__pyx_t_3));
+        __pyx_t_3 = 0;
+
+        /* "mass_decomposer_cpp.pyx":268
+ *             for j in range(all_results[i].fragment_results.size()):
+ *                 fragment_mass_results = []
+ *                 for k in range(all_results[i].fragment_results[j].size()):             # <<<<<<<<<<<<<<
+ *                     fragment_mass_results.append(_convert_formula_result(all_results[i].fragment_results[j][k], decomposer))
+ *                 fragment_results.append(fragment_mass_results)
+*/
+        __pyx_t_18 = ((__pyx_v_all_results[__pyx_v_i]).fragment_results[__pyx_v_j]).size();
+        __pyx_t_19 = __pyx_t_18;
+        for (__pyx_t_24 = 0; __pyx_t_24 < __pyx_t_19; __pyx_t_24+=1) {
+          __pyx_v_k = __pyx_t_24;
+
+          /* "mass_decomposer_cpp.pyx":269
+ *                 fragment_mass_results = []
+ *                 for k in range(all_results[i].fragment_results[j].size()):
+ *                     fragment_mass_results.append(_convert_formula_result(all_results[i].fragment_results[j][k], decomposer))             # <<<<<<<<<<<<<<
+ *                 fragment_results.append(fragment_mass_results)
+ * 
+*/
+          __pyx_t_3 = __pyx_f_19mass_decomposer_cpp__convert_formula_result((((__pyx_v_all_results[__pyx_v_i]).fragment_results[__pyx_v_j])[__pyx_v_k]), __pyx_v_decomposer); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 269, __pyx_L13_error)
+          __Pyx_GOTREF(__pyx_t_3);
+          __pyx_t_21 = __Pyx_PyList_Append(__pyx_v_fragment_mass_results, __pyx_t_3); if (unlikely(__pyx_t_21 == ((int)-1))) __PYX_ERR(0, 269, __pyx_L13_error)
+          __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+        }
+
+        /* "mass_decomposer_cpp.pyx":270
+ *                 for k in range(all_results[i].fragment_results[j].size()):
+ *                     fragment_mass_results.append(_convert_formula_result(all_results[i].fragment_results[j][k], decomposer))
+ *                 fragment_results.append(fragment_mass_results)             # <<<<<<<<<<<<<<
+ * 
+ *             python_results.append({
+*/
+        __pyx_t_21 = __Pyx_PyList_Append(__pyx_v_fragment_results, __pyx_v_fragment_mass_results); if (unlikely(__pyx_t_21 == ((int)-1))) __PYX_ERR(0, 270, __pyx_L13_error)
+      }
+
+      /* "mass_decomposer_cpp.pyx":273
+ * 
+ *             python_results.append({
+ *                 'precursor': precursor_results,             # <<<<<<<<<<<<<<
+ *                 'fragments': fragment_results
+ *             })
+*/
+      __pyx_t_3 = __Pyx_PyDict_NewPresized(2); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 273, __pyx_L13_error)
+      __Pyx_GOTREF(__pyx_t_3);
+      if (PyDict_SetItem(__pyx_t_3, __pyx_mstate_global->__pyx_n_u_precursor, __pyx_v_precursor_results) < 0) __PYX_ERR(0, 273, __pyx_L13_error)
+
+      /* "mass_decomposer_cpp.pyx":274
+ *             python_results.append({
+ *                 'precursor': precursor_results,
+ *                 'fragments': fragment_results             # <<<<<<<<<<<<<<
+ *             })
+ * 
+*/
+      if (PyDict_SetItem(__pyx_t_3, __pyx_mstate_global->__pyx_n_u_fragments, __pyx_v_fragment_results) < 0) __PYX_ERR(0, 273, __pyx_L13_error)
+
+      /* "mass_decomposer_cpp.pyx":272
+ *                 fragment_results.append(fragment_mass_results)
+ * 
+ *             python_results.append({             # <<<<<<<<<<<<<<
+ *                 'precursor': precursor_results,
+ *                 'fragments': fragment_results
+*/
+      __pyx_t_21 = __Pyx_PyList_Append(__pyx_v_python_results, __pyx_t_3); if (unlikely(__pyx_t_21 == ((int)-1))) __PYX_ERR(0, 272, __pyx_L13_error)
+      __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+    }
+
+    /* "mass_decomposer_cpp.pyx":277
+ *             })
+ * 
+ *         return python_results             # <<<<<<<<<<<<<<
+ *     finally:
+ *         del decomposer
+*/
+    __Pyx_XDECREF(__pyx_r);
+    __Pyx_INCREF(__pyx_v_python_results);
+    __pyx_r = __pyx_v_python_results;
+    goto __pyx_L12_return;
+  }
+
+  /* "mass_decomposer_cpp.pyx":279
+ *         return python_results
+ *     finally:
+ *         del decomposer             # <<<<<<<<<<<<<<
+ * 
+ * def decompose_spectrum_parallel(double precursor_mass, list fragment_masses,
+*/
+  /*finally:*/ {
+    __pyx_L13_error:;
+    /*exception exit:*/{
+      __Pyx_PyThreadState_declare
+      __Pyx_PyThreadState_assign
+      __pyx_t_28 = 0; __pyx_t_29 = 0; __pyx_t_30 = 0; __pyx_t_31 = 0; __pyx_t_32 = 0; __pyx_t_33 = 0;
+      __Pyx_XDECREF(__pyx_t_3); __pyx_t_3 = 0;
+      __Pyx_XDECREF(__pyx_t_7); __pyx_t_7 = 0;
+      __Pyx_XDECREF(__pyx_t_8); __pyx_t_8 = 0;
+      __Pyx_XDECREF(__pyx_t_9); __pyx_t_9 = 0;
+       __Pyx_ExceptionSwap(&__pyx_t_31, &__pyx_t_32, &__pyx_t_33);
+      if ( unlikely(__Pyx_GetException(&__pyx_t_28, &__pyx_t_29, &__pyx_t_30) < 0)) __Pyx_ErrFetch(&__pyx_t_28, &__pyx_t_29, &__pyx_t_30);
+      __Pyx_XGOTREF(__pyx_t_28);
+      __Pyx_XGOTREF(__pyx_t_29);
+      __Pyx_XGOTREF(__pyx_t_30);
+      __Pyx_XGOTREF(__pyx_t_31);
+      __Pyx_XGOTREF(__pyx_t_32);
+      __Pyx_XGOTREF(__pyx_t_33);
+      __pyx_t_25 = __pyx_lineno; __pyx_t_26 = __pyx_clineno; __pyx_t_27 = __pyx_filename;
+      {
+        delete __pyx_v_decomposer;
+      }
+      __Pyx_XGIVEREF(__pyx_t_31);
+      __Pyx_XGIVEREF(__pyx_t_32);
+      __Pyx_XGIVEREF(__pyx_t_33);
+      __Pyx_ExceptionReset(__pyx_t_31, __pyx_t_32, __pyx_t_33);
+      __Pyx_XGIVEREF(__pyx_t_28);
+      __Pyx_XGIVEREF(__pyx_t_29);
+      __Pyx_XGIVEREF(__pyx_t_30);
+      __Pyx_ErrRestore(__pyx_t_28, __pyx_t_29, __pyx_t_30);
+      __pyx_t_28 = 0; __pyx_t_29 = 0; __pyx_t_30 = 0; __pyx_t_31 = 0; __pyx_t_32 = 0; __pyx_t_33 = 0;
+      __pyx_lineno = __pyx_t_25; __pyx_clineno = __pyx_t_26; __pyx_filename = __pyx_t_27;
+      goto __pyx_L1_error;
+    }
+    __pyx_L12_return: {
+      __pyx_t_33 = __pyx_r;
+      __pyx_r = 0;
+      delete __pyx_v_decomposer;
+      __pyx_r = __pyx_t_33;
+      __pyx_t_33 = 0;
+      goto __pyx_L0;
+    }
+  }
+
+  /* "mass_decomposer_cpp.pyx":208
+ *         del decomposer
+ * 
+ * def decompose_spectra_parallel(list spectra_data, dict element_bounds,             # <<<<<<<<<<<<<<
+ *                               str strategy="money_changing", double tolerance_ppm=5.0,
+ *                               double min_dbe=0.0, double max_dbe=40.0,
+*/
+
+  /* function exit code */
+  __pyx_L1_error:;
+  __Pyx_XDECREF(__pyx_t_3);
+  __Pyx_XDECREF(__pyx_t_7);
+  __Pyx_XDECREF(__pyx_t_8);
+  __Pyx_XDECREF(__pyx_t_9);
+  __Pyx_AddTraceback("mass_decomposer_cpp.decompose_spectra_parallel", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __pyx_r = NULL;
+  __pyx_L0:;
+  __Pyx_XDECREF(__pyx_v_spectrum_data);
+  __Pyx_XDECREF(__pyx_v_precursor_mass);
+  __Pyx_XDECREF(__pyx_v_fragment_masses);
+  __Pyx_XDECREF(__pyx_v_frag_mass);
+  __Pyx_XDECREF(__pyx_v_python_results);
+  __Pyx_XDECREF(__pyx_v_precursor_results);
+  __Pyx_XDECREF(__pyx_v_fragment_results);
+  __Pyx_XDECREF(__pyx_v_fragment_mass_results);
+  __Pyx_XGIVEREF(__pyx_r);
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+/* "mass_decomposer_cpp.pyx":281
  *         del decomposer
  * 
  * def decompose_spectrum_parallel(double precursor_mass, list fragment_masses,             # <<<<<<<<<<<<<<
@@ -4535,16 +5396,16 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_2decompose_mass_parallel(CYTHON_
 */
 
 /* Python wrapper */
-static PyObject *__pyx_pw_19mass_decomposer_cpp_5decompose_spectrum_parallel(PyObject *__pyx_self, 
+static PyObject *__pyx_pw_19mass_decomposer_cpp_7decompose_spectrum_parallel(PyObject *__pyx_self, 
 #if CYTHON_METH_FASTCALL
 PyObject *const *__pyx_args, Py_ssize_t __pyx_nargs, PyObject *__pyx_kwds
 #else
 PyObject *__pyx_args, PyObject *__pyx_kwds
 #endif
 ); /*proto*/
-PyDoc_STRVAR(__pyx_doc_19mass_decomposer_cpp_4decompose_spectrum_parallel, "decompose_spectrum_parallel(double precursor_mass, list fragment_masses, dict element_bounds, str strategy='money_changing', double tolerance_ppm=5.0, double min_dbe=0.0, double max_dbe=40.0, double max_hetero_ratio=1000.0, int max_results=10000)\n\nDecompose a spectrum (precursor + fragments) in parallel using C++ OpenMP.\n\nArgs:\n    precursor_mass: Precursor ion mass\n    fragment_masses: List of fragment masses\n    element_bounds: Dictionary of element bounds {element: (min, max)}\n    strategy: \"recursive\" or \"money_changing\"\n    tolerance_ppm: Mass tolerance in ppm\n    min_dbe: Minimum double bond equivalents\n    max_dbe: Maximum double bond equivalents\n    max_hetero_ratio: Maximum heteroatom to carbon ratio\n    max_results: Maximum number of results to return per mass\n    \nReturns:\n    Dictionary with 'precursor' and 'fragments' keys containing decomposition results");
-static PyMethodDef __pyx_mdef_19mass_decomposer_cpp_5decompose_spectrum_parallel = {"decompose_spectrum_parallel", (PyCFunction)(void(*)(void))(__Pyx_PyCFunction_FastCallWithKeywords)__pyx_pw_19mass_decomposer_cpp_5decompose_spectrum_parallel, __Pyx_METH_FASTCALL|METH_KEYWORDS, __pyx_doc_19mass_decomposer_cpp_4decompose_spectrum_parallel};
-static PyObject *__pyx_pw_19mass_decomposer_cpp_5decompose_spectrum_parallel(PyObject *__pyx_self, 
+PyDoc_STRVAR(__pyx_doc_19mass_decomposer_cpp_6decompose_spectrum_parallel, "decompose_spectrum_parallel(double precursor_mass, list fragment_masses, dict element_bounds, str strategy='money_changing', double tolerance_ppm=5.0, double min_dbe=0.0, double max_dbe=40.0, double max_hetero_ratio=1000.0, int max_results=10000)\n\nDecompose a single spectrum (precursor + fragments) in parallel using C++ OpenMP.\n\nThis function is kept for backward compatibility, but now uses the new \ndecompose_spectra_parallel function internally.\n\nArgs:\n    precursor_mass: Precursor ion mass\n    fragment_masses: List of fragment masses\n    element_bounds: Dictionary of element bounds {element: (min, max)}\n    strategy: \"recursive\" or \"money_changing\"\n    tolerance_ppm: Mass tolerance in ppm\n    min_dbe: Minimum double bond equivalents\n    max_dbe: Maximum double bond equivalents\n    max_hetero_ratio: Maximum heteroatom to carbon ratio\n    max_results: Maximum number of results to return per mass\n    \nReturns:\n    Dictionary with 'precursor' and 'fragments' keys containing decomposition results");
+static PyMethodDef __pyx_mdef_19mass_decomposer_cpp_7decompose_spectrum_parallel = {"decompose_spectrum_parallel", (PyCFunction)(void(*)(void))(__Pyx_PyCFunction_FastCallWithKeywords)__pyx_pw_19mass_decomposer_cpp_7decompose_spectrum_parallel, __Pyx_METH_FASTCALL|METH_KEYWORDS, __pyx_doc_19mass_decomposer_cpp_6decompose_spectrum_parallel};
+static PyObject *__pyx_pw_19mass_decomposer_cpp_7decompose_spectrum_parallel(PyObject *__pyx_self, 
 #if CYTHON_METH_FASTCALL
 PyObject *const *__pyx_args, Py_ssize_t __pyx_nargs, PyObject *__pyx_kwds
 #else
@@ -4582,125 +5443,125 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
   {
     PyObject ** const __pyx_pyargnames[] = {&__pyx_mstate_global->__pyx_n_u_precursor_mass,&__pyx_mstate_global->__pyx_n_u_fragment_masses,&__pyx_mstate_global->__pyx_n_u_element_bounds,&__pyx_mstate_global->__pyx_n_u_strategy,&__pyx_mstate_global->__pyx_n_u_tolerance_ppm,&__pyx_mstate_global->__pyx_n_u_min_dbe,&__pyx_mstate_global->__pyx_n_u_max_dbe,&__pyx_mstate_global->__pyx_n_u_max_hetero_ratio,&__pyx_mstate_global->__pyx_n_u_max_results,0};
     const Py_ssize_t __pyx_kwds_len = (__pyx_kwds) ? __Pyx_NumKwargs_FASTCALL(__pyx_kwds) : 0;
-    if (unlikely(__pyx_kwds_len) < 0) __PYX_ERR(0, 182, __pyx_L3_error)
+    if (unlikely(__pyx_kwds_len) < 0) __PYX_ERR(0, 281, __pyx_L3_error)
     if (__pyx_kwds_len > 0) {
       switch (__pyx_nargs) {
         case  9:
         values[8] = __Pyx_ArgRef_FASTCALL(__pyx_args, 8);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[8])) __PYX_ERR(0, 182, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[8])) __PYX_ERR(0, 281, __pyx_L3_error)
         CYTHON_FALLTHROUGH;
         case  8:
         values[7] = __Pyx_ArgRef_FASTCALL(__pyx_args, 7);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[7])) __PYX_ERR(0, 182, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[7])) __PYX_ERR(0, 281, __pyx_L3_error)
         CYTHON_FALLTHROUGH;
         case  7:
         values[6] = __Pyx_ArgRef_FASTCALL(__pyx_args, 6);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[6])) __PYX_ERR(0, 182, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[6])) __PYX_ERR(0, 281, __pyx_L3_error)
         CYTHON_FALLTHROUGH;
         case  6:
         values[5] = __Pyx_ArgRef_FASTCALL(__pyx_args, 5);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[5])) __PYX_ERR(0, 182, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[5])) __PYX_ERR(0, 281, __pyx_L3_error)
         CYTHON_FALLTHROUGH;
         case  5:
         values[4] = __Pyx_ArgRef_FASTCALL(__pyx_args, 4);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[4])) __PYX_ERR(0, 182, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[4])) __PYX_ERR(0, 281, __pyx_L3_error)
         CYTHON_FALLTHROUGH;
         case  4:
         values[3] = __Pyx_ArgRef_FASTCALL(__pyx_args, 3);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[3])) __PYX_ERR(0, 182, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[3])) __PYX_ERR(0, 281, __pyx_L3_error)
         CYTHON_FALLTHROUGH;
         case  3:
         values[2] = __Pyx_ArgRef_FASTCALL(__pyx_args, 2);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[2])) __PYX_ERR(0, 182, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[2])) __PYX_ERR(0, 281, __pyx_L3_error)
         CYTHON_FALLTHROUGH;
         case  2:
         values[1] = __Pyx_ArgRef_FASTCALL(__pyx_args, 1);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[1])) __PYX_ERR(0, 182, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[1])) __PYX_ERR(0, 281, __pyx_L3_error)
         CYTHON_FALLTHROUGH;
         case  1:
         values[0] = __Pyx_ArgRef_FASTCALL(__pyx_args, 0);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[0])) __PYX_ERR(0, 182, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[0])) __PYX_ERR(0, 281, __pyx_L3_error)
         CYTHON_FALLTHROUGH;
         case  0: break;
         default: goto __pyx_L5_argtuple_error;
       }
       const Py_ssize_t kwd_pos_args = __pyx_nargs;
-      if (__Pyx_ParseKeywords(__pyx_kwds, __pyx_kwvalues, __pyx_pyargnames, 0, values, kwd_pos_args, __pyx_kwds_len, "decompose_spectrum_parallel", 0) < 0) __PYX_ERR(0, 182, __pyx_L3_error)
+      if (__Pyx_ParseKeywords(__pyx_kwds, __pyx_kwvalues, __pyx_pyargnames, 0, values, kwd_pos_args, __pyx_kwds_len, "decompose_spectrum_parallel", 0) < 0) __PYX_ERR(0, 281, __pyx_L3_error)
       if (!values[3]) values[3] = __Pyx_NewRef(((PyObject*)((PyObject*)__pyx_mstate_global->__pyx_n_u_money_changing)));
       for (Py_ssize_t i = __pyx_nargs; i < 3; i++) {
-        if (unlikely(!values[i])) { __Pyx_RaiseArgtupleInvalid("decompose_spectrum_parallel", 0, 3, 9, i); __PYX_ERR(0, 182, __pyx_L3_error) }
+        if (unlikely(!values[i])) { __Pyx_RaiseArgtupleInvalid("decompose_spectrum_parallel", 0, 3, 9, i); __PYX_ERR(0, 281, __pyx_L3_error) }
       }
     } else {
       switch (__pyx_nargs) {
         case  9:
         values[8] = __Pyx_ArgRef_FASTCALL(__pyx_args, 8);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[8])) __PYX_ERR(0, 182, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[8])) __PYX_ERR(0, 281, __pyx_L3_error)
         CYTHON_FALLTHROUGH;
         case  8:
         values[7] = __Pyx_ArgRef_FASTCALL(__pyx_args, 7);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[7])) __PYX_ERR(0, 182, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[7])) __PYX_ERR(0, 281, __pyx_L3_error)
         CYTHON_FALLTHROUGH;
         case  7:
         values[6] = __Pyx_ArgRef_FASTCALL(__pyx_args, 6);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[6])) __PYX_ERR(0, 182, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[6])) __PYX_ERR(0, 281, __pyx_L3_error)
         CYTHON_FALLTHROUGH;
         case  6:
         values[5] = __Pyx_ArgRef_FASTCALL(__pyx_args, 5);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[5])) __PYX_ERR(0, 182, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[5])) __PYX_ERR(0, 281, __pyx_L3_error)
         CYTHON_FALLTHROUGH;
         case  5:
         values[4] = __Pyx_ArgRef_FASTCALL(__pyx_args, 4);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[4])) __PYX_ERR(0, 182, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[4])) __PYX_ERR(0, 281, __pyx_L3_error)
         CYTHON_FALLTHROUGH;
         case  4:
         values[3] = __Pyx_ArgRef_FASTCALL(__pyx_args, 3);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[3])) __PYX_ERR(0, 182, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[3])) __PYX_ERR(0, 281, __pyx_L3_error)
         CYTHON_FALLTHROUGH;
         case  3:
         values[2] = __Pyx_ArgRef_FASTCALL(__pyx_args, 2);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[2])) __PYX_ERR(0, 182, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[2])) __PYX_ERR(0, 281, __pyx_L3_error)
         values[1] = __Pyx_ArgRef_FASTCALL(__pyx_args, 1);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[1])) __PYX_ERR(0, 182, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[1])) __PYX_ERR(0, 281, __pyx_L3_error)
         values[0] = __Pyx_ArgRef_FASTCALL(__pyx_args, 0);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[0])) __PYX_ERR(0, 182, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[0])) __PYX_ERR(0, 281, __pyx_L3_error)
         break;
         default: goto __pyx_L5_argtuple_error;
       }
       if (!values[3]) values[3] = __Pyx_NewRef(((PyObject*)((PyObject*)__pyx_mstate_global->__pyx_n_u_money_changing)));
     }
-    __pyx_v_precursor_mass = __Pyx_PyFloat_AsDouble(values[0]); if (unlikely((__pyx_v_precursor_mass == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 182, __pyx_L3_error)
+    __pyx_v_precursor_mass = __Pyx_PyFloat_AsDouble(values[0]); if (unlikely((__pyx_v_precursor_mass == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 281, __pyx_L3_error)
     __pyx_v_fragment_masses = ((PyObject*)values[1]);
     __pyx_v_element_bounds = ((PyObject*)values[2]);
     __pyx_v_strategy = ((PyObject*)values[3]);
     if (values[4]) {
-      __pyx_v_tolerance_ppm = __Pyx_PyFloat_AsDouble(values[4]); if (unlikely((__pyx_v_tolerance_ppm == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 184, __pyx_L3_error)
+      __pyx_v_tolerance_ppm = __Pyx_PyFloat_AsDouble(values[4]); if (unlikely((__pyx_v_tolerance_ppm == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 283, __pyx_L3_error)
     } else {
       __pyx_v_tolerance_ppm = ((double)((double)5.0));
     }
     if (values[5]) {
-      __pyx_v_min_dbe = __Pyx_PyFloat_AsDouble(values[5]); if (unlikely((__pyx_v_min_dbe == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 184, __pyx_L3_error)
+      __pyx_v_min_dbe = __Pyx_PyFloat_AsDouble(values[5]); if (unlikely((__pyx_v_min_dbe == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 283, __pyx_L3_error)
     } else {
       __pyx_v_min_dbe = ((double)((double)0.0));
     }
     if (values[6]) {
-      __pyx_v_max_dbe = __Pyx_PyFloat_AsDouble(values[6]); if (unlikely((__pyx_v_max_dbe == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 185, __pyx_L3_error)
+      __pyx_v_max_dbe = __Pyx_PyFloat_AsDouble(values[6]); if (unlikely((__pyx_v_max_dbe == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 284, __pyx_L3_error)
     } else {
       __pyx_v_max_dbe = ((double)((double)40.0));
     }
     if (values[7]) {
-      __pyx_v_max_hetero_ratio = __Pyx_PyFloat_AsDouble(values[7]); if (unlikely((__pyx_v_max_hetero_ratio == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 185, __pyx_L3_error)
+      __pyx_v_max_hetero_ratio = __Pyx_PyFloat_AsDouble(values[7]); if (unlikely((__pyx_v_max_hetero_ratio == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 284, __pyx_L3_error)
     } else {
       __pyx_v_max_hetero_ratio = ((double)((double)1000.0));
     }
     if (values[8]) {
-      __pyx_v_max_results = __Pyx_PyLong_As_int(values[8]); if (unlikely((__pyx_v_max_results == (int)-1) && PyErr_Occurred())) __PYX_ERR(0, 186, __pyx_L3_error)
+      __pyx_v_max_results = __Pyx_PyLong_As_int(values[8]); if (unlikely((__pyx_v_max_results == (int)-1) && PyErr_Occurred())) __PYX_ERR(0, 285, __pyx_L3_error)
     } else {
       __pyx_v_max_results = ((int)((int)0x2710));
     }
   }
   goto __pyx_L6_skip;
   __pyx_L5_argtuple_error:;
-  __Pyx_RaiseArgtupleInvalid("decompose_spectrum_parallel", 0, 3, 9, __pyx_nargs); __PYX_ERR(0, 182, __pyx_L3_error)
+  __Pyx_RaiseArgtupleInvalid("decompose_spectrum_parallel", 0, 3, 9, __pyx_nargs); __PYX_ERR(0, 281, __pyx_L3_error)
   __pyx_L6_skip:;
   goto __pyx_L4_argument_unpacking_done;
   __pyx_L3_error:;
@@ -4711,10 +5572,10 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
   __Pyx_RefNannyFinishContext();
   return NULL;
   __pyx_L4_argument_unpacking_done:;
-  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_fragment_masses), (&PyList_Type), 1, "fragment_masses", 1))) __PYX_ERR(0, 182, __pyx_L1_error)
-  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_element_bounds), (&PyDict_Type), 1, "element_bounds", 1))) __PYX_ERR(0, 183, __pyx_L1_error)
-  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_strategy), (&PyUnicode_Type), 1, "strategy", 1))) __PYX_ERR(0, 183, __pyx_L1_error)
-  __pyx_r = __pyx_pf_19mass_decomposer_cpp_4decompose_spectrum_parallel(__pyx_self, __pyx_v_precursor_mass, __pyx_v_fragment_masses, __pyx_v_element_bounds, __pyx_v_strategy, __pyx_v_tolerance_ppm, __pyx_v_min_dbe, __pyx_v_max_dbe, __pyx_v_max_hetero_ratio, __pyx_v_max_results);
+  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_fragment_masses), (&PyList_Type), 1, "fragment_masses", 1))) __PYX_ERR(0, 281, __pyx_L1_error)
+  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_element_bounds), (&PyDict_Type), 1, "element_bounds", 1))) __PYX_ERR(0, 282, __pyx_L1_error)
+  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_strategy), (&PyUnicode_Type), 1, "strategy", 1))) __PYX_ERR(0, 282, __pyx_L1_error)
+  __pyx_r = __pyx_pf_19mass_decomposer_cpp_6decompose_spectrum_parallel(__pyx_self, __pyx_v_precursor_mass, __pyx_v_fragment_masses, __pyx_v_element_bounds, __pyx_v_strategy, __pyx_v_tolerance_ppm, __pyx_v_min_dbe, __pyx_v_max_dbe, __pyx_v_max_hetero_ratio, __pyx_v_max_results);
 
   /* function exit code */
   goto __pyx_L0;
@@ -4733,11 +5594,9 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
   return __pyx_r;
 }
 
-static PyObject *__pyx_pf_19mass_decomposer_cpp_4decompose_spectrum_parallel(CYTHON_UNUSED PyObject *__pyx_self, double __pyx_v_precursor_mass, PyObject *__pyx_v_fragment_masses, PyObject *__pyx_v_element_bounds, PyObject *__pyx_v_strategy, double __pyx_v_tolerance_ppm, double __pyx_v_min_dbe, double __pyx_v_max_dbe, double __pyx_v_max_hetero_ratio, int __pyx_v_max_results) {
-  PyObject *__pyx_v_all_masses = NULL;
-  PyObject *__pyx_v_all_results = NULL;
-  PyObject *__pyx_v_precursor_results = NULL;
-  PyObject *__pyx_v_fragment_results = NULL;
+static PyObject *__pyx_pf_19mass_decomposer_cpp_6decompose_spectrum_parallel(CYTHON_UNUSED PyObject *__pyx_self, double __pyx_v_precursor_mass, PyObject *__pyx_v_fragment_masses, PyObject *__pyx_v_element_bounds, PyObject *__pyx_v_strategy, double __pyx_v_tolerance_ppm, double __pyx_v_min_dbe, double __pyx_v_max_dbe, double __pyx_v_max_hetero_ratio, int __pyx_v_max_results) {
+  PyObject *__pyx_v_spectra_data = NULL;
+  PyObject *__pyx_v_results = NULL;
   PyObject *__pyx_r = NULL;
   __Pyx_RefNannyDeclarations
   PyObject *__pyx_t_1 = NULL;
@@ -4750,67 +5609,71 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_4decompose_spectrum_parallel(CYT
   PyObject *__pyx_t_8 = NULL;
   size_t __pyx_t_9;
   int __pyx_t_10;
-  Py_ssize_t __pyx_t_11;
   int __pyx_lineno = 0;
   const char *__pyx_filename = NULL;
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("decompose_spectrum_parallel", 0);
 
-  /* "mass_decomposer_cpp.pyx":205
+  /* "mass_decomposer_cpp.pyx":307
  *     """
- *     # Combine precursor and fragments for parallel processing
- *     all_masses = [precursor_mass] + fragment_masses             # <<<<<<<<<<<<<<
- * 
- *     # Decompose all masses in parallel
+ *     # Use the new multi-spectrum function with a single spectrum
+ *     spectra_data = [(precursor_mass, fragment_masses)]             # <<<<<<<<<<<<<<
+ *     results = decompose_spectra_parallel(spectra_data, element_bounds, strategy,
+ *                                        tolerance_ppm, min_dbe, max_dbe,
 */
-  __pyx_t_1 = PyFloat_FromDouble(__pyx_v_precursor_mass); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 205, __pyx_L1_error)
+  __pyx_t_1 = PyFloat_FromDouble(__pyx_v_precursor_mass); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 307, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
-  __pyx_t_2 = PyList_New(1); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 205, __pyx_L1_error)
+  __pyx_t_2 = PyTuple_New(2); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 307, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
   __Pyx_GIVEREF(__pyx_t_1);
-  if (__Pyx_PyList_SET_ITEM(__pyx_t_2, 0, __pyx_t_1) != (0)) __PYX_ERR(0, 205, __pyx_L1_error);
+  if (__Pyx_PyTuple_SET_ITEM(__pyx_t_2, 0, __pyx_t_1) != (0)) __PYX_ERR(0, 307, __pyx_L1_error);
+  __Pyx_INCREF(__pyx_v_fragment_masses);
+  __Pyx_GIVEREF(__pyx_v_fragment_masses);
+  if (__Pyx_PyTuple_SET_ITEM(__pyx_t_2, 1, __pyx_v_fragment_masses) != (0)) __PYX_ERR(0, 307, __pyx_L1_error);
   __pyx_t_1 = 0;
-  __pyx_t_1 = PyNumber_Add(__pyx_t_2, __pyx_v_fragment_masses); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 205, __pyx_L1_error)
+  __pyx_t_1 = PyList_New(1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 307, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
-  __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
-  __pyx_v_all_masses = ((PyObject*)__pyx_t_1);
+  __Pyx_GIVEREF(__pyx_t_2);
+  if (__Pyx_PyList_SET_ITEM(__pyx_t_1, 0, __pyx_t_2) != (0)) __PYX_ERR(0, 307, __pyx_L1_error);
+  __pyx_t_2 = 0;
+  __pyx_v_spectra_data = ((PyObject*)__pyx_t_1);
   __pyx_t_1 = 0;
 
-  /* "mass_decomposer_cpp.pyx":208
- * 
- *     # Decompose all masses in parallel
- *     all_results = decompose_mass_parallel(all_masses, element_bounds, strategy,             # <<<<<<<<<<<<<<
- *                                         tolerance_ppm, min_dbe, max_dbe,
- *                                         max_hetero_ratio, max_results)
+  /* "mass_decomposer_cpp.pyx":308
+ *     # Use the new multi-spectrum function with a single spectrum
+ *     spectra_data = [(precursor_mass, fragment_masses)]
+ *     results = decompose_spectra_parallel(spectra_data, element_bounds, strategy,             # <<<<<<<<<<<<<<
+ *                                        tolerance_ppm, min_dbe, max_dbe,
+ *                                        max_hetero_ratio, max_results)
 */
   __pyx_t_2 = NULL;
-  __Pyx_GetModuleGlobalName(__pyx_t_3, __pyx_mstate_global->__pyx_n_u_decompose_mass_parallel); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 208, __pyx_L1_error)
+  __Pyx_GetModuleGlobalName(__pyx_t_3, __pyx_mstate_global->__pyx_n_u_decompose_spectra_parallel); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 308, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_3);
 
-  /* "mass_decomposer_cpp.pyx":209
- *     # Decompose all masses in parallel
- *     all_results = decompose_mass_parallel(all_masses, element_bounds, strategy,
- *                                         tolerance_ppm, min_dbe, max_dbe,             # <<<<<<<<<<<<<<
- *                                         max_hetero_ratio, max_results)
+  /* "mass_decomposer_cpp.pyx":309
+ *     spectra_data = [(precursor_mass, fragment_masses)]
+ *     results = decompose_spectra_parallel(spectra_data, element_bounds, strategy,
+ *                                        tolerance_ppm, min_dbe, max_dbe,             # <<<<<<<<<<<<<<
+ *                                        max_hetero_ratio, max_results)
  * 
 */
-  __pyx_t_4 = PyFloat_FromDouble(__pyx_v_tolerance_ppm); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 209, __pyx_L1_error)
+  __pyx_t_4 = PyFloat_FromDouble(__pyx_v_tolerance_ppm); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 309, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_4);
-  __pyx_t_5 = PyFloat_FromDouble(__pyx_v_min_dbe); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 209, __pyx_L1_error)
+  __pyx_t_5 = PyFloat_FromDouble(__pyx_v_min_dbe); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 309, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_5);
-  __pyx_t_6 = PyFloat_FromDouble(__pyx_v_max_dbe); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 209, __pyx_L1_error)
+  __pyx_t_6 = PyFloat_FromDouble(__pyx_v_max_dbe); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 309, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_6);
 
-  /* "mass_decomposer_cpp.pyx":210
- *     all_results = decompose_mass_parallel(all_masses, element_bounds, strategy,
- *                                         tolerance_ppm, min_dbe, max_dbe,
- *                                         max_hetero_ratio, max_results)             # <<<<<<<<<<<<<<
+  /* "mass_decomposer_cpp.pyx":310
+ *     results = decompose_spectra_parallel(spectra_data, element_bounds, strategy,
+ *                                        tolerance_ppm, min_dbe, max_dbe,
+ *                                        max_hetero_ratio, max_results)             # <<<<<<<<<<<<<<
  * 
- *     # Split results back into precursor and fragments
+ *     return results[0] if results else {'precursor': [], 'fragments': []}
 */
-  __pyx_t_7 = PyFloat_FromDouble(__pyx_v_max_hetero_ratio); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 210, __pyx_L1_error)
+  __pyx_t_7 = PyFloat_FromDouble(__pyx_v_max_hetero_ratio); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 310, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_7);
-  __pyx_t_8 = __Pyx_PyLong_From_int(__pyx_v_max_results); if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 210, __pyx_L1_error)
+  __pyx_t_8 = __Pyx_PyLong_From_int(__pyx_v_max_results); if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 310, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_8);
   __pyx_t_9 = 1;
   #if CYTHON_UNPACK_METHODS
@@ -4825,7 +5688,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_4decompose_spectrum_parallel(CYT
   }
   #endif
   {
-    PyObject *__pyx_callargs[9] = {__pyx_t_2, __pyx_v_all_masses, __pyx_v_element_bounds, __pyx_v_strategy, __pyx_t_4, __pyx_t_5, __pyx_t_6, __pyx_t_7, __pyx_t_8};
+    PyObject *__pyx_callargs[9] = {__pyx_t_2, __pyx_v_spectra_data, __pyx_v_element_bounds, __pyx_v_strategy, __pyx_t_4, __pyx_t_5, __pyx_t_6, __pyx_t_7, __pyx_t_8};
     __pyx_t_1 = __Pyx_PyObject_FastCall(__pyx_t_3, __pyx_callargs+__pyx_t_9, (9-__pyx_t_9) | (__pyx_t_9*__Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET));
     __Pyx_XDECREF(__pyx_t_2); __pyx_t_2 = 0;
     __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
@@ -4834,89 +5697,45 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_4decompose_spectrum_parallel(CYT
     __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
     __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
     __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
-    if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 208, __pyx_L1_error)
+    if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 308, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
   }
-  __pyx_v_all_results = __pyx_t_1;
+  __pyx_v_results = __pyx_t_1;
   __pyx_t_1 = 0;
 
-  /* "mass_decomposer_cpp.pyx":213
+  /* "mass_decomposer_cpp.pyx":312
+ *                                        max_hetero_ratio, max_results)
  * 
- *     # Split results back into precursor and fragments
- *     precursor_results = all_results[0] if all_results else []             # <<<<<<<<<<<<<<
- *     fragment_results = all_results[1:] if len(all_results) > 1 else []
+ *     return results[0] if results else {'precursor': [], 'fragments': []}             # <<<<<<<<<<<<<<
  * 
-*/
-  __pyx_t_10 = __Pyx_PyObject_IsTrue(__pyx_v_all_results); if (unlikely((__pyx_t_10 < 0))) __PYX_ERR(0, 213, __pyx_L1_error)
-  if (__pyx_t_10) {
-    __pyx_t_3 = __Pyx_GetItemInt(__pyx_v_all_results, 0, long, 1, __Pyx_PyLong_From_long, 0, 0, 0, 1); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 213, __pyx_L1_error)
-    __Pyx_GOTREF(__pyx_t_3);
-    __pyx_t_1 = __pyx_t_3;
-    __pyx_t_3 = 0;
-  } else {
-    __pyx_t_3 = PyList_New(0); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 213, __pyx_L1_error)
-    __Pyx_GOTREF(__pyx_t_3);
-    __pyx_t_1 = __pyx_t_3;
-    __pyx_t_3 = 0;
-  }
-  __pyx_v_precursor_results = __pyx_t_1;
-  __pyx_t_1 = 0;
-
-  /* "mass_decomposer_cpp.pyx":214
- *     # Split results back into precursor and fragments
- *     precursor_results = all_results[0] if all_results else []
- *     fragment_results = all_results[1:] if len(all_results) > 1 else []             # <<<<<<<<<<<<<<
  * 
- *     return {
-*/
-  __pyx_t_11 = PyObject_Length(__pyx_v_all_results); if (unlikely(__pyx_t_11 == ((Py_ssize_t)-1))) __PYX_ERR(0, 214, __pyx_L1_error)
-  __pyx_t_10 = (__pyx_t_11 > 1);
-  if (__pyx_t_10) {
-    __pyx_t_3 = __Pyx_PyObject_GetSlice(__pyx_v_all_results, 1, 0, NULL, NULL, &__pyx_mstate_global->__pyx_slice[0], 1, 0, 0); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 214, __pyx_L1_error)
-    __Pyx_GOTREF(__pyx_t_3);
-    __pyx_t_1 = __pyx_t_3;
-    __pyx_t_3 = 0;
-  } else {
-    __pyx_t_3 = PyList_New(0); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 214, __pyx_L1_error)
-    __Pyx_GOTREF(__pyx_t_3);
-    __pyx_t_1 = __pyx_t_3;
-    __pyx_t_3 = 0;
-  }
-  __pyx_v_fragment_results = __pyx_t_1;
-  __pyx_t_1 = 0;
-
-  /* "mass_decomposer_cpp.pyx":216
- *     fragment_results = all_results[1:] if len(all_results) > 1 else []
- * 
- *     return {             # <<<<<<<<<<<<<<
- *         'precursor': precursor_results,
- *         'fragments': fragment_results
 */
   __Pyx_XDECREF(__pyx_r);
-
-  /* "mass_decomposer_cpp.pyx":217
- * 
- *     return {
- *         'precursor': precursor_results,             # <<<<<<<<<<<<<<
- *         'fragments': fragment_results
- *     }
-*/
-  __pyx_t_1 = __Pyx_PyDict_NewPresized(2); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 217, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_t_1);
-  if (PyDict_SetItem(__pyx_t_1, __pyx_mstate_global->__pyx_n_u_precursor, __pyx_v_precursor_results) < 0) __PYX_ERR(0, 217, __pyx_L1_error)
-
-  /* "mass_decomposer_cpp.pyx":218
- *     return {
- *         'precursor': precursor_results,
- *         'fragments': fragment_results             # <<<<<<<<<<<<<<
- *     }
-*/
-  if (PyDict_SetItem(__pyx_t_1, __pyx_mstate_global->__pyx_n_u_fragments, __pyx_v_fragment_results) < 0) __PYX_ERR(0, 217, __pyx_L1_error)
+  __pyx_t_10 = __Pyx_PyObject_IsTrue(__pyx_v_results); if (unlikely((__pyx_t_10 < 0))) __PYX_ERR(0, 312, __pyx_L1_error)
+  if (__pyx_t_10) {
+    __pyx_t_3 = __Pyx_GetItemInt(__pyx_v_results, 0, long, 1, __Pyx_PyLong_From_long, 0, 0, 0, 1); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 312, __pyx_L1_error)
+    __Pyx_GOTREF(__pyx_t_3);
+    __pyx_t_1 = __pyx_t_3;
+    __pyx_t_3 = 0;
+  } else {
+    __pyx_t_3 = __Pyx_PyDict_NewPresized(2); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 312, __pyx_L1_error)
+    __Pyx_GOTREF(__pyx_t_3);
+    __pyx_t_8 = PyList_New(0); if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 312, __pyx_L1_error)
+    __Pyx_GOTREF(__pyx_t_8);
+    if (PyDict_SetItem(__pyx_t_3, __pyx_mstate_global->__pyx_n_u_precursor, __pyx_t_8) < 0) __PYX_ERR(0, 312, __pyx_L1_error)
+    __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
+    __pyx_t_8 = PyList_New(0); if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 312, __pyx_L1_error)
+    __Pyx_GOTREF(__pyx_t_8);
+    if (PyDict_SetItem(__pyx_t_3, __pyx_mstate_global->__pyx_n_u_fragments, __pyx_t_8) < 0) __PYX_ERR(0, 312, __pyx_L1_error)
+    __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
+    __pyx_t_1 = __pyx_t_3;
+    __pyx_t_3 = 0;
+  }
   __pyx_r = __pyx_t_1;
   __pyx_t_1 = 0;
   goto __pyx_L0;
 
-  /* "mass_decomposer_cpp.pyx":182
+  /* "mass_decomposer_cpp.pyx":281
  *         del decomposer
  * 
  * def decompose_spectrum_parallel(double precursor_mass, list fragment_masses,             # <<<<<<<<<<<<<<
@@ -4937,10 +5756,1826 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_4decompose_spectrum_parallel(CYT
   __Pyx_AddTraceback("mass_decomposer_cpp.decompose_spectrum_parallel", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __pyx_r = NULL;
   __pyx_L0:;
-  __Pyx_XDECREF(__pyx_v_all_masses);
-  __Pyx_XDECREF(__pyx_v_all_results);
-  __Pyx_XDECREF(__pyx_v_precursor_results);
-  __Pyx_XDECREF(__pyx_v_fragment_results);
+  __Pyx_XDECREF(__pyx_v_spectra_data);
+  __Pyx_XDECREF(__pyx_v_results);
+  __Pyx_XGIVEREF(__pyx_r);
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+/* "mass_decomposer_cpp.pyx":315
+ * 
+ * 
+ * def decompose_spectrum_properly(double precursor_mass, list fragment_masses,             # <<<<<<<<<<<<<<
+ *                                dict element_bounds, str strategy="money_changing",
+ *                                double tolerance_ppm=5.0, double min_dbe=0.0,
+*/
+
+/* Python wrapper */
+static PyObject *__pyx_pw_19mass_decomposer_cpp_9decompose_spectrum_properly(PyObject *__pyx_self, 
+#if CYTHON_METH_FASTCALL
+PyObject *const *__pyx_args, Py_ssize_t __pyx_nargs, PyObject *__pyx_kwds
+#else
+PyObject *__pyx_args, PyObject *__pyx_kwds
+#endif
+); /*proto*/
+PyDoc_STRVAR(__pyx_doc_19mass_decomposer_cpp_8decompose_spectrum_properly, "decompose_spectrum_properly(double precursor_mass, list fragment_masses, dict element_bounds, str strategy='money_changing', double tolerance_ppm=5.0, double min_dbe=0.0, double max_dbe=40.0, double max_hetero_ratio=1000.0, int max_results=10000)\n\nDecompose a spectrum properly ensuring fragments are subsets of precursor formulas.\n\nArgs:\n    precursor_mass: Precursor ion mass\n    fragment_masses: List of fragment masses\n    element_bounds: Dictionary of element bounds {element: (min, max)}\n    strategy: \"recursive\" or \"money_changing\"\n    tolerance_ppm: Mass tolerance in ppm\n    min_dbe: Minimum double bond equivalents\n    max_dbe: Maximum double bond equivalents\n    max_hetero_ratio: Maximum heteroatom to carbon ratio\n    max_results: Maximum number of results to return per mass\n    \nReturns:\n    List of dictionaries, each containing:\n    {\n        'precursor': precursor_formula_dict,\n        'fragments': [fragment_formula_lists, ...],  # List of lists for each fragment mass\n        'precursor_mass': calculated_mass,\n        'precursor_error_ppm': error,\n        'fragment_masses': [calculated_masses_lists, ...],\n        'fragment_errors_ppm': [error_lists, ...]\n    }");
+static PyMethodDef __pyx_mdef_19mass_decomposer_cpp_9decompose_spectrum_properly = {"decompose_spectrum_properly", (PyCFunction)(void(*)(void))(__Pyx_PyCFunction_FastCallWithKeywords)__pyx_pw_19mass_decomposer_cpp_9decompose_spectrum_properly, __Pyx_METH_FASTCALL|METH_KEYWORDS, __pyx_doc_19mass_decomposer_cpp_8decompose_spectrum_properly};
+static PyObject *__pyx_pw_19mass_decomposer_cpp_9decompose_spectrum_properly(PyObject *__pyx_self, 
+#if CYTHON_METH_FASTCALL
+PyObject *const *__pyx_args, Py_ssize_t __pyx_nargs, PyObject *__pyx_kwds
+#else
+PyObject *__pyx_args, PyObject *__pyx_kwds
+#endif
+) {
+  double __pyx_v_precursor_mass;
+  PyObject *__pyx_v_fragment_masses = 0;
+  PyObject *__pyx_v_element_bounds = 0;
+  PyObject *__pyx_v_strategy = 0;
+  double __pyx_v_tolerance_ppm;
+  double __pyx_v_min_dbe;
+  double __pyx_v_max_dbe;
+  double __pyx_v_max_hetero_ratio;
+  int __pyx_v_max_results;
+  #if !CYTHON_METH_FASTCALL
+  CYTHON_UNUSED Py_ssize_t __pyx_nargs;
+  #endif
+  CYTHON_UNUSED PyObject *const *__pyx_kwvalues;
+  PyObject* values[9] = {0,0,0,0,0,0,0,0,0};
+  int __pyx_lineno = 0;
+  const char *__pyx_filename = NULL;
+  int __pyx_clineno = 0;
+  PyObject *__pyx_r = 0;
+  __Pyx_RefNannyDeclarations
+  __Pyx_RefNannySetupContext("decompose_spectrum_properly (wrapper)", 0);
+  #if !CYTHON_METH_FASTCALL
+  #if CYTHON_ASSUME_SAFE_SIZE
+  __pyx_nargs = PyTuple_GET_SIZE(__pyx_args);
+  #else
+  __pyx_nargs = PyTuple_Size(__pyx_args); if (unlikely(__pyx_nargs < 0)) return NULL;
+  #endif
+  #endif
+  __pyx_kwvalues = __Pyx_KwValues_FASTCALL(__pyx_args, __pyx_nargs);
+  {
+    PyObject ** const __pyx_pyargnames[] = {&__pyx_mstate_global->__pyx_n_u_precursor_mass,&__pyx_mstate_global->__pyx_n_u_fragment_masses,&__pyx_mstate_global->__pyx_n_u_element_bounds,&__pyx_mstate_global->__pyx_n_u_strategy,&__pyx_mstate_global->__pyx_n_u_tolerance_ppm,&__pyx_mstate_global->__pyx_n_u_min_dbe,&__pyx_mstate_global->__pyx_n_u_max_dbe,&__pyx_mstate_global->__pyx_n_u_max_hetero_ratio,&__pyx_mstate_global->__pyx_n_u_max_results,0};
+    const Py_ssize_t __pyx_kwds_len = (__pyx_kwds) ? __Pyx_NumKwargs_FASTCALL(__pyx_kwds) : 0;
+    if (unlikely(__pyx_kwds_len) < 0) __PYX_ERR(0, 315, __pyx_L3_error)
+    if (__pyx_kwds_len > 0) {
+      switch (__pyx_nargs) {
+        case  9:
+        values[8] = __Pyx_ArgRef_FASTCALL(__pyx_args, 8);
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[8])) __PYX_ERR(0, 315, __pyx_L3_error)
+        CYTHON_FALLTHROUGH;
+        case  8:
+        values[7] = __Pyx_ArgRef_FASTCALL(__pyx_args, 7);
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[7])) __PYX_ERR(0, 315, __pyx_L3_error)
+        CYTHON_FALLTHROUGH;
+        case  7:
+        values[6] = __Pyx_ArgRef_FASTCALL(__pyx_args, 6);
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[6])) __PYX_ERR(0, 315, __pyx_L3_error)
+        CYTHON_FALLTHROUGH;
+        case  6:
+        values[5] = __Pyx_ArgRef_FASTCALL(__pyx_args, 5);
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[5])) __PYX_ERR(0, 315, __pyx_L3_error)
+        CYTHON_FALLTHROUGH;
+        case  5:
+        values[4] = __Pyx_ArgRef_FASTCALL(__pyx_args, 4);
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[4])) __PYX_ERR(0, 315, __pyx_L3_error)
+        CYTHON_FALLTHROUGH;
+        case  4:
+        values[3] = __Pyx_ArgRef_FASTCALL(__pyx_args, 3);
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[3])) __PYX_ERR(0, 315, __pyx_L3_error)
+        CYTHON_FALLTHROUGH;
+        case  3:
+        values[2] = __Pyx_ArgRef_FASTCALL(__pyx_args, 2);
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[2])) __PYX_ERR(0, 315, __pyx_L3_error)
+        CYTHON_FALLTHROUGH;
+        case  2:
+        values[1] = __Pyx_ArgRef_FASTCALL(__pyx_args, 1);
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[1])) __PYX_ERR(0, 315, __pyx_L3_error)
+        CYTHON_FALLTHROUGH;
+        case  1:
+        values[0] = __Pyx_ArgRef_FASTCALL(__pyx_args, 0);
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[0])) __PYX_ERR(0, 315, __pyx_L3_error)
+        CYTHON_FALLTHROUGH;
+        case  0: break;
+        default: goto __pyx_L5_argtuple_error;
+      }
+      const Py_ssize_t kwd_pos_args = __pyx_nargs;
+      if (__Pyx_ParseKeywords(__pyx_kwds, __pyx_kwvalues, __pyx_pyargnames, 0, values, kwd_pos_args, __pyx_kwds_len, "decompose_spectrum_properly", 0) < 0) __PYX_ERR(0, 315, __pyx_L3_error)
+      if (!values[3]) values[3] = __Pyx_NewRef(((PyObject*)((PyObject*)__pyx_mstate_global->__pyx_n_u_money_changing)));
+      for (Py_ssize_t i = __pyx_nargs; i < 3; i++) {
+        if (unlikely(!values[i])) { __Pyx_RaiseArgtupleInvalid("decompose_spectrum_properly", 0, 3, 9, i); __PYX_ERR(0, 315, __pyx_L3_error) }
+      }
+    } else {
+      switch (__pyx_nargs) {
+        case  9:
+        values[8] = __Pyx_ArgRef_FASTCALL(__pyx_args, 8);
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[8])) __PYX_ERR(0, 315, __pyx_L3_error)
+        CYTHON_FALLTHROUGH;
+        case  8:
+        values[7] = __Pyx_ArgRef_FASTCALL(__pyx_args, 7);
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[7])) __PYX_ERR(0, 315, __pyx_L3_error)
+        CYTHON_FALLTHROUGH;
+        case  7:
+        values[6] = __Pyx_ArgRef_FASTCALL(__pyx_args, 6);
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[6])) __PYX_ERR(0, 315, __pyx_L3_error)
+        CYTHON_FALLTHROUGH;
+        case  6:
+        values[5] = __Pyx_ArgRef_FASTCALL(__pyx_args, 5);
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[5])) __PYX_ERR(0, 315, __pyx_L3_error)
+        CYTHON_FALLTHROUGH;
+        case  5:
+        values[4] = __Pyx_ArgRef_FASTCALL(__pyx_args, 4);
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[4])) __PYX_ERR(0, 315, __pyx_L3_error)
+        CYTHON_FALLTHROUGH;
+        case  4:
+        values[3] = __Pyx_ArgRef_FASTCALL(__pyx_args, 3);
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[3])) __PYX_ERR(0, 315, __pyx_L3_error)
+        CYTHON_FALLTHROUGH;
+        case  3:
+        values[2] = __Pyx_ArgRef_FASTCALL(__pyx_args, 2);
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[2])) __PYX_ERR(0, 315, __pyx_L3_error)
+        values[1] = __Pyx_ArgRef_FASTCALL(__pyx_args, 1);
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[1])) __PYX_ERR(0, 315, __pyx_L3_error)
+        values[0] = __Pyx_ArgRef_FASTCALL(__pyx_args, 0);
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[0])) __PYX_ERR(0, 315, __pyx_L3_error)
+        break;
+        default: goto __pyx_L5_argtuple_error;
+      }
+      if (!values[3]) values[3] = __Pyx_NewRef(((PyObject*)((PyObject*)__pyx_mstate_global->__pyx_n_u_money_changing)));
+    }
+    __pyx_v_precursor_mass = __Pyx_PyFloat_AsDouble(values[0]); if (unlikely((__pyx_v_precursor_mass == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 315, __pyx_L3_error)
+    __pyx_v_fragment_masses = ((PyObject*)values[1]);
+    __pyx_v_element_bounds = ((PyObject*)values[2]);
+    __pyx_v_strategy = ((PyObject*)values[3]);
+    if (values[4]) {
+      __pyx_v_tolerance_ppm = __Pyx_PyFloat_AsDouble(values[4]); if (unlikely((__pyx_v_tolerance_ppm == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 317, __pyx_L3_error)
+    } else {
+      __pyx_v_tolerance_ppm = ((double)((double)5.0));
+    }
+    if (values[5]) {
+      __pyx_v_min_dbe = __Pyx_PyFloat_AsDouble(values[5]); if (unlikely((__pyx_v_min_dbe == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 317, __pyx_L3_error)
+    } else {
+      __pyx_v_min_dbe = ((double)((double)0.0));
+    }
+    if (values[6]) {
+      __pyx_v_max_dbe = __Pyx_PyFloat_AsDouble(values[6]); if (unlikely((__pyx_v_max_dbe == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 318, __pyx_L3_error)
+    } else {
+      __pyx_v_max_dbe = ((double)((double)40.0));
+    }
+    if (values[7]) {
+      __pyx_v_max_hetero_ratio = __Pyx_PyFloat_AsDouble(values[7]); if (unlikely((__pyx_v_max_hetero_ratio == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 318, __pyx_L3_error)
+    } else {
+      __pyx_v_max_hetero_ratio = ((double)((double)1000.0));
+    }
+    if (values[8]) {
+      __pyx_v_max_results = __Pyx_PyLong_As_int(values[8]); if (unlikely((__pyx_v_max_results == (int)-1) && PyErr_Occurred())) __PYX_ERR(0, 319, __pyx_L3_error)
+    } else {
+      __pyx_v_max_results = ((int)((int)0x2710));
+    }
+  }
+  goto __pyx_L6_skip;
+  __pyx_L5_argtuple_error:;
+  __Pyx_RaiseArgtupleInvalid("decompose_spectrum_properly", 0, 3, 9, __pyx_nargs); __PYX_ERR(0, 315, __pyx_L3_error)
+  __pyx_L6_skip:;
+  goto __pyx_L4_argument_unpacking_done;
+  __pyx_L3_error:;
+  for (Py_ssize_t __pyx_temp=0; __pyx_temp < (Py_ssize_t)(sizeof(values)/sizeof(values[0])); ++__pyx_temp) {
+    Py_XDECREF(values[__pyx_temp]);
+  }
+  __Pyx_AddTraceback("mass_decomposer_cpp.decompose_spectrum_properly", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __Pyx_RefNannyFinishContext();
+  return NULL;
+  __pyx_L4_argument_unpacking_done:;
+  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_fragment_masses), (&PyList_Type), 1, "fragment_masses", 1))) __PYX_ERR(0, 315, __pyx_L1_error)
+  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_element_bounds), (&PyDict_Type), 1, "element_bounds", 1))) __PYX_ERR(0, 316, __pyx_L1_error)
+  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_strategy), (&PyUnicode_Type), 1, "strategy", 1))) __PYX_ERR(0, 316, __pyx_L1_error)
+  __pyx_r = __pyx_pf_19mass_decomposer_cpp_8decompose_spectrum_properly(__pyx_self, __pyx_v_precursor_mass, __pyx_v_fragment_masses, __pyx_v_element_bounds, __pyx_v_strategy, __pyx_v_tolerance_ppm, __pyx_v_min_dbe, __pyx_v_max_dbe, __pyx_v_max_hetero_ratio, __pyx_v_max_results);
+
+  /* function exit code */
+  goto __pyx_L0;
+  __pyx_L1_error:;
+  __pyx_r = NULL;
+  for (Py_ssize_t __pyx_temp=0; __pyx_temp < (Py_ssize_t)(sizeof(values)/sizeof(values[0])); ++__pyx_temp) {
+    Py_XDECREF(values[__pyx_temp]);
+  }
+  goto __pyx_L7_cleaned_up;
+  __pyx_L0:;
+  for (Py_ssize_t __pyx_temp=0; __pyx_temp < (Py_ssize_t)(sizeof(values)/sizeof(values[0])); ++__pyx_temp) {
+    Py_XDECREF(values[__pyx_temp]);
+  }
+  __pyx_L7_cleaned_up:;
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+static PyObject *__pyx_pf_19mass_decomposer_cpp_8decompose_spectrum_properly(CYTHON_UNUSED PyObject *__pyx_self, double __pyx_v_precursor_mass, PyObject *__pyx_v_fragment_masses, PyObject *__pyx_v_element_bounds, PyObject *__pyx_v_strategy, double __pyx_v_tolerance_ppm, double __pyx_v_min_dbe, double __pyx_v_max_dbe, double __pyx_v_max_hetero_ratio, int __pyx_v_max_results) {
+  std::vector<struct Element>  __pyx_v_elements;
+  std::vector<double>  __pyx_v_frag_masses_vec;
+  struct DecompositionParams __pyx_v_params;
+  MassDecomposer *__pyx_v_decomposer;
+  struct ProperSpectrumResults __pyx_v_cpp_results;
+  size_t __pyx_v_i;
+  size_t __pyx_v_j;
+  size_t __pyx_v_k;
+  PyObject *__pyx_v_frag_mass = NULL;
+  PyObject *__pyx_v_python_results = NULL;
+  struct SpectrumDecomposition __pyx_v_decomp;
+  PyObject *__pyx_v_precursor_dict = NULL;
+  PyObject *__pyx_v_fragment_lists = NULL;
+  PyObject *__pyx_v_fragment_mass_lists = NULL;
+  PyObject *__pyx_v_fragment_error_lists = NULL;
+  PyObject *__pyx_v_frag_formulas = NULL;
+  PyObject *__pyx_v_mass_list = NULL;
+  PyObject *__pyx_v_error_list = NULL;
+  PyObject *__pyx_v_result_dict = NULL;
+  PyObject *__pyx_r = NULL;
+  __Pyx_RefNannyDeclarations
+  int __pyx_t_1;
+  int __pyx_t_2;
+  PyObject *__pyx_t_3 = NULL;
+  std::vector<struct Element>  __pyx_t_4;
+  struct DecompositionParams __pyx_t_5;
+  Py_ssize_t __pyx_t_6;
+  PyObject *__pyx_t_7 = NULL;
+  double __pyx_t_8;
+  std::string __pyx_t_9;
+  std::vector<struct SpectrumDecomposition> ::size_type __pyx_t_10;
+  std::vector<struct SpectrumDecomposition> ::size_type __pyx_t_11;
+  size_t __pyx_t_12;
+  std::vector<std::vector<Formula> > ::size_type __pyx_t_13;
+  std::vector<std::vector<Formula> > ::size_type __pyx_t_14;
+  size_t __pyx_t_15;
+  std::vector<Formula> ::size_type __pyx_t_16;
+  std::vector<Formula> ::size_type __pyx_t_17;
+  size_t __pyx_t_18;
+  int __pyx_t_19;
+  std::vector<double> ::size_type __pyx_t_20;
+  std::vector<double> ::size_type __pyx_t_21;
+  int __pyx_t_22;
+  int __pyx_t_23;
+  char const *__pyx_t_24;
+  PyObject *__pyx_t_25 = NULL;
+  PyObject *__pyx_t_26 = NULL;
+  PyObject *__pyx_t_27 = NULL;
+  PyObject *__pyx_t_28 = NULL;
+  PyObject *__pyx_t_29 = NULL;
+  PyObject *__pyx_t_30 = NULL;
+  int __pyx_lineno = 0;
+  const char *__pyx_filename = NULL;
+  int __pyx_clineno = 0;
+  __Pyx_RefNannySetupContext("decompose_spectrum_properly", 0);
+
+  /* "mass_decomposer_cpp.pyx":345
+ *         }
+ *     """
+ *     if not fragment_masses:             # <<<<<<<<<<<<<<
+ *         return []
+ * 
+*/
+  __pyx_t_1 = (__pyx_v_fragment_masses != Py_None)&&(__Pyx_PyList_GET_SIZE(__pyx_v_fragment_masses) != 0);
+  if (unlikely(((!CYTHON_ASSUME_SAFE_MACROS) && __pyx_t_1 < 0))) __PYX_ERR(0, 345, __pyx_L1_error)
+  __pyx_t_2 = (!__pyx_t_1);
+  if (__pyx_t_2) {
+
+    /* "mass_decomposer_cpp.pyx":346
+ *     """
+ *     if not fragment_masses:
+ *         return []             # <<<<<<<<<<<<<<
+ * 
+ *     cdef vector[Element] elements
+*/
+    __Pyx_XDECREF(__pyx_r);
+    __pyx_t_3 = PyList_New(0); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 346, __pyx_L1_error)
+    __Pyx_GOTREF(__pyx_t_3);
+    __pyx_r = __pyx_t_3;
+    __pyx_t_3 = 0;
+    goto __pyx_L0;
+
+    /* "mass_decomposer_cpp.pyx":345
+ *         }
+ *     """
+ *     if not fragment_masses:             # <<<<<<<<<<<<<<
+ *         return []
+ * 
+*/
+  }
+
+  /* "mass_decomposer_cpp.pyx":355
+ *     cdef size_t i, j, k
+ * 
+ *     elements = _convert_element_bounds(element_bounds)             # <<<<<<<<<<<<<<
+ *     params = _convert_params(tolerance_ppm, min_dbe, max_dbe,
+ *                            max_hetero_ratio, max_results, strategy)
+*/
+  __pyx_t_4 = __pyx_f_19mass_decomposer_cpp__convert_element_bounds(__pyx_v_element_bounds); if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 355, __pyx_L1_error)
+  __pyx_v_elements = __PYX_STD_MOVE_IF_SUPPORTED(__pyx_t_4);
+
+  /* "mass_decomposer_cpp.pyx":356
+ * 
+ *     elements = _convert_element_bounds(element_bounds)
+ *     params = _convert_params(tolerance_ppm, min_dbe, max_dbe,             # <<<<<<<<<<<<<<
+ *                            max_hetero_ratio, max_results, strategy)
+ * 
+*/
+  __pyx_t_5 = __pyx_f_19mass_decomposer_cpp__convert_params(__pyx_v_tolerance_ppm, __pyx_v_min_dbe, __pyx_v_max_dbe, __pyx_v_max_hetero_ratio, __pyx_v_max_results, __pyx_v_strategy); if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 356, __pyx_L1_error)
+  __pyx_v_params = __pyx_t_5;
+
+  /* "mass_decomposer_cpp.pyx":360
+ * 
+ *     # Convert fragment masses
+ *     for frag_mass in fragment_masses:             # <<<<<<<<<<<<<<
+ *         frag_masses_vec.push_back(frag_mass)
+ * 
+*/
+  if (unlikely(__pyx_v_fragment_masses == Py_None)) {
+    PyErr_SetString(PyExc_TypeError, "'NoneType' object is not iterable");
+    __PYX_ERR(0, 360, __pyx_L1_error)
+  }
+  __pyx_t_3 = __pyx_v_fragment_masses; __Pyx_INCREF(__pyx_t_3);
+  __pyx_t_6 = 0;
+  for (;;) {
+    {
+      Py_ssize_t __pyx_temp = __Pyx_PyList_GET_SIZE(__pyx_t_3);
+      #if !CYTHON_ASSUME_SAFE_SIZE
+      if (unlikely((__pyx_temp < 0))) __PYX_ERR(0, 360, __pyx_L1_error)
+      #endif
+      if (__pyx_t_6 >= __pyx_temp) break;
+    }
+    __pyx_t_7 = __Pyx_PyList_GetItemRef(__pyx_t_3, __pyx_t_6);
+    ++__pyx_t_6;
+    if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 360, __pyx_L1_error)
+    __Pyx_GOTREF(__pyx_t_7);
+    __Pyx_XDECREF_SET(__pyx_v_frag_mass, __pyx_t_7);
+    __pyx_t_7 = 0;
+
+    /* "mass_decomposer_cpp.pyx":361
+ *     # Convert fragment masses
+ *     for frag_mass in fragment_masses:
+ *         frag_masses_vec.push_back(frag_mass)             # <<<<<<<<<<<<<<
+ * 
+ *     decomposer = new MassDecomposer(elements, strategy.encode('utf-8'))
+*/
+    __pyx_t_8 = __Pyx_PyFloat_AsDouble(__pyx_v_frag_mass); if (unlikely((__pyx_t_8 == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 361, __pyx_L1_error)
+    try {
+      __pyx_v_frag_masses_vec.push_back(__pyx_t_8);
+    } catch(...) {
+      __Pyx_CppExn2PyErr();
+      __PYX_ERR(0, 361, __pyx_L1_error)
+    }
+
+    /* "mass_decomposer_cpp.pyx":360
+ * 
+ *     # Convert fragment masses
+ *     for frag_mass in fragment_masses:             # <<<<<<<<<<<<<<
+ *         frag_masses_vec.push_back(frag_mass)
+ * 
+*/
+  }
+  __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+
+  /* "mass_decomposer_cpp.pyx":363
+ *         frag_masses_vec.push_back(frag_mass)
+ * 
+ *     decomposer = new MassDecomposer(elements, strategy.encode('utf-8'))             # <<<<<<<<<<<<<<
+ * 
+ *     try:
+*/
+  if (unlikely(__pyx_v_strategy == Py_None)) {
+    PyErr_Format(PyExc_AttributeError, "'NoneType' object has no attribute '%.30s'", "encode");
+    __PYX_ERR(0, 363, __pyx_L1_error)
+  }
+  __pyx_t_3 = PyUnicode_AsUTF8String(__pyx_v_strategy); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 363, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_3);
+  __pyx_t_9 = __pyx_convert_string_from_py_6libcpp_6string_std__in_string(__pyx_t_3); if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 363, __pyx_L1_error)
+  __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+  __pyx_v_decomposer = new MassDecomposer(__pyx_v_elements, __pyx_t_9);
+
+  /* "mass_decomposer_cpp.pyx":365
+ *     decomposer = new MassDecomposer(elements, strategy.encode('utf-8'))
+ * 
+ *     try:             # <<<<<<<<<<<<<<
+ *         cpp_results = decomposer.decompose_spectrum_properly(precursor_mass, frag_masses_vec, params)
+ * 
+*/
+  /*try:*/ {
+
+    /* "mass_decomposer_cpp.pyx":366
+ * 
+ *     try:
+ *         cpp_results = decomposer.decompose_spectrum_properly(precursor_mass, frag_masses_vec, params)             # <<<<<<<<<<<<<<
+ * 
+ *         # Convert results to Python
+*/
+    __pyx_v_cpp_results = __pyx_v_decomposer->decompose_spectrum_properly(__pyx_v_precursor_mass, __pyx_v_frag_masses_vec, __pyx_v_params);
+
+    /* "mass_decomposer_cpp.pyx":369
+ * 
+ *         # Convert results to Python
+ *         python_results = []             # <<<<<<<<<<<<<<
+ *         for i in range(cpp_results.decompositions.size()):
+ *             decomp = cpp_results.decompositions[i]
+*/
+    __pyx_t_3 = PyList_New(0); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 369, __pyx_L8_error)
+    __Pyx_GOTREF(__pyx_t_3);
+    __pyx_v_python_results = ((PyObject*)__pyx_t_3);
+    __pyx_t_3 = 0;
+
+    /* "mass_decomposer_cpp.pyx":370
+ *         # Convert results to Python
+ *         python_results = []
+ *         for i in range(cpp_results.decompositions.size()):             # <<<<<<<<<<<<<<
+ *             decomp = cpp_results.decompositions[i]
+ * 
+*/
+    __pyx_t_10 = __pyx_v_cpp_results.decompositions.size();
+    __pyx_t_11 = __pyx_t_10;
+    for (__pyx_t_12 = 0; __pyx_t_12 < __pyx_t_11; __pyx_t_12+=1) {
+      __pyx_v_i = __pyx_t_12;
+
+      /* "mass_decomposer_cpp.pyx":371
+ *         python_results = []
+ *         for i in range(cpp_results.decompositions.size()):
+ *             decomp = cpp_results.decompositions[i]             # <<<<<<<<<<<<<<
+ * 
+ *             # Convert precursor formula
+*/
+      __pyx_v_decomp = (__pyx_v_cpp_results.decompositions[__pyx_v_i]);
+
+      /* "mass_decomposer_cpp.pyx":374
+ * 
+ *             # Convert precursor formula
+ *             precursor_dict = _convert_formula_result(decomp.precursor, decomposer)             # <<<<<<<<<<<<<<
+ * 
+ *             # Convert fragment formulas
+*/
+      __pyx_t_3 = __pyx_f_19mass_decomposer_cpp__convert_formula_result(__pyx_v_decomp.precursor, __pyx_v_decomposer); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 374, __pyx_L8_error)
+      __Pyx_GOTREF(__pyx_t_3);
+      __Pyx_XDECREF_SET(__pyx_v_precursor_dict, ((PyObject*)__pyx_t_3));
+      __pyx_t_3 = 0;
+
+      /* "mass_decomposer_cpp.pyx":377
+ * 
+ *             # Convert fragment formulas
+ *             fragment_lists = []             # <<<<<<<<<<<<<<
+ *             fragment_mass_lists = []
+ *             fragment_error_lists = []
+*/
+      __pyx_t_3 = PyList_New(0); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 377, __pyx_L8_error)
+      __Pyx_GOTREF(__pyx_t_3);
+      __Pyx_XDECREF_SET(__pyx_v_fragment_lists, ((PyObject*)__pyx_t_3));
+      __pyx_t_3 = 0;
+
+      /* "mass_decomposer_cpp.pyx":378
+ *             # Convert fragment formulas
+ *             fragment_lists = []
+ *             fragment_mass_lists = []             # <<<<<<<<<<<<<<
+ *             fragment_error_lists = []
+ * 
+*/
+      __pyx_t_3 = PyList_New(0); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 378, __pyx_L8_error)
+      __Pyx_GOTREF(__pyx_t_3);
+      __Pyx_XDECREF_SET(__pyx_v_fragment_mass_lists, ((PyObject*)__pyx_t_3));
+      __pyx_t_3 = 0;
+
+      /* "mass_decomposer_cpp.pyx":379
+ *             fragment_lists = []
+ *             fragment_mass_lists = []
+ *             fragment_error_lists = []             # <<<<<<<<<<<<<<
+ * 
+ *             for j in range(decomp.fragments.size()):
+*/
+      __pyx_t_3 = PyList_New(0); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 379, __pyx_L8_error)
+      __Pyx_GOTREF(__pyx_t_3);
+      __Pyx_XDECREF_SET(__pyx_v_fragment_error_lists, ((PyObject*)__pyx_t_3));
+      __pyx_t_3 = 0;
+
+      /* "mass_decomposer_cpp.pyx":381
+ *             fragment_error_lists = []
+ * 
+ *             for j in range(decomp.fragments.size()):             # <<<<<<<<<<<<<<
+ *                 # Convert formulas for this fragment mass
+ *                 frag_formulas = []
+*/
+      __pyx_t_13 = __pyx_v_decomp.fragments.size();
+      __pyx_t_14 = __pyx_t_13;
+      for (__pyx_t_15 = 0; __pyx_t_15 < __pyx_t_14; __pyx_t_15+=1) {
+        __pyx_v_j = __pyx_t_15;
+
+        /* "mass_decomposer_cpp.pyx":383
+ *             for j in range(decomp.fragments.size()):
+ *                 # Convert formulas for this fragment mass
+ *                 frag_formulas = []             # <<<<<<<<<<<<<<
+ *                 for k in range(decomp.fragments[j].size()):
+ *                     frag_formulas.append(_convert_formula_result(decomp.fragments[j][k], decomposer))
+*/
+        __pyx_t_3 = PyList_New(0); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 383, __pyx_L8_error)
+        __Pyx_GOTREF(__pyx_t_3);
+        __Pyx_XDECREF_SET(__pyx_v_frag_formulas, ((PyObject*)__pyx_t_3));
+        __pyx_t_3 = 0;
+
+        /* "mass_decomposer_cpp.pyx":384
+ *                 # Convert formulas for this fragment mass
+ *                 frag_formulas = []
+ *                 for k in range(decomp.fragments[j].size()):             # <<<<<<<<<<<<<<
+ *                     frag_formulas.append(_convert_formula_result(decomp.fragments[j][k], decomposer))
+ *                 fragment_lists.append(frag_formulas)
+*/
+        __pyx_t_16 = (__pyx_v_decomp.fragments[__pyx_v_j]).size();
+        __pyx_t_17 = __pyx_t_16;
+        for (__pyx_t_18 = 0; __pyx_t_18 < __pyx_t_17; __pyx_t_18+=1) {
+          __pyx_v_k = __pyx_t_18;
+
+          /* "mass_decomposer_cpp.pyx":385
+ *                 frag_formulas = []
+ *                 for k in range(decomp.fragments[j].size()):
+ *                     frag_formulas.append(_convert_formula_result(decomp.fragments[j][k], decomposer))             # <<<<<<<<<<<<<<
+ *                 fragment_lists.append(frag_formulas)
+ * 
+*/
+          __pyx_t_3 = __pyx_f_19mass_decomposer_cpp__convert_formula_result(((__pyx_v_decomp.fragments[__pyx_v_j])[__pyx_v_k]), __pyx_v_decomposer); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 385, __pyx_L8_error)
+          __Pyx_GOTREF(__pyx_t_3);
+          __pyx_t_19 = __Pyx_PyList_Append(__pyx_v_frag_formulas, __pyx_t_3); if (unlikely(__pyx_t_19 == ((int)-1))) __PYX_ERR(0, 385, __pyx_L8_error)
+          __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+        }
+
+        /* "mass_decomposer_cpp.pyx":386
+ *                 for k in range(decomp.fragments[j].size()):
+ *                     frag_formulas.append(_convert_formula_result(decomp.fragments[j][k], decomposer))
+ *                 fragment_lists.append(frag_formulas)             # <<<<<<<<<<<<<<
+ * 
+ *                 # Convert masses and errors
+*/
+        __pyx_t_19 = __Pyx_PyList_Append(__pyx_v_fragment_lists, __pyx_v_frag_formulas); if (unlikely(__pyx_t_19 == ((int)-1))) __PYX_ERR(0, 386, __pyx_L8_error)
+
+        /* "mass_decomposer_cpp.pyx":389
+ * 
+ *                 # Convert masses and errors
+ *                 mass_list = []             # <<<<<<<<<<<<<<
+ *                 error_list = []
+ *                 for k in range(decomp.fragment_masses[j].size()):
+*/
+        __pyx_t_3 = PyList_New(0); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 389, __pyx_L8_error)
+        __Pyx_GOTREF(__pyx_t_3);
+        __Pyx_XDECREF_SET(__pyx_v_mass_list, ((PyObject*)__pyx_t_3));
+        __pyx_t_3 = 0;
+
+        /* "mass_decomposer_cpp.pyx":390
+ *                 # Convert masses and errors
+ *                 mass_list = []
+ *                 error_list = []             # <<<<<<<<<<<<<<
+ *                 for k in range(decomp.fragment_masses[j].size()):
+ *                     mass_list.append(decomp.fragment_masses[j][k])
+*/
+        __pyx_t_3 = PyList_New(0); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 390, __pyx_L8_error)
+        __Pyx_GOTREF(__pyx_t_3);
+        __Pyx_XDECREF_SET(__pyx_v_error_list, ((PyObject*)__pyx_t_3));
+        __pyx_t_3 = 0;
+
+        /* "mass_decomposer_cpp.pyx":391
+ *                 mass_list = []
+ *                 error_list = []
+ *                 for k in range(decomp.fragment_masses[j].size()):             # <<<<<<<<<<<<<<
+ *                     mass_list.append(decomp.fragment_masses[j][k])
+ *                 for k in range(decomp.fragment_errors_ppm[j].size()):
+*/
+        __pyx_t_20 = (__pyx_v_decomp.fragment_masses[__pyx_v_j]).size();
+        __pyx_t_21 = __pyx_t_20;
+        for (__pyx_t_18 = 0; __pyx_t_18 < __pyx_t_21; __pyx_t_18+=1) {
+          __pyx_v_k = __pyx_t_18;
+
+          /* "mass_decomposer_cpp.pyx":392
+ *                 error_list = []
+ *                 for k in range(decomp.fragment_masses[j].size()):
+ *                     mass_list.append(decomp.fragment_masses[j][k])             # <<<<<<<<<<<<<<
+ *                 for k in range(decomp.fragment_errors_ppm[j].size()):
+ *                     error_list.append(decomp.fragment_errors_ppm[j][k])
+*/
+          __pyx_t_3 = PyFloat_FromDouble(((__pyx_v_decomp.fragment_masses[__pyx_v_j])[__pyx_v_k])); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 392, __pyx_L8_error)
+          __Pyx_GOTREF(__pyx_t_3);
+          __pyx_t_19 = __Pyx_PyList_Append(__pyx_v_mass_list, __pyx_t_3); if (unlikely(__pyx_t_19 == ((int)-1))) __PYX_ERR(0, 392, __pyx_L8_error)
+          __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+        }
+
+        /* "mass_decomposer_cpp.pyx":393
+ *                 for k in range(decomp.fragment_masses[j].size()):
+ *                     mass_list.append(decomp.fragment_masses[j][k])
+ *                 for k in range(decomp.fragment_errors_ppm[j].size()):             # <<<<<<<<<<<<<<
+ *                     error_list.append(decomp.fragment_errors_ppm[j][k])
+ * 
+*/
+        __pyx_t_20 = (__pyx_v_decomp.fragment_errors_ppm[__pyx_v_j]).size();
+        __pyx_t_21 = __pyx_t_20;
+        for (__pyx_t_18 = 0; __pyx_t_18 < __pyx_t_21; __pyx_t_18+=1) {
+          __pyx_v_k = __pyx_t_18;
+
+          /* "mass_decomposer_cpp.pyx":394
+ *                     mass_list.append(decomp.fragment_masses[j][k])
+ *                 for k in range(decomp.fragment_errors_ppm[j].size()):
+ *                     error_list.append(decomp.fragment_errors_ppm[j][k])             # <<<<<<<<<<<<<<
+ * 
+ *                 fragment_mass_lists.append(mass_list)
+*/
+          __pyx_t_3 = PyFloat_FromDouble(((__pyx_v_decomp.fragment_errors_ppm[__pyx_v_j])[__pyx_v_k])); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 394, __pyx_L8_error)
+          __Pyx_GOTREF(__pyx_t_3);
+          __pyx_t_19 = __Pyx_PyList_Append(__pyx_v_error_list, __pyx_t_3); if (unlikely(__pyx_t_19 == ((int)-1))) __PYX_ERR(0, 394, __pyx_L8_error)
+          __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+        }
+
+        /* "mass_decomposer_cpp.pyx":396
+ *                     error_list.append(decomp.fragment_errors_ppm[j][k])
+ * 
+ *                 fragment_mass_lists.append(mass_list)             # <<<<<<<<<<<<<<
+ *                 fragment_error_lists.append(error_list)
+ * 
+*/
+        __pyx_t_19 = __Pyx_PyList_Append(__pyx_v_fragment_mass_lists, __pyx_v_mass_list); if (unlikely(__pyx_t_19 == ((int)-1))) __PYX_ERR(0, 396, __pyx_L8_error)
+
+        /* "mass_decomposer_cpp.pyx":397
+ * 
+ *                 fragment_mass_lists.append(mass_list)
+ *                 fragment_error_lists.append(error_list)             # <<<<<<<<<<<<<<
+ * 
+ *             result_dict = {
+*/
+        __pyx_t_19 = __Pyx_PyList_Append(__pyx_v_fragment_error_lists, __pyx_v_error_list); if (unlikely(__pyx_t_19 == ((int)-1))) __PYX_ERR(0, 397, __pyx_L8_error)
+      }
+
+      /* "mass_decomposer_cpp.pyx":400
+ * 
+ *             result_dict = {
+ *                 'precursor': precursor_dict,             # <<<<<<<<<<<<<<
+ *                 'fragments': fragment_lists,
+ *                 'precursor_mass': decomp.precursor_mass,
+*/
+      __pyx_t_3 = __Pyx_PyDict_NewPresized(6); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 400, __pyx_L8_error)
+      __Pyx_GOTREF(__pyx_t_3);
+      if (PyDict_SetItem(__pyx_t_3, __pyx_mstate_global->__pyx_n_u_precursor, __pyx_v_precursor_dict) < 0) __PYX_ERR(0, 400, __pyx_L8_error)
+
+      /* "mass_decomposer_cpp.pyx":401
+ *             result_dict = {
+ *                 'precursor': precursor_dict,
+ *                 'fragments': fragment_lists,             # <<<<<<<<<<<<<<
+ *                 'precursor_mass': decomp.precursor_mass,
+ *                 'precursor_error_ppm': decomp.precursor_error_ppm,
+*/
+      if (PyDict_SetItem(__pyx_t_3, __pyx_mstate_global->__pyx_n_u_fragments, __pyx_v_fragment_lists) < 0) __PYX_ERR(0, 400, __pyx_L8_error)
+
+      /* "mass_decomposer_cpp.pyx":402
+ *                 'precursor': precursor_dict,
+ *                 'fragments': fragment_lists,
+ *                 'precursor_mass': decomp.precursor_mass,             # <<<<<<<<<<<<<<
+ *                 'precursor_error_ppm': decomp.precursor_error_ppm,
+ *                 'fragment_masses': fragment_mass_lists,
+*/
+      __pyx_t_7 = PyFloat_FromDouble(__pyx_v_decomp.precursor_mass); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 402, __pyx_L8_error)
+      __Pyx_GOTREF(__pyx_t_7);
+      if (PyDict_SetItem(__pyx_t_3, __pyx_mstate_global->__pyx_n_u_precursor_mass, __pyx_t_7) < 0) __PYX_ERR(0, 400, __pyx_L8_error)
+      __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
+
+      /* "mass_decomposer_cpp.pyx":403
+ *                 'fragments': fragment_lists,
+ *                 'precursor_mass': decomp.precursor_mass,
+ *                 'precursor_error_ppm': decomp.precursor_error_ppm,             # <<<<<<<<<<<<<<
+ *                 'fragment_masses': fragment_mass_lists,
+ *                 'fragment_errors_ppm': fragment_error_lists
+*/
+      __pyx_t_7 = PyFloat_FromDouble(__pyx_v_decomp.precursor_error_ppm); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 403, __pyx_L8_error)
+      __Pyx_GOTREF(__pyx_t_7);
+      if (PyDict_SetItem(__pyx_t_3, __pyx_mstate_global->__pyx_n_u_precursor_error_ppm, __pyx_t_7) < 0) __PYX_ERR(0, 400, __pyx_L8_error)
+      __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
+
+      /* "mass_decomposer_cpp.pyx":404
+ *                 'precursor_mass': decomp.precursor_mass,
+ *                 'precursor_error_ppm': decomp.precursor_error_ppm,
+ *                 'fragment_masses': fragment_mass_lists,             # <<<<<<<<<<<<<<
+ *                 'fragment_errors_ppm': fragment_error_lists
+ *             }
+*/
+      if (PyDict_SetItem(__pyx_t_3, __pyx_mstate_global->__pyx_n_u_fragment_masses, __pyx_v_fragment_mass_lists) < 0) __PYX_ERR(0, 400, __pyx_L8_error)
+
+      /* "mass_decomposer_cpp.pyx":405
+ *                 'precursor_error_ppm': decomp.precursor_error_ppm,
+ *                 'fragment_masses': fragment_mass_lists,
+ *                 'fragment_errors_ppm': fragment_error_lists             # <<<<<<<<<<<<<<
+ *             }
+ *             python_results.append(result_dict)
+*/
+      if (PyDict_SetItem(__pyx_t_3, __pyx_mstate_global->__pyx_n_u_fragment_errors_ppm, __pyx_v_fragment_error_lists) < 0) __PYX_ERR(0, 400, __pyx_L8_error)
+      __Pyx_XDECREF_SET(__pyx_v_result_dict, ((PyObject*)__pyx_t_3));
+      __pyx_t_3 = 0;
+
+      /* "mass_decomposer_cpp.pyx":407
+ *                 'fragment_errors_ppm': fragment_error_lists
+ *             }
+ *             python_results.append(result_dict)             # <<<<<<<<<<<<<<
+ * 
+ *         return python_results
+*/
+      __pyx_t_19 = __Pyx_PyList_Append(__pyx_v_python_results, __pyx_v_result_dict); if (unlikely(__pyx_t_19 == ((int)-1))) __PYX_ERR(0, 407, __pyx_L8_error)
+    }
+
+    /* "mass_decomposer_cpp.pyx":409
+ *             python_results.append(result_dict)
+ * 
+ *         return python_results             # <<<<<<<<<<<<<<
+ * 
+ *     finally:
+*/
+    __Pyx_XDECREF(__pyx_r);
+    __Pyx_INCREF(__pyx_v_python_results);
+    __pyx_r = __pyx_v_python_results;
+    goto __pyx_L7_return;
+  }
+
+  /* "mass_decomposer_cpp.pyx":412
+ * 
+ *     finally:
+ *         del decomposer             # <<<<<<<<<<<<<<
+ * 
+ * 
+*/
+  /*finally:*/ {
+    __pyx_L8_error:;
+    /*exception exit:*/{
+      __Pyx_PyThreadState_declare
+      __Pyx_PyThreadState_assign
+      __pyx_t_25 = 0; __pyx_t_26 = 0; __pyx_t_27 = 0; __pyx_t_28 = 0; __pyx_t_29 = 0; __pyx_t_30 = 0;
+      __Pyx_XDECREF(__pyx_t_3); __pyx_t_3 = 0;
+      __Pyx_XDECREF(__pyx_t_7); __pyx_t_7 = 0;
+       __Pyx_ExceptionSwap(&__pyx_t_28, &__pyx_t_29, &__pyx_t_30);
+      if ( unlikely(__Pyx_GetException(&__pyx_t_25, &__pyx_t_26, &__pyx_t_27) < 0)) __Pyx_ErrFetch(&__pyx_t_25, &__pyx_t_26, &__pyx_t_27);
+      __Pyx_XGOTREF(__pyx_t_25);
+      __Pyx_XGOTREF(__pyx_t_26);
+      __Pyx_XGOTREF(__pyx_t_27);
+      __Pyx_XGOTREF(__pyx_t_28);
+      __Pyx_XGOTREF(__pyx_t_29);
+      __Pyx_XGOTREF(__pyx_t_30);
+      __pyx_t_22 = __pyx_lineno; __pyx_t_23 = __pyx_clineno; __pyx_t_24 = __pyx_filename;
+      {
+        delete __pyx_v_decomposer;
+      }
+      __Pyx_XGIVEREF(__pyx_t_28);
+      __Pyx_XGIVEREF(__pyx_t_29);
+      __Pyx_XGIVEREF(__pyx_t_30);
+      __Pyx_ExceptionReset(__pyx_t_28, __pyx_t_29, __pyx_t_30);
+      __Pyx_XGIVEREF(__pyx_t_25);
+      __Pyx_XGIVEREF(__pyx_t_26);
+      __Pyx_XGIVEREF(__pyx_t_27);
+      __Pyx_ErrRestore(__pyx_t_25, __pyx_t_26, __pyx_t_27);
+      __pyx_t_25 = 0; __pyx_t_26 = 0; __pyx_t_27 = 0; __pyx_t_28 = 0; __pyx_t_29 = 0; __pyx_t_30 = 0;
+      __pyx_lineno = __pyx_t_22; __pyx_clineno = __pyx_t_23; __pyx_filename = __pyx_t_24;
+      goto __pyx_L1_error;
+    }
+    __pyx_L7_return: {
+      __pyx_t_30 = __pyx_r;
+      __pyx_r = 0;
+      delete __pyx_v_decomposer;
+      __pyx_r = __pyx_t_30;
+      __pyx_t_30 = 0;
+      goto __pyx_L0;
+    }
+  }
+
+  /* "mass_decomposer_cpp.pyx":315
+ * 
+ * 
+ * def decompose_spectrum_properly(double precursor_mass, list fragment_masses,             # <<<<<<<<<<<<<<
+ *                                dict element_bounds, str strategy="money_changing",
+ *                                double tolerance_ppm=5.0, double min_dbe=0.0,
+*/
+
+  /* function exit code */
+  __pyx_L1_error:;
+  __Pyx_XDECREF(__pyx_t_3);
+  __Pyx_XDECREF(__pyx_t_7);
+  __Pyx_AddTraceback("mass_decomposer_cpp.decompose_spectrum_properly", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __pyx_r = NULL;
+  __pyx_L0:;
+  __Pyx_XDECREF(__pyx_v_frag_mass);
+  __Pyx_XDECREF(__pyx_v_python_results);
+  __Pyx_XDECREF(__pyx_v_precursor_dict);
+  __Pyx_XDECREF(__pyx_v_fragment_lists);
+  __Pyx_XDECREF(__pyx_v_fragment_mass_lists);
+  __Pyx_XDECREF(__pyx_v_fragment_error_lists);
+  __Pyx_XDECREF(__pyx_v_frag_formulas);
+  __Pyx_XDECREF(__pyx_v_mass_list);
+  __Pyx_XDECREF(__pyx_v_error_list);
+  __Pyx_XDECREF(__pyx_v_result_dict);
+  __Pyx_XGIVEREF(__pyx_r);
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+/* "mass_decomposer_cpp.pyx":415
+ * 
+ * 
+ * def decompose_spectra_properly_parallel(list spectra_data, dict element_bounds,             # <<<<<<<<<<<<<<
+ *                                       str strategy="money_changing", double tolerance_ppm=5.0,
+ *                                       double min_dbe=0.0, double max_dbe=40.0,
+*/
+
+/* Python wrapper */
+static PyObject *__pyx_pw_19mass_decomposer_cpp_11decompose_spectra_properly_parallel(PyObject *__pyx_self, 
+#if CYTHON_METH_FASTCALL
+PyObject *const *__pyx_args, Py_ssize_t __pyx_nargs, PyObject *__pyx_kwds
+#else
+PyObject *__pyx_args, PyObject *__pyx_kwds
+#endif
+); /*proto*/
+PyDoc_STRVAR(__pyx_doc_19mass_decomposer_cpp_10decompose_spectra_properly_parallel, "decompose_spectra_properly_parallel(list spectra_data, dict element_bounds, str strategy='money_changing', double tolerance_ppm=5.0, double min_dbe=0.0, double max_dbe=40.0, double max_hetero_ratio=1000.0, int max_results=10000)\n\nDecompose multiple spectra properly in parallel ensuring fragments are subsets of precursor formulas.\n\nArgs:\n    spectra_data: List of tuples [(precursor_mass, [fragment_masses]), ...]\n    element_bounds: Dictionary of element bounds {element: (min, max)}\n    strategy: \"recursive\" or \"money_changing\"\n    tolerance_ppm: Mass tolerance in ppm\n    min_dbe: Minimum double bond equivalents\n    max_dbe: Maximum double bond equivalents\n    max_hetero_ratio: Maximum heteroatom to carbon ratio\n    max_results: Maximum number of results to return per mass\n    \nReturns:\n    List of spectrum results, each in the same format as decompose_spectrum_properly");
+static PyMethodDef __pyx_mdef_19mass_decomposer_cpp_11decompose_spectra_properly_parallel = {"decompose_spectra_properly_parallel", (PyCFunction)(void(*)(void))(__Pyx_PyCFunction_FastCallWithKeywords)__pyx_pw_19mass_decomposer_cpp_11decompose_spectra_properly_parallel, __Pyx_METH_FASTCALL|METH_KEYWORDS, __pyx_doc_19mass_decomposer_cpp_10decompose_spectra_properly_parallel};
+static PyObject *__pyx_pw_19mass_decomposer_cpp_11decompose_spectra_properly_parallel(PyObject *__pyx_self, 
+#if CYTHON_METH_FASTCALL
+PyObject *const *__pyx_args, Py_ssize_t __pyx_nargs, PyObject *__pyx_kwds
+#else
+PyObject *__pyx_args, PyObject *__pyx_kwds
+#endif
+) {
+  PyObject *__pyx_v_spectra_data = 0;
+  PyObject *__pyx_v_element_bounds = 0;
+  PyObject *__pyx_v_strategy = 0;
+  double __pyx_v_tolerance_ppm;
+  double __pyx_v_min_dbe;
+  double __pyx_v_max_dbe;
+  double __pyx_v_max_hetero_ratio;
+  int __pyx_v_max_results;
+  #if !CYTHON_METH_FASTCALL
+  CYTHON_UNUSED Py_ssize_t __pyx_nargs;
+  #endif
+  CYTHON_UNUSED PyObject *const *__pyx_kwvalues;
+  PyObject* values[8] = {0,0,0,0,0,0,0,0};
+  int __pyx_lineno = 0;
+  const char *__pyx_filename = NULL;
+  int __pyx_clineno = 0;
+  PyObject *__pyx_r = 0;
+  __Pyx_RefNannyDeclarations
+  __Pyx_RefNannySetupContext("decompose_spectra_properly_parallel (wrapper)", 0);
+  #if !CYTHON_METH_FASTCALL
+  #if CYTHON_ASSUME_SAFE_SIZE
+  __pyx_nargs = PyTuple_GET_SIZE(__pyx_args);
+  #else
+  __pyx_nargs = PyTuple_Size(__pyx_args); if (unlikely(__pyx_nargs < 0)) return NULL;
+  #endif
+  #endif
+  __pyx_kwvalues = __Pyx_KwValues_FASTCALL(__pyx_args, __pyx_nargs);
+  {
+    PyObject ** const __pyx_pyargnames[] = {&__pyx_mstate_global->__pyx_n_u_spectra_data,&__pyx_mstate_global->__pyx_n_u_element_bounds,&__pyx_mstate_global->__pyx_n_u_strategy,&__pyx_mstate_global->__pyx_n_u_tolerance_ppm,&__pyx_mstate_global->__pyx_n_u_min_dbe,&__pyx_mstate_global->__pyx_n_u_max_dbe,&__pyx_mstate_global->__pyx_n_u_max_hetero_ratio,&__pyx_mstate_global->__pyx_n_u_max_results,0};
+    const Py_ssize_t __pyx_kwds_len = (__pyx_kwds) ? __Pyx_NumKwargs_FASTCALL(__pyx_kwds) : 0;
+    if (unlikely(__pyx_kwds_len) < 0) __PYX_ERR(0, 415, __pyx_L3_error)
+    if (__pyx_kwds_len > 0) {
+      switch (__pyx_nargs) {
+        case  8:
+        values[7] = __Pyx_ArgRef_FASTCALL(__pyx_args, 7);
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[7])) __PYX_ERR(0, 415, __pyx_L3_error)
+        CYTHON_FALLTHROUGH;
+        case  7:
+        values[6] = __Pyx_ArgRef_FASTCALL(__pyx_args, 6);
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[6])) __PYX_ERR(0, 415, __pyx_L3_error)
+        CYTHON_FALLTHROUGH;
+        case  6:
+        values[5] = __Pyx_ArgRef_FASTCALL(__pyx_args, 5);
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[5])) __PYX_ERR(0, 415, __pyx_L3_error)
+        CYTHON_FALLTHROUGH;
+        case  5:
+        values[4] = __Pyx_ArgRef_FASTCALL(__pyx_args, 4);
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[4])) __PYX_ERR(0, 415, __pyx_L3_error)
+        CYTHON_FALLTHROUGH;
+        case  4:
+        values[3] = __Pyx_ArgRef_FASTCALL(__pyx_args, 3);
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[3])) __PYX_ERR(0, 415, __pyx_L3_error)
+        CYTHON_FALLTHROUGH;
+        case  3:
+        values[2] = __Pyx_ArgRef_FASTCALL(__pyx_args, 2);
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[2])) __PYX_ERR(0, 415, __pyx_L3_error)
+        CYTHON_FALLTHROUGH;
+        case  2:
+        values[1] = __Pyx_ArgRef_FASTCALL(__pyx_args, 1);
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[1])) __PYX_ERR(0, 415, __pyx_L3_error)
+        CYTHON_FALLTHROUGH;
+        case  1:
+        values[0] = __Pyx_ArgRef_FASTCALL(__pyx_args, 0);
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[0])) __PYX_ERR(0, 415, __pyx_L3_error)
+        CYTHON_FALLTHROUGH;
+        case  0: break;
+        default: goto __pyx_L5_argtuple_error;
+      }
+      const Py_ssize_t kwd_pos_args = __pyx_nargs;
+      if (__Pyx_ParseKeywords(__pyx_kwds, __pyx_kwvalues, __pyx_pyargnames, 0, values, kwd_pos_args, __pyx_kwds_len, "decompose_spectra_properly_parallel", 0) < 0) __PYX_ERR(0, 415, __pyx_L3_error)
+      if (!values[2]) values[2] = __Pyx_NewRef(((PyObject*)((PyObject*)__pyx_mstate_global->__pyx_n_u_money_changing)));
+      for (Py_ssize_t i = __pyx_nargs; i < 2; i++) {
+        if (unlikely(!values[i])) { __Pyx_RaiseArgtupleInvalid("decompose_spectra_properly_parallel", 0, 2, 8, i); __PYX_ERR(0, 415, __pyx_L3_error) }
+      }
+    } else {
+      switch (__pyx_nargs) {
+        case  8:
+        values[7] = __Pyx_ArgRef_FASTCALL(__pyx_args, 7);
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[7])) __PYX_ERR(0, 415, __pyx_L3_error)
+        CYTHON_FALLTHROUGH;
+        case  7:
+        values[6] = __Pyx_ArgRef_FASTCALL(__pyx_args, 6);
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[6])) __PYX_ERR(0, 415, __pyx_L3_error)
+        CYTHON_FALLTHROUGH;
+        case  6:
+        values[5] = __Pyx_ArgRef_FASTCALL(__pyx_args, 5);
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[5])) __PYX_ERR(0, 415, __pyx_L3_error)
+        CYTHON_FALLTHROUGH;
+        case  5:
+        values[4] = __Pyx_ArgRef_FASTCALL(__pyx_args, 4);
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[4])) __PYX_ERR(0, 415, __pyx_L3_error)
+        CYTHON_FALLTHROUGH;
+        case  4:
+        values[3] = __Pyx_ArgRef_FASTCALL(__pyx_args, 3);
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[3])) __PYX_ERR(0, 415, __pyx_L3_error)
+        CYTHON_FALLTHROUGH;
+        case  3:
+        values[2] = __Pyx_ArgRef_FASTCALL(__pyx_args, 2);
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[2])) __PYX_ERR(0, 415, __pyx_L3_error)
+        CYTHON_FALLTHROUGH;
+        case  2:
+        values[1] = __Pyx_ArgRef_FASTCALL(__pyx_args, 1);
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[1])) __PYX_ERR(0, 415, __pyx_L3_error)
+        values[0] = __Pyx_ArgRef_FASTCALL(__pyx_args, 0);
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[0])) __PYX_ERR(0, 415, __pyx_L3_error)
+        break;
+        default: goto __pyx_L5_argtuple_error;
+      }
+      if (!values[2]) values[2] = __Pyx_NewRef(((PyObject*)((PyObject*)__pyx_mstate_global->__pyx_n_u_money_changing)));
+    }
+    __pyx_v_spectra_data = ((PyObject*)values[0]);
+    __pyx_v_element_bounds = ((PyObject*)values[1]);
+    __pyx_v_strategy = ((PyObject*)values[2]);
+    if (values[3]) {
+      __pyx_v_tolerance_ppm = __Pyx_PyFloat_AsDouble(values[3]); if (unlikely((__pyx_v_tolerance_ppm == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 416, __pyx_L3_error)
+    } else {
+      __pyx_v_tolerance_ppm = ((double)((double)5.0));
+    }
+    if (values[4]) {
+      __pyx_v_min_dbe = __Pyx_PyFloat_AsDouble(values[4]); if (unlikely((__pyx_v_min_dbe == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 417, __pyx_L3_error)
+    } else {
+      __pyx_v_min_dbe = ((double)((double)0.0));
+    }
+    if (values[5]) {
+      __pyx_v_max_dbe = __Pyx_PyFloat_AsDouble(values[5]); if (unlikely((__pyx_v_max_dbe == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 417, __pyx_L3_error)
+    } else {
+      __pyx_v_max_dbe = ((double)((double)40.0));
+    }
+    if (values[6]) {
+      __pyx_v_max_hetero_ratio = __Pyx_PyFloat_AsDouble(values[6]); if (unlikely((__pyx_v_max_hetero_ratio == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 418, __pyx_L3_error)
+    } else {
+      __pyx_v_max_hetero_ratio = ((double)((double)1000.0));
+    }
+    if (values[7]) {
+      __pyx_v_max_results = __Pyx_PyLong_As_int(values[7]); if (unlikely((__pyx_v_max_results == (int)-1) && PyErr_Occurred())) __PYX_ERR(0, 418, __pyx_L3_error)
+    } else {
+      __pyx_v_max_results = ((int)((int)0x2710));
+    }
+  }
+  goto __pyx_L6_skip;
+  __pyx_L5_argtuple_error:;
+  __Pyx_RaiseArgtupleInvalid("decompose_spectra_properly_parallel", 0, 2, 8, __pyx_nargs); __PYX_ERR(0, 415, __pyx_L3_error)
+  __pyx_L6_skip:;
+  goto __pyx_L4_argument_unpacking_done;
+  __pyx_L3_error:;
+  for (Py_ssize_t __pyx_temp=0; __pyx_temp < (Py_ssize_t)(sizeof(values)/sizeof(values[0])); ++__pyx_temp) {
+    Py_XDECREF(values[__pyx_temp]);
+  }
+  __Pyx_AddTraceback("mass_decomposer_cpp.decompose_spectra_properly_parallel", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __Pyx_RefNannyFinishContext();
+  return NULL;
+  __pyx_L4_argument_unpacking_done:;
+  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_spectra_data), (&PyList_Type), 1, "spectra_data", 1))) __PYX_ERR(0, 415, __pyx_L1_error)
+  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_element_bounds), (&PyDict_Type), 1, "element_bounds", 1))) __PYX_ERR(0, 415, __pyx_L1_error)
+  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_strategy), (&PyUnicode_Type), 1, "strategy", 1))) __PYX_ERR(0, 416, __pyx_L1_error)
+  __pyx_r = __pyx_pf_19mass_decomposer_cpp_10decompose_spectra_properly_parallel(__pyx_self, __pyx_v_spectra_data, __pyx_v_element_bounds, __pyx_v_strategy, __pyx_v_tolerance_ppm, __pyx_v_min_dbe, __pyx_v_max_dbe, __pyx_v_max_hetero_ratio, __pyx_v_max_results);
+
+  /* function exit code */
+  goto __pyx_L0;
+  __pyx_L1_error:;
+  __pyx_r = NULL;
+  for (Py_ssize_t __pyx_temp=0; __pyx_temp < (Py_ssize_t)(sizeof(values)/sizeof(values[0])); ++__pyx_temp) {
+    Py_XDECREF(values[__pyx_temp]);
+  }
+  goto __pyx_L7_cleaned_up;
+  __pyx_L0:;
+  for (Py_ssize_t __pyx_temp=0; __pyx_temp < (Py_ssize_t)(sizeof(values)/sizeof(values[0])); ++__pyx_temp) {
+    Py_XDECREF(values[__pyx_temp]);
+  }
+  __pyx_L7_cleaned_up:;
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+static PyObject *__pyx_pf_19mass_decomposer_cpp_10decompose_spectra_properly_parallel(CYTHON_UNUSED PyObject *__pyx_self, PyObject *__pyx_v_spectra_data, PyObject *__pyx_v_element_bounds, PyObject *__pyx_v_strategy, double __pyx_v_tolerance_ppm, double __pyx_v_min_dbe, double __pyx_v_max_dbe, double __pyx_v_max_hetero_ratio, int __pyx_v_max_results) {
+  std::vector<struct Element>  __pyx_v_elements;
+  struct DecompositionParams __pyx_v_params;
+  std::vector<struct Spectrum>  __pyx_v_spectra_vec;
+  MassDecomposer *__pyx_v_decomposer;
+  std::vector<struct ProperSpectrumResults>  __pyx_v_all_results;
+  size_t __pyx_v_i;
+  size_t __pyx_v_j;
+  size_t __pyx_v_k;
+  size_t __pyx_v_l;
+  struct Spectrum __pyx_v_spectrum;
+  PyObject *__pyx_v_spectrum_data = NULL;
+  PyObject *__pyx_v_precursor_mass = NULL;
+  PyObject *__pyx_v_fragment_masses = NULL;
+  PyObject *__pyx_v_frag_mass = NULL;
+  PyObject *__pyx_v_python_results = NULL;
+  PyObject *__pyx_v_spectrum_results = NULL;
+  struct SpectrumDecomposition __pyx_v_decomp;
+  PyObject *__pyx_v_precursor_dict = NULL;
+  PyObject *__pyx_v_fragment_lists = NULL;
+  PyObject *__pyx_v_fragment_mass_lists = NULL;
+  PyObject *__pyx_v_fragment_error_lists = NULL;
+  PyObject *__pyx_v_frag_formulas = NULL;
+  PyObject *__pyx_v_mass_list = NULL;
+  PyObject *__pyx_v_error_list = NULL;
+  PyObject *__pyx_v_result_dict = NULL;
+  PyObject *__pyx_r = NULL;
+  __Pyx_RefNannyDeclarations
+  int __pyx_t_1;
+  int __pyx_t_2;
+  PyObject *__pyx_t_3 = NULL;
+  std::vector<struct Element>  __pyx_t_4;
+  struct DecompositionParams __pyx_t_5;
+  Py_ssize_t __pyx_t_6;
+  PyObject *__pyx_t_7 = NULL;
+  PyObject *__pyx_t_8 = NULL;
+  PyObject *__pyx_t_9 = NULL;
+  PyObject *(*__pyx_t_10)(PyObject *);
+  double __pyx_t_11;
+  Py_ssize_t __pyx_t_12;
+  PyObject *(*__pyx_t_13)(PyObject *);
+  std::string __pyx_t_14;
+  std::vector<struct ProperSpectrumResults> ::size_type __pyx_t_15;
+  std::vector<struct ProperSpectrumResults> ::size_type __pyx_t_16;
+  size_t __pyx_t_17;
+  std::vector<struct SpectrumDecomposition> ::size_type __pyx_t_18;
+  std::vector<struct SpectrumDecomposition> ::size_type __pyx_t_19;
+  size_t __pyx_t_20;
+  std::vector<std::vector<Formula> > ::size_type __pyx_t_21;
+  std::vector<std::vector<Formula> > ::size_type __pyx_t_22;
+  size_t __pyx_t_23;
+  std::vector<Formula> ::size_type __pyx_t_24;
+  std::vector<Formula> ::size_type __pyx_t_25;
+  size_t __pyx_t_26;
+  int __pyx_t_27;
+  std::vector<double> ::size_type __pyx_t_28;
+  std::vector<double> ::size_type __pyx_t_29;
+  int __pyx_t_30;
+  int __pyx_t_31;
+  char const *__pyx_t_32;
+  PyObject *__pyx_t_33 = NULL;
+  PyObject *__pyx_t_34 = NULL;
+  PyObject *__pyx_t_35 = NULL;
+  PyObject *__pyx_t_36 = NULL;
+  PyObject *__pyx_t_37 = NULL;
+  PyObject *__pyx_t_38 = NULL;
+  int __pyx_lineno = 0;
+  const char *__pyx_filename = NULL;
+  int __pyx_clineno = 0;
+  __Pyx_RefNannySetupContext("decompose_spectra_properly_parallel", 0);
+
+  /* "mass_decomposer_cpp.pyx":435
+ *         List of spectrum results, each in the same format as decompose_spectrum_properly
+ *     """
+ *     if not spectra_data:             # <<<<<<<<<<<<<<
+ *         return []
+ * 
+*/
+  __pyx_t_1 = (__pyx_v_spectra_data != Py_None)&&(__Pyx_PyList_GET_SIZE(__pyx_v_spectra_data) != 0);
+  if (unlikely(((!CYTHON_ASSUME_SAFE_MACROS) && __pyx_t_1 < 0))) __PYX_ERR(0, 435, __pyx_L1_error)
+  __pyx_t_2 = (!__pyx_t_1);
+  if (__pyx_t_2) {
+
+    /* "mass_decomposer_cpp.pyx":436
+ *     """
+ *     if not spectra_data:
+ *         return []             # <<<<<<<<<<<<<<
+ * 
+ *     cdef vector[Element] elements
+*/
+    __Pyx_XDECREF(__pyx_r);
+    __pyx_t_3 = PyList_New(0); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 436, __pyx_L1_error)
+    __Pyx_GOTREF(__pyx_t_3);
+    __pyx_r = __pyx_t_3;
+    __pyx_t_3 = 0;
+    goto __pyx_L0;
+
+    /* "mass_decomposer_cpp.pyx":435
+ *         List of spectrum results, each in the same format as decompose_spectrum_properly
+ *     """
+ *     if not spectra_data:             # <<<<<<<<<<<<<<
+ *         return []
+ * 
+*/
+  }
+
+  /* "mass_decomposer_cpp.pyx":446
+ *     cdef Spectrum spectrum
+ * 
+ *     elements = _convert_element_bounds(element_bounds)             # <<<<<<<<<<<<<<
+ *     params = _convert_params(tolerance_ppm, min_dbe, max_dbe,
+ *                            max_hetero_ratio, max_results, strategy)
+*/
+  __pyx_t_4 = __pyx_f_19mass_decomposer_cpp__convert_element_bounds(__pyx_v_element_bounds); if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 446, __pyx_L1_error)
+  __pyx_v_elements = __PYX_STD_MOVE_IF_SUPPORTED(__pyx_t_4);
+
+  /* "mass_decomposer_cpp.pyx":447
+ * 
+ *     elements = _convert_element_bounds(element_bounds)
+ *     params = _convert_params(tolerance_ppm, min_dbe, max_dbe,             # <<<<<<<<<<<<<<
+ *                            max_hetero_ratio, max_results, strategy)
+ * 
+*/
+  __pyx_t_5 = __pyx_f_19mass_decomposer_cpp__convert_params(__pyx_v_tolerance_ppm, __pyx_v_min_dbe, __pyx_v_max_dbe, __pyx_v_max_hetero_ratio, __pyx_v_max_results, __pyx_v_strategy); if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 447, __pyx_L1_error)
+  __pyx_v_params = __pyx_t_5;
+
+  /* "mass_decomposer_cpp.pyx":451
+ * 
+ *     # Convert spectra data to C++ vector
+ *     for spectrum_data in spectra_data:             # <<<<<<<<<<<<<<
+ *         precursor_mass, fragment_masses = spectrum_data
+ *         spectrum.precursor_mass = precursor_mass
+*/
+  if (unlikely(__pyx_v_spectra_data == Py_None)) {
+    PyErr_SetString(PyExc_TypeError, "'NoneType' object is not iterable");
+    __PYX_ERR(0, 451, __pyx_L1_error)
+  }
+  __pyx_t_3 = __pyx_v_spectra_data; __Pyx_INCREF(__pyx_t_3);
+  __pyx_t_6 = 0;
+  for (;;) {
+    {
+      Py_ssize_t __pyx_temp = __Pyx_PyList_GET_SIZE(__pyx_t_3);
+      #if !CYTHON_ASSUME_SAFE_SIZE
+      if (unlikely((__pyx_temp < 0))) __PYX_ERR(0, 451, __pyx_L1_error)
+      #endif
+      if (__pyx_t_6 >= __pyx_temp) break;
+    }
+    __pyx_t_7 = __Pyx_PyList_GetItemRef(__pyx_t_3, __pyx_t_6);
+    ++__pyx_t_6;
+    if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 451, __pyx_L1_error)
+    __Pyx_GOTREF(__pyx_t_7);
+    __Pyx_XDECREF_SET(__pyx_v_spectrum_data, __pyx_t_7);
+    __pyx_t_7 = 0;
+
+    /* "mass_decomposer_cpp.pyx":452
+ *     # Convert spectra data to C++ vector
+ *     for spectrum_data in spectra_data:
+ *         precursor_mass, fragment_masses = spectrum_data             # <<<<<<<<<<<<<<
+ *         spectrum.precursor_mass = precursor_mass
+ *         spectrum.fragment_masses.clear()
+*/
+    if ((likely(PyTuple_CheckExact(__pyx_v_spectrum_data))) || (PyList_CheckExact(__pyx_v_spectrum_data))) {
+      PyObject* sequence = __pyx_v_spectrum_data;
+      Py_ssize_t size = __Pyx_PySequence_SIZE(sequence);
+      if (unlikely(size != 2)) {
+        if (size > 2) __Pyx_RaiseTooManyValuesError(2);
+        else if (size >= 0) __Pyx_RaiseNeedMoreValuesError(size);
+        __PYX_ERR(0, 452, __pyx_L1_error)
+      }
+      #if CYTHON_ASSUME_SAFE_MACROS && !CYTHON_AVOID_BORROWED_REFS
+      if (likely(PyTuple_CheckExact(sequence))) {
+        __pyx_t_7 = PyTuple_GET_ITEM(sequence, 0);
+        __Pyx_INCREF(__pyx_t_7);
+        __pyx_t_8 = PyTuple_GET_ITEM(sequence, 1);
+        __Pyx_INCREF(__pyx_t_8);
+      } else {
+        __pyx_t_7 = __Pyx_PyList_GetItemRef(sequence, 0);
+        if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 452, __pyx_L1_error)
+        __Pyx_XGOTREF(__pyx_t_7);
+        __pyx_t_8 = __Pyx_PyList_GetItemRef(sequence, 1);
+        if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 452, __pyx_L1_error)
+        __Pyx_XGOTREF(__pyx_t_8);
+      }
+      #else
+      __pyx_t_7 = __Pyx_PySequence_ITEM(sequence, 0); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 452, __pyx_L1_error)
+      __Pyx_GOTREF(__pyx_t_7);
+      __pyx_t_8 = __Pyx_PySequence_ITEM(sequence, 1); if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 452, __pyx_L1_error)
+      __Pyx_GOTREF(__pyx_t_8);
+      #endif
+    } else {
+      Py_ssize_t index = -1;
+      __pyx_t_9 = PyObject_GetIter(__pyx_v_spectrum_data); if (unlikely(!__pyx_t_9)) __PYX_ERR(0, 452, __pyx_L1_error)
+      __Pyx_GOTREF(__pyx_t_9);
+      __pyx_t_10 = (CYTHON_COMPILING_IN_LIMITED_API) ? PyIter_Next : __Pyx_PyObject_GetIterNextFunc(__pyx_t_9);
+      index = 0; __pyx_t_7 = __pyx_t_10(__pyx_t_9); if (unlikely(!__pyx_t_7)) goto __pyx_L6_unpacking_failed;
+      __Pyx_GOTREF(__pyx_t_7);
+      index = 1; __pyx_t_8 = __pyx_t_10(__pyx_t_9); if (unlikely(!__pyx_t_8)) goto __pyx_L6_unpacking_failed;
+      __Pyx_GOTREF(__pyx_t_8);
+      if (__Pyx_IternextUnpackEndCheck(__pyx_t_10(__pyx_t_9), 2) < 0) __PYX_ERR(0, 452, __pyx_L1_error)
+      __pyx_t_10 = NULL;
+      __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
+      goto __pyx_L7_unpacking_done;
+      __pyx_L6_unpacking_failed:;
+      __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
+      __pyx_t_10 = NULL;
+      if (__Pyx_IterFinish() == 0) __Pyx_RaiseNeedMoreValuesError(index);
+      __PYX_ERR(0, 452, __pyx_L1_error)
+      __pyx_L7_unpacking_done:;
+    }
+    __Pyx_XDECREF_SET(__pyx_v_precursor_mass, __pyx_t_7);
+    __pyx_t_7 = 0;
+    __Pyx_XDECREF_SET(__pyx_v_fragment_masses, __pyx_t_8);
+    __pyx_t_8 = 0;
+
+    /* "mass_decomposer_cpp.pyx":453
+ *     for spectrum_data in spectra_data:
+ *         precursor_mass, fragment_masses = spectrum_data
+ *         spectrum.precursor_mass = precursor_mass             # <<<<<<<<<<<<<<
+ *         spectrum.fragment_masses.clear()
+ *         for frag_mass in fragment_masses:
+*/
+    __pyx_t_11 = __Pyx_PyFloat_AsDouble(__pyx_v_precursor_mass); if (unlikely((__pyx_t_11 == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 453, __pyx_L1_error)
+    __pyx_v_spectrum.precursor_mass = __pyx_t_11;
+
+    /* "mass_decomposer_cpp.pyx":454
+ *         precursor_mass, fragment_masses = spectrum_data
+ *         spectrum.precursor_mass = precursor_mass
+ *         spectrum.fragment_masses.clear()             # <<<<<<<<<<<<<<
+ *         for frag_mass in fragment_masses:
+ *             spectrum.fragment_masses.push_back(frag_mass)
+*/
+    __pyx_v_spectrum.fragment_masses.clear();
+
+    /* "mass_decomposer_cpp.pyx":455
+ *         spectrum.precursor_mass = precursor_mass
+ *         spectrum.fragment_masses.clear()
+ *         for frag_mass in fragment_masses:             # <<<<<<<<<<<<<<
+ *             spectrum.fragment_masses.push_back(frag_mass)
+ *         spectra_vec.push_back(spectrum)
+*/
+    if (likely(PyList_CheckExact(__pyx_v_fragment_masses)) || PyTuple_CheckExact(__pyx_v_fragment_masses)) {
+      __pyx_t_8 = __pyx_v_fragment_masses; __Pyx_INCREF(__pyx_t_8);
+      __pyx_t_12 = 0;
+      __pyx_t_13 = NULL;
+    } else {
+      __pyx_t_12 = -1; __pyx_t_8 = PyObject_GetIter(__pyx_v_fragment_masses); if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 455, __pyx_L1_error)
+      __Pyx_GOTREF(__pyx_t_8);
+      __pyx_t_13 = (CYTHON_COMPILING_IN_LIMITED_API) ? PyIter_Next : __Pyx_PyObject_GetIterNextFunc(__pyx_t_8); if (unlikely(!__pyx_t_13)) __PYX_ERR(0, 455, __pyx_L1_error)
+    }
+    for (;;) {
+      if (likely(!__pyx_t_13)) {
+        if (likely(PyList_CheckExact(__pyx_t_8))) {
+          {
+            Py_ssize_t __pyx_temp = __Pyx_PyList_GET_SIZE(__pyx_t_8);
+            #if !CYTHON_ASSUME_SAFE_SIZE
+            if (unlikely((__pyx_temp < 0))) __PYX_ERR(0, 455, __pyx_L1_error)
+            #endif
+            if (__pyx_t_12 >= __pyx_temp) break;
+          }
+          __pyx_t_7 = __Pyx_PyList_GetItemRef(__pyx_t_8, __pyx_t_12);
+          ++__pyx_t_12;
+        } else {
+          {
+            Py_ssize_t __pyx_temp = __Pyx_PyTuple_GET_SIZE(__pyx_t_8);
+            #if !CYTHON_ASSUME_SAFE_SIZE
+            if (unlikely((__pyx_temp < 0))) __PYX_ERR(0, 455, __pyx_L1_error)
+            #endif
+            if (__pyx_t_12 >= __pyx_temp) break;
+          }
+          #if CYTHON_ASSUME_SAFE_MACROS && !CYTHON_AVOID_BORROWED_REFS
+          __pyx_t_7 = __Pyx_NewRef(PyTuple_GET_ITEM(__pyx_t_8, __pyx_t_12));
+          #else
+          __pyx_t_7 = __Pyx_PySequence_ITEM(__pyx_t_8, __pyx_t_12);
+          #endif
+          ++__pyx_t_12;
+        }
+        if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 455, __pyx_L1_error)
+      } else {
+        __pyx_t_7 = __pyx_t_13(__pyx_t_8);
+        if (unlikely(!__pyx_t_7)) {
+          PyObject* exc_type = PyErr_Occurred();
+          if (exc_type) {
+            if (unlikely(!__Pyx_PyErr_GivenExceptionMatches(exc_type, PyExc_StopIteration))) __PYX_ERR(0, 455, __pyx_L1_error)
+            PyErr_Clear();
+          }
+          break;
+        }
+      }
+      __Pyx_GOTREF(__pyx_t_7);
+      __Pyx_XDECREF_SET(__pyx_v_frag_mass, __pyx_t_7);
+      __pyx_t_7 = 0;
+
+      /* "mass_decomposer_cpp.pyx":456
+ *         spectrum.fragment_masses.clear()
+ *         for frag_mass in fragment_masses:
+ *             spectrum.fragment_masses.push_back(frag_mass)             # <<<<<<<<<<<<<<
+ *         spectra_vec.push_back(spectrum)
+ * 
+*/
+      __pyx_t_11 = __Pyx_PyFloat_AsDouble(__pyx_v_frag_mass); if (unlikely((__pyx_t_11 == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 456, __pyx_L1_error)
+      try {
+        __pyx_v_spectrum.fragment_masses.push_back(__pyx_t_11);
+      } catch(...) {
+        __Pyx_CppExn2PyErr();
+        __PYX_ERR(0, 456, __pyx_L1_error)
+      }
+
+      /* "mass_decomposer_cpp.pyx":455
+ *         spectrum.precursor_mass = precursor_mass
+ *         spectrum.fragment_masses.clear()
+ *         for frag_mass in fragment_masses:             # <<<<<<<<<<<<<<
+ *             spectrum.fragment_masses.push_back(frag_mass)
+ *         spectra_vec.push_back(spectrum)
+*/
+    }
+    __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
+
+    /* "mass_decomposer_cpp.pyx":457
+ *         for frag_mass in fragment_masses:
+ *             spectrum.fragment_masses.push_back(frag_mass)
+ *         spectra_vec.push_back(spectrum)             # <<<<<<<<<<<<<<
+ * 
+ *     decomposer = new MassDecomposer(elements, strategy.encode('utf-8'))
+*/
+    try {
+      __pyx_v_spectra_vec.push_back(__pyx_v_spectrum);
+    } catch(...) {
+      __Pyx_CppExn2PyErr();
+      __PYX_ERR(0, 457, __pyx_L1_error)
+    }
+
+    /* "mass_decomposer_cpp.pyx":451
+ * 
+ *     # Convert spectra data to C++ vector
+ *     for spectrum_data in spectra_data:             # <<<<<<<<<<<<<<
+ *         precursor_mass, fragment_masses = spectrum_data
+ *         spectrum.precursor_mass = precursor_mass
+*/
+  }
+  __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+
+  /* "mass_decomposer_cpp.pyx":459
+ *         spectra_vec.push_back(spectrum)
+ * 
+ *     decomposer = new MassDecomposer(elements, strategy.encode('utf-8'))             # <<<<<<<<<<<<<<
+ * 
+ *     try:
+*/
+  if (unlikely(__pyx_v_strategy == Py_None)) {
+    PyErr_Format(PyExc_AttributeError, "'NoneType' object has no attribute '%.30s'", "encode");
+    __PYX_ERR(0, 459, __pyx_L1_error)
+  }
+  __pyx_t_3 = PyUnicode_AsUTF8String(__pyx_v_strategy); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 459, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_3);
+  __pyx_t_14 = __pyx_convert_string_from_py_6libcpp_6string_std__in_string(__pyx_t_3); if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 459, __pyx_L1_error)
+  __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+  __pyx_v_decomposer = new MassDecomposer(__pyx_v_elements, __pyx_t_14);
+
+  /* "mass_decomposer_cpp.pyx":461
+ *     decomposer = new MassDecomposer(elements, strategy.encode('utf-8'))
+ * 
+ *     try:             # <<<<<<<<<<<<<<
+ *         all_results = decomposer.decompose_spectra_properly_parallel(spectra_vec, params)
+ * 
+*/
+  /*try:*/ {
+
+    /* "mass_decomposer_cpp.pyx":462
+ * 
+ *     try:
+ *         all_results = decomposer.decompose_spectra_properly_parallel(spectra_vec, params)             # <<<<<<<<<<<<<<
+ * 
+ *         # Convert results to Python
+*/
+    __pyx_v_all_results = __pyx_v_decomposer->decompose_spectra_properly_parallel(__pyx_v_spectra_vec, __pyx_v_params);
+
+    /* "mass_decomposer_cpp.pyx":465
+ * 
+ *         # Convert results to Python
+ *         python_results = []             # <<<<<<<<<<<<<<
+ *         for i in range(all_results.size()):
+ *             spectrum_results = []
+*/
+    __pyx_t_3 = PyList_New(0); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 465, __pyx_L13_error)
+    __Pyx_GOTREF(__pyx_t_3);
+    __pyx_v_python_results = ((PyObject*)__pyx_t_3);
+    __pyx_t_3 = 0;
+
+    /* "mass_decomposer_cpp.pyx":466
+ *         # Convert results to Python
+ *         python_results = []
+ *         for i in range(all_results.size()):             # <<<<<<<<<<<<<<
+ *             spectrum_results = []
+ * 
+*/
+    __pyx_t_15 = __pyx_v_all_results.size();
+    __pyx_t_16 = __pyx_t_15;
+    for (__pyx_t_17 = 0; __pyx_t_17 < __pyx_t_16; __pyx_t_17+=1) {
+      __pyx_v_i = __pyx_t_17;
+
+      /* "mass_decomposer_cpp.pyx":467
+ *         python_results = []
+ *         for i in range(all_results.size()):
+ *             spectrum_results = []             # <<<<<<<<<<<<<<
+ * 
+ *             for j in range(all_results[i].decompositions.size()):
+*/
+      __pyx_t_3 = PyList_New(0); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 467, __pyx_L13_error)
+      __Pyx_GOTREF(__pyx_t_3);
+      __Pyx_XDECREF_SET(__pyx_v_spectrum_results, ((PyObject*)__pyx_t_3));
+      __pyx_t_3 = 0;
+
+      /* "mass_decomposer_cpp.pyx":469
+ *             spectrum_results = []
+ * 
+ *             for j in range(all_results[i].decompositions.size()):             # <<<<<<<<<<<<<<
+ *                 decomp = all_results[i].decompositions[j]
+ * 
+*/
+      __pyx_t_18 = (__pyx_v_all_results[__pyx_v_i]).decompositions.size();
+      __pyx_t_19 = __pyx_t_18;
+      for (__pyx_t_20 = 0; __pyx_t_20 < __pyx_t_19; __pyx_t_20+=1) {
+        __pyx_v_j = __pyx_t_20;
+
+        /* "mass_decomposer_cpp.pyx":470
+ * 
+ *             for j in range(all_results[i].decompositions.size()):
+ *                 decomp = all_results[i].decompositions[j]             # <<<<<<<<<<<<<<
+ * 
+ *                 # Convert precursor formula
+*/
+        __pyx_v_decomp = ((__pyx_v_all_results[__pyx_v_i]).decompositions[__pyx_v_j]);
+
+        /* "mass_decomposer_cpp.pyx":473
+ * 
+ *                 # Convert precursor formula
+ *                 precursor_dict = _convert_formula_result(decomp.precursor, decomposer)             # <<<<<<<<<<<<<<
+ * 
+ *                 # Convert fragment formulas
+*/
+        __pyx_t_3 = __pyx_f_19mass_decomposer_cpp__convert_formula_result(__pyx_v_decomp.precursor, __pyx_v_decomposer); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 473, __pyx_L13_error)
+        __Pyx_GOTREF(__pyx_t_3);
+        __Pyx_XDECREF_SET(__pyx_v_precursor_dict, ((PyObject*)__pyx_t_3));
+        __pyx_t_3 = 0;
+
+        /* "mass_decomposer_cpp.pyx":476
+ * 
+ *                 # Convert fragment formulas
+ *                 fragment_lists = []             # <<<<<<<<<<<<<<
+ *                 fragment_mass_lists = []
+ *                 fragment_error_lists = []
+*/
+        __pyx_t_3 = PyList_New(0); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 476, __pyx_L13_error)
+        __Pyx_GOTREF(__pyx_t_3);
+        __Pyx_XDECREF_SET(__pyx_v_fragment_lists, ((PyObject*)__pyx_t_3));
+        __pyx_t_3 = 0;
+
+        /* "mass_decomposer_cpp.pyx":477
+ *                 # Convert fragment formulas
+ *                 fragment_lists = []
+ *                 fragment_mass_lists = []             # <<<<<<<<<<<<<<
+ *                 fragment_error_lists = []
+ * 
+*/
+        __pyx_t_3 = PyList_New(0); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 477, __pyx_L13_error)
+        __Pyx_GOTREF(__pyx_t_3);
+        __Pyx_XDECREF_SET(__pyx_v_fragment_mass_lists, ((PyObject*)__pyx_t_3));
+        __pyx_t_3 = 0;
+
+        /* "mass_decomposer_cpp.pyx":478
+ *                 fragment_lists = []
+ *                 fragment_mass_lists = []
+ *                 fragment_error_lists = []             # <<<<<<<<<<<<<<
+ * 
+ *                 for k in range(decomp.fragments.size()):
+*/
+        __pyx_t_3 = PyList_New(0); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 478, __pyx_L13_error)
+        __Pyx_GOTREF(__pyx_t_3);
+        __Pyx_XDECREF_SET(__pyx_v_fragment_error_lists, ((PyObject*)__pyx_t_3));
+        __pyx_t_3 = 0;
+
+        /* "mass_decomposer_cpp.pyx":480
+ *                 fragment_error_lists = []
+ * 
+ *                 for k in range(decomp.fragments.size()):             # <<<<<<<<<<<<<<
+ *                     # Convert formulas for this fragment mass
+ *                     frag_formulas = []
+*/
+        __pyx_t_21 = __pyx_v_decomp.fragments.size();
+        __pyx_t_22 = __pyx_t_21;
+        for (__pyx_t_23 = 0; __pyx_t_23 < __pyx_t_22; __pyx_t_23+=1) {
+          __pyx_v_k = __pyx_t_23;
+
+          /* "mass_decomposer_cpp.pyx":482
+ *                 for k in range(decomp.fragments.size()):
+ *                     # Convert formulas for this fragment mass
+ *                     frag_formulas = []             # <<<<<<<<<<<<<<
+ *                     for l in range(decomp.fragments[k].size()):
+ *                         frag_formulas.append(_convert_formula_result(decomp.fragments[k][l], decomposer))
+*/
+          __pyx_t_3 = PyList_New(0); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 482, __pyx_L13_error)
+          __Pyx_GOTREF(__pyx_t_3);
+          __Pyx_XDECREF_SET(__pyx_v_frag_formulas, ((PyObject*)__pyx_t_3));
+          __pyx_t_3 = 0;
+
+          /* "mass_decomposer_cpp.pyx":483
+ *                     # Convert formulas for this fragment mass
+ *                     frag_formulas = []
+ *                     for l in range(decomp.fragments[k].size()):             # <<<<<<<<<<<<<<
+ *                         frag_formulas.append(_convert_formula_result(decomp.fragments[k][l], decomposer))
+ *                     fragment_lists.append(frag_formulas)
+*/
+          __pyx_t_24 = (__pyx_v_decomp.fragments[__pyx_v_k]).size();
+          __pyx_t_25 = __pyx_t_24;
+          for (__pyx_t_26 = 0; __pyx_t_26 < __pyx_t_25; __pyx_t_26+=1) {
+            __pyx_v_l = __pyx_t_26;
+
+            /* "mass_decomposer_cpp.pyx":484
+ *                     frag_formulas = []
+ *                     for l in range(decomp.fragments[k].size()):
+ *                         frag_formulas.append(_convert_formula_result(decomp.fragments[k][l], decomposer))             # <<<<<<<<<<<<<<
+ *                     fragment_lists.append(frag_formulas)
+ * 
+*/
+            __pyx_t_3 = __pyx_f_19mass_decomposer_cpp__convert_formula_result(((__pyx_v_decomp.fragments[__pyx_v_k])[__pyx_v_l]), __pyx_v_decomposer); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 484, __pyx_L13_error)
+            __Pyx_GOTREF(__pyx_t_3);
+            __pyx_t_27 = __Pyx_PyList_Append(__pyx_v_frag_formulas, __pyx_t_3); if (unlikely(__pyx_t_27 == ((int)-1))) __PYX_ERR(0, 484, __pyx_L13_error)
+            __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+          }
+
+          /* "mass_decomposer_cpp.pyx":485
+ *                     for l in range(decomp.fragments[k].size()):
+ *                         frag_formulas.append(_convert_formula_result(decomp.fragments[k][l], decomposer))
+ *                     fragment_lists.append(frag_formulas)             # <<<<<<<<<<<<<<
+ * 
+ *                     # Convert masses and errors
+*/
+          __pyx_t_27 = __Pyx_PyList_Append(__pyx_v_fragment_lists, __pyx_v_frag_formulas); if (unlikely(__pyx_t_27 == ((int)-1))) __PYX_ERR(0, 485, __pyx_L13_error)
+
+          /* "mass_decomposer_cpp.pyx":488
+ * 
+ *                     # Convert masses and errors
+ *                     mass_list = []             # <<<<<<<<<<<<<<
+ *                     error_list = []
+ *                     for l in range(decomp.fragment_masses[k].size()):
+*/
+          __pyx_t_3 = PyList_New(0); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 488, __pyx_L13_error)
+          __Pyx_GOTREF(__pyx_t_3);
+          __Pyx_XDECREF_SET(__pyx_v_mass_list, ((PyObject*)__pyx_t_3));
+          __pyx_t_3 = 0;
+
+          /* "mass_decomposer_cpp.pyx":489
+ *                     # Convert masses and errors
+ *                     mass_list = []
+ *                     error_list = []             # <<<<<<<<<<<<<<
+ *                     for l in range(decomp.fragment_masses[k].size()):
+ *                         mass_list.append(decomp.fragment_masses[k][l])
+*/
+          __pyx_t_3 = PyList_New(0); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 489, __pyx_L13_error)
+          __Pyx_GOTREF(__pyx_t_3);
+          __Pyx_XDECREF_SET(__pyx_v_error_list, ((PyObject*)__pyx_t_3));
+          __pyx_t_3 = 0;
+
+          /* "mass_decomposer_cpp.pyx":490
+ *                     mass_list = []
+ *                     error_list = []
+ *                     for l in range(decomp.fragment_masses[k].size()):             # <<<<<<<<<<<<<<
+ *                         mass_list.append(decomp.fragment_masses[k][l])
+ *                     for l in range(decomp.fragment_errors_ppm[k].size()):
+*/
+          __pyx_t_28 = (__pyx_v_decomp.fragment_masses[__pyx_v_k]).size();
+          __pyx_t_29 = __pyx_t_28;
+          for (__pyx_t_26 = 0; __pyx_t_26 < __pyx_t_29; __pyx_t_26+=1) {
+            __pyx_v_l = __pyx_t_26;
+
+            /* "mass_decomposer_cpp.pyx":491
+ *                     error_list = []
+ *                     for l in range(decomp.fragment_masses[k].size()):
+ *                         mass_list.append(decomp.fragment_masses[k][l])             # <<<<<<<<<<<<<<
+ *                     for l in range(decomp.fragment_errors_ppm[k].size()):
+ *                         error_list.append(decomp.fragment_errors_ppm[k][l])
+*/
+            __pyx_t_3 = PyFloat_FromDouble(((__pyx_v_decomp.fragment_masses[__pyx_v_k])[__pyx_v_l])); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 491, __pyx_L13_error)
+            __Pyx_GOTREF(__pyx_t_3);
+            __pyx_t_27 = __Pyx_PyList_Append(__pyx_v_mass_list, __pyx_t_3); if (unlikely(__pyx_t_27 == ((int)-1))) __PYX_ERR(0, 491, __pyx_L13_error)
+            __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+          }
+
+          /* "mass_decomposer_cpp.pyx":492
+ *                     for l in range(decomp.fragment_masses[k].size()):
+ *                         mass_list.append(decomp.fragment_masses[k][l])
+ *                     for l in range(decomp.fragment_errors_ppm[k].size()):             # <<<<<<<<<<<<<<
+ *                         error_list.append(decomp.fragment_errors_ppm[k][l])
+ * 
+*/
+          __pyx_t_28 = (__pyx_v_decomp.fragment_errors_ppm[__pyx_v_k]).size();
+          __pyx_t_29 = __pyx_t_28;
+          for (__pyx_t_26 = 0; __pyx_t_26 < __pyx_t_29; __pyx_t_26+=1) {
+            __pyx_v_l = __pyx_t_26;
+
+            /* "mass_decomposer_cpp.pyx":493
+ *                         mass_list.append(decomp.fragment_masses[k][l])
+ *                     for l in range(decomp.fragment_errors_ppm[k].size()):
+ *                         error_list.append(decomp.fragment_errors_ppm[k][l])             # <<<<<<<<<<<<<<
+ * 
+ *                     fragment_mass_lists.append(mass_list)
+*/
+            __pyx_t_3 = PyFloat_FromDouble(((__pyx_v_decomp.fragment_errors_ppm[__pyx_v_k])[__pyx_v_l])); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 493, __pyx_L13_error)
+            __Pyx_GOTREF(__pyx_t_3);
+            __pyx_t_27 = __Pyx_PyList_Append(__pyx_v_error_list, __pyx_t_3); if (unlikely(__pyx_t_27 == ((int)-1))) __PYX_ERR(0, 493, __pyx_L13_error)
+            __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+          }
+
+          /* "mass_decomposer_cpp.pyx":495
+ *                         error_list.append(decomp.fragment_errors_ppm[k][l])
+ * 
+ *                     fragment_mass_lists.append(mass_list)             # <<<<<<<<<<<<<<
+ *                     fragment_error_lists.append(error_list)
+ * 
+*/
+          __pyx_t_27 = __Pyx_PyList_Append(__pyx_v_fragment_mass_lists, __pyx_v_mass_list); if (unlikely(__pyx_t_27 == ((int)-1))) __PYX_ERR(0, 495, __pyx_L13_error)
+
+          /* "mass_decomposer_cpp.pyx":496
+ * 
+ *                     fragment_mass_lists.append(mass_list)
+ *                     fragment_error_lists.append(error_list)             # <<<<<<<<<<<<<<
+ * 
+ *                 result_dict = {
+*/
+          __pyx_t_27 = __Pyx_PyList_Append(__pyx_v_fragment_error_lists, __pyx_v_error_list); if (unlikely(__pyx_t_27 == ((int)-1))) __PYX_ERR(0, 496, __pyx_L13_error)
+        }
+
+        /* "mass_decomposer_cpp.pyx":499
+ * 
+ *                 result_dict = {
+ *                     'precursor': precursor_dict,             # <<<<<<<<<<<<<<
+ *                     'fragments': fragment_lists,
+ *                     'precursor_mass': decomp.precursor_mass,
+*/
+        __pyx_t_3 = __Pyx_PyDict_NewPresized(6); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 499, __pyx_L13_error)
+        __Pyx_GOTREF(__pyx_t_3);
+        if (PyDict_SetItem(__pyx_t_3, __pyx_mstate_global->__pyx_n_u_precursor, __pyx_v_precursor_dict) < 0) __PYX_ERR(0, 499, __pyx_L13_error)
+
+        /* "mass_decomposer_cpp.pyx":500
+ *                 result_dict = {
+ *                     'precursor': precursor_dict,
+ *                     'fragments': fragment_lists,             # <<<<<<<<<<<<<<
+ *                     'precursor_mass': decomp.precursor_mass,
+ *                     'precursor_error_ppm': decomp.precursor_error_ppm,
+*/
+        if (PyDict_SetItem(__pyx_t_3, __pyx_mstate_global->__pyx_n_u_fragments, __pyx_v_fragment_lists) < 0) __PYX_ERR(0, 499, __pyx_L13_error)
+
+        /* "mass_decomposer_cpp.pyx":501
+ *                     'precursor': precursor_dict,
+ *                     'fragments': fragment_lists,
+ *                     'precursor_mass': decomp.precursor_mass,             # <<<<<<<<<<<<<<
+ *                     'precursor_error_ppm': decomp.precursor_error_ppm,
+ *                     'fragment_masses': fragment_mass_lists,
+*/
+        __pyx_t_8 = PyFloat_FromDouble(__pyx_v_decomp.precursor_mass); if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 501, __pyx_L13_error)
+        __Pyx_GOTREF(__pyx_t_8);
+        if (PyDict_SetItem(__pyx_t_3, __pyx_mstate_global->__pyx_n_u_precursor_mass, __pyx_t_8) < 0) __PYX_ERR(0, 499, __pyx_L13_error)
+        __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
+
+        /* "mass_decomposer_cpp.pyx":502
+ *                     'fragments': fragment_lists,
+ *                     'precursor_mass': decomp.precursor_mass,
+ *                     'precursor_error_ppm': decomp.precursor_error_ppm,             # <<<<<<<<<<<<<<
+ *                     'fragment_masses': fragment_mass_lists,
+ *                     'fragment_errors_ppm': fragment_error_lists
+*/
+        __pyx_t_8 = PyFloat_FromDouble(__pyx_v_decomp.precursor_error_ppm); if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 502, __pyx_L13_error)
+        __Pyx_GOTREF(__pyx_t_8);
+        if (PyDict_SetItem(__pyx_t_3, __pyx_mstate_global->__pyx_n_u_precursor_error_ppm, __pyx_t_8) < 0) __PYX_ERR(0, 499, __pyx_L13_error)
+        __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
+
+        /* "mass_decomposer_cpp.pyx":503
+ *                     'precursor_mass': decomp.precursor_mass,
+ *                     'precursor_error_ppm': decomp.precursor_error_ppm,
+ *                     'fragment_masses': fragment_mass_lists,             # <<<<<<<<<<<<<<
+ *                     'fragment_errors_ppm': fragment_error_lists
+ *                 }
+*/
+        if (PyDict_SetItem(__pyx_t_3, __pyx_mstate_global->__pyx_n_u_fragment_masses, __pyx_v_fragment_mass_lists) < 0) __PYX_ERR(0, 499, __pyx_L13_error)
+
+        /* "mass_decomposer_cpp.pyx":504
+ *                     'precursor_error_ppm': decomp.precursor_error_ppm,
+ *                     'fragment_masses': fragment_mass_lists,
+ *                     'fragment_errors_ppm': fragment_error_lists             # <<<<<<<<<<<<<<
+ *                 }
+ *                 spectrum_results.append(result_dict)
+*/
+        if (PyDict_SetItem(__pyx_t_3, __pyx_mstate_global->__pyx_n_u_fragment_errors_ppm, __pyx_v_fragment_error_lists) < 0) __PYX_ERR(0, 499, __pyx_L13_error)
+        __Pyx_XDECREF_SET(__pyx_v_result_dict, ((PyObject*)__pyx_t_3));
+        __pyx_t_3 = 0;
+
+        /* "mass_decomposer_cpp.pyx":506
+ *                     'fragment_errors_ppm': fragment_error_lists
+ *                 }
+ *                 spectrum_results.append(result_dict)             # <<<<<<<<<<<<<<
+ * 
+ *             python_results.append(spectrum_results)
+*/
+        __pyx_t_27 = __Pyx_PyList_Append(__pyx_v_spectrum_results, __pyx_v_result_dict); if (unlikely(__pyx_t_27 == ((int)-1))) __PYX_ERR(0, 506, __pyx_L13_error)
+      }
+
+      /* "mass_decomposer_cpp.pyx":508
+ *                 spectrum_results.append(result_dict)
+ * 
+ *             python_results.append(spectrum_results)             # <<<<<<<<<<<<<<
+ * 
+ *         return python_results
+*/
+      __pyx_t_27 = __Pyx_PyList_Append(__pyx_v_python_results, __pyx_v_spectrum_results); if (unlikely(__pyx_t_27 == ((int)-1))) __PYX_ERR(0, 508, __pyx_L13_error)
+    }
+
+    /* "mass_decomposer_cpp.pyx":510
+ *             python_results.append(spectrum_results)
+ * 
+ *         return python_results             # <<<<<<<<<<<<<<
+ * 
+ *     finally:
+*/
+    __Pyx_XDECREF(__pyx_r);
+    __Pyx_INCREF(__pyx_v_python_results);
+    __pyx_r = __pyx_v_python_results;
+    goto __pyx_L12_return;
+  }
+
+  /* "mass_decomposer_cpp.pyx":513
+ * 
+ *     finally:
+ *         del decomposer             # <<<<<<<<<<<<<<
+*/
+  /*finally:*/ {
+    __pyx_L13_error:;
+    /*exception exit:*/{
+      __Pyx_PyThreadState_declare
+      __Pyx_PyThreadState_assign
+      __pyx_t_33 = 0; __pyx_t_34 = 0; __pyx_t_35 = 0; __pyx_t_36 = 0; __pyx_t_37 = 0; __pyx_t_38 = 0;
+      __Pyx_XDECREF(__pyx_t_3); __pyx_t_3 = 0;
+      __Pyx_XDECREF(__pyx_t_7); __pyx_t_7 = 0;
+      __Pyx_XDECREF(__pyx_t_8); __pyx_t_8 = 0;
+      __Pyx_XDECREF(__pyx_t_9); __pyx_t_9 = 0;
+       __Pyx_ExceptionSwap(&__pyx_t_36, &__pyx_t_37, &__pyx_t_38);
+      if ( unlikely(__Pyx_GetException(&__pyx_t_33, &__pyx_t_34, &__pyx_t_35) < 0)) __Pyx_ErrFetch(&__pyx_t_33, &__pyx_t_34, &__pyx_t_35);
+      __Pyx_XGOTREF(__pyx_t_33);
+      __Pyx_XGOTREF(__pyx_t_34);
+      __Pyx_XGOTREF(__pyx_t_35);
+      __Pyx_XGOTREF(__pyx_t_36);
+      __Pyx_XGOTREF(__pyx_t_37);
+      __Pyx_XGOTREF(__pyx_t_38);
+      __pyx_t_30 = __pyx_lineno; __pyx_t_31 = __pyx_clineno; __pyx_t_32 = __pyx_filename;
+      {
+        delete __pyx_v_decomposer;
+      }
+      __Pyx_XGIVEREF(__pyx_t_36);
+      __Pyx_XGIVEREF(__pyx_t_37);
+      __Pyx_XGIVEREF(__pyx_t_38);
+      __Pyx_ExceptionReset(__pyx_t_36, __pyx_t_37, __pyx_t_38);
+      __Pyx_XGIVEREF(__pyx_t_33);
+      __Pyx_XGIVEREF(__pyx_t_34);
+      __Pyx_XGIVEREF(__pyx_t_35);
+      __Pyx_ErrRestore(__pyx_t_33, __pyx_t_34, __pyx_t_35);
+      __pyx_t_33 = 0; __pyx_t_34 = 0; __pyx_t_35 = 0; __pyx_t_36 = 0; __pyx_t_37 = 0; __pyx_t_38 = 0;
+      __pyx_lineno = __pyx_t_30; __pyx_clineno = __pyx_t_31; __pyx_filename = __pyx_t_32;
+      goto __pyx_L1_error;
+    }
+    __pyx_L12_return: {
+      __pyx_t_38 = __pyx_r;
+      __pyx_r = 0;
+      delete __pyx_v_decomposer;
+      __pyx_r = __pyx_t_38;
+      __pyx_t_38 = 0;
+      goto __pyx_L0;
+    }
+  }
+
+  /* "mass_decomposer_cpp.pyx":415
+ * 
+ * 
+ * def decompose_spectra_properly_parallel(list spectra_data, dict element_bounds,             # <<<<<<<<<<<<<<
+ *                                       str strategy="money_changing", double tolerance_ppm=5.0,
+ *                                       double min_dbe=0.0, double max_dbe=40.0,
+*/
+
+  /* function exit code */
+  __pyx_L1_error:;
+  __Pyx_XDECREF(__pyx_t_3);
+  __Pyx_XDECREF(__pyx_t_7);
+  __Pyx_XDECREF(__pyx_t_8);
+  __Pyx_XDECREF(__pyx_t_9);
+  __Pyx_AddTraceback("mass_decomposer_cpp.decompose_spectra_properly_parallel", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __pyx_r = NULL;
+  __pyx_L0:;
+  __Pyx_XDECREF(__pyx_v_spectrum_data);
+  __Pyx_XDECREF(__pyx_v_precursor_mass);
+  __Pyx_XDECREF(__pyx_v_fragment_masses);
+  __Pyx_XDECREF(__pyx_v_frag_mass);
+  __Pyx_XDECREF(__pyx_v_python_results);
+  __Pyx_XDECREF(__pyx_v_spectrum_results);
+  __Pyx_XDECREF(__pyx_v_precursor_dict);
+  __Pyx_XDECREF(__pyx_v_fragment_lists);
+  __Pyx_XDECREF(__pyx_v_fragment_mass_lists);
+  __Pyx_XDECREF(__pyx_v_fragment_error_lists);
+  __Pyx_XDECREF(__pyx_v_frag_formulas);
+  __Pyx_XDECREF(__pyx_v_mass_list);
+  __Pyx_XDECREF(__pyx_v_error_list);
+  __Pyx_XDECREF(__pyx_v_result_dict);
   __Pyx_XGIVEREF(__pyx_r);
   __Pyx_RefNannyFinishContext();
   return __pyx_r;
@@ -5341,212 +7976,377 @@ __Pyx_RefNannySetupContext("PyInit_mass_decomposer_cpp", 0);
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
   __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
 
-  /* "mass_decomposer_cpp.pyx":39
+  /* "mass_decomposer_cpp.pyx":65
  * # Standard atomic masses
  * ATOMIC_MASSES = {
  *     'C': 12.0000000, 'H': 1.0078250, 'O': 15.9949146, 'N': 14.0030740,             # <<<<<<<<<<<<<<
  *     'P': 30.9737620, 'S': 31.9720718, 'F': 18.9984032, 'Cl': 34.9688527,
  *     'Br': 78.9183376, 'I': 126.9044719, 'Si': 27.9769271, 'Na': 22.9897693,
 */
-  __pyx_t_3 = __Pyx_PyDict_NewPresized(20); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 39, __pyx_L1_error)
+  __pyx_t_3 = __Pyx_PyDict_NewPresized(20); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 65, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_3);
-  if (PyDict_SetItem(__pyx_t_3, __pyx_mstate_global->__pyx_n_u_C, __pyx_mstate_global->__pyx_float_12_0000000) < 0) __PYX_ERR(0, 39, __pyx_L1_error)
-  if (PyDict_SetItem(__pyx_t_3, __pyx_mstate_global->__pyx_n_u_H, __pyx_mstate_global->__pyx_float_1_0078250) < 0) __PYX_ERR(0, 39, __pyx_L1_error)
-  if (PyDict_SetItem(__pyx_t_3, __pyx_mstate_global->__pyx_n_u_O, __pyx_mstate_global->__pyx_float_15_9949146) < 0) __PYX_ERR(0, 39, __pyx_L1_error)
-  if (PyDict_SetItem(__pyx_t_3, __pyx_mstate_global->__pyx_n_u_N, __pyx_mstate_global->__pyx_float_14_0030740) < 0) __PYX_ERR(0, 39, __pyx_L1_error)
-  if (PyDict_SetItem(__pyx_t_3, __pyx_mstate_global->__pyx_n_u_P, __pyx_mstate_global->__pyx_float_30_9737620) < 0) __PYX_ERR(0, 39, __pyx_L1_error)
-  if (PyDict_SetItem(__pyx_t_3, __pyx_mstate_global->__pyx_n_u_S, __pyx_mstate_global->__pyx_float_31_9720718) < 0) __PYX_ERR(0, 39, __pyx_L1_error)
-  if (PyDict_SetItem(__pyx_t_3, __pyx_mstate_global->__pyx_n_u_F, __pyx_mstate_global->__pyx_float_18_9984032) < 0) __PYX_ERR(0, 39, __pyx_L1_error)
-  if (PyDict_SetItem(__pyx_t_3, __pyx_mstate_global->__pyx_n_u_Cl, __pyx_mstate_global->__pyx_float_34_9688527) < 0) __PYX_ERR(0, 39, __pyx_L1_error)
-  if (PyDict_SetItem(__pyx_t_3, __pyx_mstate_global->__pyx_n_u_Br, __pyx_mstate_global->__pyx_float_78_9183376) < 0) __PYX_ERR(0, 39, __pyx_L1_error)
-  if (PyDict_SetItem(__pyx_t_3, __pyx_mstate_global->__pyx_n_u_I, __pyx_mstate_global->__pyx_float_126_9044719) < 0) __PYX_ERR(0, 39, __pyx_L1_error)
-  if (PyDict_SetItem(__pyx_t_3, __pyx_mstate_global->__pyx_n_u_Si, __pyx_mstate_global->__pyx_float_27_9769271) < 0) __PYX_ERR(0, 39, __pyx_L1_error)
-  if (PyDict_SetItem(__pyx_t_3, __pyx_mstate_global->__pyx_n_u_Na, __pyx_mstate_global->__pyx_float_22_9897693) < 0) __PYX_ERR(0, 39, __pyx_L1_error)
-  if (PyDict_SetItem(__pyx_t_3, __pyx_mstate_global->__pyx_n_u_K, __pyx_mstate_global->__pyx_float_38_9637069) < 0) __PYX_ERR(0, 39, __pyx_L1_error)
-  if (PyDict_SetItem(__pyx_t_3, __pyx_mstate_global->__pyx_n_u_Ca, __pyx_mstate_global->__pyx_float_39_9625912) < 0) __PYX_ERR(0, 39, __pyx_L1_error)
-  if (PyDict_SetItem(__pyx_t_3, __pyx_mstate_global->__pyx_n_u_Mg, __pyx_mstate_global->__pyx_float_23_9850423) < 0) __PYX_ERR(0, 39, __pyx_L1_error)
-  if (PyDict_SetItem(__pyx_t_3, __pyx_mstate_global->__pyx_n_u_Fe, __pyx_mstate_global->__pyx_float_55_9349421) < 0) __PYX_ERR(0, 39, __pyx_L1_error)
-  if (PyDict_SetItem(__pyx_t_3, __pyx_mstate_global->__pyx_n_u_Zn, __pyx_mstate_global->__pyx_float_63_9291466) < 0) __PYX_ERR(0, 39, __pyx_L1_error)
-  if (PyDict_SetItem(__pyx_t_3, __pyx_mstate_global->__pyx_n_u_Se, __pyx_mstate_global->__pyx_float_79_9165218) < 0) __PYX_ERR(0, 39, __pyx_L1_error)
-  if (PyDict_SetItem(__pyx_t_3, __pyx_mstate_global->__pyx_n_u_B, __pyx_mstate_global->__pyx_float_11_0093054) < 0) __PYX_ERR(0, 39, __pyx_L1_error)
-  if (PyDict_SetItem(__pyx_t_3, __pyx_mstate_global->__pyx_n_u_Al, __pyx_mstate_global->__pyx_float_26_9815386) < 0) __PYX_ERR(0, 39, __pyx_L1_error)
-  if (PyDict_SetItem(__pyx_mstate_global->__pyx_d, __pyx_mstate_global->__pyx_n_u_ATOMIC_MASSES, __pyx_t_3) < 0) __PYX_ERR(0, 38, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_t_3, __pyx_mstate_global->__pyx_n_u_C, __pyx_mstate_global->__pyx_float_12_0000000) < 0) __PYX_ERR(0, 65, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_t_3, __pyx_mstate_global->__pyx_n_u_H, __pyx_mstate_global->__pyx_float_1_0078250) < 0) __PYX_ERR(0, 65, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_t_3, __pyx_mstate_global->__pyx_n_u_O, __pyx_mstate_global->__pyx_float_15_9949146) < 0) __PYX_ERR(0, 65, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_t_3, __pyx_mstate_global->__pyx_n_u_N, __pyx_mstate_global->__pyx_float_14_0030740) < 0) __PYX_ERR(0, 65, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_t_3, __pyx_mstate_global->__pyx_n_u_P, __pyx_mstate_global->__pyx_float_30_9737620) < 0) __PYX_ERR(0, 65, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_t_3, __pyx_mstate_global->__pyx_n_u_S, __pyx_mstate_global->__pyx_float_31_9720718) < 0) __PYX_ERR(0, 65, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_t_3, __pyx_mstate_global->__pyx_n_u_F, __pyx_mstate_global->__pyx_float_18_9984032) < 0) __PYX_ERR(0, 65, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_t_3, __pyx_mstate_global->__pyx_n_u_Cl, __pyx_mstate_global->__pyx_float_34_9688527) < 0) __PYX_ERR(0, 65, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_t_3, __pyx_mstate_global->__pyx_n_u_Br, __pyx_mstate_global->__pyx_float_78_9183376) < 0) __PYX_ERR(0, 65, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_t_3, __pyx_mstate_global->__pyx_n_u_I, __pyx_mstate_global->__pyx_float_126_9044719) < 0) __PYX_ERR(0, 65, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_t_3, __pyx_mstate_global->__pyx_n_u_Si, __pyx_mstate_global->__pyx_float_27_9769271) < 0) __PYX_ERR(0, 65, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_t_3, __pyx_mstate_global->__pyx_n_u_Na, __pyx_mstate_global->__pyx_float_22_9897693) < 0) __PYX_ERR(0, 65, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_t_3, __pyx_mstate_global->__pyx_n_u_K, __pyx_mstate_global->__pyx_float_38_9637069) < 0) __PYX_ERR(0, 65, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_t_3, __pyx_mstate_global->__pyx_n_u_Ca, __pyx_mstate_global->__pyx_float_39_9625912) < 0) __PYX_ERR(0, 65, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_t_3, __pyx_mstate_global->__pyx_n_u_Mg, __pyx_mstate_global->__pyx_float_23_9850423) < 0) __PYX_ERR(0, 65, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_t_3, __pyx_mstate_global->__pyx_n_u_Fe, __pyx_mstate_global->__pyx_float_55_9349421) < 0) __PYX_ERR(0, 65, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_t_3, __pyx_mstate_global->__pyx_n_u_Zn, __pyx_mstate_global->__pyx_float_63_9291466) < 0) __PYX_ERR(0, 65, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_t_3, __pyx_mstate_global->__pyx_n_u_Se, __pyx_mstate_global->__pyx_float_79_9165218) < 0) __PYX_ERR(0, 65, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_t_3, __pyx_mstate_global->__pyx_n_u_B, __pyx_mstate_global->__pyx_float_11_0093054) < 0) __PYX_ERR(0, 65, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_t_3, __pyx_mstate_global->__pyx_n_u_Al, __pyx_mstate_global->__pyx_float_26_9815386) < 0) __PYX_ERR(0, 65, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_mstate_global->__pyx_d, __pyx_mstate_global->__pyx_n_u_ATOMIC_MASSES, __pyx_t_3) < 0) __PYX_ERR(0, 64, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
 
-  /* "mass_decomposer_cpp.pyx":86
+  /* "mass_decomposer_cpp.pyx":112
  * 
  * def decompose_mass(double target_mass, dict element_bounds,
  *                    str strategy="money_changing", double tolerance_ppm=5.0,             # <<<<<<<<<<<<<<
  *                    double min_dbe=0.0, double max_dbe=40.0,
  *                    double max_hetero_ratio=1000.0, int max_results=10000):
 */
-  __pyx_t_3 = PyFloat_FromDouble(((double)5.0)); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 86, __pyx_L1_error)
+  __pyx_t_3 = PyFloat_FromDouble(((double)5.0)); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 112, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_3);
 
-  /* "mass_decomposer_cpp.pyx":87
+  /* "mass_decomposer_cpp.pyx":113
  * def decompose_mass(double target_mass, dict element_bounds,
  *                    str strategy="money_changing", double tolerance_ppm=5.0,
  *                    double min_dbe=0.0, double max_dbe=40.0,             # <<<<<<<<<<<<<<
  *                    double max_hetero_ratio=1000.0, int max_results=10000):
  *     """
 */
-  __pyx_t_2 = PyFloat_FromDouble(((double)0.0)); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 87, __pyx_L1_error)
+  __pyx_t_2 = PyFloat_FromDouble(((double)0.0)); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 113, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
-  __pyx_t_4 = PyFloat_FromDouble(((double)40.0)); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 87, __pyx_L1_error)
+  __pyx_t_4 = PyFloat_FromDouble(((double)40.0)); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 113, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_4);
 
-  /* "mass_decomposer_cpp.pyx":88
+  /* "mass_decomposer_cpp.pyx":114
  *                    str strategy="money_changing", double tolerance_ppm=5.0,
  *                    double min_dbe=0.0, double max_dbe=40.0,
  *                    double max_hetero_ratio=1000.0, int max_results=10000):             # <<<<<<<<<<<<<<
  *     """
  *     Decompose a mass into possible molecular formulas using C++ implementation.
 */
-  __pyx_t_5 = PyFloat_FromDouble(((double)1000.0)); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 88, __pyx_L1_error)
+  __pyx_t_5 = PyFloat_FromDouble(((double)1000.0)); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 114, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_5);
-  __pyx_t_6 = __Pyx_PyLong_From_int(((int)0x2710)); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 88, __pyx_L1_error)
+  __pyx_t_6 = __Pyx_PyLong_From_int(((int)0x2710)); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 114, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_6);
 
-  /* "mass_decomposer_cpp.pyx":85
+  /* "mass_decomposer_cpp.pyx":111
  *     return result
  * 
  * def decompose_mass(double target_mass, dict element_bounds,             # <<<<<<<<<<<<<<
  *                    str strategy="money_changing", double tolerance_ppm=5.0,
  *                    double min_dbe=0.0, double max_dbe=40.0,
 */
-  __pyx_t_7 = PyTuple_Pack(6, ((PyObject*)__pyx_mstate_global->__pyx_n_u_money_changing), __pyx_t_3, __pyx_t_2, __pyx_t_4, __pyx_t_5, __pyx_t_6); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 85, __pyx_L1_error)
+  __pyx_t_7 = PyTuple_Pack(6, ((PyObject*)__pyx_mstate_global->__pyx_n_u_money_changing), __pyx_t_3, __pyx_t_2, __pyx_t_4, __pyx_t_5, __pyx_t_6); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 111, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_7);
   __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
   __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
   __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
-  __pyx_t_6 = __Pyx_CyFunction_New(&__pyx_mdef_19mass_decomposer_cpp_1decompose_mass, 0, __pyx_mstate_global->__pyx_n_u_decompose_mass, NULL, __pyx_mstate_global->__pyx_n_u_mass_decomposer_cpp, __pyx_mstate_global->__pyx_d, ((PyObject *)__pyx_mstate_global->__pyx_codeobj_tab[0])); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 85, __pyx_L1_error)
+  __pyx_t_6 = __Pyx_CyFunction_New(&__pyx_mdef_19mass_decomposer_cpp_1decompose_mass, 0, __pyx_mstate_global->__pyx_n_u_decompose_mass, NULL, __pyx_mstate_global->__pyx_n_u_mass_decomposer_cpp, __pyx_mstate_global->__pyx_d, ((PyObject *)__pyx_mstate_global->__pyx_codeobj_tab[0])); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 111, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_6);
   __Pyx_CyFunction_SetDefaultsTuple(__pyx_t_6, __pyx_t_7);
   __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
-  if (PyDict_SetItem(__pyx_mstate_global->__pyx_d, __pyx_mstate_global->__pyx_n_u_decompose_mass, __pyx_t_6) < 0) __PYX_ERR(0, 85, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_mstate_global->__pyx_d, __pyx_mstate_global->__pyx_n_u_decompose_mass, __pyx_t_6) < 0) __PYX_ERR(0, 111, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
 
-  /* "mass_decomposer_cpp.pyx":129
+  /* "mass_decomposer_cpp.pyx":155
  * 
  * def decompose_mass_parallel(list target_masses, dict element_bounds,
  *                            str strategy="money_changing", double tolerance_ppm=5.0,             # <<<<<<<<<<<<<<
  *                            double min_dbe=0.0, double max_dbe=40.0,
  *                            double max_hetero_ratio=1000.0, int max_results=10000):
 */
-  __pyx_t_6 = PyFloat_FromDouble(((double)5.0)); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 129, __pyx_L1_error)
+  __pyx_t_6 = PyFloat_FromDouble(((double)5.0)); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 155, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_6);
 
-  /* "mass_decomposer_cpp.pyx":130
+  /* "mass_decomposer_cpp.pyx":156
  * def decompose_mass_parallel(list target_masses, dict element_bounds,
  *                            str strategy="money_changing", double tolerance_ppm=5.0,
  *                            double min_dbe=0.0, double max_dbe=40.0,             # <<<<<<<<<<<<<<
  *                            double max_hetero_ratio=1000.0, int max_results=10000):
  *     """
 */
-  __pyx_t_7 = PyFloat_FromDouble(((double)0.0)); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 130, __pyx_L1_error)
+  __pyx_t_7 = PyFloat_FromDouble(((double)0.0)); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 156, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_7);
-  __pyx_t_5 = PyFloat_FromDouble(((double)40.0)); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 130, __pyx_L1_error)
+  __pyx_t_5 = PyFloat_FromDouble(((double)40.0)); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 156, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_5);
 
-  /* "mass_decomposer_cpp.pyx":131
+  /* "mass_decomposer_cpp.pyx":157
  *                            str strategy="money_changing", double tolerance_ppm=5.0,
  *                            double min_dbe=0.0, double max_dbe=40.0,
  *                            double max_hetero_ratio=1000.0, int max_results=10000):             # <<<<<<<<<<<<<<
  *     """
  *     Decompose multiple masses in parallel using C++ OpenMP implementation.
 */
-  __pyx_t_4 = PyFloat_FromDouble(((double)1000.0)); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 131, __pyx_L1_error)
+  __pyx_t_4 = PyFloat_FromDouble(((double)1000.0)); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 157, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_4);
-  __pyx_t_2 = __Pyx_PyLong_From_int(((int)0x2710)); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 131, __pyx_L1_error)
+  __pyx_t_2 = __Pyx_PyLong_From_int(((int)0x2710)); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 157, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
 
-  /* "mass_decomposer_cpp.pyx":128
+  /* "mass_decomposer_cpp.pyx":154
  *         del decomposer
  * 
  * def decompose_mass_parallel(list target_masses, dict element_bounds,             # <<<<<<<<<<<<<<
  *                            str strategy="money_changing", double tolerance_ppm=5.0,
  *                            double min_dbe=0.0, double max_dbe=40.0,
 */
-  __pyx_t_3 = PyTuple_Pack(6, ((PyObject*)__pyx_mstate_global->__pyx_n_u_money_changing), __pyx_t_6, __pyx_t_7, __pyx_t_5, __pyx_t_4, __pyx_t_2); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 128, __pyx_L1_error)
+  __pyx_t_3 = PyTuple_Pack(6, ((PyObject*)__pyx_mstate_global->__pyx_n_u_money_changing), __pyx_t_6, __pyx_t_7, __pyx_t_5, __pyx_t_4, __pyx_t_2); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 154, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_3);
   __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
   __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
   __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
-  __pyx_t_2 = __Pyx_CyFunction_New(&__pyx_mdef_19mass_decomposer_cpp_3decompose_mass_parallel, 0, __pyx_mstate_global->__pyx_n_u_decompose_mass_parallel, NULL, __pyx_mstate_global->__pyx_n_u_mass_decomposer_cpp, __pyx_mstate_global->__pyx_d, ((PyObject *)__pyx_mstate_global->__pyx_codeobj_tab[1])); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 128, __pyx_L1_error)
+  __pyx_t_2 = __Pyx_CyFunction_New(&__pyx_mdef_19mass_decomposer_cpp_3decompose_mass_parallel, 0, __pyx_mstate_global->__pyx_n_u_decompose_mass_parallel, NULL, __pyx_mstate_global->__pyx_n_u_mass_decomposer_cpp, __pyx_mstate_global->__pyx_d, ((PyObject *)__pyx_mstate_global->__pyx_codeobj_tab[1])); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 154, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
   __Pyx_CyFunction_SetDefaultsTuple(__pyx_t_2, __pyx_t_3);
   __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
-  if (PyDict_SetItem(__pyx_mstate_global->__pyx_d, __pyx_mstate_global->__pyx_n_u_decompose_mass_parallel, __pyx_t_2) < 0) __PYX_ERR(0, 128, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_mstate_global->__pyx_d, __pyx_mstate_global->__pyx_n_u_decompose_mass_parallel, __pyx_t_2) < 0) __PYX_ERR(0, 154, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
 
-  /* "mass_decomposer_cpp.pyx":184
- * def decompose_spectrum_parallel(double precursor_mass, list fragment_masses,
- *                                dict element_bounds, str strategy="money_changing",
- *                                double tolerance_ppm=5.0, double min_dbe=0.0,             # <<<<<<<<<<<<<<
- *                                double max_dbe=40.0, double max_hetero_ratio=1000.0,
- *                                int max_results=10000):
+  /* "mass_decomposer_cpp.pyx":209
+ * 
+ * def decompose_spectra_parallel(list spectra_data, dict element_bounds,
+ *                               str strategy="money_changing", double tolerance_ppm=5.0,             # <<<<<<<<<<<<<<
+ *                               double min_dbe=0.0, double max_dbe=40.0,
+ *                               double max_hetero_ratio=1000.0, int max_results=10000):
 */
-  __pyx_t_2 = PyFloat_FromDouble(((double)5.0)); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 184, __pyx_L1_error)
+  __pyx_t_2 = PyFloat_FromDouble(((double)5.0)); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 209, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
-  __pyx_t_3 = PyFloat_FromDouble(((double)0.0)); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 184, __pyx_L1_error)
+
+  /* "mass_decomposer_cpp.pyx":210
+ * def decompose_spectra_parallel(list spectra_data, dict element_bounds,
+ *                               str strategy="money_changing", double tolerance_ppm=5.0,
+ *                               double min_dbe=0.0, double max_dbe=40.0,             # <<<<<<<<<<<<<<
+ *                               double max_hetero_ratio=1000.0, int max_results=10000):
+ *     """
+*/
+  __pyx_t_3 = PyFloat_FromDouble(((double)0.0)); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 210, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_3);
-
-  /* "mass_decomposer_cpp.pyx":185
- *                                dict element_bounds, str strategy="money_changing",
- *                                double tolerance_ppm=5.0, double min_dbe=0.0,
- *                                double max_dbe=40.0, double max_hetero_ratio=1000.0,             # <<<<<<<<<<<<<<
- *                                int max_results=10000):
- *     """
-*/
-  __pyx_t_4 = PyFloat_FromDouble(((double)40.0)); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 185, __pyx_L1_error)
+  __pyx_t_4 = PyFloat_FromDouble(((double)40.0)); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 210, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_4);
-  __pyx_t_5 = PyFloat_FromDouble(((double)1000.0)); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 185, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_t_5);
 
-  /* "mass_decomposer_cpp.pyx":186
- *                                double tolerance_ppm=5.0, double min_dbe=0.0,
- *                                double max_dbe=40.0, double max_hetero_ratio=1000.0,
- *                                int max_results=10000):             # <<<<<<<<<<<<<<
+  /* "mass_decomposer_cpp.pyx":211
+ *                               str strategy="money_changing", double tolerance_ppm=5.0,
+ *                               double min_dbe=0.0, double max_dbe=40.0,
+ *                               double max_hetero_ratio=1000.0, int max_results=10000):             # <<<<<<<<<<<<<<
  *     """
- *     Decompose a spectrum (precursor + fragments) in parallel using C++ OpenMP.
+ *     Decompose multiple spectra in parallel using C++ OpenMP implementation.
 */
-  __pyx_t_7 = __Pyx_PyLong_From_int(((int)0x2710)); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 186, __pyx_L1_error)
+  __pyx_t_5 = PyFloat_FromDouble(((double)1000.0)); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 211, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_5);
+  __pyx_t_7 = __Pyx_PyLong_From_int(((int)0x2710)); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 211, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_7);
 
-  /* "mass_decomposer_cpp.pyx":182
+  /* "mass_decomposer_cpp.pyx":208
  *         del decomposer
  * 
- * def decompose_spectrum_parallel(double precursor_mass, list fragment_masses,             # <<<<<<<<<<<<<<
- *                                dict element_bounds, str strategy="money_changing",
- *                                double tolerance_ppm=5.0, double min_dbe=0.0,
+ * def decompose_spectra_parallel(list spectra_data, dict element_bounds,             # <<<<<<<<<<<<<<
+ *                               str strategy="money_changing", double tolerance_ppm=5.0,
+ *                               double min_dbe=0.0, double max_dbe=40.0,
 */
-  __pyx_t_6 = PyTuple_Pack(6, ((PyObject*)__pyx_mstate_global->__pyx_n_u_money_changing), __pyx_t_2, __pyx_t_3, __pyx_t_4, __pyx_t_5, __pyx_t_7); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 182, __pyx_L1_error)
+  __pyx_t_6 = PyTuple_Pack(6, ((PyObject*)__pyx_mstate_global->__pyx_n_u_money_changing), __pyx_t_2, __pyx_t_3, __pyx_t_4, __pyx_t_5, __pyx_t_7); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 208, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_6);
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
   __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
   __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
   __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
-  __pyx_t_7 = __Pyx_CyFunction_New(&__pyx_mdef_19mass_decomposer_cpp_5decompose_spectrum_parallel, 0, __pyx_mstate_global->__pyx_n_u_decompose_spectrum_parallel, NULL, __pyx_mstate_global->__pyx_n_u_mass_decomposer_cpp, __pyx_mstate_global->__pyx_d, ((PyObject *)__pyx_mstate_global->__pyx_codeobj_tab[2])); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 182, __pyx_L1_error)
+  __pyx_t_7 = __Pyx_CyFunction_New(&__pyx_mdef_19mass_decomposer_cpp_5decompose_spectra_parallel, 0, __pyx_mstate_global->__pyx_n_u_decompose_spectra_parallel, NULL, __pyx_mstate_global->__pyx_n_u_mass_decomposer_cpp, __pyx_mstate_global->__pyx_d, ((PyObject *)__pyx_mstate_global->__pyx_codeobj_tab[2])); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 208, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_7);
   __Pyx_CyFunction_SetDefaultsTuple(__pyx_t_7, __pyx_t_6);
   __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
-  if (PyDict_SetItem(__pyx_mstate_global->__pyx_d, __pyx_mstate_global->__pyx_n_u_decompose_spectrum_parallel, __pyx_t_7) < 0) __PYX_ERR(0, 182, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_mstate_global->__pyx_d, __pyx_mstate_global->__pyx_n_u_decompose_spectra_parallel, __pyx_t_7) < 0) __PYX_ERR(0, 208, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
+
+  /* "mass_decomposer_cpp.pyx":283
+ * def decompose_spectrum_parallel(double precursor_mass, list fragment_masses,
+ *                                dict element_bounds, str strategy="money_changing",
+ *                                double tolerance_ppm=5.0, double min_dbe=0.0,             # <<<<<<<<<<<<<<
+ *                                double max_dbe=40.0, double max_hetero_ratio=1000.0,
+ *                                int max_results=10000):
+*/
+  __pyx_t_7 = PyFloat_FromDouble(((double)5.0)); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 283, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_7);
+  __pyx_t_6 = PyFloat_FromDouble(((double)0.0)); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 283, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_6);
+
+  /* "mass_decomposer_cpp.pyx":284
+ *                                dict element_bounds, str strategy="money_changing",
+ *                                double tolerance_ppm=5.0, double min_dbe=0.0,
+ *                                double max_dbe=40.0, double max_hetero_ratio=1000.0,             # <<<<<<<<<<<<<<
+ *                                int max_results=10000):
+ *     """
+*/
+  __pyx_t_5 = PyFloat_FromDouble(((double)40.0)); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 284, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_5);
+  __pyx_t_4 = PyFloat_FromDouble(((double)1000.0)); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 284, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_4);
+
+  /* "mass_decomposer_cpp.pyx":285
+ *                                double tolerance_ppm=5.0, double min_dbe=0.0,
+ *                                double max_dbe=40.0, double max_hetero_ratio=1000.0,
+ *                                int max_results=10000):             # <<<<<<<<<<<<<<
+ *     """
+ *     Decompose a single spectrum (precursor + fragments) in parallel using C++ OpenMP.
+*/
+  __pyx_t_3 = __Pyx_PyLong_From_int(((int)0x2710)); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 285, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_3);
+
+  /* "mass_decomposer_cpp.pyx":281
+ *         del decomposer
+ * 
+ * def decompose_spectrum_parallel(double precursor_mass, list fragment_masses,             # <<<<<<<<<<<<<<
+ *                                dict element_bounds, str strategy="money_changing",
+ *                                double tolerance_ppm=5.0, double min_dbe=0.0,
+*/
+  __pyx_t_2 = PyTuple_Pack(6, ((PyObject*)__pyx_mstate_global->__pyx_n_u_money_changing), __pyx_t_7, __pyx_t_6, __pyx_t_5, __pyx_t_4, __pyx_t_3); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 281, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_2);
+  __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
+  __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
+  __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
+  __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
+  __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+  __pyx_t_3 = __Pyx_CyFunction_New(&__pyx_mdef_19mass_decomposer_cpp_7decompose_spectrum_parallel, 0, __pyx_mstate_global->__pyx_n_u_decompose_spectrum_parallel, NULL, __pyx_mstate_global->__pyx_n_u_mass_decomposer_cpp, __pyx_mstate_global->__pyx_d, ((PyObject *)__pyx_mstate_global->__pyx_codeobj_tab[3])); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 281, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_3);
+  __Pyx_CyFunction_SetDefaultsTuple(__pyx_t_3, __pyx_t_2);
+  __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+  if (PyDict_SetItem(__pyx_mstate_global->__pyx_d, __pyx_mstate_global->__pyx_n_u_decompose_spectrum_parallel, __pyx_t_3) < 0) __PYX_ERR(0, 281, __pyx_L1_error)
+  __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+
+  /* "mass_decomposer_cpp.pyx":317
+ * def decompose_spectrum_properly(double precursor_mass, list fragment_masses,
+ *                                dict element_bounds, str strategy="money_changing",
+ *                                double tolerance_ppm=5.0, double min_dbe=0.0,             # <<<<<<<<<<<<<<
+ *                                double max_dbe=40.0, double max_hetero_ratio=1000.0,
+ *                                int max_results=10000):
+*/
+  __pyx_t_3 = PyFloat_FromDouble(((double)5.0)); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 317, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_3);
+  __pyx_t_2 = PyFloat_FromDouble(((double)0.0)); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 317, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_2);
+
+  /* "mass_decomposer_cpp.pyx":318
+ *                                dict element_bounds, str strategy="money_changing",
+ *                                double tolerance_ppm=5.0, double min_dbe=0.0,
+ *                                double max_dbe=40.0, double max_hetero_ratio=1000.0,             # <<<<<<<<<<<<<<
+ *                                int max_results=10000):
+ *     """
+*/
+  __pyx_t_4 = PyFloat_FromDouble(((double)40.0)); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 318, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_4);
+  __pyx_t_5 = PyFloat_FromDouble(((double)1000.0)); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 318, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_5);
+
+  /* "mass_decomposer_cpp.pyx":319
+ *                                double tolerance_ppm=5.0, double min_dbe=0.0,
+ *                                double max_dbe=40.0, double max_hetero_ratio=1000.0,
+ *                                int max_results=10000):             # <<<<<<<<<<<<<<
+ *     """
+ *     Decompose a spectrum properly ensuring fragments are subsets of precursor formulas.
+*/
+  __pyx_t_6 = __Pyx_PyLong_From_int(((int)0x2710)); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 319, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_6);
+
+  /* "mass_decomposer_cpp.pyx":315
+ * 
+ * 
+ * def decompose_spectrum_properly(double precursor_mass, list fragment_masses,             # <<<<<<<<<<<<<<
+ *                                dict element_bounds, str strategy="money_changing",
+ *                                double tolerance_ppm=5.0, double min_dbe=0.0,
+*/
+  __pyx_t_7 = PyTuple_Pack(6, ((PyObject*)__pyx_mstate_global->__pyx_n_u_money_changing), __pyx_t_3, __pyx_t_2, __pyx_t_4, __pyx_t_5, __pyx_t_6); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 315, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_7);
+  __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+  __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+  __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
+  __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
+  __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
+  __pyx_t_6 = __Pyx_CyFunction_New(&__pyx_mdef_19mass_decomposer_cpp_9decompose_spectrum_properly, 0, __pyx_mstate_global->__pyx_n_u_decompose_spectrum_properly, NULL, __pyx_mstate_global->__pyx_n_u_mass_decomposer_cpp, __pyx_mstate_global->__pyx_d, ((PyObject *)__pyx_mstate_global->__pyx_codeobj_tab[4])); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 315, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_6);
+  __Pyx_CyFunction_SetDefaultsTuple(__pyx_t_6, __pyx_t_7);
+  __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
+  if (PyDict_SetItem(__pyx_mstate_global->__pyx_d, __pyx_mstate_global->__pyx_n_u_decompose_spectrum_properly, __pyx_t_6) < 0) __PYX_ERR(0, 315, __pyx_L1_error)
+  __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
+
+  /* "mass_decomposer_cpp.pyx":416
+ * 
+ * def decompose_spectra_properly_parallel(list spectra_data, dict element_bounds,
+ *                                       str strategy="money_changing", double tolerance_ppm=5.0,             # <<<<<<<<<<<<<<
+ *                                       double min_dbe=0.0, double max_dbe=40.0,
+ *                                       double max_hetero_ratio=1000.0, int max_results=10000):
+*/
+  __pyx_t_6 = PyFloat_FromDouble(((double)5.0)); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 416, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_6);
+
+  /* "mass_decomposer_cpp.pyx":417
+ * def decompose_spectra_properly_parallel(list spectra_data, dict element_bounds,
+ *                                       str strategy="money_changing", double tolerance_ppm=5.0,
+ *                                       double min_dbe=0.0, double max_dbe=40.0,             # <<<<<<<<<<<<<<
+ *                                       double max_hetero_ratio=1000.0, int max_results=10000):
+ *     """
+*/
+  __pyx_t_7 = PyFloat_FromDouble(((double)0.0)); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 417, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_7);
+  __pyx_t_5 = PyFloat_FromDouble(((double)40.0)); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 417, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_5);
+
+  /* "mass_decomposer_cpp.pyx":418
+ *                                       str strategy="money_changing", double tolerance_ppm=5.0,
+ *                                       double min_dbe=0.0, double max_dbe=40.0,
+ *                                       double max_hetero_ratio=1000.0, int max_results=10000):             # <<<<<<<<<<<<<<
+ *     """
+ *     Decompose multiple spectra properly in parallel ensuring fragments are subsets of precursor formulas.
+*/
+  __pyx_t_4 = PyFloat_FromDouble(((double)1000.0)); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 418, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_4);
+  __pyx_t_2 = __Pyx_PyLong_From_int(((int)0x2710)); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 418, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_2);
+
+  /* "mass_decomposer_cpp.pyx":415
+ * 
+ * 
+ * def decompose_spectra_properly_parallel(list spectra_data, dict element_bounds,             # <<<<<<<<<<<<<<
+ *                                       str strategy="money_changing", double tolerance_ppm=5.0,
+ *                                       double min_dbe=0.0, double max_dbe=40.0,
+*/
+  __pyx_t_3 = PyTuple_Pack(6, ((PyObject*)__pyx_mstate_global->__pyx_n_u_money_changing), __pyx_t_6, __pyx_t_7, __pyx_t_5, __pyx_t_4, __pyx_t_2); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 415, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_3);
+  __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
+  __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
+  __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
+  __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
+  __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+  __pyx_t_2 = __Pyx_CyFunction_New(&__pyx_mdef_19mass_decomposer_cpp_11decompose_spectra_properly_parallel, 0, __pyx_mstate_global->__pyx_n_u_decompose_spectra_properly_paral, NULL, __pyx_mstate_global->__pyx_n_u_mass_decomposer_cpp, __pyx_mstate_global->__pyx_d, ((PyObject *)__pyx_mstate_global->__pyx_codeobj_tab[5])); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 415, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_2);
+  __Pyx_CyFunction_SetDefaultsTuple(__pyx_t_2, __pyx_t_3);
+  __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+  if (PyDict_SetItem(__pyx_mstate_global->__pyx_d, __pyx_mstate_global->__pyx_n_u_decompose_spectra_properly_paral, __pyx_t_2) < 0) __PYX_ERR(0, 415, __pyx_L1_error)
+  __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
 
   /* "mass_decomposer_cpp.pyx":1
  * # cython: language_level=3, boundscheck=False, wraparound=False, cdivision=True             # <<<<<<<<<<<<<<
  * """
  * Cython wrapper for the C++ mass decomposition implementation with OpenMP parallelization.
 */
-  __pyx_t_7 = __Pyx_PyDict_NewPresized(0); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 1, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_t_7);
-  if (PyDict_SetItem(__pyx_mstate_global->__pyx_d, __pyx_mstate_global->__pyx_n_u_test, __pyx_t_7) < 0) __PYX_ERR(0, 1, __pyx_L1_error)
-  __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
+  __pyx_t_2 = __Pyx_PyDict_NewPresized(0); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 1, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_2);
+  if (PyDict_SetItem(__pyx_mstate_global->__pyx_d, __pyx_mstate_global->__pyx_n_u_test, __pyx_t_2) < 0) __PYX_ERR(0, 1, __pyx_L1_error)
+  __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
 
   /*--- Wrapped vars code ---*/
 
@@ -5639,17 +8439,30 @@ static const __Pyx_StringTabEntry __pyx_string_tab[] = {
   {__pyx_k_Zn, sizeof(__pyx_k_Zn), 0, 1, 1}, /* PyObject cname: __pyx_n_u_Zn */
   {__pyx_k__2, sizeof(__pyx_k__2), 0, 1, 0}, /* PyObject cname: __pyx_kp_u__2 */
   {__pyx_k_add_note, sizeof(__pyx_k_add_note), 0, 1, 0}, /* PyObject cname: __pyx_kp_u_add_note */
-  {__pyx_k_all_masses, sizeof(__pyx_k_all_masses), 0, 1, 1}, /* PyObject cname: __pyx_n_u_all_masses */
   {__pyx_k_all_results, sizeof(__pyx_k_all_results), 0, 1, 1}, /* PyObject cname: __pyx_n_u_all_results */
   {__pyx_k_asyncio_coroutines, sizeof(__pyx_k_asyncio_coroutines), 0, 1, 1}, /* PyObject cname: __pyx_n_u_asyncio_coroutines */
   {__pyx_k_cline_in_traceback, sizeof(__pyx_k_cline_in_traceback), 0, 1, 1}, /* PyObject cname: __pyx_n_u_cline_in_traceback */
+  {__pyx_k_cpp_results, sizeof(__pyx_k_cpp_results), 0, 1, 1}, /* PyObject cname: __pyx_n_u_cpp_results */
+  {__pyx_k_decomp, sizeof(__pyx_k_decomp), 0, 1, 1}, /* PyObject cname: __pyx_n_u_decomp */
   {__pyx_k_decompose_mass, sizeof(__pyx_k_decompose_mass), 0, 1, 1}, /* PyObject cname: __pyx_n_u_decompose_mass */
   {__pyx_k_decompose_mass_parallel, sizeof(__pyx_k_decompose_mass_parallel), 0, 1, 1}, /* PyObject cname: __pyx_n_u_decompose_mass_parallel */
+  {__pyx_k_decompose_spectra_parallel, sizeof(__pyx_k_decompose_spectra_parallel), 0, 1, 1}, /* PyObject cname: __pyx_n_u_decompose_spectra_parallel */
+  {__pyx_k_decompose_spectra_properly_paral, sizeof(__pyx_k_decompose_spectra_properly_paral), 0, 1, 1}, /* PyObject cname: __pyx_n_u_decompose_spectra_properly_paral */
   {__pyx_k_decompose_spectrum_parallel, sizeof(__pyx_k_decompose_spectrum_parallel), 0, 1, 1}, /* PyObject cname: __pyx_n_u_decompose_spectrum_parallel */
+  {__pyx_k_decompose_spectrum_properly, sizeof(__pyx_k_decompose_spectrum_properly), 0, 1, 1}, /* PyObject cname: __pyx_n_u_decompose_spectrum_properly */
   {__pyx_k_decomposer, sizeof(__pyx_k_decomposer), 0, 1, 1}, /* PyObject cname: __pyx_n_u_decomposer */
   {__pyx_k_element_bounds, sizeof(__pyx_k_element_bounds), 0, 1, 1}, /* PyObject cname: __pyx_n_u_element_bounds */
   {__pyx_k_elements, sizeof(__pyx_k_elements), 0, 1, 1}, /* PyObject cname: __pyx_n_u_elements */
   {__pyx_k_encode, sizeof(__pyx_k_encode), 0, 1, 1}, /* PyObject cname: __pyx_n_u_encode */
+  {__pyx_k_error_list, sizeof(__pyx_k_error_list), 0, 1, 1}, /* PyObject cname: __pyx_n_u_error_list */
+  {__pyx_k_frag_formulas, sizeof(__pyx_k_frag_formulas), 0, 1, 1}, /* PyObject cname: __pyx_n_u_frag_formulas */
+  {__pyx_k_frag_mass, sizeof(__pyx_k_frag_mass), 0, 1, 1}, /* PyObject cname: __pyx_n_u_frag_mass */
+  {__pyx_k_frag_masses_vec, sizeof(__pyx_k_frag_masses_vec), 0, 1, 1}, /* PyObject cname: __pyx_n_u_frag_masses_vec */
+  {__pyx_k_fragment_error_lists, sizeof(__pyx_k_fragment_error_lists), 0, 1, 1}, /* PyObject cname: __pyx_n_u_fragment_error_lists */
+  {__pyx_k_fragment_errors_ppm, sizeof(__pyx_k_fragment_errors_ppm), 0, 1, 1}, /* PyObject cname: __pyx_n_u_fragment_errors_ppm */
+  {__pyx_k_fragment_lists, sizeof(__pyx_k_fragment_lists), 0, 1, 1}, /* PyObject cname: __pyx_n_u_fragment_lists */
+  {__pyx_k_fragment_mass_lists, sizeof(__pyx_k_fragment_mass_lists), 0, 1, 1}, /* PyObject cname: __pyx_n_u_fragment_mass_lists */
+  {__pyx_k_fragment_mass_results, sizeof(__pyx_k_fragment_mass_results), 0, 1, 1}, /* PyObject cname: __pyx_n_u_fragment_mass_results */
   {__pyx_k_fragment_masses, sizeof(__pyx_k_fragment_masses), 0, 1, 1}, /* PyObject cname: __pyx_n_u_fragment_masses */
   {__pyx_k_fragment_results, sizeof(__pyx_k_fragment_results), 0, 1, 1}, /* PyObject cname: __pyx_n_u_fragment_results */
   {__pyx_k_fragments, sizeof(__pyx_k_fragments), 0, 1, 1}, /* PyObject cname: __pyx_n_u_fragments */
@@ -5659,10 +8472,13 @@ static const __Pyx_StringTabEntry __pyx_string_tab[] = {
   {__pyx_k_is_coroutine, sizeof(__pyx_k_is_coroutine), 0, 1, 1}, /* PyObject cname: __pyx_n_u_is_coroutine */
   {__pyx_k_items, sizeof(__pyx_k_items), 0, 1, 1}, /* PyObject cname: __pyx_n_u_items */
   {__pyx_k_j, sizeof(__pyx_k_j), 0, 1, 1}, /* PyObject cname: __pyx_n_u_j */
+  {__pyx_k_k, sizeof(__pyx_k_k), 0, 1, 1}, /* PyObject cname: __pyx_n_u_k */
+  {__pyx_k_l, sizeof(__pyx_k_l), 0, 1, 1}, /* PyObject cname: __pyx_n_u_l */
   {__pyx_k_main, sizeof(__pyx_k_main), 0, 1, 1}, /* PyObject cname: __pyx_n_u_main */
   {__pyx_k_mass, sizeof(__pyx_k_mass), 0, 1, 1}, /* PyObject cname: __pyx_n_u_mass */
   {__pyx_k_mass_decomposer_cpp, sizeof(__pyx_k_mass_decomposer_cpp), 0, 1, 1}, /* PyObject cname: __pyx_n_u_mass_decomposer_cpp */
   {__pyx_k_mass_decomposer_cpp_pyx, sizeof(__pyx_k_mass_decomposer_cpp_pyx), 0, 1, 0}, /* PyObject cname: __pyx_kp_u_mass_decomposer_cpp_pyx */
+  {__pyx_k_mass_list, sizeof(__pyx_k_mass_list), 0, 1, 1}, /* PyObject cname: __pyx_n_u_mass_list */
   {__pyx_k_mass_results, sizeof(__pyx_k_mass_results), 0, 1, 1}, /* PyObject cname: __pyx_n_u_mass_results */
   {__pyx_k_masses_vec, sizeof(__pyx_k_masses_vec), 0, 1, 1}, /* PyObject cname: __pyx_n_u_masses_vec */
   {__pyx_k_max_dbe, sizeof(__pyx_k_max_dbe), 0, 1, 1}, /* PyObject cname: __pyx_n_u_max_dbe */
@@ -5675,13 +8491,21 @@ static const __Pyx_StringTabEntry __pyx_string_tab[] = {
   {__pyx_k_params, sizeof(__pyx_k_params), 0, 1, 1}, /* PyObject cname: __pyx_n_u_params */
   {__pyx_k_pop, sizeof(__pyx_k_pop), 0, 1, 1}, /* PyObject cname: __pyx_n_u_pop */
   {__pyx_k_precursor, sizeof(__pyx_k_precursor), 0, 1, 1}, /* PyObject cname: __pyx_n_u_precursor */
+  {__pyx_k_precursor_dict, sizeof(__pyx_k_precursor_dict), 0, 1, 1}, /* PyObject cname: __pyx_n_u_precursor_dict */
+  {__pyx_k_precursor_error_ppm, sizeof(__pyx_k_precursor_error_ppm), 0, 1, 1}, /* PyObject cname: __pyx_n_u_precursor_error_ppm */
   {__pyx_k_precursor_mass, sizeof(__pyx_k_precursor_mass), 0, 1, 1}, /* PyObject cname: __pyx_n_u_precursor_mass */
   {__pyx_k_precursor_results, sizeof(__pyx_k_precursor_results), 0, 1, 1}, /* PyObject cname: __pyx_n_u_precursor_results */
   {__pyx_k_python_results, sizeof(__pyx_k_python_results), 0, 1, 1}, /* PyObject cname: __pyx_n_u_python_results */
   {__pyx_k_qualname, sizeof(__pyx_k_qualname), 0, 1, 1}, /* PyObject cname: __pyx_n_u_qualname */
   {__pyx_k_range, sizeof(__pyx_k_range), 0, 1, 1}, /* PyObject cname: __pyx_n_u_range */
+  {__pyx_k_result_dict, sizeof(__pyx_k_result_dict), 0, 1, 1}, /* PyObject cname: __pyx_n_u_result_dict */
   {__pyx_k_results, sizeof(__pyx_k_results), 0, 1, 1}, /* PyObject cname: __pyx_n_u_results */
   {__pyx_k_set_name, sizeof(__pyx_k_set_name), 0, 1, 1}, /* PyObject cname: __pyx_n_u_set_name */
+  {__pyx_k_spectra_data, sizeof(__pyx_k_spectra_data), 0, 1, 1}, /* PyObject cname: __pyx_n_u_spectra_data */
+  {__pyx_k_spectra_vec, sizeof(__pyx_k_spectra_vec), 0, 1, 1}, /* PyObject cname: __pyx_n_u_spectra_vec */
+  {__pyx_k_spectrum, sizeof(__pyx_k_spectrum), 0, 1, 1}, /* PyObject cname: __pyx_n_u_spectrum */
+  {__pyx_k_spectrum_data, sizeof(__pyx_k_spectrum_data), 0, 1, 1}, /* PyObject cname: __pyx_n_u_spectrum_data */
+  {__pyx_k_spectrum_results, sizeof(__pyx_k_spectrum_results), 0, 1, 1}, /* PyObject cname: __pyx_n_u_spectrum_results */
   {__pyx_k_strategy, sizeof(__pyx_k_strategy), 0, 1, 1}, /* PyObject cname: __pyx_n_u_strategy */
   {__pyx_k_target_mass, sizeof(__pyx_k_target_mass), 0, 1, 1}, /* PyObject cname: __pyx_n_u_target_mass */
   {__pyx_k_target_masses, sizeof(__pyx_k_target_masses), 0, 1, 1}, /* PyObject cname: __pyx_n_u_target_masses */
@@ -5698,7 +8522,7 @@ static int __Pyx_InitStrings(__Pyx_StringTabEntry const *t, PyObject **target, c
 
 static int __Pyx_InitCachedBuiltins(__pyx_mstatetype *__pyx_mstate) {
   CYTHON_UNUSED_VAR(__pyx_mstate);
-  __pyx_builtin_range = __Pyx_GetBuiltinName(__pyx_mstate->__pyx_n_u_range); if (!__pyx_builtin_range) __PYX_ERR(0, 78, __pyx_L1_error)
+  __pyx_builtin_range = __Pyx_GetBuiltinName(__pyx_mstate->__pyx_n_u_range); if (!__pyx_builtin_range) __PYX_ERR(0, 104, __pyx_L1_error)
   return 0;
   __pyx_L1_error:;
   return -1;
@@ -5709,22 +8533,8 @@ static int __Pyx_InitCachedConstants(__pyx_mstatetype *__pyx_mstate) {
   __Pyx_RefNannyDeclarations
   CYTHON_UNUSED_VAR(__pyx_mstate);
   __Pyx_RefNannySetupContext("__Pyx_InitCachedConstants", 0);
-
-  /* "mass_decomposer_cpp.pyx":214
- *     # Split results back into precursor and fragments
- *     precursor_results = all_results[0] if all_results else []
- *     fragment_results = all_results[1:] if len(all_results) > 1 else []             # <<<<<<<<<<<<<<
- * 
- *     return {
-*/
-  __pyx_mstate_global->__pyx_slice[0] = PySlice_New(__pyx_mstate_global->__pyx_int_1, Py_None, Py_None); if (unlikely(!__pyx_mstate_global->__pyx_slice[0])) __PYX_ERR(0, 214, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_mstate_global->__pyx_slice[0]);
-  __Pyx_GIVEREF(__pyx_mstate_global->__pyx_slice[0]);
   __Pyx_RefNannyFinishContext();
   return 0;
-  __pyx_L1_error:;
-  __Pyx_RefNannyFinishContext();
-  return -1;
 }
 /* #### Code section: init_constants ### */
 
@@ -5754,7 +8564,6 @@ static int __Pyx_InitConstants(__pyx_mstatetype *__pyx_mstate) {
   __pyx_mstate->__pyx_float_78_9183376 = PyFloat_FromDouble(78.9183376); if (unlikely(!__pyx_mstate->__pyx_float_78_9183376)) __PYX_ERR(0, 1, __pyx_L1_error)
   __pyx_mstate->__pyx_float_79_9165218 = PyFloat_FromDouble(79.9165218); if (unlikely(!__pyx_mstate->__pyx_float_79_9165218)) __PYX_ERR(0, 1, __pyx_L1_error)
   __pyx_mstate->__pyx_float_126_9044719 = PyFloat_FromDouble(126.9044719); if (unlikely(!__pyx_mstate->__pyx_float_126_9044719)) __PYX_ERR(0, 1, __pyx_L1_error)
-  __pyx_mstate->__pyx_int_1 = PyLong_FromLong(1); if (unlikely(!__pyx_mstate->__pyx_int_1)) __PYX_ERR(0, 1, __pyx_L1_error)
   return 0;
   __pyx_L1_error:;
   return -1;
@@ -5765,10 +8574,10 @@ static int __Pyx_InitConstants(__pyx_mstatetype *__pyx_mstate) {
             unsigned int argcount : 4;
             unsigned int num_posonly_args : 1;
             unsigned int num_kwonly_args : 1;
-            unsigned int nlocals : 5;
+            unsigned int nlocals : 6;
             unsigned int flags : 10;
-            unsigned int first_line : 8;
-            unsigned int line_table_length : 12;
+            unsigned int first_line : 9;
+            unsigned int line_table_length : 14;
         } __Pyx_PyCode_New_function_description;
 /* NewCodeObj.proto */
 static PyObject* __Pyx_PyCode_New(
@@ -5785,19 +8594,34 @@ static int __Pyx_CreateCodeObjects(__pyx_mstatetype *__pyx_mstate) {
   PyObject* tuple_dedup_map = PyDict_New();
   if (unlikely(!tuple_dedup_map)) return -1;
   {
-    const __Pyx_PyCode_New_function_description descr = {8, 0, 0, 14, (unsigned int)(CO_OPTIMIZED|CO_NEWLOCALS), 85, 133};
+    const __Pyx_PyCode_New_function_description descr = {8, 0, 0, 14, (unsigned int)(CO_OPTIMIZED|CO_NEWLOCALS), 111, 133};
     PyObject* const varnames[] = {__pyx_mstate->__pyx_n_u_target_mass, __pyx_mstate->__pyx_n_u_element_bounds, __pyx_mstate->__pyx_n_u_strategy, __pyx_mstate->__pyx_n_u_tolerance_ppm, __pyx_mstate->__pyx_n_u_min_dbe, __pyx_mstate->__pyx_n_u_max_dbe, __pyx_mstate->__pyx_n_u_max_hetero_ratio, __pyx_mstate->__pyx_n_u_max_results, __pyx_mstate->__pyx_n_u_elements, __pyx_mstate->__pyx_n_u_params, __pyx_mstate->__pyx_n_u_decomposer, __pyx_mstate->__pyx_n_u_results, __pyx_mstate->__pyx_n_u_i, __pyx_mstate->__pyx_n_u_python_results};
     __pyx_mstate_global->__pyx_codeobj_tab[0] = __Pyx_PyCode_New(descr, varnames, __pyx_mstate->__pyx_kp_u_mass_decomposer_cpp_pyx, __pyx_mstate->__pyx_n_u_decompose_mass, __pyx_k_2_q_31_aq__A_IQ_1JhgQa_j_E_awe1, tuple_dedup_map); if (unlikely(!__pyx_mstate_global->__pyx_codeobj_tab[0])) goto bad;
   }
   {
-    const __Pyx_PyCode_New_function_description descr = {8, 0, 0, 18, (unsigned int)(CO_OPTIMIZED|CO_NEWLOCALS), 128, 203};
+    const __Pyx_PyCode_New_function_description descr = {8, 0, 0, 18, (unsigned int)(CO_OPTIMIZED|CO_NEWLOCALS), 154, 203};
     PyObject* const varnames[] = {__pyx_mstate->__pyx_n_u_target_masses, __pyx_mstate->__pyx_n_u_element_bounds, __pyx_mstate->__pyx_n_u_strategy, __pyx_mstate->__pyx_n_u_tolerance_ppm, __pyx_mstate->__pyx_n_u_min_dbe, __pyx_mstate->__pyx_n_u_max_dbe, __pyx_mstate->__pyx_n_u_max_hetero_ratio, __pyx_mstate->__pyx_n_u_max_results, __pyx_mstate->__pyx_n_u_elements, __pyx_mstate->__pyx_n_u_params, __pyx_mstate->__pyx_n_u_masses_vec, __pyx_mstate->__pyx_n_u_decomposer, __pyx_mstate->__pyx_n_u_all_results, __pyx_mstate->__pyx_n_u_i, __pyx_mstate->__pyx_n_u_j, __pyx_mstate->__pyx_n_u_mass, __pyx_mstate->__pyx_n_u_python_results, __pyx_mstate->__pyx_n_u_mass_results};
     __pyx_mstate_global->__pyx_codeobj_tab[1] = __Pyx_PyCode_New(descr, varnames, __pyx_mstate->__pyx_kp_u_mass_decomposer_cpp_pyx, __pyx_mstate->__pyx_n_u_decompose_mass_parallel, __pyx_k_q_1_t1_q_aq__A_IQ_AQ_1JhgQa_q_A, tuple_dedup_map); if (unlikely(!__pyx_mstate_global->__pyx_codeobj_tab[1])) goto bad;
   }
   {
-    const __Pyx_PyCode_New_function_description descr = {9, 0, 0, 13, (unsigned int)(CO_OPTIMIZED|CO_NEWLOCALS), 182, 111};
-    PyObject* const varnames[] = {__pyx_mstate->__pyx_n_u_precursor_mass, __pyx_mstate->__pyx_n_u_fragment_masses, __pyx_mstate->__pyx_n_u_element_bounds, __pyx_mstate->__pyx_n_u_strategy, __pyx_mstate->__pyx_n_u_tolerance_ppm, __pyx_mstate->__pyx_n_u_min_dbe, __pyx_mstate->__pyx_n_u_max_dbe, __pyx_mstate->__pyx_n_u_max_hetero_ratio, __pyx_mstate->__pyx_n_u_max_results, __pyx_mstate->__pyx_n_u_all_masses, __pyx_mstate->__pyx_n_u_all_results, __pyx_mstate->__pyx_n_u_precursor_results, __pyx_mstate->__pyx_n_u_fragment_results};
-    __pyx_mstate_global->__pyx_codeobj_tab[2] = __Pyx_PyCode_New(descr, varnames, __pyx_mstate->__pyx_kp_u_mass_decomposer_cpp_pyx, __pyx_mstate->__pyx_n_u_decompose_spectrum_parallel, __pyx_k_45_9_4A_A_6Fa_7y_1F_1_7_Qm2WA_Q, tuple_dedup_map); if (unlikely(!__pyx_mstate_global->__pyx_codeobj_tab[2])) goto bad;
+    const __Pyx_PyCode_New_function_description descr = {8, 0, 0, 25, (unsigned int)(CO_OPTIMIZED|CO_NEWLOCALS), 208, 375};
+    PyObject* const varnames[] = {__pyx_mstate->__pyx_n_u_spectra_data, __pyx_mstate->__pyx_n_u_element_bounds, __pyx_mstate->__pyx_n_u_strategy, __pyx_mstate->__pyx_n_u_tolerance_ppm, __pyx_mstate->__pyx_n_u_min_dbe, __pyx_mstate->__pyx_n_u_max_dbe, __pyx_mstate->__pyx_n_u_max_hetero_ratio, __pyx_mstate->__pyx_n_u_max_results, __pyx_mstate->__pyx_n_u_elements, __pyx_mstate->__pyx_n_u_params, __pyx_mstate->__pyx_n_u_spectra_vec, __pyx_mstate->__pyx_n_u_decomposer, __pyx_mstate->__pyx_n_u_all_results, __pyx_mstate->__pyx_n_u_i, __pyx_mstate->__pyx_n_u_j, __pyx_mstate->__pyx_n_u_k, __pyx_mstate->__pyx_n_u_spectrum, __pyx_mstate->__pyx_n_u_spectrum_data, __pyx_mstate->__pyx_n_u_precursor_mass, __pyx_mstate->__pyx_n_u_fragment_masses, __pyx_mstate->__pyx_n_u_frag_mass, __pyx_mstate->__pyx_n_u_python_results, __pyx_mstate->__pyx_n_u_precursor_results, __pyx_mstate->__pyx_n_u_fragment_results, __pyx_mstate->__pyx_n_u_fragment_mass_results};
+    __pyx_mstate_global->__pyx_codeobj_tab[2] = __Pyx_PyCode_New(descr, varnames, __pyx_mstate->__pyx_kp_u_mass_decomposer_cpp_pyx, __pyx_mstate->__pyx_n_u_decompose_spectra_parallel, __pyx_k_Q_2_a_t1_q_aq__A_IQ_a_M_Jaq_Qa, tuple_dedup_map); if (unlikely(!__pyx_mstate_global->__pyx_codeobj_tab[2])) goto bad;
+  }
+  {
+    const __Pyx_PyCode_New_function_description descr = {9, 0, 0, 11, (unsigned int)(CO_OPTIMIZED|CO_NEWLOCALS), 281, 76};
+    PyObject* const varnames[] = {__pyx_mstate->__pyx_n_u_precursor_mass, __pyx_mstate->__pyx_n_u_fragment_masses, __pyx_mstate->__pyx_n_u_element_bounds, __pyx_mstate->__pyx_n_u_strategy, __pyx_mstate->__pyx_n_u_tolerance_ppm, __pyx_mstate->__pyx_n_u_min_dbe, __pyx_mstate->__pyx_n_u_max_dbe, __pyx_mstate->__pyx_n_u_max_hetero_ratio, __pyx_mstate->__pyx_n_u_max_results, __pyx_mstate->__pyx_n_u_spectra_data, __pyx_mstate->__pyx_n_u_results};
+    __pyx_mstate_global->__pyx_codeobj_tab[3] = __Pyx_PyCode_New(descr, varnames, __pyx_mstate->__pyx_kp_u_mass_decomposer_cpp_pyx, __pyx_mstate->__pyx_n_u_decompose_spectrum_parallel, __pyx_k_45_9_4A_2_Q_7Gq_6iq_9_7_6_D_Q, tuple_dedup_map); if (unlikely(!__pyx_mstate_global->__pyx_codeobj_tab[3])) goto bad;
+  }
+  {
+    const __Pyx_PyCode_New_function_description descr = {9, 0, 0, 28, (unsigned int)(CO_OPTIMIZED|CO_NEWLOCALS), 315, 445};
+    PyObject* const varnames[] = {__pyx_mstate->__pyx_n_u_precursor_mass, __pyx_mstate->__pyx_n_u_fragment_masses, __pyx_mstate->__pyx_n_u_element_bounds, __pyx_mstate->__pyx_n_u_strategy, __pyx_mstate->__pyx_n_u_tolerance_ppm, __pyx_mstate->__pyx_n_u_min_dbe, __pyx_mstate->__pyx_n_u_max_dbe, __pyx_mstate->__pyx_n_u_max_hetero_ratio, __pyx_mstate->__pyx_n_u_max_results, __pyx_mstate->__pyx_n_u_elements, __pyx_mstate->__pyx_n_u_frag_masses_vec, __pyx_mstate->__pyx_n_u_params, __pyx_mstate->__pyx_n_u_decomposer, __pyx_mstate->__pyx_n_u_cpp_results, __pyx_mstate->__pyx_n_u_i, __pyx_mstate->__pyx_n_u_j, __pyx_mstate->__pyx_n_u_k, __pyx_mstate->__pyx_n_u_frag_mass, __pyx_mstate->__pyx_n_u_python_results, __pyx_mstate->__pyx_n_u_decomp, __pyx_mstate->__pyx_n_u_precursor_dict, __pyx_mstate->__pyx_n_u_fragment_lists, __pyx_mstate->__pyx_n_u_fragment_mass_lists, __pyx_mstate->__pyx_n_u_fragment_error_lists, __pyx_mstate->__pyx_n_u_frag_formulas, __pyx_mstate->__pyx_n_u_mass_list, __pyx_mstate->__pyx_n_u_error_list, __pyx_mstate->__pyx_n_u_result_dict};
+    __pyx_mstate_global->__pyx_codeobj_tab[4] = __Pyx_PyCode_New(descr, varnames, __pyx_mstate->__pyx_kp_u_mass_decomposer_cpp_pyx, __pyx_mstate->__pyx_n_u_decompose_spectrum_properly, __pyx_k_45_9_4A_4_t1_q_aq__A_IQ_Q_z_1Jh, tuple_dedup_map); if (unlikely(!__pyx_mstate_global->__pyx_codeobj_tab[4])) goto bad;
+  }
+  {
+    const __Pyx_PyCode_New_function_description descr = {8, 0, 0, 33, (unsigned int)(CO_OPTIMIZED|CO_NEWLOCALS), 415, 523};
+    PyObject* const varnames[] = {__pyx_mstate->__pyx_n_u_spectra_data, __pyx_mstate->__pyx_n_u_element_bounds, __pyx_mstate->__pyx_n_u_strategy, __pyx_mstate->__pyx_n_u_tolerance_ppm, __pyx_mstate->__pyx_n_u_min_dbe, __pyx_mstate->__pyx_n_u_max_dbe, __pyx_mstate->__pyx_n_u_max_hetero_ratio, __pyx_mstate->__pyx_n_u_max_results, __pyx_mstate->__pyx_n_u_elements, __pyx_mstate->__pyx_n_u_params, __pyx_mstate->__pyx_n_u_spectra_vec, __pyx_mstate->__pyx_n_u_decomposer, __pyx_mstate->__pyx_n_u_all_results, __pyx_mstate->__pyx_n_u_i, __pyx_mstate->__pyx_n_u_j, __pyx_mstate->__pyx_n_u_k, __pyx_mstate->__pyx_n_u_l, __pyx_mstate->__pyx_n_u_spectrum, __pyx_mstate->__pyx_n_u_spectrum_data, __pyx_mstate->__pyx_n_u_precursor_mass, __pyx_mstate->__pyx_n_u_fragment_masses, __pyx_mstate->__pyx_n_u_frag_mass, __pyx_mstate->__pyx_n_u_python_results, __pyx_mstate->__pyx_n_u_spectrum_results, __pyx_mstate->__pyx_n_u_decomp, __pyx_mstate->__pyx_n_u_precursor_dict, __pyx_mstate->__pyx_n_u_fragment_lists, __pyx_mstate->__pyx_n_u_fragment_mass_lists, __pyx_mstate->__pyx_n_u_fragment_error_lists, __pyx_mstate->__pyx_n_u_frag_formulas, __pyx_mstate->__pyx_n_u_mass_list, __pyx_mstate->__pyx_n_u_error_list, __pyx_mstate->__pyx_n_u_result_dict};
+    __pyx_mstate_global->__pyx_codeobj_tab[5] = __Pyx_PyCode_New(descr, varnames, __pyx_mstate->__pyx_kp_u_mass_decomposer_cpp_pyx, __pyx_mstate->__pyx_n_u_decompose_spectra_properly_paral, __pyx_k_EQ_Fa_t1_q_aq__A_IQ_a_M_Jaq_Qa, tuple_dedup_map); if (unlikely(!__pyx_mstate_global->__pyx_codeobj_tab[5])) goto bad;
   }
   Py_DECREF(tuple_dedup_map);
   return 0;
@@ -7940,68 +10764,6 @@ static CYTHON_INLINE PyObject *__Pyx_GetItemInt_Fast(PyObject *o, Py_ssize_t i, 
     }
 #endif
     return __Pyx_GetItemInt_Generic(o, PyLong_FromSsize_t(i));
-}
-
-/* SliceObject */
-static CYTHON_INLINE PyObject* __Pyx_PyObject_GetSlice(PyObject* obj,
-        Py_ssize_t cstart, Py_ssize_t cstop,
-        PyObject** _py_start, PyObject** _py_stop, PyObject** _py_slice,
-        int has_cstart, int has_cstop, CYTHON_UNUSED int wraparound) {
-    __Pyx_TypeName obj_type_name;
-#if CYTHON_USE_TYPE_SLOTS
-    PyMappingMethods* mp = Py_TYPE(obj)->tp_as_mapping;
-    if (likely(mp && mp->mp_subscript))
-#endif
-    {
-        PyObject* result;
-        PyObject *py_slice, *py_start, *py_stop;
-        if (_py_slice) {
-            py_slice = *_py_slice;
-        } else {
-            PyObject* owned_start = NULL;
-            PyObject* owned_stop = NULL;
-            if (_py_start) {
-                py_start = *_py_start;
-            } else {
-                if (has_cstart) {
-                    owned_start = py_start = PyLong_FromSsize_t(cstart);
-                    if (unlikely(!py_start)) goto bad;
-                } else
-                    py_start = Py_None;
-            }
-            if (_py_stop) {
-                py_stop = *_py_stop;
-            } else {
-                if (has_cstop) {
-                    owned_stop = py_stop = PyLong_FromSsize_t(cstop);
-                    if (unlikely(!py_stop)) {
-                        Py_XDECREF(owned_start);
-                        goto bad;
-                    }
-                } else
-                    py_stop = Py_None;
-            }
-            py_slice = PySlice_New(py_start, py_stop, Py_None);
-            Py_XDECREF(owned_start);
-            Py_XDECREF(owned_stop);
-            if (unlikely(!py_slice)) goto bad;
-        }
-#if CYTHON_USE_TYPE_SLOTS
-        result = mp->mp_subscript(obj, py_slice);
-#else
-        result = PyObject_GetItem(obj, py_slice);
-#endif
-        if (!_py_slice) {
-            Py_DECREF(py_slice);
-        }
-        return result;
-    }
-    obj_type_name = __Pyx_PyType_GetFullyQualifiedName(Py_TYPE(obj));
-    PyErr_Format(PyExc_TypeError,
-        "'" __Pyx_FMT_TYPENAME "' object is unsliceable", obj_type_name);
-    __Pyx_DECREF_TypeName(obj_type_name);
-bad:
-    return NULL;
 }
 
 /* ListPack */

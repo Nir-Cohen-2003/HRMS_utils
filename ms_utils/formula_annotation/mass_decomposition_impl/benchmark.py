@@ -14,7 +14,9 @@ from python_impl import SiriusMassDecomposer, decompose_mass_fast, add_chemical_
 
 # Try to import new C++ implementation
 try:
-    from mass_decomposer_cpp import decompose_mass, decompose_mass_parallel, decompose_spectrum_parallel
+    from mass_decomposer_cpp import (decompose_mass, decompose_mass_parallel, 
+                                    decompose_spectrum_parallel, decompose_spectra_parallel,
+                                    decompose_spectrum_properly, decompose_spectra_properly_parallel)
     cpp_available = True
 except ImportError:
     cpp_available = False
@@ -23,6 +25,12 @@ except ImportError:
     def decompose_mass_parallel(*args, **kwargs):
         raise NotImplementedError("C++ decomposer not available")
     def decompose_spectrum_parallel(*args, **kwargs):
+        raise NotImplementedError("C++ decomposer not available")
+    def decompose_spectra_parallel(*args, **kwargs):
+        raise NotImplementedError("C++ decomposer not available")
+    def decompose_spectrum_properly(*args, **kwargs):
+        raise NotImplementedError("C++ decomposer not available")
+    def decompose_spectra_properly_parallel(*args, **kwargs):
         raise NotImplementedError("C++ decomposer not available")
 
 # Standard atomic masses (most abundant isotopes)
@@ -181,6 +189,7 @@ def benchmark_algorithms(num_parallel_runs=2000):
             print("C++ spectrum decomposition test:")
             fragment_masses = [target_mass * 0.8, target_mass * 0.6, target_mass * 0.4]
             
+            # Test single spectrum (backward compatibility)
             start_time = time.time()
             spectrum_cpp_results = decompose_spectrum_parallel(
                 target_mass, fragment_masses, element_bounds,
@@ -188,16 +197,104 @@ def benchmark_algorithms(num_parallel_runs=2000):
                 min_dbe=min_dbe, max_dbe=max_dbe, max_hetero_ratio=1000.0)
             spectrum_cpp_time = time.time() - start_time
             
-            print(f"  C++ spectrum decomposition: {spectrum_cpp_time:.3f} seconds")
+            print(f"  C++ single spectrum decomposition: {spectrum_cpp_time:.3f} seconds")
             print(f"  Precursor candidates: {len(spectrum_cpp_results['precursor'])}")
             print(f"  Fragment sets: {len(spectrum_cpp_results['fragments'])}")
+            
+            # Test multiple spectra in parallel
+            num_spectra = num_parallel_runs
+            print(f"C++ multi-spectrum parallel processing ({num_spectra} spectra):")
+            
+            # Create test spectra with va
+            spectra_data = [
+                (281.152812, [281.152812, 241.121512, 237.090212, 221.095297, 93.070425]),
+            ]
+            # multiplate the test spectrum for parallel processing
+            spectra_data = spectra_data * num_spectra
+            
+            
+            start_time = time.time()
+            multi_spectrum_results = decompose_spectra_parallel(
+                spectra_data, element_bounds, strategy="money_changing", 
+                tolerance_ppm=tolerance_ppm, min_dbe=min_dbe, max_dbe=max_dbe, 
+                max_hetero_ratio=1000.0)
+            multi_spectrum_time = time.time() - start_time
+            
+            print(f"  Multi-spectrum parallel: {multi_spectrum_time:.3f} seconds")
+            print(f"  Average per spectrum: {multi_spectrum_time/num_spectra:.6f} seconds")
+            print(f"  Throughput: {num_spectra/multi_spectrum_time:.1f} spectra/second")
+            print(f"  Processed spectra: {len(multi_spectrum_results)}")
+            
+            # Show sample results
+            if multi_spectrum_results:
+                sample_result = multi_spectrum_results[0]
+                print(f"  Sample result - Precursor: {len(sample_result['precursor'])} formulas")
+                print(f"  Sample result - Fragments: {[len(frag) for frag in sample_result['fragments']]}")
+            
+            # Compare single vs batch processing efficiency
+            single_spectrum_time_estimate = spectrum_cpp_time * num_spectra
+            speedup = single_spectrum_time_estimate / multi_spectrum_time if multi_spectrum_time > 0 else float('inf')
+            print(f"  Estimated single-spectrum total time: {single_spectrum_time_estimate:.3f} seconds")
+            print(f"  Batch processing speedup: {speedup:.1f}x")
+            
+            # Test proper spectrum decomposition
+            print("C++ proper spectrum decomposition test:")
+            proper_fragment_masses = [263.142247, 220.125200, 78.046950]
+            
+            start_time = time.time()
+            proper_spectrum_results = decompose_spectrum_properly(
+                target_mass, proper_fragment_masses, element_bounds,
+                strategy="money_changing", tolerance_ppm=tolerance_ppm,
+                min_dbe=min_dbe, max_dbe=max_dbe, max_hetero_ratio=1000.0)
+            proper_spectrum_time = time.time() - start_time
+            
+            print(f"  C++ proper spectrum decomposition: {proper_spectrum_time:.3f} seconds")
+            print(f"  Precursor-fragment combinations: {len(proper_spectrum_results)}")
+            
+            if proper_spectrum_results:
+                sample_proper = proper_spectrum_results[0]
+                print(f"  Sample result - Precursor: {sample_proper['precursor']}")
+                print(f"  Sample result - Precursor mass: {sample_proper['precursor_mass']:.6f} "
+                      f"(error: {sample_proper['precursor_error_ppm']:.2f} ppm)")
+                for i, frag_formulas in enumerate(sample_proper['fragments']):
+                    print(f"  Sample result - Fragment {i+1}: {len(frag_formulas)} possible formulas")
+                    if frag_formulas:
+                        print(f"    Best: {frag_formulas[0]} "
+                              f"(mass: {sample_proper['fragment_masses'][i][0]:.6f}, "
+                              f"error: {sample_proper['fragment_errors_ppm'][i][0]:.2f} ppm)")
+            
+            # Test proper parallel spectrum decomposition
+            print(f"C++ proper multi-spectrum parallel processing ({num_spectra} spectra):")
+            
+            start_time = time.time()
+            proper_multi_results = decompose_spectra_properly_parallel(
+                spectra_data, element_bounds, strategy="money_changing", 
+                tolerance_ppm=tolerance_ppm, min_dbe=min_dbe, max_dbe=max_dbe, 
+                max_hetero_ratio=1000.0)
+            proper_multi_time = time.time() - start_time
+            
+            print(f"  Proper multi-spectrum parallel: {proper_multi_time:.3f} seconds")
+            print(f"  Average per spectrum: {proper_multi_time/num_spectra:.6f} seconds")
+            print(f"  Throughput: {num_spectra/proper_multi_time:.1f} spectra/second")
+            print(f"  Processed spectra: {len(proper_multi_results)}")
+            
+            if proper_multi_results and proper_multi_results[0]:
+                sample_proper_multi = proper_multi_results[0][0]  # First spectrum, first decomposition
+                print(f"  Sample result - Combinations per spectrum: {len(proper_multi_results[0])}")
+                print(f"  Sample result - First precursor: {sample_proper_multi['precursor']}")
                 
         except Exception as e:
             print(f"  C++ spectrum decomposition: Error - {e}")
+            import traceback
+            traceback.print_exc()
+            spectrum_cpp_results = None
+            proper_spectrum_results = None
             
     else:
         print("Advanced algorithms: Not compiled (run 'python setup.py build_ext --inplace')")
-    
+        spectrum_cpp_results = None
+        proper_spectrum_results = None
+
     # Helper to print detailed formula differences
     def print_formula_differences(set1, set2, name1, name2, target_mass):
         def format_formula(f_set):
@@ -276,11 +373,13 @@ def benchmark_algorithms(num_parallel_runs=2000):
             all_results["Money-changing C++"] = money_changing_cpp_results
 
     # Write results to a file for detailed comparison
-    def write_results_to_file(filename, results_dict, target_mass):
+    def write_results_to_file(filename, results_dict, target_mass, spectrum_results=None, proper_spectrum_results=None):
         with open(filename, 'w') as f:
             f.write("Mass Decomposition Benchmark Results\n")
             f.write(f"Target Mass: {target_mass:.6f}\n")
-            f.write("="*40 + "\n\n")
+            f.write("="*60 + "\n\n")
+            
+            # Write mass decomposition results
             for algo, results in results_dict.items():
                 f.write(f"--- {algo} ({len(results)} results) ---\n")
                 # Sort formulas for consistent ordering
@@ -293,8 +392,144 @@ def benchmark_algorithms(num_parallel_runs=2000):
                     error_ppm = abs(mass - target_mass) / target_mass * 1e6
                     f.write(f"{str(formula):<50} mass: {mass:<18.6f} error: {error_ppm:.2f} ppm\n")
                 f.write("\n")
+            
+            # Write spectrum decomposition results
+            if spectrum_results:
+                f.write("="*60 + "\n")
+                f.write("SPECTRUM DECOMPOSITION RESULTS\n")
+                f.write("="*60 + "\n\n")
+                
+                try:
+                    precursor_formulas = spectrum_results['precursor']
+                    fragment_sets = spectrum_results['fragments']
+                    
+                    f.write(f"Precursor Mass: {target_mass:.6f}\n")
+                    f.write(f"Fragment Masses: {fragment_masses}\n")
+                    f.write(f"Total Precursor Candidates: {len(precursor_formulas)}\n")
+                    f.write(f"Number of Fragment Masses: {len(fragment_masses)}\n")
+                    f.write(f"Fragment Sets Structure Length: {len(fragment_sets)}\n\n")
+                    
+                    # Debug information
+                    f.write(f"DEBUG: Spectrum results structure:\n")
+                    f.write(f"  Type of spectrum_results: {type(spectrum_results)}\n")
+                    f.write(f"  Keys: {list(spectrum_results.keys()) if hasattr(spectrum_results, 'keys') else 'N/A'}\n")
+                    f.write(f"  Type of precursor_formulas: {type(precursor_formulas)}\n")
+                    f.write(f"  Type of fragment_sets: {type(fragment_sets)}\n")
+                    if fragment_sets:
+                        f.write(f"  Fragment sets length: {len(fragment_sets)}\n")
+                        for idx, frag_set in enumerate(fragment_sets):
+                            f.write(f"  Fragment set {idx}: type={type(frag_set)}, length={len(frag_set) if hasattr(frag_set, '__len__') else 'N/A'}\n")
+                    f.write("\n")
+                    
+                    # The fragment_sets appears to be organized by fragment mass, not by precursor
+                    # So we have len(fragment_masses) fragment sets, each containing formulas for that fragment
+                    
+                    # First, write the fragment decomposition results organized by fragment mass
+                    f.write("FRAGMENT DECOMPOSITION BY MASS:\n")
+                    f.write("-" * 40 + "\n")
+                    for j, fragment_mass in enumerate(fragment_masses):
+                        f.write(f"\nFragment Mass {j+1}: {fragment_mass:.6f}\n")
+                        if j < len(fragment_sets):
+                            fragment_formulas = fragment_sets[j]
+                            f.write(f"  Found {len(fragment_formulas)} possible formulas:\n")
+                            
+                            if isinstance(fragment_formulas, (list, tuple)):
+                                # Sort fragment formulas for consistent output
+                                sorted_fragments = []
+                                for fragment in fragment_formulas:
+                                    if isinstance(fragment, dict):
+                                        sorted_fragments.append(fragment)
+                                    else:
+                                        f.write(f"    {str(fragment):<30} (unexpected format: {type(fragment)})\n")
+                                        continue
+                                
+                                # Sort the valid dictionary fragments
+                                sorted_fragments = sorted(sorted_fragments, key=lambda x: tuple(sorted(x.items())))
+                                
+                                for fragment in sorted_fragments:
+                                    fragment_calc_mass = sum(ATOMIC_MASSES[elem] * count for elem, count in fragment.items())
+                                    fragment_error = abs(fragment_calc_mass - fragment_mass) / fragment_mass * 1e6 if fragment_mass > 0 else 0.0
+                                    f.write(f"    {str(fragment):<35} mass: {fragment_calc_mass:<12.6f} error: {fragment_error:.2f} ppm\n")
+                            else:
+                                f.write(f"    Unexpected fragment set format: {type(fragment_formulas)}\n")
+                        else:
+                            f.write("  No fragment data available\n")
+                    
+                    f.write("\n" + "="*60 + "\n")
+                    f.write("PRECURSOR FORMULAS:\n")
+                    f.write("-" * 40 + "\n")
+                    
+                    # Write precursor formulas
+                    for i, precursor in enumerate(precursor_formulas):
+                        # Handle different precursor formats
+                        if isinstance(precursor, dict):
+                            precursor_mass = sum(ATOMIC_MASSES[elem] * count for elem, count in precursor.items())
+                            precursor_error = abs(precursor_mass - target_mass) / target_mass * 1e6
+                            precursor_str = str(precursor)
+                        else:
+                            # If precursor is not a dict, try to convert or handle as string
+                            precursor_str = str(precursor)
+                            precursor_mass = target_mass  # Fallback
+                            precursor_error = 0.0
+                        
+                        f.write(f"\nPrecursor {i+1}: {precursor_str}\n")
+                        f.write(f"  Mass: {precursor_mass:.6f}, Error: {precursor_error:.2f} ppm\n")
+                        
+                        # Note: In this structure, fragments are not linked to specific precursors
+                        # Each fragment mass has its own set of possible formulas independent of precursor
+                        f.write(f"  Note: Fragment formulas are listed separately by mass above\n")
+                
+                except Exception as e:
+                    f.write(f"Error writing spectrum results: {str(e)}\n")
+                    f.write(f"Spectrum results type: {type(spectrum_results)}\n")
+                    f.write(f"Spectrum results content: {str(spectrum_results)[:500]}...\n")
+                    import traceback
+                    f.write(f"Traceback: {traceback.format_exc()}\n")
+            
+            # Write proper spectrum decomposition results  
+            if proper_spectrum_results:
+                f.write("\n" + "="*60 + "\n")
+                f.write("PROPER SPECTRUM DECOMPOSITION RESULTS\n")
+                f.write("="*60 + "\n\n")
+                f.write("This shows proper spectrum decomposition where fragments are guaranteed\n")
+                f.write("to be elemental subsets of their corresponding precursor formulas.\n\n")
+                
+                try:
+                    f.write(f"Total precursor-fragment combinations: {len(proper_spectrum_results)}\n\n")
+                    
+                    for i, decomp in enumerate(proper_spectrum_results[:10]):  # Show first 10
+                        f.write(f"Combination {i+1}:\n")
+                        f.write(f"  Precursor: {decomp['precursor']}\n")
+                        f.write(f"  Precursor mass: {decomp['precursor_mass']:.6f} "
+                               f"(error: {decomp['precursor_error_ppm']:.2f} ppm)\n")
+                        
+                        f.write("  Fragment decompositions:\n")
+                        for j, frag_formulas in enumerate(decomp['fragments']):
+                            if frag_formulas:
+                                f.write(f"    Fragment {j+1}: {len(frag_formulas)} possible formulas\n")
+                                # Show best 3 formulas for each fragment
+                                for k, frag_formula in enumerate(frag_formulas[:3]):
+                                    mass = decomp['fragment_masses'][j][k]
+                                    error = decomp['fragment_errors_ppm'][j][k]
+                                    f.write(f"      {frag_formula} "
+                                           f"(mass: {mass:.6f}, error: {error:.2f} ppm)\n")
+                                if len(frag_formulas) > 3:
+                                    f.write(f"      ... and {len(frag_formulas)-3} more\n")
+                            else:
+                                f.write(f"    Fragment {j+1}: No valid formulas found\n")
+                        f.write("\n")
+                        
+                    if len(proper_spectrum_results) > 10:
+                        f.write(f"... and {len(proper_spectrum_results)-10} more combinations\n")
+                
+                except Exception as e:
+                    f.write(f"Error writing proper spectrum results: {str(e)}\n")
+                    f.write(f"Proper spectrum results type: {type(proper_spectrum_results)}\n")
+                    f.write(f"Proper spectrum results content: {str(proper_spectrum_results)[:500]}...\n")
+                    import traceback
+                    f.write(f"Traceback: {traceback.format_exc()}\n")
     
-    write_results_to_file("benchmark_results.txt", all_results, target_mass)
+    write_results_to_file("benchmark_results.txt", all_results, target_mass, spectrum_cpp_results, proper_spectrum_results)
     print("\nResults have been written to benchmark_results.txt for detailed comparison.")
     
     # Show constraint filtering statistics

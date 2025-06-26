@@ -19,6 +19,32 @@ struct Element {
 // Result structure for formulas
 using Formula = std::unordered_map<std::string, int>;
 
+// Spectrum structure for batch processing
+struct Spectrum {
+    double precursor_mass;
+    std::vector<double> fragment_masses;
+};
+
+// Spectrum results structure (old format - fragments independent of precursors)
+struct SpectrumResults {
+    std::vector<Formula> precursor_results;
+    std::vector<std::vector<Formula>> fragment_results;
+};
+
+// Proper spectrum results structure where fragments are subsets of precursors
+struct SpectrumDecomposition {
+    Formula precursor;
+    std::vector<std::vector<Formula>> fragments;  // fragments[i] = all possible formulas for fragment mass i
+    double precursor_mass;
+    double precursor_error_ppm;
+    std::vector<std::vector<double>> fragment_masses;    // fragment_masses[i] = masses for fragment i formulas
+    std::vector<std::vector<double>> fragment_errors_ppm; // fragment_errors_ppm[i] = errors for fragment i formulas
+};
+
+struct ProperSpectrumResults {
+    std::vector<SpectrumDecomposition> decompositions;
+};
+
 // Parameters structure for decomposition
 struct DecompositionParams {
     double tolerance_ppm;
@@ -90,6 +116,25 @@ public:
     std::vector<std::vector<Formula>> decompose_parallel(
         const std::vector<double>& target_masses, 
         const DecompositionParams& params);
+    
+    // Parallel spectrum decomposition (OpenMP) - processes multiple spectra in parallel
+    std::vector<SpectrumResults> decompose_spectra_parallel(
+        const std::vector<Spectrum>& spectra,
+        const DecompositionParams& params);
+    
+    // Proper spectrum decomposition - ensures fragments are subsets of precursors
+    ProperSpectrumResults decompose_spectrum_properly(
+        double precursor_mass,
+        const std::vector<double>& fragment_masses,
+        const DecompositionParams& params);
+    
+    // Proper parallel spectrum decomposition - processes multiple spectra properly in parallel
+    std::vector<ProperSpectrumResults> decompose_spectra_properly_parallel(
+        const std::vector<Spectrum>& spectra,
+        const DecompositionParams& params);
+    
+    // Helper function to create element bounds from a formula (for fragment decomposition)
+    std::vector<Element> create_bounds_from_formula(const Formula& formula) const;
     
     // Helper function for Python interface
     std::vector<std::pair<std::string, int>> formula_to_pairs(const Formula& formula) const;

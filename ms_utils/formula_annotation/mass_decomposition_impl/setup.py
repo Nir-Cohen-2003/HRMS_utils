@@ -31,16 +31,7 @@ if os.name != 'nt':
 
 # Define the extensions
 extensions = [
-    # Original Cython implementation (for comparison/fallback)
-    Extension(
-        "mass_decomposer",
-        ["mass_decomposer.pyx"],
-        include_dirs=[numpy.get_include()],
-        extra_compile_args=openmp_compile_args,
-        extra_link_args=openmp_link_args,
-        language="c"
-    ),
-    # New C++ implementation with OpenMP
+    # C++ implementation with OpenMP
     Extension(
         "mass_decomposer_cpp",
         ["mass_decomposer_cpp.pyx", "mass_decomposer_core.cpp"],
@@ -52,7 +43,7 @@ extensions = [
 ]
 
 setup(
-    name="mass_decomposer_suite",
+    name="mass_decomposer_cpp",
     ext_modules=cythonize(extensions, 
                          compiler_directives={
                              'language_level': 3,
