@@ -117,19 +117,14 @@ public:
         const std::vector<double>& target_masses, 
         const DecompositionParams& params);
     
-    // Parallel spectrum decomposition (OpenMP) - processes multiple spectra in parallel
-    std::vector<SpectrumResults> decompose_spectra_parallel(
-        const std::vector<Spectrum>& spectra,
-        const DecompositionParams& params);
-    
     // Proper spectrum decomposition - ensures fragments are subsets of precursors
-    ProperSpectrumResults decompose_spectrum_properly(
+    ProperSpectrumResults decompose_spectrum(
         double precursor_mass,
         const std::vector<double>& fragment_masses,
         const DecompositionParams& params);
     
     // Proper parallel spectrum decomposition - processes multiple spectra properly in parallel
-    std::vector<ProperSpectrumResults> decompose_spectra_properly_parallel(
+    std::vector<ProperSpectrumResults> decompose_spectra_parallel(
         const std::vector<Spectrum>& spectra,
         const DecompositionParams& params);
     

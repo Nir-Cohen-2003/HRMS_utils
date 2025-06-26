@@ -15,8 +15,7 @@ from python_impl import SiriusMassDecomposer, decompose_mass_fast, add_chemical_
 # Try to import new C++ implementation
 try:
     from mass_decomposer_cpp import (decompose_mass, decompose_mass_parallel, 
-                                    decompose_spectrum_parallel, decompose_spectra_parallel,
-                                    decompose_spectrum_properly, decompose_spectra_properly_parallel)
+                                    decompose_spectrum, decompose_spectra_parallel)
     cpp_available = True
 except ImportError:
     cpp_available = False
@@ -24,13 +23,9 @@ except ImportError:
         raise NotImplementedError("C++ decomposer not available")
     def decompose_mass_parallel(*args, **kwargs):
         raise NotImplementedError("C++ decomposer not available")
-    def decompose_spectrum_parallel(*args, **kwargs):
+    def decompose_spectrum(*args, **kwargs):
         raise NotImplementedError("C++ decomposer not available")
     def decompose_spectra_parallel(*args, **kwargs):
-        raise NotImplementedError("C++ decomposer not available")
-    def decompose_spectrum_properly(*args, **kwargs):
-        raise NotImplementedError("C++ decomposer not available")
-    def decompose_spectra_properly_parallel(*args, **kwargs):
         raise NotImplementedError("C++ decomposer not available")
 
 # Standard atomic masses (most abundant isotopes)
@@ -184,22 +179,32 @@ def benchmark_algorithms(num_parallel_runs=2000):
         except Exception as e:
             print(f"  C++ parallel processing: Error - {e}")
         
+        # Initialize fragment_masses outside try block
+        fragment_masses = [target_mass * 0.8, target_mass * 0.6, target_mass * 0.4]
+        
         # Test spectrum decomposition with C++
         try:
             print("C++ spectrum decomposition test:")
-            fragment_masses = [target_mass * 0.8, target_mass * 0.6, target_mass * 0.4]
             
             # Test single spectrum (backward compatibility)
             start_time = time.time()
-            spectrum_cpp_results = decompose_spectrum_parallel(
+            spectrum_cpp_results = decompose_spectrum(
                 target_mass, fragment_masses, element_bounds,
                 strategy="money_changing", tolerance_ppm=tolerance_ppm,
                 min_dbe=min_dbe, max_dbe=max_dbe, max_hetero_ratio=1000.0)
             spectrum_cpp_time = time.time() - start_time
             
             print(f"  C++ single spectrum decomposition: {spectrum_cpp_time:.3f} seconds")
-            print(f"  Precursor candidates: {len(spectrum_cpp_results['precursor'])}")
-            print(f"  Fragment sets: {len(spectrum_cpp_results['fragments'])}")
+            
+            # Handle new format - spectrum_cpp_results is now a list of decompositions
+            if spectrum_cpp_results:
+                total_precursors = len(spectrum_cpp_results)
+                total_fragment_sets = sum(len(result['fragments']) for result in spectrum_cpp_results)
+                print(f"  Precursor candidates: {total_precursors}")
+                print(f"  Total fragment sets: {total_fragment_sets}")
+            else:
+                print("  Precursor candidates: 0")
+                print("  Total fragment sets: 0")
             
             # Test multiple spectra in parallel
             num_spectra = num_parallel_runs
@@ -242,7 +247,7 @@ def benchmark_algorithms(num_parallel_runs=2000):
             proper_fragment_masses = [263.142247, 220.125200, 78.046950]
             
             start_time = time.time()
-            proper_spectrum_results = decompose_spectrum_properly(
+            proper_spectrum_results = decompose_spectrum(
                 target_mass, proper_fragment_masses, element_bounds,
                 strategy="money_changing", tolerance_ppm=tolerance_ppm,
                 min_dbe=min_dbe, max_dbe=max_dbe, max_hetero_ratio=1000.0)
@@ -267,7 +272,7 @@ def benchmark_algorithms(num_parallel_runs=2000):
             print(f"C++ proper multi-spectrum parallel processing ({num_spectra} spectra):")
             
             start_time = time.time()
-            proper_multi_results = decompose_spectra_properly_parallel(
+            proper_multi_results = decompose_spectra_parallel(
                 spectra_data, element_bounds, strategy="money_changing", 
                 tolerance_ppm=tolerance_ppm, min_dbe=min_dbe, max_dbe=max_dbe, 
                 max_hetero_ratio=1000.0)
@@ -373,7 +378,7 @@ def benchmark_algorithms(num_parallel_runs=2000):
             all_results["Money-changing C++"] = money_changing_cpp_results
 
     # Write results to a file for detailed comparison
-    def write_results_to_file(filename, results_dict, target_mass, spectrum_results=None, proper_spectrum_results=None):
+    def write_results_to_file(filename, results_dict, target_mass, fragment_masses=None, spectrum_results=None, proper_spectrum_results=None):
         with open(filename, 'w') as f:
             f.write("Mass Decomposition Benchmark Results\n")
             f.write(f"Target Mass: {target_mass:.6f}\n")
@@ -529,7 +534,7 @@ def benchmark_algorithms(num_parallel_runs=2000):
                     import traceback
                     f.write(f"Traceback: {traceback.format_exc()}\n")
     
-    write_results_to_file("benchmark_results.txt", all_results, target_mass, spectrum_cpp_results, proper_spectrum_results)
+    write_results_to_file("benchmark_results.txt", all_results, target_mass, fragment_masses, spectrum_cpp_results, proper_spectrum_results)
     print("\nResults have been written to benchmark_results.txt for detailed comparison.")
     
     # Show constraint filtering statistics

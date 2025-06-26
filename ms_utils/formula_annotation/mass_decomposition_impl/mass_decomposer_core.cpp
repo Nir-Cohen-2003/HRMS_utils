@@ -479,12 +479,80 @@ std::vector<std::vector<Formula>> MassDecomposer::decompose_parallel(
     return all_results;
 }
 
-std::vector<SpectrumResults> MassDecomposer::decompose_spectra_parallel(
+ProperSpectrumResults MassDecomposer::decompose_spectrum(
+    double precursor_mass,
+    const std::vector<double>& fragment_masses,
+    const DecompositionParams& params) {
+    ProperSpectrumResults results;
+
+    // Step 1: Decompose precursor mass to get all possible precursor formulas
+    std::vector<Formula> precursor_formulas = decompose(precursor_mass, params);
+
+    // Step 2: For each precursor formula, decompose fragments using it as maximal bounds
+    for (const Formula& precursor_formula : precursor_formulas) {
+        SpectrumDecomposition decomp;
+        decomp.precursor = precursor_formula;
+
+        // Calculate precursor mass and error
+        decomp.precursor_mass = 0.0;
+        for (const auto& pair : precursor_formula) {
+            auto it = atomic_masses_.find(pair.first);
+            if (it != atomic_masses_.end()) {
+                decomp.precursor_mass += it->second * pair.second;
+            }
+        }
+        decomp.precursor_error_ppm = std::abs(decomp.precursor_mass - precursor_mass) / precursor_mass * 1e6;
+
+        // Create bounds for fragment decomposition based on precursor formula
+        std::vector<Element> fragment_bounds = create_bounds_from_formula(precursor_formula);
+
+        // Create a temporary decomposer with fragment bounds
+        MassDecomposer fragment_decomposer(fragment_bounds, params.strategy);
+
+        // Decompose each fragment mass
+        decomp.fragments.resize(fragment_masses.size());
+        decomp.fragment_masses.resize(fragment_masses.size());
+        decomp.fragment_errors_ppm.resize(fragment_masses.size());
+
+        for (size_t i = 0; i < fragment_masses.size(); ++i) {
+            double fragment_mass = fragment_masses[i];
+
+            // Use relaxed DBE constraints for fragments (they can be lower)
+            DecompositionParams fragment_params = params;
+            fragment_params.min_dbe = 0.0;  // Fragments can have lower DBE
+
+            std::vector<Formula> fragment_formulas = fragment_decomposer.decompose(fragment_mass, fragment_params);
+
+            // Calculate masses and errors for each fragment formula
+            for (const Formula& frag_formula : fragment_formulas) {
+                double calc_mass = 0.0;
+                for (const auto& pair : frag_formula) {
+                    auto it = atomic_masses_.find(pair.first);
+                    if (it != atomic_masses_.end()) {
+                        calc_mass += it->second * pair.second;
+                    }
+                }
+                double error_ppm = std::abs(calc_mass - fragment_mass) / fragment_mass * 1e6;
+
+                decomp.fragment_masses[i].push_back(calc_mass);
+                decomp.fragment_errors_ppm[i].push_back(error_ppm);
+            }
+
+            decomp.fragments[i] = std::move(fragment_formulas);
+        }
+
+        results.decompositions.push_back(std::move(decomp));
+    }
+
+    return results;
+}
+
+std::vector<ProperSpectrumResults> MassDecomposer::decompose_spectra_parallel(
     const std::vector<Spectrum>& spectra,
     const DecompositionParams& params) {
     
     int n_spectra = static_cast<int>(spectra.size());
-    std::vector<SpectrumResults> all_spectrum_results(n_spectra);
+    std::vector<ProperSpectrumResults> all_results(n_spectra);
     
     // Use OpenMP for true parallel processing of spectra
     #pragma omp parallel
@@ -495,20 +563,12 @@ std::vector<SpectrumResults> MassDecomposer::decompose_spectra_parallel(
         #pragma omp for schedule(dynamic)
         for (int i = 0; i < n_spectra; ++i) {
             const Spectrum& spectrum = spectra[i];
-            SpectrumResults& spectrum_result = all_spectrum_results[i];
-            
-            // Decompose precursor
-            spectrum_result.precursor_results = thread_decomposer.decompose(spectrum.precursor_mass, params);
-            
-            // Decompose fragments
-            spectrum_result.fragment_results.resize(spectrum.fragment_masses.size());
-            for (size_t j = 0; j < spectrum.fragment_masses.size(); ++j) {
-                spectrum_result.fragment_results[j] = thread_decomposer.decompose(spectrum.fragment_masses[j], params);
-            }
+            all_results[i] = thread_decomposer.decompose_spectrum(
+                spectrum.precursor_mass, spectrum.fragment_masses, params);
         }
     }
     
-    return all_spectrum_results;
+    return all_results;
 }
 
 std::vector<Element> MassDecomposer::create_bounds_from_formula(const Formula& formula) const {
@@ -529,99 +589,6 @@ std::vector<Element> MassDecomposer::create_bounds_from_formula(const Formula& f
     }
     
     return fragment_bounds;
-}
-
-ProperSpectrumResults MassDecomposer::decompose_spectrum_properly(
-    double precursor_mass,
-    const std::vector<double>& fragment_masses,
-    const DecompositionParams& params) {
-    
-    ProperSpectrumResults results;
-    
-    // Step 1: Decompose precursor mass to get all possible precursor formulas
-    std::vector<Formula> precursor_formulas = decompose(precursor_mass, params);
-    
-    // Step 2: For each precursor formula, decompose fragments using it as maximal bounds
-    for (const Formula& precursor_formula : precursor_formulas) {
-        SpectrumDecomposition decomp;
-        decomp.precursor = precursor_formula;
-        
-        // Calculate precursor mass and error
-        decomp.precursor_mass = 0.0;
-        for (const auto& pair : precursor_formula) {
-            auto it = atomic_masses_.find(pair.first);
-            if (it != atomic_masses_.end()) {
-                decomp.precursor_mass += it->second * pair.second;
-            }
-        }
-        decomp.precursor_error_ppm = std::abs(decomp.precursor_mass - precursor_mass) / precursor_mass * 1e6;
-        
-        // Create bounds for fragment decomposition based on precursor formula
-        std::vector<Element> fragment_bounds = create_bounds_from_formula(precursor_formula);
-        
-        // Create a temporary decomposer with fragment bounds
-        MassDecomposer fragment_decomposer(fragment_bounds, params.strategy);
-        
-        // Decompose each fragment mass
-        decomp.fragments.resize(fragment_masses.size());
-        decomp.fragment_masses.resize(fragment_masses.size());
-        decomp.fragment_errors_ppm.resize(fragment_masses.size());
-        
-        for (size_t i = 0; i < fragment_masses.size(); ++i) {
-            double fragment_mass = fragment_masses[i];
-            
-            // Use relaxed DBE constraints for fragments (they can be lower)
-            DecompositionParams fragment_params = params;
-            fragment_params.min_dbe = 0.0;  // Fragments can have lower DBE
-            
-            std::vector<Formula> fragment_formulas = fragment_decomposer.decompose(fragment_mass, fragment_params);
-            
-            // Calculate masses and errors for each fragment formula
-            for (const Formula& frag_formula : fragment_formulas) {
-                double calc_mass = 0.0;
-                for (const auto& pair : frag_formula) {
-                    auto it = atomic_masses_.find(pair.first);
-                    if (it != atomic_masses_.end()) {
-                        calc_mass += it->second * pair.second;
-                    }
-                }
-                double error_ppm = std::abs(calc_mass - fragment_mass) / fragment_mass * 1e6;
-                
-                decomp.fragment_masses[i].push_back(calc_mass);
-                decomp.fragment_errors_ppm[i].push_back(error_ppm);
-            }
-            
-            decomp.fragments[i] = std::move(fragment_formulas);
-        }
-        
-        results.decompositions.push_back(std::move(decomp));
-    }
-    
-    return results;
-}
-
-std::vector<ProperSpectrumResults> MassDecomposer::decompose_spectra_properly_parallel(
-    const std::vector<Spectrum>& spectra,
-    const DecompositionParams& params) {
-    
-    int n_spectra = static_cast<int>(spectra.size());
-    std::vector<ProperSpectrumResults> all_results(n_spectra);
-    
-    // Use OpenMP for true parallel processing of spectra
-    #pragma omp parallel
-    {
-        // Each thread needs its own decomposer instance to avoid race conditions
-        MassDecomposer thread_decomposer(elements_, params.strategy);
-        
-        #pragma omp for schedule(dynamic)
-        for (int i = 0; i < n_spectra; ++i) {
-            const Spectrum& spectrum = spectra[i];
-            all_results[i] = thread_decomposer.decompose_spectrum_properly(
-                spectrum.precursor_mass, spectrum.fragment_masses, params);
-        }
-    }
-    
-    return all_results;
 }
 
 std::vector<std::pair<std::string, int>> MassDecomposer::formula_to_pairs(const Formula& formula) const {
