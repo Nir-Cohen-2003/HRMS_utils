@@ -42,7 +42,7 @@ def benchmark_algorithms(num_parallel_runs=2000):
     import time
     
     # Test case: C17H19N3O
-    target_mass = 285.136493
+    target_mass = 281.152812
     tolerance_ppm = 5.0
     element_bounds = {
         'C': (0, 50), 'H': (0, 100), 'N': (0, 20), 'O': (0, 40),
@@ -172,7 +172,7 @@ def benchmark_algorithms(num_parallel_runs=2000):
                     print(f"    Recursive: {len(first_recursive_cpp)} results, Money-changing: {len(first_money_cpp)} results")
                     common = recursive_cpp_set & money_cpp_set
                     print(f"    Common results: {len(common)}")
-                    
+        
         except Exception as e:
             print(f"  C++ parallel processing: Error - {e}")
         
@@ -316,4 +316,4 @@ if __name__ == "__main__":
     print("=" * 50)
     
     # Run benchmark
-    benchmark_algorithms(200000)
+    benchmark_algorithms(20000)
