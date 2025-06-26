@@ -214,6 +214,35 @@ def benchmark_algorithms(num_parallel_runs=2000):
             spectra_data = [
                 (281.152812, [281.152812, 241.121512, 237.090212, 221.095297, 93.070425]),
             ]
+
+            # Test proper spectrum decomposition
+            print("C++ proper spectrum decomposition test:")
+            proper_fragment_masses = [263.142247, 220.125200, 78.046950]
+            
+            start_time = time.time()
+            proper_spectrum_results = decompose_spectrum(
+                target_mass, proper_fragment_masses, element_bounds,
+                strategy="money_changing", tolerance_ppm=tolerance_ppm,
+                min_dbe=min_dbe, max_dbe=max_dbe, max_hetero_ratio=1000.0)
+            proper_spectrum_time = time.time() - start_time
+            
+            print(f"  C++ spectrum decomposition: {proper_spectrum_time:.3f} seconds")
+            print(f"  Precursor-fragment combinations: {len(proper_spectrum_results)}")
+            
+            if proper_spectrum_results:
+                sample_proper = proper_spectrum_results[0]
+                print(f"  Sample result - Precursor: {sample_proper['precursor']}")
+                print(f"  Sample result - Precursor mass: {sample_proper['precursor_mass']:.6f} "
+                      f"(error: {sample_proper['precursor_error_ppm']:.2f} ppm)")
+                for i, frag_formulas in enumerate(sample_proper['fragments']):
+                    print(f"  Sample result - Fragment {i+1}: {len(frag_formulas)} possible formulas")
+                    if frag_formulas:
+                        print(f"    Best: {frag_formulas[0]} "
+                              f"(mass: {sample_proper['fragment_masses'][i][0]:.6f}, "
+                              f"error: {sample_proper['fragment_errors_ppm'][i][0]:.2f} ppm)")
+
+
+
             # multiplate the test spectrum for parallel processing
             spectra_data = spectra_data * num_spectra
             
@@ -251,55 +280,11 @@ def benchmark_algorithms(num_parallel_runs=2000):
             # Compare single vs batch processing efficiency
             single_spectrum_time_estimate = spectrum_cpp_time * num_spectra
             speedup = single_spectrum_time_estimate / multi_spectrum_time if multi_spectrum_time > 0 else float('inf')
-            print(f"  Estimated single-spectrum total time: {single_spectrum_time_estimate:.3f} seconds")
             print(f"  Batch processing speedup: {speedup:.1f}x")
             
-            # Test proper spectrum decomposition
-            print("C++ proper spectrum decomposition test:")
-            proper_fragment_masses = [263.142247, 220.125200, 78.046950]
             
-            start_time = time.time()
-            proper_spectrum_results = decompose_spectrum(
-                target_mass, proper_fragment_masses, element_bounds,
-                strategy="money_changing", tolerance_ppm=tolerance_ppm,
-                min_dbe=min_dbe, max_dbe=max_dbe, max_hetero_ratio=1000.0)
-            proper_spectrum_time = time.time() - start_time
             
-            print(f"  C++ proper spectrum decomposition: {proper_spectrum_time:.3f} seconds")
-            print(f"  Precursor-fragment combinations: {len(proper_spectrum_results)}")
             
-            if proper_spectrum_results:
-                sample_proper = proper_spectrum_results[0]
-                print(f"  Sample result - Precursor: {sample_proper['precursor']}")
-                print(f"  Sample result - Precursor mass: {sample_proper['precursor_mass']:.6f} "
-                      f"(error: {sample_proper['precursor_error_ppm']:.2f} ppm)")
-                for i, frag_formulas in enumerate(sample_proper['fragments']):
-                    print(f"  Sample result - Fragment {i+1}: {len(frag_formulas)} possible formulas")
-                    if frag_formulas:
-                        print(f"    Best: {frag_formulas[0]} "
-                              f"(mass: {sample_proper['fragment_masses'][i][0]:.6f}, "
-                              f"error: {sample_proper['fragment_errors_ppm'][i][0]:.2f} ppm)")
-            
-            # Test proper parallel spectrum decomposition
-            print(f"C++ proper multi-spectrum parallel processing ({num_spectra} spectra):")
-            
-            start_time = time.time()
-            proper_multi_results = decompose_spectra_parallel(
-                spectra_data, element_bounds, strategy="money_changing", 
-                tolerance_ppm=tolerance_ppm, min_dbe=min_dbe, max_dbe=max_dbe, 
-                max_hetero_ratio=1000.0)
-            proper_multi_time = time.time() - start_time
-            
-            print(f"  Proper multi-spectrum parallel: {proper_multi_time:.3f} seconds")
-            print(f"  Average per spectrum: {proper_multi_time/num_spectra:.6f} seconds")
-            print(f"  Throughput: {num_spectra/proper_multi_time:.1f} spectra/second")
-            print(f"  Processed spectra: {len(proper_multi_results)}")
-            
-            if proper_multi_results and proper_multi_results[0]:
-                sample_proper_multi = proper_multi_results[0][0]  # First spectrum, first decomposition
-                print(f"  Sample result - Combinations per spectrum: {len(proper_multi_results[0])}")
-                print(f"  Sample result - First precursor: {sample_proper_multi['precursor']}")
-                
         except Exception as e:
             print(f"  C++ spectrum decomposition: Error - {e}")
             import traceback
@@ -568,4 +553,4 @@ if __name__ == "__main__":
     print("=" * 50)
     
     # Run benchmark
-    benchmark_algorithms(200)
+    benchmark_algorithms(20000)
