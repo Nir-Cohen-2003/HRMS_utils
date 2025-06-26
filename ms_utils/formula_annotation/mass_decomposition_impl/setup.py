@@ -1,5 +1,5 @@
 """
-Setup script for compiling the unified Cython mass decomposition algorithm with OpenMP support.
+Setup script for compiling the C++ mass decomposition algorithm with OpenMP support.
 
 To compile:
     python setup.py build_ext --inplace
@@ -24,14 +24,30 @@ else:  # Unix-like systems
     openmp_compile_args = ['-fopenmp']
     openmp_link_args = ['-fopenmp']
 
+# C++ compile flags
+cpp_compile_args = ['-std=c++11', '-O3', '-march=native']
+if os.name != 'nt':
+    cpp_compile_args.extend(['-ffast-math', '-funroll-loops'])
+
 # Define the extensions
 extensions = [
+    # Original Cython implementation (for comparison/fallback)
     Extension(
         "mass_decomposer",
         ["mass_decomposer.pyx"],
         include_dirs=[numpy.get_include()],
         extra_compile_args=openmp_compile_args,
-        extra_link_args=openmp_link_args
+        extra_link_args=openmp_link_args,
+        language="c"
+    ),
+    # New C++ implementation with OpenMP
+    Extension(
+        "mass_decomposer_cpp",
+        ["mass_decomposer_cpp.pyx", "mass_decomposer_core.cpp"],
+        include_dirs=[numpy.get_include(), "."],
+        extra_compile_args=cpp_compile_args + openmp_compile_args,
+        extra_link_args=openmp_link_args,
+        language="c++"
     )
 ]
 
