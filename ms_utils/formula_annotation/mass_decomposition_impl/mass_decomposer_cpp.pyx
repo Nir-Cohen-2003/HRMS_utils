@@ -23,6 +23,10 @@ cdef extern from "mass_decomposer_core.hpp":
         double precursor_mass
         vector[double] fragment_masses
     
+    cdef struct SpectrumWithKnownPrecursor:
+        Formula precursor_formula
+        vector[double] fragment_masses
+    
     cdef struct SpectrumDecomposition:
         Formula precursor
         vector[vector[Formula]] fragments
@@ -56,6 +60,11 @@ cdef extern from "mass_decomposer_core.hpp":
                                            const DecompositionParams& params)
         vector[ProperSpectrumResults] decompose_spectra_parallel(const vector[Spectrum]& spectra,
                                                           const DecompositionParams& params)
+        vector[vector[Formula]] decompose_spectrum_known_precursor(const Formula& precursor_formula,
+                                                                  const vector[double]& fragment_masses,
+                                                                  const DecompositionParams& params)
+        vector[vector[vector[Formula]]] decompose_spectra_known_precursor_parallel(const vector[SpectrumWithKnownPrecursor]& spectra,
+                                                                                  const DecompositionParams& params)
         vector[pair[string, int]] formula_to_pairs(const Formula& formula)
 
 # Standard atomic masses
@@ -323,6 +332,138 @@ def decompose_spectra_parallel(list spectra_data, dict element_bounds,
                 }
                 spectrum_results.append(result_dict)
             python_results.append(spectrum_results)
+        return python_results
+    finally:
+        del decomposer
+
+def decompose_spectrum_known_precursor(precursor_formula, fragment_masses, element_bounds,
+                                      str strategy="recursive", double tolerance_ppm=5.0,
+                                      double min_dbe=0.0, double max_dbe=40.0,
+                                      double max_hetero_ratio=100.0, int max_results=100000):
+    """
+    Decompose fragment masses using a known precursor formula.
+    
+    Args:
+        precursor_formula (dict): Known precursor formula as {element: count}
+        fragment_masses (list): List of fragment masses to decompose
+        element_bounds (dict): Element bounds for decomposition
+        strategy (str): Decomposition strategy ("recursive" or "money_changing")
+        tolerance_ppm (float): Mass tolerance in ppm
+        min_dbe (float): Minimum double bond equivalent
+        max_dbe (float): Maximum double bond equivalent
+        max_hetero_ratio (float): Maximum heteroatom to carbon ratio
+        max_results (int): Maximum number of results per fragment
+    
+    Returns:
+        list: List of fragment decomposition results, where each element is a list of formulas
+    """
+    if not fragment_masses:
+        return []
+    
+    cdef vector[Element] elements
+    cdef DecompositionParams params
+    cdef Formula cpp_precursor_formula
+    cdef vector[double] cpp_fragment_masses
+    cdef MassDecomposer* decomposer
+    cdef vector[vector[Formula]] results
+    cdef size_t i, j
+    
+    # Convert inputs
+    elements = _convert_element_bounds(element_bounds)
+    params = _convert_params(tolerance_ppm, min_dbe, max_dbe,
+                           max_hetero_ratio, max_results, strategy)
+    
+    # Convert precursor formula
+    for element, count in precursor_formula.items():
+        cpp_precursor_formula[element.encode('utf-8')] = count
+    
+    # Convert fragment masses
+    for mass in fragment_masses:
+        cpp_fragment_masses.push_back(mass)
+    
+    decomposer = new MassDecomposer(elements, strategy.encode('utf-8'))
+    try:
+        results = decomposer.decompose_spectrum_known_precursor(cpp_precursor_formula, cpp_fragment_masses, params)
+        
+        # Convert results back to Python
+        python_results = []
+        for i in range(results.size()):
+            fragment_formulas = []
+            for j in range(results[i].size()):
+                fragment_formulas.append(_convert_formula_result(results[i][j], decomposer))
+            python_results.append(fragment_formulas)
+        
+        return python_results
+    finally:
+        del decomposer
+
+
+def decompose_spectra_known_precursor_parallel(spectra_data, element_bounds,
+                                              str strategy="recursive", double tolerance_ppm=5.0,
+                                              double min_dbe=0.0, double max_dbe=40.0,
+                                              double max_hetero_ratio=100.0, int max_results=100000):
+    """
+    Parallel decomposition of multiple spectra with known precursor formulas.
+    
+    Args:
+        spectra_data (list): List of (precursor_formula, fragment_masses) tuples
+        element_bounds (dict): Element bounds for decomposition
+        strategy (str): Decomposition strategy ("recursive" or "money_changing")
+        tolerance_ppm (float): Mass tolerance in ppm
+        min_dbe (float): Minimum double bond equivalent
+        max_dbe (float): Maximum double bond equivalent
+        max_hetero_ratio (float): Maximum heteroatom to carbon ratio
+        max_results (int): Maximum number of results per fragment
+    
+    Returns:
+        list: List of spectrum results, where each element is a list of fragment decomposition results
+    """
+    if not spectra_data:
+        return []
+    
+    cdef vector[Element] elements
+    cdef DecompositionParams params
+    cdef vector[SpectrumWithKnownPrecursor] spectra_vec
+    cdef MassDecomposer* decomposer
+    cdef vector[vector[vector[Formula]]] all_results
+    cdef size_t i, j, k
+    cdef SpectrumWithKnownPrecursor spectrum
+    
+    # Convert inputs
+    elements = _convert_element_bounds(element_bounds)
+    params = _convert_params(tolerance_ppm, min_dbe, max_dbe,
+                           max_hetero_ratio, max_results, strategy)
+    
+    # Convert spectra data
+    for spectrum_data in spectra_data:
+        precursor_formula, fragment_masses = spectrum_data
+        
+        # Clear and set precursor formula
+        spectrum.precursor_formula.clear()
+        for element, count in precursor_formula.items():
+            spectrum.precursor_formula[element.encode('utf-8')] = count
+        
+        # Clear and set fragment masses
+        spectrum.fragment_masses.clear()
+        for frag_mass in fragment_masses:
+            spectrum.fragment_masses.push_back(frag_mass)
+        
+        spectra_vec.push_back(spectrum)
+    decomposer = new MassDecomposer(elements, strategy.encode('utf-8'))
+    try:
+        all_results = decomposer.decompose_spectra_known_precursor_parallel(spectra_vec, params)
+        
+        # Convert results back to Python
+        python_results = []
+        for i in range(all_results.size()):
+            spectrum_results = []
+            for j in range(all_results[i].size()):
+                fragment_formulas = []
+                for k in range(all_results[i][j].size()):
+                    fragment_formulas.append(_convert_formula_result(all_results[i][j][k], decomposer))
+                spectrum_results.append(fragment_formulas)
+            python_results.append(spectrum_results)
+        
         return python_results
     finally:
         del decomposer

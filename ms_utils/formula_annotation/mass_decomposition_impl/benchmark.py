@@ -15,7 +15,9 @@ from python_impl import SiriusMassDecomposer, decompose_mass_fast, add_chemical_
 # Try to import new C++ implementation
 try:
     from mass_decomposer_cpp import (decompose_mass, decompose_mass_parallel, 
-                                    decompose_spectrum, decompose_spectra_parallel)
+                                    decompose_spectrum, decompose_spectra_parallel,
+                                    decompose_spectrum_known_precursor, 
+                                    decompose_spectra_known_precursor_parallel)
     cpp_available = True
 except ImportError:
     cpp_available = False
@@ -26,6 +28,10 @@ except ImportError:
     def decompose_spectrum(*args, **kwargs):
         raise NotImplementedError("C++ decomposer not available")
     def decompose_spectra_parallel(*args, **kwargs):
+        raise NotImplementedError("C++ decomposer not available")
+    def decompose_spectrum_known_precursor(*args, **kwargs):
+        raise NotImplementedError("C++ decomposer not available")
+    def decompose_spectra_known_precursor_parallel(*args, **kwargs):
         raise NotImplementedError("C++ decomposer not available")
 
 # Standard atomic masses (most abundant isotopes)
@@ -547,6 +553,162 @@ def benchmark_algorithms(num_parallel_runs=2000):
         error_ppm = abs(mass - target_mass) / target_mass * 1e6
         print(f"  {i+1:2d}: {formula} (mass: {mass:.4f}, error: {error_ppm:.1f} ppm)")
 
+def benchmark_known_precursor_decomposition(num_parallel_runs=1000):
+    """
+    Benchmark spectrum decomposition with known precursor formulas.
+    
+    Args:
+        num_parallel_runs (int): Number of parallel runs to test scaling performance.
+    """
+    import time
+    
+    print("\n" + "="*80)
+    print("KNOWN PRECURSOR SPECTRUM DECOMPOSITION BENCHMARK")
+    print("="*80)
+    
+    # Test case: Known precursor formula C17H19N3O
+    known_precursor = {'C': 17, 'H': 19, 'N': 3, 'O': 1}
+    fragment_masses = [263.142247, 220.125200, 194.109550, 167.081475, 78.046950]
+    
+    # Standard element bounds (for creating the decomposer)
+    element_bounds = {
+        'C': (0, 100), 'H': (0, 200), 'O': (0, 50), 'N': (0, 50),
+        'P': (0, 20), 'S': (0, 20), 'F': (0, 20), 'Cl': (0, 20),
+        'Br': (0, 10), 'I': (0, 10)
+    }
+    
+    tolerance_ppm = 5.0
+    min_dbe = 0.0
+    max_dbe = 40.0
+    max_hetero_ratio = 100.0
+    max_results = 100000
+    
+    print(f"Test case:")
+    print(f"  Known precursor formula: {known_precursor}")
+    print(f"  Fragment masses: {fragment_masses}")
+    print(f"  Tolerance: {tolerance_ppm} ppm")
+    print(f"  DBE range: {min_dbe} - {max_dbe}")
+    print(f"  Max results per fragment: {max_results}")
+    
+    if cpp_available:
+        print("\nTesting C++ known precursor decomposition:")
+        
+        try:
+            # Test single spectrum with known precursor
+            print("Single spectrum with known precursor:")
+            start_time = time.time()
+            single_results = decompose_spectrum_known_precursor(
+                known_precursor, fragment_masses, element_bounds,
+                strategy="money_changing", tolerance_ppm=tolerance_ppm,
+                min_dbe=min_dbe, max_dbe=max_dbe, max_hetero_ratio=max_hetero_ratio,
+                max_results=max_results)
+            single_time = time.time() - start_time
+            
+            print(f"  Single known precursor decomposition: {single_time:.3f} seconds")
+            print(f"  Fragment results: {[len(frag_results) for frag_results in single_results]}")
+            
+            # Show sample results
+            if single_results:
+                for i, frag_results in enumerate(single_results[:3]):  # Show first 3 fragments
+                    print(f"  Fragment {i+1} ({fragment_masses[i]:.6f} Da): {len(frag_results)} formulas")
+                    if frag_results:
+                        # Calculate masses for top 3 formulas
+                        from base_data import ATOMIC_MASSES
+                        for j, formula in enumerate(frag_results[:3]):
+                            calc_mass = sum(ATOMIC_MASSES[elem] * count for elem, count in formula.items())
+                            error_ppm = abs(calc_mass - fragment_masses[i]) / fragment_masses[i] * 1e6
+                            print(f"    {formula} (mass: {calc_mass:.6f}, error: {error_ppm:.2f} ppm)")
+            
+            # Test parallel processing with multiple spectra (different known precursors)
+            print(f"\nParallel processing ({num_parallel_runs} spectra with different known precursors):")
+            
+            # Create test data with different known precursor formulas
+            test_precursors = [
+                {'C': 17, 'H': 19, 'N': 3, 'O': 1},  # C17H19N3O
+                {'C': 15, 'H': 17, 'N': 2, 'O': 2},  # C15H17N2O2  
+                {'C': 20, 'H': 22, 'N': 2, 'O': 3},  # C20H22N2O3
+                {'C': 12, 'H': 15, 'N': 1, 'O': 4},  # C12H15NO4
+                {'C': 18, 'H': 20, 'N': 4, 'O': 1},  # C18H20N4O
+            ]
+            
+            # Create parallel test data
+            parallel_spectra_data = []
+            for i in range(num_parallel_runs):
+                # Cycle through different precursor formulas
+                precursor = test_precursors[i % len(test_precursors)]
+                # Use the same fragment masses for simplicity
+                parallel_spectra_data.append((precursor, fragment_masses))
+            
+            start_time = time.time()
+            parallel_results = decompose_spectra_known_precursor_parallel(
+                parallel_spectra_data, element_bounds,
+                strategy="money_changing", tolerance_ppm=tolerance_ppm,
+                min_dbe=min_dbe, max_dbe=max_dbe, max_hetero_ratio=max_hetero_ratio,
+                max_results=max_results)
+            parallel_time = time.time() - start_time
+            
+            print(f"  Parallel known precursor decomposition: {parallel_time:.3f} seconds")
+            print(f"  Average per spectrum: {parallel_time/num_parallel_runs:.6f} seconds")
+            print(f"  Throughput: {num_parallel_runs/parallel_time:.1f} spectra/second")
+            print(f"  Processed spectra: {len(parallel_results)}")
+            
+            # Show sample parallel results
+            if parallel_results:
+                sample_result = parallel_results[0]
+                print(f"  Sample result - Fragment results: {[len(frag_results) for frag_results in sample_result]}")
+                
+                # Compare with original known precursor
+                if len(parallel_results) > 1:
+                    different_precursor_result = parallel_results[1]
+                    print(f"  Different precursor result - Fragment results: {[len(frag_results) for frag_results in different_precursor_result]}")
+            
+            # Compare single vs parallel efficiency
+            single_time_estimate = single_time * num_parallel_runs
+            speedup = single_time_estimate / parallel_time if parallel_time > 0 else float('inf')
+            print(f"  Parallel processing speedup: {speedup:.1f}x")
+            
+            # Compare strategies
+            print("\nComparing strategies for known precursor decomposition:")
+            
+            # Recursive strategy
+            start_time = time.time()
+            recursive_results = decompose_spectrum_known_precursor(
+                known_precursor, fragment_masses, element_bounds,
+                strategy="recursive", tolerance_ppm=tolerance_ppm,
+                min_dbe=min_dbe, max_dbe=max_dbe, max_hetero_ratio=max_hetero_ratio,
+                max_results=max_results)
+            recursive_time = time.time() - start_time
+            
+            print(f"  Recursive strategy: {recursive_time:.3f} seconds")
+            print(f"  Fragment results: {[len(frag_results) for frag_results in recursive_results]}")
+            
+            # Money-changing strategy (already done above)
+            print(f"  Money-changing strategy: {single_time:.3f} seconds") 
+            print(f"  Fragment results: {[len(frag_results) for frag_results in single_results]}")
+            
+            # Verify both strategies give same results
+            if recursive_results and single_results:
+                strategies_match = True
+                for i, (rec_frags, mc_frags) in enumerate(zip(recursive_results, single_results)):
+                    rec_set = {frozenset(f.items()) for f in rec_frags}
+                    mc_set = {frozenset(f.items()) for f in mc_frags}
+                    if rec_set != mc_set:
+                        strategies_match = False
+                        print(f"  ✗ Fragment {i+1} results differ between strategies")
+                        print(f"    Recursive: {len(rec_frags)} formulas, Money-changing: {len(mc_frags)} formulas")
+                        break
+                
+                if strategies_match:
+                    print("  ✓ Both strategies produce identical results")
+                    
+        except Exception as e:
+            print(f"  Known precursor decomposition error: {e}")
+            import traceback
+            traceback.print_exc()
+    else:
+        print("C++ implementation not available. Please compile with 'python setup.py build_ext --inplace'")
+
+
 # Example usage and testing
 if __name__ == "__main__":
     print("SIRIUS Mass Decomposition Algorithm")
@@ -554,3 +716,4 @@ if __name__ == "__main__":
     
     # Run benchmark
     benchmark_algorithms(20000)
+    benchmark_known_precursor_decomposition(10000)

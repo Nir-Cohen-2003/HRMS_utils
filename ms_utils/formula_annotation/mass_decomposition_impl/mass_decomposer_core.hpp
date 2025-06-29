@@ -25,6 +25,12 @@ struct Spectrum {
     std::vector<double> fragment_masses;
 };
 
+// Spectrum structure with known precursor formula
+struct SpectrumWithKnownPrecursor {
+    Formula precursor_formula;
+    std::vector<double> fragment_masses;
+};
+
 // Spectrum results structure (old format - fragments independent of precursors)
 struct SpectrumResults {
     std::vector<Formula> precursor_results;
@@ -126,6 +132,17 @@ public:
     // Proper parallel spectrum decomposition - processes multiple spectra properly in parallel
     std::vector<ProperSpectrumResults> decompose_spectra_parallel(
         const std::vector<Spectrum>& spectra,
+        const DecompositionParams& params);
+    
+    // Known precursor spectrum decomposition - decomposes fragments with known precursor formula
+    std::vector<std::vector<Formula>> decompose_spectrum_known_precursor(
+        const Formula& precursor_formula,
+        const std::vector<double>& fragment_masses,
+        const DecompositionParams& params);
+    
+    // Parallel known precursor spectrum decomposition - processes multiple spectra with different known precursor formulas
+    std::vector<std::vector<std::vector<Formula>>> decompose_spectra_known_precursor_parallel(
+        const std::vector<SpectrumWithKnownPrecursor>& spectra,
         const DecompositionParams& params);
     
     // Helper function to create element bounds from a formula (for fragment decomposition)
