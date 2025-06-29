@@ -115,25 +115,31 @@ cdef dict _convert_formula_result(const Formula& formula, MassDecomposer* decomp
     
     return result
 
-def decompose_mass(double target_mass, dict element_bounds, 
-                   str strategy="money_changing", double tolerance_ppm=5.0,
-                   double min_dbe=0.0, double max_dbe=40.0, 
-                   double max_hetero_ratio=1000.0, int max_results=10000):
+def decompose_mass(
+    target_mass: float,
+    element_bounds: dict,
+    strategy: str = "money_changing",
+    tolerance_ppm: float = 5.0,
+    min_dbe: float = 0.0,
+    max_dbe: float = 40.0,
+    max_hetero_ratio: float = 100.0,
+    max_results: int = 100000
+) -> list:
     """
-    Decompose a mass into possible molecular formulas using C++ implementation.
-    
+    Decompose a single target mass into all possible molecular formulas within the specified constraints.
+
     Args:
-        target_mass: Target mass to decompose
-        element_bounds: Dictionary of element bounds {element: (min, max)}
-        strategy: "recursive" or "money_changing"
-        tolerance_ppm: Mass tolerance in ppm
-        min_dbe: Minimum double bond equivalents
-        max_dbe: Maximum double bond equivalents
-        max_hetero_ratio: Maximum heteroatom to carbon ratio
-        max_results: Maximum number of results to return
-        
+        target_mass (float): The mass to decompose.
+        element_bounds (dict[str, tuple[int, int]]): Dictionary mapping element symbols to (min_count, max_count) bounds.
+        strategy (str, optional): Decomposition algorithm, "recursive" or "money_changing". Default is "recursive".
+        tolerance_ppm (float, optional): Allowed mass error in ppm. Default is 5.0.
+        min_dbe (float, optional): Minimum double bond equivalent (DBE) allowed. Default is 0.0.
+        max_dbe (float, optional): Maximum DBE allowed. Default is 40.0.
+        max_hetero_ratio (float, optional): Maximum allowed ratio of heteroatoms to carbon. Default is 100.0.
+        max_results (int, optional): Maximum number of formulas to return. Default is 100000.
+
     Returns:
-        List of formula dictionaries
+        list[dict[str, int]]: List of formulas as dictionaries mapping element symbols to counts.
     """
     cdef vector[Element] elements
     cdef DecompositionParams params
@@ -158,25 +164,31 @@ def decompose_mass(double target_mass, dict element_bounds,
     finally:
         del decomposer
 
-def decompose_mass_parallel(list target_masses, dict element_bounds,
-                           str strategy="money_changing", double tolerance_ppm=5.0,
-                           double min_dbe=0.0, double max_dbe=40.0,
-                           double max_hetero_ratio=1000.0, int max_results=10000):
+def decompose_mass_parallel(
+    target_masses: list,
+    element_bounds: dict,
+    strategy: str = "money_changing",
+    tolerance_ppm: float = 5.0,
+    min_dbe: float = 0.0,
+    max_dbe: float = 40.0,
+    max_hetero_ratio: float = 100.0,
+    max_results: int = 100000
+) -> list:
     """
-    Decompose multiple masses in parallel using C++ OpenMP implementation.
-    
+    Decompose multiple target masses in parallel, each with the same element bounds and constraints.
+
     Args:
-        target_masses: List of target masses to decompose
-        element_bounds: Dictionary of element bounds {element: (min, max)}
-        strategy: "recursive" or "money_changing"
-        tolerance_ppm: Mass tolerance in ppm
-        min_dbe: Minimum double bond equivalents
-        max_dbe: Maximum double bond equivalents
-        max_hetero_ratio: Maximum heteroatom to carbon ratio
-        max_results: Maximum number of results to return per mass
-        
+        target_masses (list[float]): List of masses to decompose.
+        element_bounds (dict[str, tuple[int, int]]): See above.
+        strategy (str, optional): See above.
+        tolerance_ppm (float, optional): See above.
+        min_dbe (float, optional): See above.
+        max_dbe (float, optional): See above.
+        max_hetero_ratio (float, optional): See above.
+        max_results (int, optional): See above.
+
     Returns:
-        List of lists of formula dictionaries
+        list[list[dict[str, int]]]: List of results for each mass, each being a list of formulas.
     """
     if not target_masses:
         return []
@@ -212,14 +224,39 @@ def decompose_mass_parallel(list target_masses, dict element_bounds,
     finally:
         del decomposer
 
-def decompose_spectrum(double precursor_mass, list fragment_masses,
-                     dict element_bounds, str strategy="money_changing",
-                     double tolerance_ppm=5.0, double min_dbe=0.0,
-                     double max_dbe=40.0, double max_hetero_ratio=1000.0,
-                     int max_results=10000):
+def decompose_spectrum(
+    precursor_mass: float,
+    fragment_masses: list,
+    element_bounds: dict,
+    strategy: str = "money_changing",
+    tolerance_ppm: float = 5.0,
+    min_dbe: float = 0.0,
+    max_dbe: float = 40.0,
+    max_hetero_ratio: float = 100.0,
+    max_results: int = 100000
+) -> list:
     """
-    Decompose a spectrum ensuring fragments are subsets of precursor formulas.
-    Returns a list of precursor-fragment combinations.
+    Decompose a spectrum: find all possible precursor formulas for a given precursor mass, and for each, decompose the fragment masses as subsets of the precursor.
+
+    Args:
+        precursor_mass (float): The precursor ion mass.
+        fragment_masses (list[float]): List of fragment masses to decompose.
+        element_bounds (dict[str, tuple[int, int]]): See above.
+        strategy (str, optional): See above.
+        tolerance_ppm (float, optional): See above.
+        min_dbe (float, optional): See above.
+        max_dbe (float, optional): See above.
+        max_hetero_ratio (float, optional): See above.
+        max_results (int, optional): See above.
+
+    Returns:
+        list[dict]: List of precursor/fragment decomposition results. Each dict contains:
+            - 'precursor': dict of precursor formula,
+            - 'fragments': list of lists of fragment formulas,
+            - 'precursor_mass': float,
+            - 'precursor_error_ppm': float,
+            - 'fragment_masses': list of lists of floats,
+            - 'fragment_errors_ppm': list of lists of floats.
     """
     if not fragment_masses:
         return []
@@ -270,13 +307,31 @@ def decompose_spectrum(double precursor_mass, list fragment_masses,
     finally:
         del decomposer
 
-def decompose_spectra_parallel(list spectra_data, dict element_bounds,
-                             str strategy="money_changing", double tolerance_ppm=5.0,
-                             double min_dbe=0.0, double max_dbe=40.0,
-                             double max_hetero_ratio=1000.0, int max_results=10000):
+def decompose_spectra_parallel(
+    spectra_data: list,
+    element_bounds: dict,
+    strategy: str = "money_changing",
+    tolerance_ppm: float = 5.0,
+    min_dbe: float = 0.0,
+    max_dbe: float = 40.0,
+    max_hetero_ratio: float = 100.0,
+    max_results: int = 100000
+) -> list:
     """
-    Decompose multiple spectra in parallel ensuring fragments are subsets of precursor formulas.
-    Returns a list of spectrum results, each in the same format as decompose_spectrum.
+    Decompose multiple spectra in parallel. Each spectrum is defined by a precursor mass and a list of fragment masses.
+
+    Args:
+        spectra_data (list[tuple[float, list[float]]]): List of spectra, each as (precursor_mass, fragment_masses).
+        element_bounds (dict[str, tuple[int, int]]): See above.
+        strategy (str, optional): See above.
+        tolerance_ppm (float, optional): See above.
+        min_dbe (float, optional): See above.
+        max_dbe (float, optional): See above.
+        max_hetero_ratio (float, optional): See above.
+        max_results (int, optional): See above.
+
+    Returns:
+        list[list[dict]]: List of results for each spectrum (see decompose_spectrum for result structure).
     """
     if not spectra_data:
         return []
@@ -336,26 +391,33 @@ def decompose_spectra_parallel(list spectra_data, dict element_bounds,
     finally:
         del decomposer
 
-def decompose_spectrum_known_precursor(precursor_formula, fragment_masses, element_bounds,
-                                      str strategy="recursive", double tolerance_ppm=5.0,
-                                      double min_dbe=0.0, double max_dbe=40.0,
-                                      double max_hetero_ratio=100.0, int max_results=100000):
+def decompose_spectrum_known_precursor(
+    precursor_formula: dict,
+    fragment_masses: list,
+    element_bounds: dict,
+    strategy: str = "money_changing",
+    tolerance_ppm: float = 5.0,
+    min_dbe: float = 0.0,
+    max_dbe: float = 40.0,
+    max_hetero_ratio: float = 100.0,
+    max_results: int = 100000
+) -> list:
     """
-    Decompose fragment masses using a known precursor formula.
-    
+    Decompose fragment masses for a spectrum where the precursor formula is already known.
+
     Args:
-        precursor_formula (dict): Known precursor formula as {element: count}
-        fragment_masses (list): List of fragment masses to decompose
-        element_bounds (dict): Element bounds for decomposition
-        strategy (str): Decomposition strategy ("recursive" or "money_changing")
-        tolerance_ppm (float): Mass tolerance in ppm
-        min_dbe (float): Minimum double bond equivalent
-        max_dbe (float): Maximum double bond equivalent
-        max_hetero_ratio (float): Maximum heteroatom to carbon ratio
-        max_results (int): Maximum number of results per fragment
-    
+        precursor_formula (dict[str, int]): The known precursor formula as a dictionary.
+        fragment_masses (list[float]): List of fragment masses to decompose.
+        element_bounds (dict[str, tuple[int, int]]): See above.
+        strategy (str, optional): See above.
+        tolerance_ppm (float, optional): See above.
+        min_dbe (float, optional): See above.
+        max_dbe (float, optional): See above.
+        max_hetero_ratio (float, optional): See above.
+        max_results (int, optional): See above.
+
     Returns:
-        list: List of fragment decomposition results, where each element is a list of formulas
+        list[list[dict[str, int]]]: List of fragment results, one per fragment mass, each a list of formulas.
     """
     if not fragment_masses:
         return []
@@ -398,25 +460,31 @@ def decompose_spectrum_known_precursor(precursor_formula, fragment_masses, eleme
         del decomposer
 
 
-def decompose_spectra_known_precursor_parallel(spectra_data, element_bounds,
-                                              str strategy="recursive", double tolerance_ppm=5.0,
-                                              double min_dbe=0.0, double max_dbe=40.0,
-                                              double max_hetero_ratio=100.0, int max_results=100000):
+def decompose_spectra_known_precursor_parallel(
+    spectra_data: list,
+    element_bounds: dict,
+    strategy: str = "money_changing",
+    tolerance_ppm: float = 5.0,
+    min_dbe: float = 0.0,
+    max_dbe: float = 40.0,
+    max_hetero_ratio: float = 100.0,
+    max_results: int = 100000
+) -> list:
     """
-    Parallel decomposition of multiple spectra with known precursor formulas.
-    
+    Decompose multiple spectra in parallel, where each spectrum has a known precursor formula and a list of fragment masses.
+
     Args:
-        spectra_data (list): List of (precursor_formula, fragment_masses) tuples
-        element_bounds (dict): Element bounds for decomposition
-        strategy (str): Decomposition strategy ("recursive" or "money_changing")
-        tolerance_ppm (float): Mass tolerance in ppm
-        min_dbe (float): Minimum double bond equivalent
-        max_dbe (float): Maximum double bond equivalent
-        max_hetero_ratio (float): Maximum heteroatom to carbon ratio
-        max_results (int): Maximum number of results per fragment
-    
+        spectra_data (list[tuple[dict[str, int], list[float]]]): List of spectra, each as (precursor_formula, fragment_masses).
+        element_bounds (dict[str, tuple[int, int]]): See above.
+        strategy (str, optional): See above.
+        tolerance_ppm (float, optional): See above.
+        min_dbe (float, optional): See above.
+        max_dbe (float, optional): See above.
+        max_hetero_ratio (float, optional): See above.
+        max_results (int, optional): See above.
+
     Returns:
-        list: List of spectrum results, where each element is a list of fragment decomposition results
+        list[list[list[dict[str, int]]]]: List of results for each spectrum; for each spectrum, a list of fragment results (as in decompose_spectrum_known_precursor).
     """
     if not spectra_data:
         return []
