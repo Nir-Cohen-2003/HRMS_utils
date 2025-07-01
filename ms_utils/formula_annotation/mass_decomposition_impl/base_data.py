@@ -20,3 +20,5 @@ ATOMIC_MASSES = {
     'B': 11.0093054,
     'Al': 26.9815386
 }
+
+import polars

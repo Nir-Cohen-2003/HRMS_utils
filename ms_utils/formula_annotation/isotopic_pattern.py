@@ -12,7 +12,7 @@ class isotopic_pattern_config:
     max_intensity_ratio : float=1.7
 
 isotopic_pattern_arr = np.array( 
-    #mass difference, zero isiotope probability, first isoptope probability
+    #mass difference, zero isotope probability, first isoptope probability
     [
         [1.0034,0.989,0.011], #C
         [0.99703,0.996,0.004], #N

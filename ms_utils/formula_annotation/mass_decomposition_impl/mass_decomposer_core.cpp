@@ -266,3 +266,7 @@ bool MassDecomposer::decomposable(int i, long long m, long long a1) const { if (
 void MassDecomposer::initialize_residue_tables() { min_residues_.resize(weights_.size()); max_residues_.resize(weights_.size()); double min_mass = 0.0, max_mass = 0.0; for (int i = static_cast<int>(weights_.size()) - 1; i >= 0; --i) { min_mass += weights_[i].min_count * weights_[i].mass; max_mass += weights_[i].max_count * weights_[i].mass; min_residues_[i] = min_mass; max_residues_[i] = max_mass; } }
 
 bool MassDecomposer::can_reach_target(double current_mass, int level, double target_mass, double tolerance) const { if (level >= static_cast<int>(weights_.size())) return std::abs(current_mass - target_mass) <= tolerance; double remaining_min = current_mass + min_residues_[level]; double remaining_max = current_mass + max_residues_[level]; return (target_mass - tolerance <= remaining_max && remaining_min <= target_mass + tolerance); }
+
+std::vector<std::string> MassDecomposer::get_element_order() const {
+    return element_order_;
+}
