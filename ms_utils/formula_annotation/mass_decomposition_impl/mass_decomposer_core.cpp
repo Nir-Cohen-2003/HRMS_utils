@@ -4,32 +4,43 @@
 #include <cstdlib>
 #include <stdexcept>
 
-MassDecomposer::MassDecomposer(const std::vector<std::string>& element_order)
-    : element_order_(element_order), precision_(1.0 / 5963.337687), 
+MassDecomposer::MassDecomposer()
+    : precision_(1.0 / 5963.337687), 
       c_idx_(-1), h_idx_(-1), n_idx_(-1), p_idx_(-1), f_idx_(-1), 
       cl_idx_(-1), br_idx_(-1), i_idx_(-1) {
+    element_order_ = {"H", "B", "C", "N", "O", "F", "Na", "Si", "P", "S", "Cl", "K", "As", "Br", "I"};
     init_atomic_masses();
-    element_masses_vec_.resize(element_order.size());
-    for(size_t i = 0; i < element_order.size(); ++i) {
-        element_masses_vec_[i] = atomic_masses_[element_order[i]];
-        if (element_order[i] == "C") c_idx_ = i;
-        else if (element_order[i] == "H") h_idx_ = i;
-        else if (element_order[i] == "N") n_idx_ = i;
-        else if (element_order[i] == "P") p_idx_ = i;
-        else if (element_order[i] == "F") f_idx_ = i;
-        else if (element_order[i] == "Cl") cl_idx_ = i;
-        else if (element_order[i] == "Br") br_idx_ = i;
-        else if (element_order[i] == "I") i_idx_ = i;
+    element_masses_vec_.resize(element_order_.size());
+    for(size_t i = 0; i < element_order_.size(); ++i) {
+        element_masses_vec_[i] = atomic_masses_[element_order_[i]];
+        if (element_order_[i] == "C") c_idx_ = i;
+        else if (element_order_[i] == "H") h_idx_ = i;
+        else if (element_order_[i] == "N") n_idx_ = i;
+        else if (element_order_[i] == "P") p_idx_ = i;
+        else if (element_order_[i] == "F") f_idx_ = i;
+        else if (element_order_[i] == "Cl") cl_idx_ = i;
+        else if (element_order_[i] == "Br") br_idx_ = i;
+        else if (element_order_[i] == "I") i_idx_ = i;
     }
 }
 
 void MassDecomposer::init_atomic_masses() {
     atomic_masses_ = {
-        {"C", 12.0000000}, {"H", 1.0078250}, {"O", 15.9949146}, {"N", 14.0030740},
-        {"P", 30.9737620}, {"S", 31.9720718}, {"F", 18.9984032}, {"Cl", 34.9688527},
-        {"Br", 78.9183376}, {"I", 126.9044719}, {"Si", 27.9769271}, {"Na", 22.9897693},
-        {"K", 38.9637069}, {"Ca", 39.9625912}, {"Mg", 23.9850423}, {"Fe", 55.9349421},
-        {"Zn", 63.9291466}, {"Se", 79.9165218}, {"B", 11.0093054}, {"Al", 26.9815386}
+        {"H", 1.007825},
+        {"B", 11.009305},
+        {"C", 12.000000},
+        {"N", 14.003074},
+        {"O", 15.994915},
+        {"F", 18.998403},
+        {"Na", 22.989770},
+        {"Si", 27.9769265},
+        {"P", 30.973762},
+        {"S", 31.972071},
+        {"Cl", 34.96885271},
+        {"K", 38.963707},
+        {"As", 74.921596},
+        {"Br", 78.918338},
+        {"I", 126.904468}
     };
 }
 
@@ -52,7 +63,7 @@ std::vector<FormulaArray> MassDecomposer::decompose(double target_mass, const Bo
     }
 
     std::vector<FormulaArray> results;
-    double tolerance = target_mass * params.tolerance_ppm / 1e6;
+    double tolerance = target_mass * params.mass_accuracy_ppm / 1e6;
 
     if (params.strategy == "money_changing") {
         auto mass_bounds = integer_bound(target_mass - tolerance, target_mass + tolerance);
@@ -109,7 +120,7 @@ std::vector<std::vector<FormulaArray>> MassDecomposer::decompose_mass_parallel(c
     std::vector<std::vector<FormulaArray>> all_results(target_masses.size());
     #pragma omp parallel for
     for (size_t i = 0; i < target_masses.size(); ++i) {
-        MassDecomposer local_decomposer(element_order_);
+        MassDecomposer local_decomposer;
         all_results[i] = local_decomposer.decompose(target_masses[i], uniform_bounds, params);
     }
     return all_results;
@@ -119,7 +130,7 @@ std::vector<std::vector<FormulaArray>> MassDecomposer::decompose_mass_parallel(c
     std::vector<std::vector<FormulaArray>> all_results(target_masses.size());
     #pragma omp parallel for
     for (size_t i = 0; i < target_masses.size(); ++i) {
-        MassDecomposer local_decomposer(element_order_);
+        MassDecomposer local_decomposer;
         all_results[i] = local_decomposer.decompose(target_masses[i], per_mass_bounds[i], params);
     }
     return all_results;
@@ -130,7 +141,7 @@ std::vector<std::vector<std::vector<FormulaArray>>> MassDecomposer::decompose_sp
     std::vector<std::vector<std::vector<FormulaArray>>> all_results(spectra.size());
     #pragma omp parallel for
     for (size_t i = 0; i < spectra.size(); ++i) {
-        MassDecomposer local_decomposer(element_order_);
+        MassDecomposer local_decomposer;
         all_results[i] = local_decomposer.decompose_spectrum(spectra[i].precursor_mass, spectra[i].fragment_masses, uniform_bounds, params);
     }
     return all_results;
@@ -140,7 +151,7 @@ std::vector<std::vector<std::vector<FormulaArray>>> MassDecomposer::decompose_sp
     std::vector<std::vector<std::vector<FormulaArray>>> all_results(spectra_with_bounds.size());
     #pragma omp parallel for
     for (size_t i = 0; i < spectra_with_bounds.size(); ++i) {
-        MassDecomposer local_decomposer(element_order_);
+        MassDecomposer local_decomposer;
         all_results[i] = local_decomposer.decompose_spectrum(spectra_with_bounds[i].precursor_mass, spectra_with_bounds[i].fragment_masses, spectra_with_bounds[i].bounds, params);
     }
     return all_results;
@@ -151,7 +162,7 @@ std::vector<std::vector<std::vector<FormulaArray>>> MassDecomposer::decompose_sp
     std::vector<std::vector<std::vector<FormulaArray>>> all_results(spectra.size());
     #pragma omp parallel for
     for (size_t i = 0; i < spectra.size(); ++i) {
-        MassDecomposer local_decomposer(element_order_);
+        MassDecomposer local_decomposer;
         all_results[i] = local_decomposer.decompose_spectrum_known_precursor(spectra[i].precursor_formula, spectra[i].fragment_masses, params);
     }
     return all_results;
@@ -221,8 +232,10 @@ void MassDecomposer::decompose_recursive_impl(std::vector<int>& formula, double 
     for (int count = min_count; count <= max_count; ++count) {
         double new_mass = current_mass + count * element_mass;
         if (new_mass > target_mass + tolerance) break;
-        formula[level] = count;
-        decompose_recursive_impl(formula, new_mass, level + 1, target_mass, tolerance, params, results);
+        if (level < static_cast<int>(formula.size())) { // Check to prevent out-of-bounds access
+            formula[level] = count;
+            decompose_recursive_impl(formula, new_mass, level + 1, target_mass, tolerance, params, results);
+        }
     }
 }
 
@@ -238,35 +251,100 @@ bool MassDecomposer::check_chemical_constraints(const FormulaArray& formula, con
     if (br_idx_ >= 0) x_count += formula[br_idx_];
     if (i_idx_ >= 0) x_count += formula[i_idx_];
     double dbe = (2.0 + 2.0*c_count + 3.0*p_count + n_count - h_count - x_count) / 2.0;
-    if (dbe < params.min_dbe || dbe > params.max_dbe || std::abs(dbe - std::round(dbe)) > 1e-8) return false;
+    if (dbe < params.min_dbe || dbe > params.max_dbe) return false;
+    // Check if DBE is an integer or half-integer, allowing for small tolerance
+    if (std::abs(dbe * 2.0 - std::round(dbe * 2.0)) > 1e-8) return false;
+
     if (params.max_hetero_ratio < 100.0) {
         int hetero_count = 0;
         for (size_t i = 0; i < formula.size(); ++i) {
-            if (static_cast<int>(i) != c_idx_ && static_cast<int>(i) != h_idx_) hetero_count += formula[i];
+            if (i != static_cast<size_t>(c_idx_) && i != static_cast<size_t>(h_idx_)) {
+                hetero_count += formula[i];
+            }
         }
-        if (static_cast<double>(hetero_count) / static_cast<double>(c_count) > params.max_hetero_ratio) return false;
+        if (c_count > 0 && static_cast<double>(hetero_count) / c_count > params.max_hetero_ratio) return false;
     }
     return true;
 }
 
-long long MassDecomposer::gcd(long long u, long long v) const { while (v != 0) { long long r = u % v; u = v; v = r; } return u; }
+void MassDecomposer::discretize_masses() {
+    if (weights_.empty()) return;
+    long long p = static_cast<long long>(1.0 / precision_);
+    for (auto& w : weights_) {
+        w.integer_mass = static_cast<long long>(round(w.mass * p));
+    }
+}
 
-void MassDecomposer::discretize_masses() { for (auto& weight : weights_) weight.integer_mass = static_cast<long long>(weight.mass / precision_); }
+void MassDecomposer::divide_by_gcd() {
+    if (weights_.size() < 2) return;
+    long long common_divisor = weights_[0].integer_mass;
+    for (size_t i = 1; i < weights_.size(); ++i) {
+        common_divisor = gcd(common_divisor, weights_[i].integer_mass);
+    }
+    if (common_divisor > 1) {
+        for (auto& w : weights_) {
+            w.integer_mass /= common_divisor;
+        }
+    }
+}
 
-void MassDecomposer::divide_by_gcd() { if (weights_.size() < 2) return; long long d = gcd(weights_[0].integer_mass, weights_[1].integer_mass); for (size_t i = 2; i < weights_.size(); ++i) { d = gcd(d, weights_[i].integer_mass); if (d == 1) break; } if (d > 1) { precision_ *= d; for (auto& weight : weights_) weight.integer_mass /= d; } }
+void MassDecomposer::calc_ert() {
+    if (weights_.empty()) return;
+    long long a1 = weights_[0].integer_mass;
+    if (a1 <= 0) return;
+    ert_.assign(weights_.size(), std::vector<long long>(a1, 0));
+    for (size_t i = 1; i < weights_.size(); ++i) {
+        long long a = weights_[i].integer_mass;
+        for (long long r = 1; r < a1; ++r) {
+            long long min_val = -1;
+            for (long long k = 0; k < a; ++k) {
+                long long val = ert_[i-1][(r + k * a1) % a] + (r + k * a1) / a;
+                if (min_val == -1 || val < min_val) {
+                    min_val = val;
+                }
+            }
+            ert_[i][r] = min_val;
+        }
+    }
+}
 
-void MassDecomposer::calc_ert() { long long first_long_val = weights_[0].integer_mass; if (first_long_val <= 0) throw std::runtime_error("First element mass is zero or negative after discretization."); ert_.assign(first_long_val, std::vector<long long>(weights_.size())); ert_[0][0] = 0; for (int i = 1; i < first_long_val; ++i) ert_[i][0] = LLONG_MAX; for (size_t j = 1; j < weights_.size(); ++j) { ert_[0][j] = 0; long long d = gcd(first_long_val, weights_[j].integer_mass); for (int p = 0; p < d; ++p) { long long n = LLONG_MAX; for (int i = p; i < first_long_val; i += d) if (ert_[i][j-1] < n) n = ert_[i][j-1]; if (n == LLONG_MAX) for (int i = p; i < first_long_val; i += d) ert_[i][j] = LLONG_MAX; else for (int i = 0; i < first_long_val / d; ++i) { n += weights_[j].integer_mass; int r = static_cast<int>(n % first_long_val); if (ert_[r][j-1] < n) n = ert_[r][j-1]; ert_[r][j] = n; } } } }
+void MassDecomposer::compute_errors() {
+    min_error_ = 0;
+    max_error_ = 0;
+    for(const auto& w : weights_) {
+        double error = w.integer_mass * precision_ - w.mass;
+        min_error_ += (error > 0 ? w.min_count : w.max_count) * error;
+        max_error_ += (error > 0 ? w.max_count : w.min_count) * error;
+    }
+}
 
-void MassDecomposer::compute_errors() { min_error_ = 0.0; max_error_ = 0.0; for (const auto& weight : weights_) { if (weight.mass == 0) continue; double error = (precision_ * weight.integer_mass - weight.mass) / weight.mass; if (error < min_error_) min_error_ = error; if (error > max_error_) max_error_ = error; } }
+long long MassDecomposer::gcd(long long u, long long v) const {
+    while (v) {
+        long long r = u % v;
+        u = v;
+        v = r;
+    }
+    return u;
+}
 
-std::pair<long long, long long> MassDecomposer::integer_bound(double mass_from, double mass_to) const { double from_d = std::ceil((1 + min_error_) * mass_from / precision_); double to_d = std::floor((1 + max_error_) * mass_to / precision_); if (from_d > LLONG_MAX || to_d > LLONG_MAX) throw std::runtime_error("Mass too large for 64-bit integer space."); long long start = static_cast<long long>(std::max(0.0, from_d)); long long end = static_cast<long long>(std::max(static_cast<double>(start), to_d)); return {start, end}; }
+std::pair<long long, long long> MassDecomposer::integer_bound(double mass_from, double mass_to) const {
+    return {static_cast<long long>(std::ceil(mass_from / precision_ - max_error_)), static_cast<long long>(std::floor(mass_to / precision_ - min_error_))};
+}
 
-bool MassDecomposer::decomposable(int i, long long m, long long a1) const { if (m < 0) return false; return ert_[m % a1][i] <= m; }
+bool MassDecomposer::decomposable(int i, long long m, long long a1) const {
+    if (a1 <= 0) return false;
+    return m >= ert_[i][m % a1];
+}
 
-void MassDecomposer::initialize_residue_tables() { min_residues_.resize(weights_.size()); max_residues_.resize(weights_.size()); double min_mass = 0.0, max_mass = 0.0; for (int i = static_cast<int>(weights_.size()) - 1; i >= 0; --i) { min_mass += weights_[i].min_count * weights_[i].mass; max_mass += weights_[i].max_count * weights_[i].mass; min_residues_[i] = min_mass; max_residues_[i] = max_mass; } }
+void MassDecomposer::initialize_residue_tables() {
+    min_residues_.assign(weights_.size(), 0.0);
+    max_residues_.assign(weights_.size(), 0.0);
+    for (int i = static_cast<int>(weights_.size()) - 2; i >= 0; --i) {
+        min_residues_[i] = min_residues_[i+1] + weights_[i+1].min_count * weights_[i+1].mass;
+        max_residues_[i] = max_residues_[i+1] + weights_[i+1].max_count * weights_[i+1].mass;
+    }
+}
 
-bool MassDecomposer::can_reach_target(double current_mass, int level, double target_mass, double tolerance) const { if (level >= static_cast<int>(weights_.size())) return std::abs(current_mass - target_mass) <= tolerance; double remaining_min = current_mass + min_residues_[level]; double remaining_max = current_mass + max_residues_[level]; return (target_mass - tolerance <= remaining_max && remaining_min <= target_mass + tolerance); }
-
-std::vector<std::string> MassDecomposer::get_element_order() const {
-    return element_order_;
+bool MassDecomposer::can_reach_target(double current_mass, int level, double target_mass, double tolerance) const {
+    return current_mass + min_residues_[level] <= target_mass + tolerance && current_mass + max_residues_[level] >= target_mass - tolerance;
 }

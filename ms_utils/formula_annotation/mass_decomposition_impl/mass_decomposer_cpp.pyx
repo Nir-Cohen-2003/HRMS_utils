@@ -23,14 +23,14 @@ cdef extern from "mass_decomposer_core.hpp":
         FormulaArray precursor_formula
         vector[double] fragment_masses
     cdef struct DecompositionParams:
-        double tolerance_ppm
+        double mass_accuracy_ppm
         double min_dbe
         double max_dbe
         double max_hetero_ratio
         int max_results
         string strategy
     cdef cppclass MassDecomposer:
-        MassDecomposer(const vector[string]& element_order)
+        MassDecomposer()
         vector[FormulaArray] decompose_mass(double, const BoundsArray&, const DecompositionParams&)
         vector[vector[FormulaArray]] decompose_spectrum(double, const vector[double]&, const BoundsArray&, const DecompositionParams&)
         vector[vector[FormulaArray]] decompose_spectrum_known_precursor(const FormulaArray&, const vector[double]&, const DecompositionParams&)
@@ -43,7 +43,7 @@ cdef extern from "mass_decomposer_core.hpp":
 
 cdef _convert_params(kwargs):
     cdef DecompositionParams params
-    params.tolerance_ppm = kwargs.get("tolerance_ppm", 5.0)
+    params.mass_accuracy_ppm = kwargs.get("mass_accuracy_ppm", 5.0)
     params.min_dbe = kwargs.get("min_dbe", 0.0)
     params.max_dbe = kwargs.get("max_dbe", 40.0)
     params.max_hetero_ratio = kwargs.get("max_hetero_ratio", 100.0)
@@ -76,14 +76,14 @@ def _formulaarraylist3_to_py(const vector[vector[vector[FormulaArray]]]& formula
     return [_formulaarraylist2_to_py(spec) for spec in formulas]
 
 def get_element_order():
-    cdef MassDecomposer* decomposer = new MassDecomposer([s.encode('utf-8') for s in ['C', 'H', 'O', 'N', 'P', 'S', 'F', 'Cl', 'Br', 'I', 'Si', 'Na', 'K', 'Ca', 'Mg', 'Fe', 'Zn', 'Se', 'B', 'Al']])
+    cdef MassDecomposer* decomposer = new MassDecomposer()
     try:
         return [s.decode('utf-8') for s in decomposer.get_element_order()]
     finally:
         del decomposer
 
-def decompose_mass(target_mass, bounds, element_order, **kwargs):
-    cdef MassDecomposer* decomposer = new MassDecomposer([s.encode('utf-8') for s in element_order])
+def decompose_mass(target_mass, bounds, **kwargs):
+    cdef MassDecomposer* decomposer = new MassDecomposer()
     cdef DecompositionParams params = _convert_params(kwargs)
     cdef BoundsArray bounds_arr = _np_to_boundsarray(bounds)
     try:
@@ -91,8 +91,8 @@ def decompose_mass(target_mass, bounds, element_order, **kwargs):
     finally:
         del decomposer
 
-def decompose_spectrum(precursor_mass, fragment_masses, bounds, element_order, **kwargs):
-    cdef MassDecomposer* decomposer = new MassDecomposer([s.encode('utf-8') for s in element_order])
+def decompose_spectrum(precursor_mass, fragment_masses, bounds, **kwargs):
+    cdef MassDecomposer* decomposer = new MassDecomposer()
     cdef DecompositionParams params = _convert_params(kwargs)
     cdef BoundsArray bounds_arr = _np_to_boundsarray(bounds)
     cdef vector[double] frags = [f for f in fragment_masses]
@@ -101,68 +101,75 @@ def decompose_spectrum(precursor_mass, fragment_masses, bounds, element_order, *
     finally:
         del decomposer
 
-def decompose_spectrum_known_precursor(precursor_formula, fragment_masses, element_order, **kwargs):
-    cdef MassDecomposer* decomposer = new MassDecomposer([s.encode('utf-8') for s in element_order])
+def decompose_spectrum_known_precursor(known_precursor, fragment_masses, **kwargs):
+    cdef MassDecomposer* decomposer = new MassDecomposer()
     cdef DecompositionParams params = _convert_params(kwargs)
-    cdef FormulaArray precursor_arr = _np_to_vecint(precursor_formula)
+    cdef FormulaArray precursor_arr = _np_to_vecint(known_precursor)
     cdef vector[double] frags = [f for f in fragment_masses]
     try:
         return _formulaarraylist2_to_py(decomposer.decompose_spectrum_known_precursor(precursor_arr, frags, params))
     finally:
         del decomposer
 
-def decompose_mass_parallel(target_masses, bounds, element_order, **kwargs):
-    cdef MassDecomposer* decomposer = new MassDecomposer([s.encode('utf-8') for s in element_order])
+def decompose_mass_parallel(target_masses, bounds, **kwargs):
+    cdef MassDecomposer* decomposer = new MassDecomposer()
     cdef DecompositionParams params = _convert_params(kwargs)
     cdef vector[double] masses_vec = [m for m in target_masses]
     cdef vector[BoundsArray] bounds_per_mass
     cdef BoundsArray bounds_arr
+
     try:
         if isinstance(bounds, list):
-            for b in bounds: bounds_per_mass.push_back(_np_to_boundsarray(b))
+            # Per-mass bounds
+            for b in bounds:
+                bounds_per_mass.push_back(_np_to_boundsarray(b))
             return _formulaarraylist2_to_py(decomposer.decompose_mass_parallel(masses_vec, bounds_per_mass, params))
         else:
+            # Single set of bounds for all masses
             bounds_arr = _np_to_boundsarray(bounds)
             return _formulaarraylist2_to_py(decomposer.decompose_mass_parallel(masses_vec, bounds_arr, params))
     finally:
         del decomposer
 
-def decompose_spectrum_parallel(spectra, bounds, element_order, **kwargs):
-    cdef MassDecomposer* decomposer = new MassDecomposer([s.encode('utf-8') for s in element_order])
+def decompose_spectrum_parallel(spectra, bounds, **kwargs):
+    cdef MassDecomposer* decomposer = new MassDecomposer()
     cdef DecompositionParams params = _convert_params(kwargs)
-    cdef vector[SpectrumWithBounds] spectra_with_bounds_vec
     cdef vector[Spectrum] spectra_vec
     cdef BoundsArray bounds_arr
-    cdef SpectrumWithBounds s_with_bounds
-    cdef Spectrum s_plain
+    cdef vector[SpectrumWithBounds] spectra_with_bounds
+    cdef Spectrum spec
+    cdef SpectrumWithBounds swb
+
     try:
-        if isinstance(bounds, list):
-            for i, spec in enumerate(spectra):
-                s_with_bounds.precursor_mass = spec[0]
-                s_with_bounds.fragment_masses = [f for f in spec[1]]
-                s_with_bounds.bounds = _np_to_boundsarray(bounds[i])
-                spectra_with_bounds_vec.push_back(s_with_bounds)
-            return _formulaarraylist3_to_py(decomposer.decompose_spectrum_parallel(spectra_with_bounds_vec, params))
-        else:
-            for spec in spectra:
-                s_plain.precursor_mass = spec[0]
-                s_plain.fragment_masses = [f for f in spec[1]]
-                spectra_vec.push_back(s_plain)
+        if isinstance(bounds, np.ndarray):
+            # Single set of bounds for all spectra
             bounds_arr = _np_to_boundsarray(bounds)
+            for s in spectra:
+                spec.precursor_mass = s[0]
+                spec.fragment_masses = [f for f in s[1]]
+                spectra_vec.push_back(spec)
             return _formulaarraylist3_to_py(decomposer.decompose_spectrum_parallel(spectra_vec, bounds_arr, params))
+        else:
+            # Per-spectrum bounds
+            for i, s in enumerate(spectra):
+                swb.precursor_mass = s[0]
+                swb.fragment_masses = [f for f in s[1]]
+                swb.bounds = _np_to_boundsarray(bounds[i])
+                spectra_with_bounds.push_back(swb)
+            return _formulaarraylist3_to_py(decomposer.decompose_spectrum_parallel(spectra_with_bounds, params))
     finally:
         del decomposer
 
-def decompose_spectrum_known_precursor_parallel(spectra, element_order, **kwargs):
-    cdef MassDecomposer* decomposer = new MassDecomposer([s.encode('utf-8') for s in element_order])
+def decompose_spectrum_known_precursor_parallel(spectra, **kwargs):
+    cdef MassDecomposer* decomposer = new MassDecomposer()
     cdef DecompositionParams params = _convert_params(kwargs)
     cdef vector[SpectrumWithKnownPrecursor] spectra_vec
-    cdef SpectrumWithKnownPrecursor s
+    cdef SpectrumWithKnownPrecursor skp
+    for s in spectra:
+        skp.precursor_formula = _np_to_vecint(s[0])
+        skp.fragment_masses = [f for f in s[1]]
+        spectra_vec.push_back(skp)
     try:
-        for spec in spectra:
-            s.precursor_formula = _np_to_vecint(spec[0])
-            s.fragment_masses = [f for f in spec[1]]
-            spectra_vec.push_back(s)
         return _formulaarraylist3_to_py(decomposer.decompose_spectrum_known_precursor_parallel(spectra_vec, params))
     finally:
         del decomposer

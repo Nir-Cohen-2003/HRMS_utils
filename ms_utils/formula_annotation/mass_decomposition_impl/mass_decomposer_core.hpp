@@ -34,7 +34,7 @@ struct SpectrumWithKnownPrecursor {
 
 // Parameters structure for decomposition
 struct DecompositionParams {
-    double tolerance_ppm;
+    double mass_accuracy_ppm;
     double min_dbe;
     double max_dbe;
     double max_hetero_ratio;
@@ -86,8 +86,10 @@ private:
                                 std::vector<FormulaArray>& results) const;
 
 public:
-    MassDecomposer(const std::vector<std::string>& element_order);
+    MassDecomposer();
     ~MassDecomposer() = default;
+
+    std::vector<std::string> get_element_order() const { return element_order_; }
 
     std::vector<FormulaArray> decompose(double target_mass, const BoundsArray& bounds, const DecompositionParams& params);
     std::vector<FormulaArray> decompose_mass(double target_mass, const BoundsArray& bounds, const DecompositionParams& params);
@@ -98,9 +100,6 @@ public:
     std::vector<std::vector<std::vector<FormulaArray>>> decompose_spectrum_parallel(const std::vector<Spectrum>& spectra, const BoundsArray& uniform_bounds, const DecompositionParams& params);
     std::vector<std::vector<std::vector<FormulaArray>>> decompose_spectrum_parallel(const std::vector<SpectrumWithBounds>& spectra_with_bounds, const DecompositionParams& params);
     std::vector<std::vector<std::vector<FormulaArray>>> decompose_spectrum_known_precursor_parallel(const std::vector<SpectrumWithKnownPrecursor>& spectra, const DecompositionParams& params);
-
-    // Corrected function signature
-    std::vector<std::string> get_element_order() const;
 };
 
 #endif // MASS_DECOMPOSER_CORE_HPP
