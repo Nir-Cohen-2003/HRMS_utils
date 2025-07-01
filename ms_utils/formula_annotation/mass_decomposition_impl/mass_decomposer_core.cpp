@@ -9,6 +9,9 @@ MassDecomposer::MassDecomposer(const std::vector<Element>& elements, const std::
       c_idx_(-1), h_idx_(-1), n_idx_(-1), p_idx_(-1), f_idx_(-1), 
       cl_idx_(-1), br_idx_(-1), i_idx_(-1) {
     
+    // Set up fixed element order (must match Python utils.py element_data order)
+    element_order_ = {"H", "B", "C", "N", "O", "F", "Na", "Si", "P", "S", "Cl", "K", "As", "Br", "I"};
+    
     init_atomic_masses();
     
     if (strategy == "money_changing") {
@@ -53,6 +56,93 @@ void MassDecomposer::init_money_changing() {
         else if (weights_[i].symbol == "Br") br_idx_ = i;
         else if (weights_[i].symbol == "I") i_idx_ = i;
     }
+}
+
+void MassDecomposer::init_money_changing_with_bounds(const BoundsArray& bounds) {
+    // Sort elements by mass (smallest first for money-changing)
+    auto sorted_elements = elements_;
+    std::sort(sorted_elements.begin(), sorted_elements.end(),
+              [this](const Element& a, const Element& b) {
+                  return atomic_masses_[a.symbol] < atomic_masses_[b.symbol];
+              });
+    
+    weights_.resize(sorted_elements.size());
+    for (size_t i = 0; i < sorted_elements.size(); ++i) {
+        weights_[i].symbol = sorted_elements[i].symbol;
+        weights_[i].mass = atomic_masses_[sorted_elements[i].symbol];
+        
+        // Find index in element_order_ to get bounds from array
+        int element_idx = -1;
+        for (size_t j = 0; j < element_order_.size(); ++j) {
+            if (element_order_[j] == sorted_elements[i].symbol) {
+                element_idx = j;
+                break;
+            }
+        }
+        
+        if (element_idx >= 0 && element_idx < bounds[0].size()) {
+            weights_[i].min_count = bounds[0][element_idx];  // min bounds
+            weights_[i].max_count = bounds[1][element_idx];  // max bounds
+        } else {
+            weights_[i].min_count = 0;
+            weights_[i].max_count = 0;
+        }
+        
+        // Store indices for constraint elements
+        if (weights_[i].symbol == "C") c_idx_ = i;
+        else if (weights_[i].symbol == "H") h_idx_ = i;
+        else if (weights_[i].symbol == "N") n_idx_ = i;
+        else if (weights_[i].symbol == "P") p_idx_ = i;
+        else if (weights_[i].symbol == "F") f_idx_ = i;
+        else if (weights_[i].symbol == "Cl") cl_idx_ = i;
+        else if (weights_[i].symbol == "Br") br_idx_ = i;
+        else if (weights_[i].symbol == "I") i_idx_ = i;
+    }
+    
+    discretize_masses();
+    divide_by_gcd();
+    calc_ert();
+    compute_errors();
+    is_initialized_ = true;
+}
+
+// Array conversion helpers
+FormulaArray MassDecomposer::formula_to_array(const Formula& formula) const {
+    FormulaArray result(element_order_.size(), 0);
+    for (const auto& pair : formula) {
+        for (size_t i = 0; i < element_order_.size(); ++i) {
+            if (element_order_[i] == pair.first) {
+                result[i] = pair.second;
+                break;
+            }
+        }
+    }
+    return result;
+}
+
+Formula MassDecomposer::array_to_formula(const FormulaArray& formula_array) const {
+    Formula result;
+    for (size_t i = 0; i < std::min(formula_array.size(), element_order_.size()); ++i) {
+        if (formula_array[i] > 0) {
+            result[element_order_[i]] = formula_array[i];
+        }
+    }
+    return result;
+}
+
+BoundsArray MassDecomposer::legacy_bounds_to_array(const std::vector<Element>& legacy_bounds) const {
+    BoundsArray result(2, std::vector<int>(element_order_.size(), 0));
+    
+    for (const auto& bound : legacy_bounds) {
+        for (size_t i = 0; i < element_order_.size(); ++i) {
+            if (element_order_[i] == bound.symbol) {
+                result[0][i] = bound.min_count;  // min bounds
+                result[1][i] = bound.max_count;  // max bounds
+                break;
+            }
+        }
+    }
+    return result;
 }
 
 void MassDecomposer::init_recursive() {
