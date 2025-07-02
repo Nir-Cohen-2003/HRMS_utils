@@ -1,5 +1,5 @@
-''' reference implementation of mass decomposition in Python, very inefficient but serves as a baseline for comparison with Cython/C++ implementations.'''
 from typing import List, Dict, Tuple, Optional
+
 ATOMIC_MASSES = {
     'C': 12.0000000,
     'H': 1.0078250,
