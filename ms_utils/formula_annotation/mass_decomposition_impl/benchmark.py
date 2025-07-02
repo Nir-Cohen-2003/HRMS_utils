@@ -15,7 +15,9 @@ from python_impl import SiriusMassDecomposer, decompose_mass_fast, add_chemical_
 # Try to import new C++ implementation
 try:
     from mass_decomposer_cpp import (decompose_mass, decompose_mass_parallel, 
+                                    decompose_mass_parallel_per_bounds,
                                     decompose_spectrum, decompose_spectra_parallel,
+                                    decompose_spectra_parallel_per_bounds,
                                     decompose_spectrum_known_precursor, 
                                     decompose_spectra_known_precursor_parallel)
     cpp_available = True
@@ -25,9 +27,13 @@ except ImportError:
         raise NotImplementedError("C++ decomposer not available")
     def decompose_mass_parallel(*args, **kwargs):
         raise NotImplementedError("C++ decomposer not available")
+    def decompose_mass_parallel_per_bounds(*args, **kwargs):
+        raise NotImplementedError("C++ decomposer not available")
     def decompose_spectrum(*args, **kwargs):
         raise NotImplementedError("C++ decomposer not available")
     def decompose_spectra_parallel(*args, **kwargs):
+        raise NotImplementedError("C++ decomposer not available")
+    def decompose_spectra_parallel_per_bounds(*args, **kwargs):
         raise NotImplementedError("C++ decomposer not available")
     def decompose_spectrum_known_precursor(*args, **kwargs):
         raise NotImplementedError("C++ decomposer not available")
@@ -148,14 +154,15 @@ def benchmark_algorithms(num_parallel_runs=2000):
             target_masses = [target_mass] * num_parallel_runs
             
             # Parallel recursive C++
+            print("  Uniform bounds:")
             start_time = time.time()
             parallel_recursive_cpp_results = decompose_mass_parallel(
                 target_masses, element_bounds, strategy="recursive", tolerance_ppm=tolerance_ppm,
                 min_dbe=min_dbe, max_dbe=max_dbe, max_hetero_ratio=1000.0)
             parallel_recursive_cpp_time = time.time() - start_time
-            print(f"  Parallel recursive C++: {parallel_recursive_cpp_time:.3f} seconds")
-            print(f"  Average per mass: {parallel_recursive_cpp_time/num_parallel_runs:.6f} seconds")
-            print(f"  Throughput: {num_parallel_runs/parallel_recursive_cpp_time:.1f} decompositions/second")
+            print(f"    Recursive C++: {parallel_recursive_cpp_time:.3f} seconds")
+            print(f"    Average per mass: {parallel_recursive_cpp_time/num_parallel_runs:.6f} seconds")
+            print(f"    Throughput: {num_parallel_runs/parallel_recursive_cpp_time:.1f} decompositions/second")
             
             # Parallel money-changing C++
             start_time = time.time()
@@ -163,9 +170,34 @@ def benchmark_algorithms(num_parallel_runs=2000):
                 target_masses, element_bounds, strategy="money_changing", tolerance_ppm=tolerance_ppm,
                 min_dbe=min_dbe, max_dbe=max_dbe, max_hetero_ratio=1000.0)
             parallel_money_cpp_time = time.time() - start_time
-            print(f"  Parallel money-changing C++: {parallel_money_cpp_time:.3f} seconds")
-            print(f"  Average per mass: {parallel_money_cpp_time/num_parallel_runs:.6f} seconds")
-            print(f"  Throughput: {num_parallel_runs/parallel_money_cpp_time:.1f} decompositions/second")
+            print(f"    Money-changing C++: {parallel_money_cpp_time:.3f} seconds")
+            print(f"    Average per mass: {parallel_money_cpp_time/num_parallel_runs:.6f} seconds")
+            print(f"    Throughput: {num_parallel_runs/parallel_money_cpp_time:.1f} decompositions/second")
+
+            # Test parallel processing with per-mass bounds
+            print("  Per-mass bounds:")
+            bounds1 = element_bounds.copy()
+            bounds2 = element_bounds.copy(); bounds2['C'] = (0, 60); bounds2['O'] = (0, 50)
+            bounds3 = element_bounds.copy(); bounds3['S'] = (0, 10); bounds3['P'] = (0, 10)
+            per_mass_bounds = ([bounds1, bounds2, bounds3] * (num_parallel_runs // 3 + 1))[:num_parallel_runs]
+
+            # Per-mass recursive C++
+            start_time = time.time()
+            _ = decompose_mass_parallel_per_bounds(
+                target_masses, per_mass_bounds, strategy="recursive", tolerance_ppm=tolerance_ppm,
+                min_dbe=min_dbe, max_dbe=max_dbe, max_hetero_ratio=1000.0)
+            per_mass_recursive_time = time.time() - start_time
+            print(f"    Recursive C++ (per-mass): {per_mass_recursive_time:.3f} seconds")
+            print(f"    Throughput: {num_parallel_runs/per_mass_recursive_time:.1f} decompositions/second")
+
+            # Per-mass money-changing C++
+            start_time = time.time()
+            _ = decompose_mass_parallel_per_bounds(
+                target_masses, per_mass_bounds, strategy="money_changing", tolerance_ppm=tolerance_ppm,
+                min_dbe=min_dbe, max_dbe=max_dbe, max_hetero_ratio=1000.0)
+            per_mass_money_time = time.time() - start_time
+            print(f"    Money-changing C++ (per-mass): {per_mass_money_time:.3f} seconds")
+            print(f"    Throughput: {num_parallel_runs/per_mass_money_time:.1f} decompositions/second")
             
             # Verify parallel results consistency
             first_recursive_cpp = parallel_recursive_cpp_results[0] if parallel_recursive_cpp_results else []
@@ -186,7 +218,7 @@ def benchmark_algorithms(num_parallel_runs=2000):
             print(f"  C++ parallel processing: Error - {e}")
         
         # Initialize fragment_masses outside try block
-        fragment_masses = [target_mass * 0.8, target_mass * 0.6, target_mass * 0.4]
+        fragment_masses = [281.152812, 241.121512, 237.090212, 221.095297, 93.070425]
         
         # Test spectrum decomposition with C++
         try:
@@ -211,23 +243,18 @@ def benchmark_algorithms(num_parallel_runs=2000):
             else:
                 print("  Precursor candidates: 0")
                 print("  Total fragment sets: 0")
-            
-            # Test multiple spectra in parallel
-            num_spectra = num_parallel_runs
-            print(f"C++ multi-spectrum parallel processing ({num_spectra} spectra):")
-            
+
             # Create test spectra with va
             spectra_data = [
-                (281.152812, [281.152812, 241.121512, 237.090212, 221.095297, 93.070425]),
+                {'precursor_mass': 281.152812, 'fragment_masses': fragment_masses},
             ]
 
             # Test proper spectrum decomposition
-            print("C++ proper spectrum decomposition test:")
-            proper_fragment_masses = [263.142247, 220.125200, 78.046950]
+            print("C++ spectrum decomposition test:")
             
             start_time = time.time()
             proper_spectrum_results = decompose_spectrum(
-                target_mass, proper_fragment_masses, element_bounds,
+                target_mass, fragment_masses, element_bounds,
                 strategy="money_changing", tolerance_ppm=tolerance_ppm,
                 min_dbe=min_dbe, max_dbe=max_dbe, max_hetero_ratio=1000.0)
             proper_spectrum_time = time.time() - start_time
@@ -250,9 +277,10 @@ def benchmark_algorithms(num_parallel_runs=2000):
 
 
             # multiplate the test spectrum for parallel processing
-            spectra_data = spectra_data * num_spectra
+            spectra_data = spectra_data * num_parallel_runs
             
             
+            print("  Uniform bounds:")
             start_time = time.time()
             multi_spectrum_results = decompose_spectra_parallel(
                 spectra_data, element_bounds, strategy="money_changing", 
@@ -260,10 +288,29 @@ def benchmark_algorithms(num_parallel_runs=2000):
                 max_hetero_ratio=1000.0)
             multi_spectrum_time = time.time() - start_time
             
-            print(f"  Multi-spectrum parallel: {multi_spectrum_time:.3f} seconds")
-            print(f"  Average per spectrum: {multi_spectrum_time/num_spectra:.6f} seconds")
-            print(f"  Throughput: {num_spectra/multi_spectrum_time:.1f} spectra/second")
-            print(f"  Processed spectra: {len(multi_spectrum_results)}")
+            print(f"    Multi-spectrum parallel: {multi_spectrum_time:.3f} seconds")
+            print(f"    Average per spectrum: {multi_spectrum_time/num_spectra:.6f} seconds")
+            print(f"    Throughput: {num_spectra/multi_spectrum_time:.1f} spectra/second")
+            print(f"    Processed spectra: {len(multi_spectrum_results)}")
+
+            # Test parallel processing with per-spectrum bounds
+            print("  Per-spectrum bounds:")
+            bounds1 = element_bounds.copy()
+            bounds2 = element_bounds.copy(); bounds2['C'] = (0, 60); bounds2['O'] = (0, 50)
+            bounds3 = element_bounds.copy(); bounds3['S'] = (0, 10); bounds3['P'] = (0, 10)
+            per_spectrum_bounds = ([bounds1, bounds2, bounds3] * (num_spectra // 3 + 1))[:num_spectra]
+
+            start_time = time.time()
+            try:
+                _ = decompose_spectra_parallel_per_bounds(
+                    spectra_data, per_spectrum_bounds, strategy="money_changing",
+                    tolerance_ppm=tolerance_ppm, min_dbe=min_dbe, max_dbe=max_dbe,
+                    max_hetero_ratio=1000.0)
+                per_spectrum_time = time.time() - start_time
+                print(f"    Multi-spectrum parallel (per-bounds): {per_spectrum_time:.3f} seconds")
+                print(f"    Throughput: {num_spectra/per_spectrum_time:.1f} spectra/second")
+            except ValueError as e:
+                print(f"  C++ spectrum decomposition: Error - {e}")
             
             # Show sample results
             if multi_spectrum_results:
@@ -286,7 +333,7 @@ def benchmark_algorithms(num_parallel_runs=2000):
             # Compare single vs batch processing efficiency
             single_spectrum_time_estimate = spectrum_cpp_time * num_spectra
             speedup = single_spectrum_time_estimate / multi_spectrum_time if multi_spectrum_time > 0 else float('inf')
-            print(f"  Batch processing speedup: {speedup:.1f}x")
+            print(f"  Batch processing speedup (uniform bounds): {speedup:.1f}x")
             
             
             
@@ -485,7 +532,7 @@ def benchmark_algorithms(num_parallel_runs=2000):
                         
                         # Note: In this structure, fragments are not linked to specific precursors
                         # Each fragment mass has its own set of possible formulas independent of precursor
-                        f.write(f"  Note: Fragment formulas are listed separately by mass above\n")
+                        f.write("  Note: Fragment formulas are listed separately by mass above\n")
                 
                 except Exception as e:
                     f.write(f"Error writing spectrum results: {str(e)}\n")
@@ -637,7 +684,7 @@ def benchmark_known_precursor_decomposition(num_parallel_runs=1000):
                 # Cycle through different precursor formulas
                 precursor = test_precursors[i % len(test_precursors)]
                 # Use the same fragment masses for simplicity
-                parallel_spectra_data.append((precursor, fragment_masses))
+                parallel_spectra_data.append({'precursor_formula': precursor, 'fragment_masses': fragment_masses})
             
             start_time = time.time()
             parallel_results = decompose_spectra_known_precursor_parallel(
@@ -715,5 +762,5 @@ if __name__ == "__main__":
     print("=" * 50)
     
     # Run benchmark
-    benchmark_algorithms(20000)
+    benchmark_algorithms(10000)
     benchmark_known_precursor_decomposition(10000)

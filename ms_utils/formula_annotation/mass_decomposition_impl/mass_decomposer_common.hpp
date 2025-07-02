@@ -1,5 +1,5 @@
-#ifndef MASS_DECOMPOSER_CORE_HPP
-#define MASS_DECOMPOSER_CORE_HPP
+#ifndef MASS_DECOMPOSER_COMMON_HPP
+#define MASS_DECOMPOSER_COMMON_HPP
 
 #include <vector>
 #include <string>
@@ -25,16 +25,17 @@ struct Spectrum {
     std::vector<double> fragment_masses;
 };
 
+// New structure for spectrum with custom bounds for parallel processing
+struct SpectrumWithBounds {
+    double precursor_mass;
+    std::vector<double> fragment_masses;
+    std::vector<Element> precursor_bounds;
+};
+
 // Spectrum structure with known precursor formula
 struct SpectrumWithKnownPrecursor {
     Formula precursor_formula;
     std::vector<double> fragment_masses;
-};
-
-// Spectrum results structure (old format - fragments independent of precursors)
-struct SpectrumResults {
-    std::vector<Formula> precursor_results;
-    std::vector<std::vector<Formula>> fragment_results;
 };
 
 // Proper spectrum results structure where fragments are subsets of precursors
@@ -123,6 +124,12 @@ public:
         const std::vector<double>& target_masses, 
         const DecompositionParams& params);
     
+    // New: Parallel mass decomposition with per-mass bounds
+    std::vector<std::vector<Formula>> decompose_masses_parallel_per_bounds(
+        const std::vector<double>& target_masses,
+        const std::vector<std::vector<Element>>& per_mass_bounds,
+        const DecompositionParams& params);
+
     // Proper spectrum decomposition - ensures fragments are subsets of precursors
     ProperSpectrumResults decompose_spectrum(
         double precursor_mass,
@@ -132,6 +139,11 @@ public:
     // Proper parallel spectrum decomposition - processes multiple spectra properly in parallel
     std::vector<ProperSpectrumResults> decompose_spectra_parallel(
         const std::vector<Spectrum>& spectra,
+        const DecompositionParams& params);
+
+    // New: Parallel spectrum decomposition with per-spectrum bounds
+    std::vector<ProperSpectrumResults> decompose_spectra_parallel_per_bounds(
+        const std::vector<SpectrumWithBounds>& spectra,
         const DecompositionParams& params);
     
     // Known precursor spectrum decomposition - decomposes fragments with known precursor formula
@@ -151,5 +163,4 @@ public:
     // Helper function for Python interface
     std::vector<std::pair<std::string, int>> formula_to_pairs(const Formula& formula) const;
 };
-
-#endif // MASS_DECOMPOSER_CORE_HPP
+#endif // MASS_DECOMPOSER_COMMON_HPP
