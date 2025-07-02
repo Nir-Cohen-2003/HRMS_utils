@@ -7,17 +7,33 @@
 #include <cmath>
 #include <algorithm>
 #include <memory>
+#include <array>
 
-// Element structure
-struct Element {
-    std::string symbol;
-    double mass;
-    int min_count;
-    int max_count;
-};
+namespace FormulaAnnotation {
+    // Centralized Element Definition
+    constexpr int NUM_ELEMENTS = 15;
+
+    constexpr std::array<const char*, NUM_ELEMENTS> ELEMENT_SYMBOLS = {
+        "H", "B", "C", "N", "O", "F", "Na", "Si", "P", "S", "Cl", "K", "As", "Br", "I"
+    };
+
+    constexpr std::array<double, NUM_ELEMENTS> ATOMIC_MASSES = {
+        1.007825, 11.009305, 12.000000, 14.003074, 15.994915, 18.998403, 
+        22.989770, 27.9769265, 30.973762, 31.972071, 34.96885271, 
+        38.963707, 74.921596, 78.918338, 126.904468
+    };
+
+    enum ElementIndex {
+        H = 0, B = 1, C = 2, N = 3, O = 4, F = 5, Na = 6, Si = 7, P = 8, 
+        S = 9, Cl = 10, K = 11, As = 12, Br = 13, I = 14
+    };
+
+    // New Formula Type
+    using Formula = std::array<int, NUM_ELEMENTS>;
+}
 
 // Result structure for formulas
-using Formula = std::unordered_map<std::string, int>;
+using Formula = FormulaAnnotation::Formula;
 
 // Spectrum structure for batch processing
 struct Spectrum {
@@ -29,7 +45,8 @@ struct Spectrum {
 struct SpectrumWithBounds {
     double precursor_mass;
     std::vector<double> fragment_masses;
-    std::vector<Element> precursor_bounds;
+    Formula precursor_min_bounds;
+    Formula precursor_max_bounds;
 };
 
 // Spectrum structure with known precursor formula
@@ -59,18 +76,19 @@ struct DecompositionParams {
     double max_dbe;
     double max_hetero_ratio;
     int max_results;
-    std::string strategy;
+    Formula min_bounds;
+    Formula max_bounds;
 };
 
 // Main decomposer class
 class MassDecomposer {
 private:
-    std::vector<Element> elements_;
-    std::unordered_map<std::string, double> atomic_masses_;
+    Formula min_bounds_;
+    Formula max_bounds_;
     
     // For money-changing algorithm
     struct Weight {
-        std::string symbol;
+        int original_index; // Index in the global ELEMENT_SYMBOLS array
         double mass;
         long long integer_mass;
         int min_count;
@@ -83,13 +101,8 @@ private:
     double min_error_, max_error_;
     bool is_initialized_;
     
-    // Element indices for constraints
-    int c_idx_, h_idx_, n_idx_, p_idx_, f_idx_, cl_idx_, br_idx_, i_idx_;
-    
     // Helper methods
-    void init_atomic_masses();
     void init_money_changing();
-    void init_recursive();
     bool check_dbe(const Formula& formula, double min_dbe, double max_dbe) const;
     bool check_hetero_ratio(const Formula& formula, double max_ratio) const;
     long long gcd(long long u, long long v) const;
@@ -101,33 +114,25 @@ private:
     bool decomposable(int i, long long m, long long a1) const;
     std::vector<Formula> integer_decompose(long long mass) const;
     
-    // Recursive algorithm helpers
-    std::vector<double> min_residues_, max_residues_;
-    void initialize_residue_tables();
-    bool can_reach_target(double current_mass, int level, double target_mass, double tolerance) const;
-    void decompose_recursive_impl(std::vector<int>& formula, double current_mass, 
-                                int level, double target_mass, double tolerance,
-                                const DecompositionParams& params,
-                                std::vector<Formula>& results) const;
-    bool check_chemical_constraints(const std::vector<int>& formula, 
+    bool check_chemical_constraints(const Formula& formula, 
                                   const DecompositionParams& params) const;
 
 public:
-    MassDecomposer(const std::vector<Element>& elements, const std::string& strategy);
+    MassDecomposer(const Formula& min_bounds, const Formula& max_bounds);
     ~MassDecomposer() = default;
     
     // Single mass decomposition
     std::vector<Formula> decompose(double target_mass, const DecompositionParams& params);
     
     // Parallel mass decomposition (OpenMP)
-    std::vector<std::vector<Formula>> decompose_parallel(
+    static std::vector<std::vector<Formula>> decompose_parallel(
         const std::vector<double>& target_masses, 
         const DecompositionParams& params);
     
     // New: Parallel mass decomposition with per-mass bounds
-    std::vector<std::vector<Formula>> decompose_masses_parallel_per_bounds(
+    static std::vector<std::vector<Formula>> decompose_masses_parallel_per_bounds(
         const std::vector<double>& target_masses,
-        const std::vector<std::vector<Element>>& per_mass_bounds,
+        const std::vector<std::pair<Formula, Formula>>& per_mass_bounds,
         const DecompositionParams& params);
 
     // Proper spectrum decomposition - ensures fragments are subsets of precursors
@@ -137,12 +142,12 @@ public:
         const DecompositionParams& params);
     
     // Proper parallel spectrum decomposition - processes multiple spectra properly in parallel
-    std::vector<ProperSpectrumResults> decompose_spectra_parallel(
+    static std::vector<ProperSpectrumResults> decompose_spectra_parallel(
         const std::vector<Spectrum>& spectra,
         const DecompositionParams& params);
 
     // New: Parallel spectrum decomposition with per-spectrum bounds
-    std::vector<ProperSpectrumResults> decompose_spectra_parallel_per_bounds(
+    static std::vector<ProperSpectrumResults> decompose_spectra_parallel_per_bounds(
         const std::vector<SpectrumWithBounds>& spectra,
         const DecompositionParams& params);
     
@@ -153,14 +158,8 @@ public:
         const DecompositionParams& params);
     
     // Parallel known precursor spectrum decomposition - processes multiple spectra with different known precursor formulas
-    std::vector<std::vector<std::vector<Formula>>> decompose_spectra_known_precursor_parallel(
+    static std::vector<std::vector<std::vector<Formula>>> decompose_spectra_known_precursor_parallel(
         const std::vector<SpectrumWithKnownPrecursor>& spectra,
         const DecompositionParams& params);
-    
-    // Helper function to create element bounds from a formula (for fragment decomposition)
-    std::vector<Element> create_bounds_from_formula(const Formula& formula) const;
-    
-    // Helper function for Python interface
-    std::vector<std::pair<std::string, int>> formula_to_pairs(const Formula& formula) const;
 };
 #endif // MASS_DECOMPOSER_COMMON_HPP

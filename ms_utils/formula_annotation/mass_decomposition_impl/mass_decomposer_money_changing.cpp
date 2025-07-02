@@ -3,30 +3,21 @@
 #include <stdexcept>
 
 void MassDecomposer::init_money_changing() {
-    // Sort elements by mass (smallest first for money-changing)
-    auto sorted_elements = elements_;
-    std::sort(sorted_elements.begin(), sorted_elements.end(),
-              [this](const Element& a, const Element& b) {
-                  return atomic_masses_[a.symbol] < atomic_masses_[b.symbol];
-              });
-    
-    weights_.resize(sorted_elements.size());
-    for (size_t i = 0; i < sorted_elements.size(); ++i) {
-        weights_[i].symbol = sorted_elements[i].symbol;
-        weights_[i].mass = atomic_masses_[sorted_elements[i].symbol];
-        weights_[i].min_count = sorted_elements[i].min_count;
-        weights_[i].max_count = sorted_elements[i].max_count;
-        
-        // Store indices for constraint elements
-        if (weights_[i].symbol == "C") c_idx_ = i;
-        else if (weights_[i].symbol == "H") h_idx_ = i;
-        else if (weights_[i].symbol == "N") n_idx_ = i;
-        else if (weights_[i].symbol == "P") p_idx_ = i;
-        else if (weights_[i].symbol == "F") f_idx_ = i;
-        else if (weights_[i].symbol == "Cl") cl_idx_ = i;
-        else if (weights_[i].symbol == "Br") br_idx_ = i;
-        else if (weights_[i].symbol == "I") i_idx_ = i;
+    weights_.clear();
+    for (int i = 0; i < FormulaAnnotation::NUM_ELEMENTS; ++i) {
+        if (max_bounds_[i] > 0) {
+            Weight w;
+            w.original_index = i;
+            w.mass = FormulaAnnotation::ATOMIC_MASSES[i];
+            w.min_count = min_bounds_[i];
+            w.max_count = max_bounds_[i];
+            weights_.push_back(w);
+        }
     }
+    // Sort by mass (smallest first for money-changing)
+    std::sort(weights_.begin(), weights_.end(), [](const Weight& a, const Weight& b) {
+        return a.mass < b.mass;
+    });
 }
 
 long long MassDecomposer::gcd(long long u, long long v) const {
@@ -47,10 +38,13 @@ void MassDecomposer::discretize_masses() {
 void MassDecomposer::divide_by_gcd() {
     if (weights_.size() < 2) return;
     
-    long long d = gcd(weights_[0].integer_mass, weights_[1].integer_mass);
-    for (size_t i = 2; i < weights_.size(); ++i) {
-        d = gcd(d, weights_[i].integer_mass);
-        if (d == 1) break;
+    long long d = weights_[0].integer_mass;
+    if (weights_.size() > 1) {
+        d = gcd(weights_[0].integer_mass, weights_[1].integer_mass);
+        for (size_t i = 2; i < weights_.size(); ++i) {
+            d = gcd(d, weights_[i].integer_mass);
+            if (d == 1) break;
+        }
     }
     
     if (d > 1) {
@@ -62,6 +56,7 @@ void MassDecomposer::divide_by_gcd() {
 }
 
 void MassDecomposer::calc_ert() {
+    if (weights_.empty()) return;
     long long first_long_val = weights_[0].integer_mass;
     if (first_long_val <= 0) {
         throw std::runtime_error("First element mass is zero or negative after discretization.");
@@ -70,7 +65,7 @@ void MassDecomposer::calc_ert() {
     ert_.assign(first_long_val, std::vector<long long>(weights_.size()));
     
     ert_[0][0] = 0;
-    for (int i = 1; i < first_long_val; ++i) {
+    for (long long i = 1; i < first_long_val; ++i) {
         ert_[i][0] = LLONG_MAX;
     }
 
@@ -80,18 +75,18 @@ void MassDecomposer::calc_ert() {
         
         for (int p = 0; p < d; ++p) {
             long long n = LLONG_MAX;
-            for (int i = p; i < first_long_val; i += d) {
+            for (long long i = p; i < first_long_val; i += d) {
                 if (ert_[i][j-1] < n) {
                     n = ert_[i][j-1];
                 }
             }
             
             if (n == LLONG_MAX) {
-                for (int i = p; i < first_long_val; i += d) {
+                for (long long i = p; i < first_long_val; i += d) {
                     ert_[i][j] = LLONG_MAX;
                 }
             } else {
-                for (int i = 0; i < first_long_val / d; ++i) {
+                for (long long i = 0; i < first_long_val / d; ++i) {
                     n += weights_[j].integer_mass;
                     int r = static_cast<int>(n % first_long_val);
                     if (ert_[r][j-1] < n) {
@@ -130,6 +125,7 @@ std::pair<long long, long long> MassDecomposer::integer_bound(double mass_from, 
 
 bool MassDecomposer::decomposable(int i, long long m, long long a1) const {
     if (m < 0) return false;
+    if (a1 <= 0) return false;
     return ert_[m % a1][i] <= m;
 }
 
@@ -179,15 +175,11 @@ std::vector<Formula> MassDecomposer::integer_decompose(long long mass) const {
                 }
                 
                 if (valid_formula) {
-                    Formula res;
+                    Formula res{}; // Initialize with zeros
                     for (int j = 0; j <= k; ++j) {
-                        if (c[j] > 0) {
-                            res[weights_[j].symbol] = c[j];
-                        }
+                        res[weights_[j].original_index] = c[j];
                     }
-                    if (!res.empty()) {
-                        results.push_back(res);
-                    }
+                    results.push_back(res);
                 }
                 i++;
             }

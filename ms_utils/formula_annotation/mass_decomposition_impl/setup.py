@@ -37,7 +37,6 @@ extensions = [
         [
             "mass_decomposer_cpp.pyx", 
             "mass_decomposer_common.cpp",
-            "mass_decomposer_recursive.cpp",
             "mass_decomposer_money_changing.cpp",
             "mass_decomposer_parallel.cpp"
         ],
