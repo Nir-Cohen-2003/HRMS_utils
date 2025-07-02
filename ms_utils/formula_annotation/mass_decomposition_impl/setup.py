@@ -34,7 +34,12 @@ extensions = [
     # C++ implementation with OpenMP
     Extension(
         "mass_decomposer_cpp",
-        ["mass_decomposer_cpp.pyx", "mass_decomposer_core.cpp"],
+        [
+            "mass_decomposer_cpp.pyx", 
+            "mass_decomposer_common.cpp",
+            "mass_decomposer_money_changing.cpp",
+            "mass_decomposer_parallel.cpp"
+        ],
         include_dirs=[numpy.get_include(), "."],
         extra_compile_args=cpp_compile_args + openmp_compile_args,
         extra_link_args=openmp_link_args,
