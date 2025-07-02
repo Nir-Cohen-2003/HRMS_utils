@@ -1,5 +1,27 @@
+''' reference implementation of mass decomposition in Python, very inefficient but serves as a baseline for comparison with Cython/C++ implementations.'''
 from typing import List, Dict, Tuple, Optional
-from base_data import ATOMIC_MASSES
+ATOMIC_MASSES = {
+    'C': 12.0000000,
+    'H': 1.0078250,
+    'N': 14.0030740,
+    'O': 15.9949146,
+    'P': 30.9737620,
+    'S': 31.9720718,
+    'F': 18.9984032,
+    'Cl': 34.9688527,
+    'Br': 78.9183376,
+    'I': 126.9044719,
+    'Si': 27.9769271,
+    'Na': 22.9897693,
+    'K': 38.9637069,
+    'Ca': 39.9625912,
+    'Mg': 23.9850423,
+    'Fe': 55.9349421,
+    'Zn': 63.9291466,
+    'Se': 79.9165218,
+    'B': 11.0093054,
+    'Al': 26.9815386
+}
 
 
 class Element:

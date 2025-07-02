@@ -92,25 +92,24 @@ cdef Formula_cpp _convert_numpy_to_formula(np.ndarray arr):
         formula[i] = arr_ptr[i]
     return formula
 
-cdef dict _convert_formula_to_dict(const Formula_cpp& cpp_formula):
-    """Convert C++ Formula to Python dict."""
-    result = {}
+cdef np.ndarray _convert_formula_to_array(const Formula_cpp& cpp_formula):
+    """Convert C++ Formula to a NumPy array."""
+    cdef np.ndarray arr = np.empty(NUM_ELEMENTS, dtype=np.int32)
+    cdef int* arr_ptr = <int*>np.PyArray_DATA(arr)
     for i in range(NUM_ELEMENTS):
-        if cpp_formula[i] > 0:
-            # Remove the "FormulaAnnotation." prefix
-            result[ELEMENT_SYMBOLS[i].decode('utf-8')] = cpp_formula[i]
-    return result
+        arr_ptr[i] = cpp_formula[i]
+    return arr
 
-cdef Formula_cpp _convert_dict_to_formula(dict py_formula):
-    """Convert Python dict to C++ Formula."""
-    cdef Formula_cpp cpp_formula
-    cpp_formula.fill(0)
-    for i in range(NUM_ELEMENTS):
-        # Remove the "FormulaAnnotation." prefix
-        symbol_str = ELEMENT_SYMBOLS[i].decode('utf-8')
-        if symbol_str in py_formula:
-            cpp_formula[i] = py_formula[symbol_str]
-    return cpp_formula
+# cdef Formula_cpp _convert_dict_to_formula(dict py_formula):
+#     """Convert Python dict to C++ Formula."""
+#     cdef Formula_cpp cpp_formula
+#     cpp_formula.fill(0)
+#     for i in range(NUM_ELEMENTS):
+#         # Remove the "FormulaAnnotation." prefix
+#         symbol_str = ELEMENT_SYMBOLS[i].decode('utf-8')
+#         if symbol_str in py_formula:
+#             cpp_formula[i] = py_formula[symbol_str]
+#     return cpp_formula
 
 cdef void _validate_bounds_array(np.ndarray arr, str name):
     if arr.ndim != 1:
@@ -158,7 +157,7 @@ def decompose_mass(
     max_dbe: float = 40.0,
     max_hetero_ratio: float = 100.0,
     max_results: int = 100000
-) -> list:
+) -> list[np.ndarray]:
     cdef DecompositionParams params = _convert_params(tolerance_ppm, min_dbe, max_dbe,
                                                      max_hetero_ratio, max_results,
                                                      min_bounds, max_bounds)
@@ -167,7 +166,7 @@ def decompose_mass(
     
     try:
         results = decomposer.decompose(target_mass, params)
-        python_results = [_convert_formula_to_dict(res) for res in results]
+        python_results = [_convert_formula_to_array(res) for res in results]
         return python_results
     finally:
         del decomposer
@@ -192,7 +191,7 @@ def decompose_mass_parallel(
     cdef vector[vector[Formula_cpp]] all_results
     
     all_results = MassDecomposer.decompose_parallel(masses_vec, params)
-    python_results = [[_convert_formula_to_dict(res) for res in mass_results] for mass_results in all_results]
+    python_results = [[_convert_formula_to_array(res) for res in mass_results] for mass_results in all_results]
     return python_results
 
 def decompose_mass_parallel_per_bounds(
@@ -224,7 +223,7 @@ def decompose_mass_parallel_per_bounds(
 
     cdef vector[vector[Formula_cpp]] all_results
     all_results = MassDecomposer.decompose_masses_parallel_per_bounds(masses_vec, bounds_vec, params)
-    python_results = [[_convert_formula_to_dict(res) for res in mass_results] for mass_results in all_results]
+    python_results = [[_convert_formula_to_array(res) for res in mass_results] for mass_results in all_results]
     return python_results
 
 def decompose_spectrum(
@@ -252,10 +251,10 @@ def decompose_spectrum(
         python_results = []
         for decomp in cpp_results.decompositions:
             py_decomp = {
-                'precursor': _convert_formula_to_dict(decomp.precursor),
+                'precursor': _convert_formula_to_array(decomp.precursor),
                 'precursor_mass': decomp.precursor_mass,
                 'precursor_error_ppm': decomp.precursor_error_ppm,
-                'fragments': [[_convert_formula_to_dict(f) for f in frag_list] for frag_list in decomp.fragments],
+                'fragments': [[_convert_formula_to_array(f) for f in frag_list] for frag_list in decomp.fragments],
                 'fragment_masses': [list(fm) for fm in decomp.fragment_masses],
                 'fragment_errors_ppm': [list(fe) for fe in decomp.fragment_errors_ppm]
             }
@@ -294,10 +293,10 @@ def decompose_spectra_parallel(
         python_results = []
         for decomp in cpp_results.decompositions:
             py_decomp = {
-                'precursor': _convert_formula_to_dict(decomp.precursor),
+                'precursor': _convert_formula_to_array(decomp.precursor),
                 'precursor_mass': decomp.precursor_mass,
                 'precursor_error_ppm': decomp.precursor_error_ppm,
-                'fragments': [[_convert_formula_to_dict(f) for f in frag_list] for frag_list in decomp.fragments],
+                'fragments': [[_convert_formula_to_array(f) for f in frag_list] for frag_list in decomp.fragments],
                 'fragment_masses': [list(fm) for fm in decomp.fragment_masses],
                 'fragment_errors_ppm': [list(fe) for fe in decomp.fragment_errors_ppm]
             }
@@ -339,10 +338,10 @@ def decompose_spectra_parallel_per_bounds(
         python_results = []
         for decomp in cpp_results.decompositions:
             py_decomp = {
-                'precursor': _convert_formula_to_dict(decomp.precursor),
+                'precursor': _convert_formula_to_array(decomp.precursor),
                 'precursor_mass': decomp.precursor_mass,
                 'precursor_error_ppm': decomp.precursor_error_ppm,
-                'fragments': [[_convert_formula_to_dict(f) for f in frag_list] for frag_list in decomp.fragments],
+                'fragments': [[_convert_formula_to_array(f) for f in frag_list] for frag_list in decomp.fragments],
                 'fragment_masses': [list(fm) for fm in decomp.fragment_masses],
                 'fragment_errors_ppm': [list(fe) for fe in decomp.fragment_errors_ppm]
             }
@@ -351,17 +350,18 @@ def decompose_spectra_parallel_per_bounds(
     return all_python_results
 
 def decompose_spectrum_known_precursor(
-    precursor_formula: dict,
+    precursor_formula: np.ndarray,
     fragment_masses: list,
+    min_bounds: np.ndarray,
+    max_bounds: np.ndarray,
     tolerance_ppm: float = 5.0,
     max_results: int = 100000
 ) -> list:
-    cdef np.ndarray dummy_bounds = np.zeros(NUM_ELEMENTS, dtype=np.int32)
-    cdef DecompositionParams params = _convert_params(tolerance_ppm, -100.0, 100.0, 100.0, max_results, dummy_bounds, dummy_bounds)
+    _validate_bounds_array(precursor_formula, "precursor_formula")
+    cdef DecompositionParams params = _convert_params(tolerance_ppm, -100.0, 100.0, 100.0, max_results, min_bounds, max_bounds)
     
-    cdef Formula_cpp cpp_precursor = _convert_dict_to_formula(precursor_formula)
-    cdef Formula_cpp min_b
-    min_b.fill(0)
+    cdef Formula_cpp cpp_precursor = _convert_numpy_to_formula(precursor_formula)
+    cdef Formula_cpp min_b = _convert_numpy_to_formula(min_bounds)
 
     cdef vector[double] frag_masses_vec = fragment_masses
     cdef MassDecomposer* decomposer = new MassDecomposer(min_b, cpp_precursor)
@@ -369,28 +369,31 @@ def decompose_spectrum_known_precursor(
 
     try:
         results = decomposer.decompose_spectrum_known_precursor(cpp_precursor, frag_masses_vec, params)
-        return [[_convert_formula_to_dict(f) for f in res] for res in results]
+        return [[_convert_formula_to_array(f) for f in res] for res in results]
     finally:
         del decomposer
 
 def decompose_spectra_known_precursor_parallel(
-    spectra_data: list, # list of dicts with 'precursor_formula' and 'fragment_masses'
+    spectra_data: list, # list of dicts with 'precursor_formula' (np.ndarray) and 'fragment_masses'
+    min_bounds: np.ndarray,
+    max_bounds: np.ndarray,
     tolerance_ppm: float = 5.0,
     max_results: int = 100000
 ) -> list:
     if not spectra_data:
         return []
-    cdef np.ndarray dummy_bounds = np.zeros(NUM_ELEMENTS, dtype=np.int32)
-    cdef DecompositionParams params = _convert_params(tolerance_ppm, -100.0, 100.0, 100.0, max_results, dummy_bounds, dummy_bounds)
+    cdef DecompositionParams params = _convert_params(tolerance_ppm, -100.0, 100.0, 100.0, max_results, min_bounds, max_bounds)
     
     cdef vector[SpectrumWithKnownPrecursor] spectra_vec
     spectra_vec.reserve(len(spectra_data))
     cdef SpectrumWithKnownPrecursor s
-    for spec_data in spectra_data:
-        s.precursor_formula = _convert_dict_to_formula(spec_data['precursor_formula'])
+    for i, spec_data in enumerate(spectra_data):
+        precursor_formula_arr = spec_data['precursor_formula']
+        _validate_bounds_array(precursor_formula_arr, f"precursor_formula in spectra_data at index {i}")
+        s.precursor_formula = _convert_numpy_to_formula(precursor_formula_arr)
         s.fragment_masses = spec_data['fragment_masses']
         spectra_vec.push_back(s)
 
     cdef vector[vector[vector[Formula_cpp]]] all_results
     all_results = MassDecomposer.decompose_spectra_known_precursor_parallel(spectra_vec, params)
-    return [[[_convert_formula_to_dict(f) for f in res] for res in spec_res] for spec_res in all_results]
+    return [[[_convert_formula_to_array(f) for f in res] for res in spec_res] for spec_res in all_results]
