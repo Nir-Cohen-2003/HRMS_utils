@@ -144,6 +144,7 @@ def decompose_spectra(
         ).alias("decomposed_spectra")
     )
     """
+    raise NotImplementedError("This function is not implemented yet. docmpose the mass of the precursor, explode each option to different rows, and then use decompose_spectra_known_precursor instead.")
     precursor_masses = precursor_mass_series.to_numpy()
     fragment_masses_list = fragment_masses_series.to_list()
     # Uniform bounds
@@ -256,28 +257,31 @@ def decompose_spectra_known_precursor(
     """
     Wrapper for spectrum decomposition with known precursor formulas.
     Only supports uniform bounds.
-
-    Example usage:
-    min_formula = np.zeros(15, dtype=np.int32)
-    max_formula = np.array([100,0,40,20,10,5,2,1,0,0,0,0,0,0,0], dtype=np.int32)
-
-    precursor_formulas = [np.array([10,0,5,2,1,0,0,0,0,0,0,0,0,0,0], dtype=np.int32),
-                          np.array([12,0,6,3,1,0,0,0,0,0,0,0,0,0,0], dtype=np.int32)]
-    fragment_masses = [[100.0, 200.0, 300.0], [150.0, 250.0, 350.0]]
-
-    df = pl.DataFrame({
-        "precursor_formula": precursor_formulas,
-        "fragment_masses": fragment_masses
-    })
     df = df.with_columns(
-        decompose_spectra_known_precursor(
-            precursor_formula_series=pl.col("precursor_formula"),
-            fragment_masses_series=pl.col("fragment_masses"),
-            min_bounds=min_formula,
-            max_bounds=max_formula,
-            tolerance_ppm=5.0,
-        ).alias("decomposed_spectra")
+        pl.col("precursor_mass").map_batches(
+            lambda x: decompose_mass(
+                mass_series=x,
+                min_bounds=min_formula,     
+                max_bounds=max_formula,
+                tolerance_ppm=5.0,
+                min_dbe=0.0,
+                max_dbe=40.0,
+            ),
+            return_dtype=pl.List(pl.Array(pl.Int32, len(min_formula)))
+        ).alias("decomposed_formula")
     )
+    df = df.explode("decomposed_formula")
+    df = df.with_columns(
+        pl.struct(["fragment_masses", "decomposed_formula"]).map_batches(
+            lambda row: decompose_spectra_known_precursor(
+                precursor_formula_series=row.struct.field("decomposed_formula"),
+                fragment_masses_series=row.struct.field("fragment_masses"),
+                min_bounds=min_formula,
+                max_bounds=max_formula,
+                tolerance_ppm=5.0,
+            )).alias("decomposed_spectra")
+        )
+    
     """
     precursor_formulas = precursor_formula_series.to_numpy()
     fragment_masses_list = fragment_masses_series.to_list()
@@ -292,7 +296,8 @@ def decompose_spectra_known_precursor(
         tolerance_ppm=tolerance_ppm,
         max_results=max_results,
     )
-    return pl.Series(results)
+    return pl.Series(results, dtype= pl.List(pl.List(pl.Array(pl.Int32, len(min_bounds))))
+    )
 
 
 
@@ -306,45 +311,38 @@ if __name__ == "__main__":
         "fragment_masses": [[100.0, 200.0, 300.0], [150.0, 250.0, 350.0]]
     })
     print(df)
+
+    # first we decompose the mass, explode each option to different rows, and then use decompose_spectra_known_precursor instead
+    # this is a workaround for the fact that decompose_spectra_known_precursor does not work yet
+
     df = df.with_columns(
-        pl.struct(["precursor_mass", "fragment_masses"])
-        .map_batches(
-            lambda s: decompose_spectra(
-                precursor_mass_series=s.struct.field("precursor_mass"),
-                fragment_masses_series=s.struct.field("fragment_masses"),      
-                min_bounds=min_formula,
+        pl.col("precursor_mass").map_batches(
+            lambda x: decompose_mass(
+                mass_series=x,
+                min_bounds=min_formula,     
                 max_bounds=max_formula,
                 tolerance_ppm=5.0,
                 min_dbe=0.0,
                 max_dbe=40.0,
             ),
-            return_dtype=pl.List(pl.List(pl.Array(pl.Int32, 15)))
-        )
+            return_dtype=pl.List(pl.Array(pl.Int32, len(min_formula)))
+        ).alias("decomposed_formula")
     )
-
-    # # Per-spectrum bounds:
-    # min_formula = np.zeros(15, dtype=np.int32)
-    # max_formula = np.array([100,0,40,20,10,5,2,1,0,0,0,0,0,0,0], dtype=np.int32)
-    # df = pl.DataFrame({
-    #     "precursor_mass": [500.0, 600.0],
-    #     "fragment_masses": [[100.0, 200.0, 300.0], [150.0, 250.0, 350.0]],
-    #     "min_bounds": [min_formula, min_formula],
-    #     "max_bounds": [max_formula, max_formula]
-    # })
-    # df = df.with_columns(
-    #     pl.struct(["precursor_mass", "fragment_masses", "min_bounds", "max_bounds"])
-    #     .map_batches(
-    #         lambda s: decompose_spectra(
-    #             precursor_mass_series=s.struct.field("precursor_mass"),
-    #             fragment_masses_series=s.struct.field("fragment_masses"),
-    #             min_bounds=s.struct.field("min_bounds"),
-    #             max_bounds=s.struct.field("max_bounds"),
-    #             tolerance_ppm=5.0,
-    #             min_dbe=0.0,
-    #             max_dbe=40.0,
-    #         ),
-    #         return_dtype=pl.List(pl.Object)
-    #     )
-    #     .alias("decomposed_spectra")
-    # )
-    # print(df)
+    print(df)
+    df = df.explode("decomposed_formula")
+    print(df)
+    df = df.with_columns(
+        pl.struct(["fragment_masses", "decomposed_formula"]).map_batches(
+            lambda row: decompose_spectra_known_precursor(
+                precursor_formula_series=row.struct.field("decomposed_formula"),
+                fragment_masses_series=row.struct.field("fragment_masses"),
+                min_bounds=min_formula,
+                max_bounds=max_formula,
+                tolerance_ppm=5.0,
+            )).alias("decomposed_spectra")
+        )
+    df = df.with_columns(
+        (pl.col("decomposed_spectra").list.len().eq(pl.col("fragment_masses").list.len())).alias("valid_spectra")  # Check if lengths match
+    )
+    print(df)
+    print(df.filter(~pl.col("valid_spectra")))  # Show invalid spectra
