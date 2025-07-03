@@ -12,3 +12,4 @@ ms_utils/formula_annotation/mass_decomposition_impl/sirius_java_impl/
 ms_utils/formula_annotation/mass_decomposition_impl/benchmark_results.txt
 ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.cpp
 **.json
+**.ipynb
