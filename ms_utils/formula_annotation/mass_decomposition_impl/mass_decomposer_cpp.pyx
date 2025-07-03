@@ -8,7 +8,7 @@ from libcpp.vector cimport vector
 from libcpp.string cimport string
 from libcpp.utility cimport pair
 # The libcpp.array import is no longer needed
-from typing import List, Dict, Tuple
+from typing import List, Dict, Tuple, Iterable
 import numpy as np
 
 cimport numpy as np
@@ -172,7 +172,7 @@ def decompose_mass(
         del decomposer
 
 def decompose_mass_parallel(
-    target_masses: list,
+    target_masses: Iterable[float],
     min_bounds: np.ndarray,
     max_bounds: np.ndarray,
     tolerance_ppm: float = 5.0,
@@ -181,13 +181,15 @@ def decompose_mass_parallel(
     max_hetero_ratio: float = 100.0,
     max_results: int = 100000
 ) -> list:
-    if not target_masses:
+    # Convert iterable to list to allow checking for emptiness and getting length
+    target_masses_list = list(target_masses)
+    if not target_masses_list:
         return []
     
     cdef DecompositionParams params = _convert_params(tolerance_ppm, min_dbe, max_dbe,
                                                      max_hetero_ratio, max_results,
                                                      min_bounds, max_bounds)
-    cdef vector[double] masses_vec = target_masses
+    cdef vector[double] masses_vec = target_masses_list
     cdef vector[vector[Formula_cpp]] all_results
     
     all_results = MassDecomposer.decompose_parallel(masses_vec, params)
@@ -195,7 +197,7 @@ def decompose_mass_parallel(
     return python_results
 
 def decompose_mass_parallel_per_bounds(
-    target_masses: list,
+    target_masses: Iterable[float],
     per_mass_bounds: list, # List of (min_bounds_np, max_bounds_np) tuples
     tolerance_ppm: float = 5.0,
     min_dbe: float = 0.0,
@@ -203,9 +205,11 @@ def decompose_mass_parallel_per_bounds(
     max_hetero_ratio: float = 100.0,
     max_results: int = 100000
 ) -> list:
-    if not target_masses:
+    # Convert iterable to list to allow checking for emptiness and getting length
+    target_masses_list = list(target_masses)
+    if not target_masses_list:
         return []
-    if len(target_masses) != len(per_mass_bounds):
+    if len(target_masses_list) != len(per_mass_bounds):
         raise ValueError("Length of target_masses and per_mass_bounds must be equal.")
 
     # Create a dummy params object just to pass some values
@@ -213,7 +217,7 @@ def decompose_mass_parallel_per_bounds(
     cdef DecompositionParams params = _convert_params(tolerance_ppm, min_dbe, max_dbe,
                                                      max_hetero_ratio, max_results,
                                                      dummy_bounds, dummy_bounds)
-    cdef vector[double] masses_vec = target_masses
+    cdef vector[double] masses_vec = target_masses_list
     cdef vector[pair[Formula_cpp, Formula_cpp]] bounds_vec
     bounds_vec.reserve(len(per_mass_bounds))
     for min_b, max_b in per_mass_bounds:
@@ -264,7 +268,7 @@ def decompose_spectrum(
         del decomposer
 
 def decompose_spectra_parallel(
-    spectra_data: list, # list of dicts with 'precursor_mass' and 'fragment_masses'
+    spectra_data: Iterable[dict], # list of dicts with 'precursor_mass' and 'fragment_masses'
     min_bounds: np.ndarray,
     max_bounds: np.ndarray,
     tolerance_ppm: float = 5.0,
@@ -273,15 +277,17 @@ def decompose_spectra_parallel(
     max_hetero_ratio: float = 100.0,
     max_results: int = 100000
 ) -> list:
-    if not spectra_data:
+    # Convert iterable to list to allow checking for emptiness and getting length
+    spectra_data_list = list(spectra_data)
+    if not spectra_data_list:
         return []
     cdef DecompositionParams params = _convert_params(tolerance_ppm, min_dbe, max_dbe,
                                                      max_hetero_ratio, max_results,
                                                      min_bounds, max_bounds)
     cdef vector[Spectrum] spectra_vec
-    spectra_vec.reserve(len(spectra_data))
+    spectra_vec.reserve(len(spectra_data_list))
     cdef Spectrum s
-    for spec_data in spectra_data:
+    for spec_data in spectra_data_list:
         s.precursor_mass = spec_data['precursor_mass']
         s.fragment_masses = spec_data['fragment_masses']
         spectra_vec.push_back(s)
@@ -305,14 +311,16 @@ def decompose_spectra_parallel(
     return all_python_results
 
 def decompose_spectra_parallel_per_bounds(
-    spectra_data: list, # list of dicts with 'precursor_mass', 'fragment_masses', 'min_bounds', 'max_bounds'
+    spectra_data: Iterable[dict], # list of dicts with 'precursor_mass', 'fragment_masses', 'min_bounds', 'max_bounds'
     tolerance_ppm: float = 5.0,
     min_dbe: float = 0.0,
     max_dbe: float = 40.0,
     max_hetero_ratio: float = 100.0,
     max_results: int = 100000
 ) -> list:
-    if not spectra_data:
+    # Convert iterable to list to allow checking for emptiness and getting length
+    spectra_data_list = list(spectra_data)
+    if not spectra_data_list:
         return []
     
     cdef np.ndarray dummy_bounds = np.zeros(NUM_ELEMENTS, dtype=np.int32)
@@ -320,9 +328,9 @@ def decompose_spectra_parallel_per_bounds(
                                                      max_hetero_ratio, max_results,
                                                      dummy_bounds, dummy_bounds)
     cdef vector[SpectrumWithBounds] spectra_vec
-    spectra_vec.reserve(len(spectra_data))
+    spectra_vec.reserve(len(spectra_data_list))
     cdef SpectrumWithBounds s
-    for spec_data in spectra_data:
+    for spec_data in spectra_data_list:
         s.precursor_mass = spec_data['precursor_mass']
         s.fragment_masses = spec_data['fragment_masses']
         _validate_bounds_array(spec_data['min_bounds'], "min_bounds in list")
@@ -374,20 +382,22 @@ def decompose_spectrum_known_precursor(
         del decomposer
 
 def decompose_spectra_known_precursor_parallel(
-    spectra_data: list, # list of dicts with 'precursor_formula' (np.ndarray) and 'fragment_masses'
+    spectra_data: Iterable[dict], # list of dicts with 'precursor_formula' (np.ndarray) and 'fragment_masses'
     min_bounds: np.ndarray,
     max_bounds: np.ndarray,
     tolerance_ppm: float = 5.0,
     max_results: int = 100000
 ) -> list:
-    if not spectra_data:
+    # Convert iterable to list to allow checking for emptiness and getting length
+    spectra_data_list = list(spectra_data)
+    if not spectra_data_list:
         return []
     cdef DecompositionParams params = _convert_params(tolerance_ppm, -100.0, 100.0, 100.0, max_results, min_bounds, max_bounds)
     
     cdef vector[SpectrumWithKnownPrecursor] spectra_vec
-    spectra_vec.reserve(len(spectra_data))
+    spectra_vec.reserve(len(spectra_data_list))
     cdef SpectrumWithKnownPrecursor s
-    for i, spec_data in enumerate(spectra_data):
+    for i, spec_data in enumerate(spectra_data_list):
         precursor_formula_arr = spec_data['precursor_formula']
         _validate_bounds_array(precursor_formula_arr, f"precursor_formula in spectra_data at index {i}")
         s.precursor_formula = _convert_numpy_to_formula(precursor_formula_arr)
