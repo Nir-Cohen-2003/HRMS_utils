@@ -99,6 +99,7 @@ def decompose_spectra(
     max_results: int = 100000,
 ):
     """
+    NOT IMPLEMENTED YET, DO NOT USE THIS FUNCTION.
     Wrapper for spectrum decomposition (unknown precursor).
     Handles both uniform and per-spectrum bounds.
 
@@ -284,7 +285,7 @@ def decompose_spectra_known_precursor(
     
     """
     precursor_formulas = precursor_formula_series.to_numpy()
-    fragment_masses_list = fragment_masses_series.to_list()
+    fragment_masses_list = fragment_masses_series.to_numpy()
     spectra_data = [
         {"precursor_formula": pf, "fragment_masses": fm}
         for pf, fm in zip(precursor_formulas, fragment_masses_list)
@@ -302,47 +303,31 @@ def decompose_spectra_known_precursor(
 
 
 if __name__ == "__main__":
-    # uniform bounds:
-    min_formula = np.zeros(15, dtype=np.int32)
-    max_formula = np.array([100,0,40,20,10,5,2,1,0,0,0,0,0,0,0], dtype=np.int32)
+    from time import perf_counter
 
-    df = pl.DataFrame({
-        "precursor_mass": [500.0, 600.0],
-        "fragment_masses": [[100.0, 200.0, 300.0], [150.0, 250.0, 350.0]]
-    })
-    print(df)
-
-    # first we decompose the mass, explode each option to different rows, and then use decompose_spectra_known_precursor instead
-    # this is a workaround for the fact that decompose_spectra_known_precursor does not work yet
-
-    df = df.with_columns(
-        pl.col("precursor_mass").map_batches(
-            lambda x: decompose_mass(
-                mass_series=x,
-                min_bounds=min_formula,     
-                max_bounds=max_formula,
-                tolerance_ppm=5.0,
-                min_dbe=0.0,
-                max_dbe=40.0,
-            ),
-            return_dtype=pl.List(pl.Array(pl.Int32, len(min_formula)))
-        ).alias("decomposed_formula")
-    )
-    print(df)
-    df = df.explode("decomposed_formula")
-    print(df)
-    df = df.with_columns(
-        pl.struct(["fragment_masses", "decomposed_formula"]).map_batches(
-            lambda row: decompose_spectra_known_precursor(
-                precursor_formula_series=row.struct.field("decomposed_formula"),
-                fragment_masses_series=row.struct.field("fragment_masses"),
-                min_bounds=min_formula,
-                max_bounds=max_formula,
-                tolerance_ppm=5.0,
-            )).alias("decomposed_spectra")
+    nist = pl.read_parquet("/home/analytit_admin/Data/NIST_hr_msms/NIST_hr_msms.parquet")
+    print(f"number of spectra: {nist.height}")
+    nist = nist.filter(
+        pl.col("raw_spectrum_mz").list.len().gt(0),
+        pl.col("Formula_array").arr.len().eq(15),
         )
-    df = df.with_columns(
-        (pl.col("decomposed_spectra").list.len().eq(pl.col("fragment_masses").list.len())).alias("valid_spectra")  # Check if lengths match
-    )
-    print(df)
-    print(df.filter(~pl.col("valid_spectra")))  # Show invalid spectra
+    nist = nist.cast({
+        "raw_spectrum_mz": pl.List(pl.Float64),
+        "Formula_array": pl.Array(pl.Int32,15),
+    })
+    print(f"number of spectra after filtering: {nist.height}")
+    start = perf_counter()
+    nist_decomposed = nist.with_columns(
+        pl.struct(["Formula_array", "raw_spectrum_mz"]).map_batches(
+            lambda row: decompose_spectra_known_precursor(
+                precursor_formula_series=row.struct.field("Formula_array"),
+                fragment_masses_series=row.struct.field("raw_spectrum_mz"),
+                min_bounds=np.zeros(15, dtype=np.int32),
+                max_bounds=np.full(shape=15,fill_value=100, dtype=np.int32),
+                tolerance_ppm=5.0,
+            ),
+            return_dtype=pl.List(pl.List(pl.Array(pl.Int32, 15)))
+        ).alias("decomposed_spectra"))
+    print(f"Decomposed spectra: {nist_decomposed.height}")
+    end = perf_counter()
+    print(f"Time taken: {end - start:.2f} seconds")
