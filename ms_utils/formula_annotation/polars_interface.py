@@ -10,9 +10,9 @@ import numpy as np
 from typing import Iterable
 
 def decompose_mass(
-    mass_series: pl.Series,
-    min_bounds,
-    max_bounds,
+    mass_series:np.ndarray,
+    min_bounds: np.ndarray | pl.Series,
+    max_bounds: np.ndarray | pl.Series,
     tolerance_ppm: float = 5.0,
     min_dbe: float = 0.0,
     max_dbe: float = 40.0,
@@ -54,7 +54,7 @@ def decompose_mass(
         ).alias("decomposed_formulas")
     )
     """
-    mass_array = mass_series.to_numpy()
+    mass_array = mass_series
     # Case 1: fixed bounds (1D numpy arrays)
     if isinstance(min_bounds, np.ndarray) and min_bounds.ndim == 1:
         results = decompose_mass_parallel(
@@ -67,10 +67,28 @@ def decompose_mass(
             max_hetero_ratio=max_hetero_ratio,
             max_results=max_results,
         )
+        return results
         # Output: list of lists of np.ndarray
         return pl.Series(results, dtype=pl.List(pl.Array(pl.Int32, len(min_bounds))))
+    # elif isinstance(min_bounds, np.ndarray) and isinstance(max_bounds, np.ndarray):
+    #     # so we have 2D arrays, we assume they are per-mass bounds
+    #     if min_bounds.shape[0] != max_bounds.shape[0]:
+    #         raise ValueError("min_bounds and max_bounds must have the same number of rows for per-mass bounds.")
+    #     if min_bounds.shape[1] != max_bounds.shape[1]:
+    #         raise ValueError("min_bounds and max_bounds must have the same number of columns for per-mass bounds.")
+    #     per_mass_bounds = list(zip(min_bounds, max_bounds))
+    #     mass_array = mass_series.to_numpy()
+    #     results = decompose_mass_parallel_per_bounds(
+    #         target_masses=mass_array,
+    #         per_mass_bounds=per_mass_bounds,
+    #         tolerance_ppm=tolerance_ppm,
+    #         min_dbe=min_dbe,
+    #         max_dbe=max_dbe,
+    #         max_hetero_ratio=max_hetero_ratio,
+    #         max_results=max_results,
+    #     )
     # Case 2: per-mass bounds (Polars Series or DataFrame columns)
-    elif isinstance(min_bounds, pl.Series) and isinstance(max_bounds, pl.Series):
+    elif isinstance(min_bounds, pl.Series| pl.Expr) and isinstance(max_bounds, pl.Series| pl.Expr):
         min_bounds_np = min_bounds.to_numpy()
         max_bounds_np = max_bounds.to_numpy()
         per_mass_bounds = list(zip(min_bounds_np, max_bounds_np))
@@ -85,7 +103,8 @@ def decompose_mass(
         )
         return pl.Series(results, dtype=pl.List(pl.Array(pl.Int32, min_bounds_np.shape[1])))
     else:
-        raise ValueError("min_bounds and max_bounds must both be either 1D numpy arrays or Polars Series of arrays.")
+        raise ValueError("min_bounds and max_bounds must both be either 1D numpy arrays or Polars Series of arrays, but we got types: " \
+        f"min_bounds: {type(min_bounds)}, max_bounds: {type(max_bounds)}")
 
 def decompose_spectra(
     precursor_mass_series: pl.Series,

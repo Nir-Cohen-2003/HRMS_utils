@@ -10,7 +10,7 @@ from libcpp.utility cimport pair
 # The libcpp.array import is no longer needed
 from typing import List, Dict, Tuple, Iterable
 import numpy as np
-
+import polars as pl
 cimport numpy as np
 
 # C++ declarations from the header file
@@ -170,7 +170,6 @@ def decompose_mass(
         return python_results
     finally:
         del decomposer
-
 def decompose_mass_parallel(
     target_masses: Iterable[float],
     min_bounds: np.ndarray,
@@ -180,21 +179,48 @@ def decompose_mass_parallel(
     max_dbe: float = 40.0,
     max_hetero_ratio: float = 100.0,
     max_results: int = 100000
-) -> list:
+) -> np.ndarray:
     # Convert iterable to list to allow checking for emptiness and getting length
     target_masses_list = list(target_masses)
     if not target_masses_list:
-        return []
+        return np.empty((0, 0, NUM_ELEMENTS), dtype=np.int32)
     
-    cdef DecompositionParams params = _convert_params(tolerance_ppm, min_dbe, max_dbe,
-                                                     max_hetero_ratio, max_results,
-                                                     min_bounds, max_bounds)
+    cdef DecompositionParams params = _convert_params(tolerance_ppm, min_dbe, max_dbe,max_hetero_ratio, max_results,min_bounds, max_bounds)
     cdef vector[double] masses_vec = target_masses_list
     cdef vector[vector[Formula_cpp]] all_results
     
     all_results = MassDecomposer.decompose_parallel(masses_vec, params)
-    python_results = [[_convert_formula_to_array(res) for res in mass_results] for mass_results in all_results]
-    return python_results
+    
+    # Calculate dimensions for the 2D array
+    cdef size_t num_masses = all_results.size()
+    cdef size_t max_formulas_per_mass = 0
+    cdef size_t i, j, k
+    
+    # Find the maximum number of formulas for any mass
+    for i in range(num_masses):
+        if all_results[i].size() > max_formulas_per_mass:
+            max_formulas_per_mass = all_results[i].size()
+    
+    if max_formulas_per_mass == 0:
+        return np.empty((num_masses, 0, NUM_ELEMENTS), dtype=np.int32)
+    
+    # Create a 3D numpy array: [mass_index, formula_index, element_index]
+    # Fill with -1 to indicate empty slots
+    cdef np.ndarray result_array = np.full((num_masses, max_formulas_per_mass, NUM_ELEMENTS), 
+                                          -1, dtype=np.int32)
+    
+    # Use memoryview for fast access
+    cdef int[:, :, :] result_view = result_array
+    
+    # Fill the array using memoryview
+    cdef size_t num_formulas
+    for i in range(num_masses):
+        num_formulas = all_results[i].size()
+        for j in range(num_formulas):
+            for k in range(NUM_ELEMENTS):
+                result_view[i, j, k] = all_results[i][j][k]
+    
+    return result_array
 
 def decompose_mass_parallel_per_bounds(
     target_masses: Iterable[float],
