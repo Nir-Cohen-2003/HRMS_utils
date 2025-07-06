@@ -301,11 +301,41 @@ def decompose_spectra_known_precursor(
     )
 
 
+def test_mass_decomposition(size:int):  
+    """
+    Test function for mass decomposition.
+    """
+    if size == -1:
+        nist = pl.read_parquet("/home/analytit_admin/Data/NIST_hr_msms/NIST_hr_msms.parquet")
+    else:
+        nist = pl.read_parquet("/home/analytit_admin/Data/NIST_hr_msms/NIST_hr_msms.parquet").sample(n=size)
+    print(f"number of spectra: {nist.height}")
+    print(f"number of spectra after filtering: {nist.height}")
+    start = perf_counter()
+    nist = nist.with_columns(
+        pl.col("PrecursorMZ").map_batches(
+            lambda x: decompose_mass(
+                mass_series=x,
+                min_bounds=np.zeros(15, dtype=np.int32),
+                max_bounds=np.array([100, 0, 40, 20, 10, 5, 2, 1, 0, 0, 0, 0, 0, 0, 0], dtype=np.int32),
+                tolerance_ppm=5.0,
+                min_dbe=0.0,
+                max_dbe=40.0,
+            ),
+            return_dtype=pl.List(pl.Array(pl.Int32, 15))
+        ).alias("decomposed_formula"))
+    print(f"Decomposed formulas: {nist.height}")
+    end = perf_counter()
+    print(f"Time taken: {end - start:.2f} seconds")
 
-if __name__ == "__main__":
-    from time import perf_counter
-
-    nist = pl.read_parquet("/home/analytit_admin/Data/NIST_hr_msms/NIST_hr_msms.parquet")
+def test_spectra_decomposition(size:int):
+    """
+    Test function for spectra decomposition.
+    """
+    if size == -1:
+        nist = pl.read_parquet("/home/analytit_admin/Data/NIST_hr_msms/NIST_hr_msms.parquet")
+    else:
+        nist = pl.read_parquet("/home/analytit_admin/Data/NIST_hr_msms/NIST_hr_msms.parquet").sample(n=size)
     print(f"number of spectra: {nist.height}")
     nist = nist.filter(
         pl.col("raw_spectrum_mz").list.len().gt(0),
@@ -331,3 +361,86 @@ if __name__ == "__main__":
     print(f"Decomposed spectra: {nist_decomposed.height}")
     end = perf_counter()
     print(f"Time taken: {end - start:.2f} seconds")
+
+def compare_spectrum_decomposition_strategies(size=1000):
+    """
+    Compare different spectrum decomposition strategies.
+    results:
+    Strategy 1: Direct decomposition with decompose_spectra_known_precursor
+    Strategy 2: Explode mass list, then decompose each mass using decompose_mass with per-mass bounds.
+ 
+    for sampling of 100,000 spectra:
+    Strategy 1: 29.41 seconds
+    Strategy 2: 100.67 seconds
+    
+    Note that in the second strategy, we explode the mass list, then decompsoe, then group by NIST_ID and then join back to the original dataframe, which all introduces some overhead, but probavly not a lot, since most of the time is sepnt in the decomposition itself.
+    """
+    nist = pl.read_parquet("/home/analytit_admin/Data/NIST_hr_msms/NIST_hr_msms.parquet").sample(n=size)
+    nist = nist.filter(
+        pl.col("raw_spectrum_mz").list.len().gt(0),
+        pl.col("Formula_array").arr.len().eq(15),
+    )
+    nist = nist.cast({
+        "raw_spectrum_mz": pl.List(pl.Float64),
+        "Formula_array": pl.Array(pl.Int32, 15),
+    })
+    #strategy 1- direct decomposition with "decompose_spectra_known_precursor"
+    print("Strategy 1: Direct decomposition with decompose_spectra_known_precursor")
+    start_1 = perf_counter()
+    nist_decomposed = nist.with_columns(
+        pl.struct(["Formula_array", "raw_spectrum_mz"]).map_batches(
+            lambda row: decompose_spectra_known_precursor(
+                precursor_formula_series=row.struct.field("Formula_array"),
+                fragment_masses_series=row.struct.field("raw_spectrum_mz"),
+                min_bounds=np.zeros(15, dtype=np.int32),
+                max_bounds=np.full(shape=15, fill_value=100, dtype=np.int32),
+                tolerance_ppm=5.0,
+            ),
+            return_dtype=pl.List(pl.List(pl.Array(pl.Int32, 15)))
+        ).alias("decomposed_spectra")
+    )
+    end = perf_counter()
+    print(f"Decomposed spectra: {nist_decomposed.height}")
+    print(f"Time taken: {end - start_1:.2f} seconds")
+
+    #strategy 2- explode mass list, then decompose spectra
+    # do this by first selecting and then exploding and then joining the results, which does introduce some overhead
+    print("Strategy 2: Explode mass list, then decompose spectra")
+    start_2 = perf_counter()
+    nist_exploded = nist.select(['Formula_array', 'raw_spectrum_mz','NIST_ID']).explode('raw_spectrum_mz')
+    # create a column with min bounds
+    # this the 
+    nist_exploded = nist_exploded.with_columns(
+        min_bounds=pl.lit(np.zeros((nist_exploded.height,15), dtype=np.int32)))
+    nist_exploded = nist_exploded.with_columns(
+
+        pl.struct(["Formula_array", "min_bounds","raw_spectrum_mz"]).map_batches(
+            lambda row: decompose_mass(
+                mass_series=row.struct.field("raw_spectrum_mz"),
+                min_bounds=row.struct.field("min_bounds"),
+                max_bounds=row.struct.field("Formula_array"),
+                tolerance_ppm=5.0,
+            ),
+            return_dtype=pl.List(pl.Array(pl.Int32, 15))
+        )
+        .alias("decomposed_spectrum")
+    )
+    nist_decomposed_2= nist_exploded.group_by("NIST_ID").agg(
+        pl.col("decomposed_spectrum"),
+    )
+    nist_decomposed_2 = nist.join(
+        nist_decomposed_2,
+        on="NIST_ID",
+        how="left",
+    )
+    end = perf_counter()
+    print(f"Decomposed spectra: {nist_decomposed_2.height}")
+    print(f"Time taken: {end - start_2:.2f} seconds")
+    
+
+
+
+if __name__ == "__main__":
+    from time import perf_counter
+
+    test_mass_decomposition(size=100000)
