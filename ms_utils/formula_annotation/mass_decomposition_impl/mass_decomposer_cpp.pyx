@@ -220,10 +220,7 @@ def decompose_mass_parallel(
             for k in range(NUM_ELEMENTS):
                 result_view[i, j, k] = all_results[i][j][k]
     
-    return pl.Series(
-        values=result_array,
-        dtype=pl.List(pl.Array(pl.Int32, 15))
-    )
+    return result_array
 
 def decompose_mass_parallel_per_bounds(
     target_masses: Iterable[float],

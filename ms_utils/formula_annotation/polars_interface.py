@@ -458,7 +458,7 @@ if __name__ == "__main__":
     from contextlib import redirect_stdout
 
    
-    test_mass_decomposition(size=1000)
+    test_mass_decomposition(size=100000)
     # Save output of test_mass_decomposition
 
    
