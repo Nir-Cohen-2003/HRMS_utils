@@ -346,6 +346,10 @@ def test_mass_decomposition(size:int):
     print(f"Decomposed formulas: {nist.height}")
     end = perf_counter()
     print(f"Time taken: {end - start:.2f} seconds")
+    print(nist.select(
+        pl.col("NIST_ID"),
+        pl.col("PrecursorMZ"),
+        pl.col("decomposed_formula")))
 
 def test_spectra_decomposition(size:int):
     """

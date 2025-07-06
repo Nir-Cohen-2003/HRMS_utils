@@ -7,10 +7,12 @@ cimport cython
 from libcpp.vector cimport vector
 from libcpp.string cimport string
 from libcpp.utility cimport pair
+import pyarrow as pa
+import polars as pl
+# cimport pyarrow as pa
 # The libcpp.array import is no longer needed
 from typing import List, Dict, Tuple, Iterable
 import numpy as np
-import polars as pl
 cimport numpy as np
 
 # C++ declarations from the header file
@@ -179,48 +181,63 @@ def decompose_mass_parallel(
     max_dbe: float = 40.0,
     max_hetero_ratio: float = 100.0,
     max_results: int = 100000
-) -> np.ndarray:
+) -> pa.Column:
     # Convert iterable to list to allow checking for emptiness and getting length
     target_masses_list = list(target_masses)
     if not target_masses_list:
-        return np.empty((0, 0, NUM_ELEMENTS), dtype=np.int32)
-    
+        return pa.Column.from_array(pa.nulls(0, type=pa.list_(pa.fixed_size_list(pa.int32(), NUM_ELEMENTS))))
+
     cdef DecompositionParams params = _convert_params(tolerance_ppm, min_dbe, max_dbe,max_hetero_ratio, max_results,min_bounds, max_bounds)
     cdef vector[double] masses_vec = target_masses_list
     cdef vector[vector[Formula_cpp]] all_results
     
     all_results = MassDecomposer.decompose_parallel(masses_vec, params)
     
-    # Calculate dimensions for the 2D array
     cdef size_t num_masses = all_results.size()
-    cdef size_t max_formulas_per_mass = 0
+    cdef size_t total_formulas = 0
     cdef size_t i, j, k
     
-    # Find the maximum number of formulas for any mass
+    # First pass: calculate total number of formulas to pre-allocate memory
     for i in range(num_masses):
-        if all_results[i].size() > max_formulas_per_mass:
-            max_formulas_per_mass = all_results[i].size()
+        total_formulas += all_results[i].size()
+        
+    # Allocate flat numpy arrays for offsets and the flattened formula data
+    cdef np.ndarray offsets_array = np.empty(num_masses + 1, dtype=np.int32)
+    cdef np.ndarray flat_formulas_array = np.empty(total_formulas * NUM_ELEMENTS, dtype=np.int32)
     
-    if max_formulas_per_mass == 0:
-        return np.empty((num_masses, 0, NUM_ELEMENTS), dtype=np.int32)
+    # Get memoryviews for fast, direct memory access
+    cdef int[:] offsets_view = offsets_array
+    cdef int[:] flat_formulas_view = flat_formulas_array
     
-    # Create a 3D numpy array: [mass_index, formula_index, element_index]
-    # Fill with -1 to indicate empty slots
-    cdef np.ndarray result_array = np.full((num_masses, max_formulas_per_mass, NUM_ELEMENTS), 
-                                          -1, dtype=np.int32)
+    cdef size_t current_offset = 0
+    cdef size_t formula_idx = 0
+    cdef size_t num_formulas_for_mass
     
-    # Use memoryview for fast access
-    cdef int[:, :, :] result_view = result_array
-    
-    # Fill the array using memoryview
-    cdef size_t num_formulas
+    # Second pass: fill the flat arrays
     for i in range(num_masses):
-        num_formulas = all_results[i].size()
-        for j in range(num_formulas):
+        offsets_view[i] = current_offset
+        num_formulas_for_mass = all_results[i].size()
+        for j in range(num_formulas_for_mass):
             for k in range(NUM_ELEMENTS):
-                result_view[i, j, k] = all_results[i][j][k]
+                # Copy formula data into the flat buffer
+                flat_formulas_view[formula_idx * NUM_ELEMENTS + k] = all_results[i][j][k]
+            formula_idx += 1
+        current_offset += num_formulas_for_mass
+        
+    offsets_view[num_masses] = total_formulas
     
-    return result_array
+    # Create Arrow arrays from the numpy arrays (zero-copy).
+    # These are Python objects, so we don't use cdef.
+    value_array = pa.array(flat_formulas_array, type=pa.int32())
+    offset_array = pa.array(offsets_array, type=pa.int32())
+    
+    # Build the nested array structure
+    # 1. Innermost array: FixedSizeList for each formula
+    formula_list_array = pa.FixedSizeListArray.from_arrays(value_array, NUM_ELEMENTS)
+    # 2. Outermost array: ListArray for the list of formulas per mass
+    final_array = pa.ListArray.from_arrays(offset_array, formula_list_array)
+    
+    return pl.from_arrow(final_array)
 
 def decompose_mass_parallel_per_bounds(
     target_masses: Iterable[float],
