@@ -7,6 +7,8 @@ cimport cython
 from libcpp.vector cimport vector
 from libcpp.string cimport string
 from libcpp.utility cimport pair
+# import memcpy
+from libc.string cimport memcpy
 import pyarrow as pa
 import polars as pl
 # cimport pyarrow as pa
@@ -83,6 +85,9 @@ cdef extern from "mass_decomposer_common.hpp":
 
 # Typedef for numpy arrays
 ctypedef np.int32_t F_DTYPE_t
+
+def get_num_elements():
+    return NUM_ELEMENTS
 
 # Helper functions for converting Python objects to C++ and vice-versa
 
@@ -174,22 +179,25 @@ def decompose_mass(
         del decomposer
 
 def decompose_mass_parallel(
-    target_masses: Iterable[float],
-    min_bounds: np.ndarray,
-    max_bounds: np.ndarray,
+    target_masses: pl.Series, # 1D array of target masses
+    min_bounds: np.ndarray, # 1D array of min bounds (shape must match NUM_ELEMENTS)
+    max_bounds: np.ndarray, # 1D array of max bounds (shape must match NUM_ELEMENTS)
     tolerance_ppm: float = 5.0,
     min_dbe: float = 0.0,
     max_dbe: float = 40.0,
     max_hetero_ratio: float = 100.0,
     max_results: int = 100000
 ) -> pl.Series:
-    # Convert iterable to list to allow checking for emptiness and getting length
-    target_masses_list = list(target_masses)
-    if not target_masses_list:
-        return pa.Column.from_array(pa.nulls(0, type=pa.list_(pa.fixed_size_list(pa.int32(), NUM_ELEMENTS))))
+    target_masses = target_masses.to_numpy()
+
+    cdef np.ndarray[double, ndim=1, mode="c"] contig_masses = np.ascontiguousarray(target_masses, dtype=np.float64)
+    cdef double* masses_ptr = &contig_masses[0]
+    cdef size_t n_masses = contig_masses.shape[0]
+    
+    cdef vector[double] masses_vec
+    masses_vec.assign(masses_ptr, masses_ptr + n_masses)
 
     cdef DecompositionParams params = _convert_params(tolerance_ppm, min_dbe, max_dbe,max_hetero_ratio, max_results,min_bounds, max_bounds)
-    cdef vector[double] masses_vec = target_masses_list
     cdef vector[vector[Formula_cpp]] all_results
     
     all_results = MassDecomposer.decompose_parallel(masses_vec, params)
@@ -243,38 +251,99 @@ def decompose_mass_parallel(
         schema={"decomposed_formula":pl.List(pl.Array(pl.Int32, NUM_ELEMENTS))})
 
 def decompose_mass_parallel_per_bounds(
-    target_masses: Iterable[float],
-    per_mass_bounds: list, # List of (min_bounds_np, max_bounds_np) tuples
+    target_masses: pl.Series, # 1D array of target masses
+    min_bounds_per_mass: pl.Series, # series of 1D arrays of min bounds, each with shape (NUM_ELEMENTS,)
+    max_bounds_per_mass: pl.Series, #   series of 1D arrays of max bounds, each with shape (NUM_ELEMENTS,)
     tolerance_ppm: float = 5.0,
     min_dbe: float = 0.0,
     max_dbe: float = 40.0,
     max_hetero_ratio: float = 100.0,
     max_results: int = 100000
-) -> list:
-    # Convert iterable to list to allow checking for emptiness and getting length
-    target_masses_list = list(target_masses)
-    if not target_masses_list:
-        return []
-    if len(target_masses_list) != len(per_mass_bounds):
-        raise ValueError("Length of target_masses and per_mass_bounds must be equal.")
+) -> pl.Series:
 
-    # Create a dummy params object just to pass some values
+    # target_masses = target_masses.to_numpy()
+    # min_bounds_per_mass = min_bounds_per_mass.to_numpy()
+    # max_bounds_per_mass = max_bounds_per_mass.to_numpy()
+    
+    cdef np.ndarray[double, ndim=1, mode="c"] contig_masses = np.ascontiguousarray(target_masses.to_numpy(), dtype=np.float64)
+    cdef np.ndarray[np.int32_t, ndim=2, mode="c"] contig_min_bounds = np.ascontiguousarray(min_bounds_per_mass.to_numpy(), dtype=np.int32)
+    cdef np.ndarray[np.int32_t, ndim=2, mode="c"] contig_max_bounds = np.ascontiguousarray(max_bounds_per_mass.to_numpy(), dtype=np.int32)
+
+    cdef int n_masses = contig_masses.shape[0]
+    if n_masses == 0:
+        # Returning an empty series is more consistent than raising an error
+        # for an empty input, matching the behavior of other functions.
+        return pl.Series("decomposed_formula", [], dtype=pl.List(pl.Array(pl.Int32, NUM_ELEMENTS)))
+    if contig_min_bounds.shape[0] != n_masses or contig_max_bounds.shape[0] != n_masses:
+        raise ValueError("Number of rows in min_bounds_per_mass and max_bounds_per_mass must match the number of target masses.")
+    if contig_min_bounds.shape[1] != NUM_ELEMENTS or contig_max_bounds.shape[1] != NUM_ELEMENTS:
+        raise ValueError(f"Number of columns in bounds arrays must be {NUM_ELEMENTS}.")
+
+        # Create a dummy params object; min/max_bounds are ignored by the C++ function
     cdef np.ndarray dummy_bounds = np.zeros(NUM_ELEMENTS, dtype=np.int32)
     cdef DecompositionParams params = _convert_params(tolerance_ppm, min_dbe, max_dbe,
                                                      max_hetero_ratio, max_results,
                                                      dummy_bounds, dummy_bounds)
-    cdef vector[double] masses_vec = target_masses_list
+    
+    # Efficiently populate C++ vectors from numpy arrays
+    cdef vector[double] masses_vec
+    cdef double* masses_ptr = &contig_masses[0]
+    masses_vec.assign(masses_ptr, masses_ptr + n_masses)
+
     cdef vector[pair[Formula_cpp, Formula_cpp]] bounds_vec
-    bounds_vec.reserve(len(per_mass_bounds))
-    for min_b, max_b in per_mass_bounds:
-        _validate_bounds_array(min_b, "min_bounds in list")
-        _validate_bounds_array(max_b, "max_bounds in list")
-        bounds_vec.push_back(pair[Formula_cpp, Formula_cpp](_convert_numpy_to_formula(min_b), _convert_numpy_to_formula(max_b)))
+    bounds_vec.reserve(n_masses)
+
+    cdef np.int32_t* min_bounds_ptr = &contig_min_bounds[0, 0]
+    cdef np.int32_t* max_bounds_ptr = &contig_max_bounds[0, 0]
+    cdef size_t i
+    cdef Formula_cpp min_f, max_f
+    cdef size_t formula_size_bytes = NUM_ELEMENTS * sizeof(int)
+
+    for i in range(n_masses):
+        memcpy(<void*>&min_f[0], min_bounds_ptr + i * NUM_ELEMENTS, formula_size_bytes)
+        memcpy(<void*>&max_f[0], max_bounds_ptr + i * NUM_ELEMENTS, formula_size_bytes)
+        bounds_vec.push_back(pair[Formula_cpp, Formula_cpp](min_f, max_f))
 
     cdef vector[vector[Formula_cpp]] all_results
     all_results = MassDecomposer.decompose_masses_parallel_per_bounds(masses_vec, bounds_vec, params)
-    python_results = [[_convert_formula_to_array(res) for res in mass_results] for mass_results in all_results]
-    return python_results
+
+    cdef size_t num_masses = all_results.size()
+    cdef size_t total_formulas = 0
+    cdef size_t k
+
+    for i in range(num_masses):
+        total_formulas += all_results[i].size()
+
+    cdef np.ndarray offsets_array = np.empty(num_masses + 1, dtype=np.int32)
+    cdef np.ndarray flat_formulas_array = np.empty(total_formulas * NUM_ELEMENTS, dtype=np.int32)
+
+    cdef int[:] offsets_view = offsets_array
+    cdef int[:] flat_formulas_view = flat_formulas_array
+
+    cdef size_t current_offset = 0
+    cdef size_t formula_idx = 0
+    cdef size_t num_formulas_for_mass
+
+    for i in range(num_masses):
+        offsets_view[i] = current_offset
+        num_formulas_for_mass = all_results[i].size()
+        for j in range(num_formulas_for_mass):
+            for k in range(NUM_ELEMENTS):
+                flat_formulas_view[formula_idx * NUM_ELEMENTS + k] = all_results[i][j][k]
+            formula_idx += 1
+        current_offset += num_formulas_for_mass
+
+    offsets_view[num_masses] = total_formulas
+
+    value_array = pa.array(flat_formulas_array, type=pa.int32())
+    offset_array = pa.array(offsets_array, type=pa.int32())
+
+    formula_list_array = pa.FixedSizeListArray.from_arrays(value_array, NUM_ELEMENTS)
+    final_array = pa.ListArray.from_arrays(offset_array, formula_list_array)
+
+    return pl.from_arrow(
+        data=final_array,
+        schema={"decomposed_formula": pl.List(pl.Array(pl.Int32, NUM_ELEMENTS))})
 
 def decompose_spectrum(
     precursor_mass: float,

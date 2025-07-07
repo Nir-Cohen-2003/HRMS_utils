@@ -4,7 +4,9 @@ from mass_decomposition_impl.mass_decomposer_cpp import (
     decompose_spectra_parallel,
     decompose_spectra_parallel_per_bounds,
     decompose_spectra_known_precursor_parallel, 
+    get_num_elements,
 )
+NUM_ELEMENTS = get_num_elements()
 import polars as pl
 import numpy as np
 from typing import Iterable
@@ -78,7 +80,43 @@ def decompose_mass(
         max_results=max_results,
     )
     return results
-    
+
+def decompose_mass_per_bounds(
+    mass_series: pl.Series,
+    min_bounds: pl.Series,
+    max_bounds: pl.Series,
+    tolerance_ppm: float = 5.0,
+    min_dbe: float = 0.0,
+    max_dbe: float = 40.0,  
+    max_hetero_ratio: float = 100.0,
+    max_results: int = 100000,
+):
+
+    ## Validate input type and shapes
+    assert isinstance(mass_series, pl.Series), f"mass_series should be a Polars Series, but got {type(mass_series)}"
+    assert mass_series.dtype == pl.Float64, f"mass_series should be of type Float64, but got {mass_series.dtype}"
+    assert isinstance(min_bounds, pl.Series) and min_bounds.dtype == pl.Array(pl.Int32,shape=(NUM_ELEMENTS,)), f"min_bounds should be a Polars Series of int32 arrays, but got {type(min_bounds)} with dtype {min_bounds.dtype}"
+    assert isinstance(max_bounds, pl.Series) and max_bounds.dtype == pl.Array(pl.Int32,shape=(NUM_ELEMENTS,)), f"max_bounds should be a Polars Series of int32 arrays, but got {type(max_bounds)} with dtype {max_bounds.dtype}"
+    assert isinstance(tolerance_ppm, (float, int)), f"tolerance_ppm should be a float or int, but got {type(tolerance_ppm)}"
+    assert tolerance_ppm > 0, f"tolerance_ppm should be a positive value, but got {tolerance_ppm}"
+    assert isinstance(min_dbe   , (float, int)), f"min_dbe should be a float or int, but got {type(min_dbe)}"
+    assert isinstance(max_dbe   , (float, int)), f"max_dbe should be a float or int, but got {type(max_dbe)}"
+    assert isinstance(max_hetero_ratio, (float, int)), f"max_hetero_ratio should be a float or int, but got {type(max_hetero_ratio)}"
+    assert isinstance(max_results, int) and max_results > 0, f"max_results should be a positive integer, but got {max_results}" 
+
+
+    results = decompose_mass_parallel_per_bounds(
+        target_masses=mass_series,
+        min_bounds_per_mass=min_bounds,
+        max_bounds_per_mass=max_bounds,
+        tolerance_ppm=tolerance_ppm,
+        min_dbe=min_dbe,
+        max_dbe=max_dbe,
+        max_hetero_ratio=max_hetero_ratio,
+        max_results=max_results,
+    )
+    return results  
+                      
 def decompose_spectra(
     precursor_mass_series: pl.Series,
     fragment_masses_series: pl.Series,
@@ -297,23 +335,25 @@ def test_mass_decomposition(size:int):
     """
     Test function for mass decomposition.
     """
-    if size == -1:
-        nist = pl.read_parquet("/home/analytit_admin/Data/NIST_hr_msms/NIST_hr_msms.parquet")
-    else:
-        nist = pl.read_parquet("/home/analytit_admin/Data/NIST_hr_msms/NIST_hr_msms.parquet").sample(n=size)
-    print(f"number of spectra: {nist.height}")
-    print(f"number of spectra after filtering: {nist.height}")
-    start = perf_counter()
+    nist = pl.scan_parquet("/home/analytit_admin/Data/NIST_hr_msms/NIST_hr_msms.parquet").filter(
+        pl.col("PrecursorMZ").le(900),
+    )
+    if size != -1:
+        nist = nist.sort(by="NIST_ID").head(n=size)
+
     nist = nist.select(
         pl.col("NIST_ID"),
-        pl.col("PrecursorMZ"))
+        pl.col("PrecursorMZ")).collect()
+    print(f"number of spectra: {nist.height}")
+    print(f"number of spectra after filtering: {nist.height}")
     
+    start = perf_counter()
     nist = nist.with_columns(
         pl.col("PrecursorMZ").map_batches(
             function=lambda x: decompose_mass(
                 mass_series=x,
-                min_bounds=np.zeros(15, dtype=np.int32),
-                max_bounds=np.array([100, 0, 40, 20, 10, 5, 2, 1, 0, 0, 0, 0, 0, 0, 0], dtype=np.int32),
+                min_bounds=np.array(MIN_FORMULA, dtype=np.int32),
+                max_bounds=np.array(MAX_FORMULA, dtype=np.int32),
                 tolerance_ppm=5.0,
                 min_dbe=0.0,
                 max_dbe=40.0,
@@ -321,12 +361,60 @@ def test_mass_decomposition(size:int):
             return_dtype=pl.List(pl.Array(pl.Int32, 15)),
             is_elementwise=True
         ).alias("decomposed_formula"))
-    print(f"Decomposed formulas: {nist.height}")
     end = perf_counter()
-    print(f"Time taken: {end - start:.2f} seconds")
-    
+    print(f"Decomposed formulas: {nist.height}")
     print(nist.head(5))
     print(nist.item(0, 2))
+    print(f"Time taken: {end - start:.2f} seconds")
+
+def test_mass_decomposition_per_bounds(size:int):
+    """
+    Test function for mass decomposition with per-mass bounds.
+    """
+    nist = pl.scan_parquet("/home/analytit_admin/Data/NIST_hr_msms/NIST_hr_msms.parquet").filter(
+        pl.col("PrecursorMZ").le(900),
+    )
+    if size != -1:
+        nist = nist.sort(by="NIST_ID").head(n=size)
+
+    nist = nist.select(
+        pl.col("NIST_ID"),
+        pl.col("PrecursorMZ"),
+    ).collect()
+    print(f"number of spectra: {nist.height}")
+    nist = nist.cast({
+        "PrecursorMZ": pl.Float64,
+    })
+    print(f"number of spectra after filtering: {nist.height}")
+    min_formula = np.array(MIN_FORMULA, dtype=np.int32)
+    max_formula = np.array(MAX_FORMULA, dtype=np.int32)
+    nist = nist.with_columns(
+        max_bounds=pl.lit(
+            np.tile(max_formula, (nist.height, 1)),
+            dtype=pl.Array(pl.Int32, 15)
+        ),
+        min_bounds=pl.lit(
+            np.tile(min_formula, (nist.height, 1)),
+            dtype=pl.Array(pl.Int32, 15)
+        )
+    )
+    start = perf_counter()
+    nist = nist.with_columns(
+        pl.struct(["PrecursorMZ", "min_bounds", "max_bounds"]).map_batches(
+            lambda row: decompose_mass_per_bounds(
+                mass_series=row.struct.field("PrecursorMZ"),
+                min_bounds=row.struct.field("min_bounds"),
+                max_bounds=row.struct.field("max_bounds"),
+                tolerance_ppm=5.0,
+            ),
+            return_dtype=pl.List(pl.Array(pl.Int32, 15)),
+            is_elementwise=True
+        ).alias("decomposed_spectra")).drop(["min_bounds", "max_bounds"])
+    end = perf_counter()
+    print(f"Decomposed spectra: {nist.height}")
+    print(nist.head(5))
+    print(nist.item(0, 2))
+    print(f"Time taken: {end - start:.2f} seconds")
 
 def test_spectra_decomposition(size:int):
     """
@@ -442,5 +530,8 @@ def compare_spectrum_decomposition_strategies(size=1000):
 
 if __name__ == "__main__":
     from time import perf_counter
-
-    test_mass_decomposition(size=100_000)
+    ############### H,  B, C,  N,  O,  F, Na,Si, P, S, Cl, K, As,Br, I
+    MIN_FORMULA = [ 0,  0, 0,  0,  0,  0, 0, 0,  0, 0, 0,  0, 0, 0,  0]
+    MAX_FORMULA = [100, 0, 40, 20, 20, 30, 1, 0, 2, 2, 10, 0, 0, 2,  1]
+    test_mass_decomposition(size=1_000)
+    test_mass_decomposition_per_bounds(size=1_000)
