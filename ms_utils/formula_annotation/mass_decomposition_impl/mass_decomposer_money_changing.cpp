@@ -159,7 +159,7 @@ std::vector<Formula> MassDecomposer::integer_decompose(long long mass) const {
                 c[i]++;
             }
         } else {
-            while (i > 0 && decomposable(i - 1, m, a)) {
+            while (i > 0 && decomposable_fast(i-1, m)) {
                 i--;
             }
             
