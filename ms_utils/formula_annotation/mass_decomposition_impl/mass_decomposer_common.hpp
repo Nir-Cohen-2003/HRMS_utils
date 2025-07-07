@@ -112,6 +112,7 @@ private:
     void compute_errors();
     std::pair<long long, long long> integer_bound(double mass_from, double mass_to) const;
     bool decomposable(int i, long long m, long long a1) const;
+    bool decomposable_fast(int i, long long m) const; // Fast check for decomposability
     std::vector<Formula> integer_decompose(long long mass) const;
     
     bool check_chemical_constraints(const Formula& formula, 

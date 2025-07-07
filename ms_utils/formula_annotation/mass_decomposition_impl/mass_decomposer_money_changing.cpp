@@ -129,6 +129,11 @@ bool MassDecomposer::decomposable(int i, long long m, long long a1) const {
     return ert_[m % a1][i] <= m;
 }
 
+inline bool MassDecomposer::decomposable_fast(int i, long long m) const {
+    if (m < 0) return false;
+    return ert_[m % weights_[0].integer_mass][i] <= m;
+}
+
 std::vector<Formula> MassDecomposer::integer_decompose(long long mass) const {
     std::vector<Formula> results;
     int k = static_cast<int>(weights_.size()) - 1;
@@ -142,8 +147,8 @@ std::vector<Formula> MassDecomposer::integer_decompose(long long mass) const {
     long long m = mass;
     
     while (i <= k) {
-        if (!decomposable(i, m, a)) {
-            while (i <= k && !decomposable(i, m, a)) {
+        if (!decomposable_fast(i, m)) {  
+            while (i <= k && !decomposable_fast(i, m)) {
                 m += c[i] * weights_[i].integer_mass;
                 c[i] = 0;
                 i++;

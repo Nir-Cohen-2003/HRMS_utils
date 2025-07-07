@@ -10,6 +10,8 @@ NUM_ELEMENTS = get_num_elements()
 import polars as pl
 import numpy as np
 from typing import Iterable
+from pathlib import Path
+from typing import List, Dict,Any
 
 def decompose_mass(
     mass_series:pl.Series,
@@ -340,9 +342,14 @@ def mass_decomposition_test(size:int):
     all masses come from nist, and we filter them to be under 900 Da, since the complexity shoots up above that (and perhaps even before that, but we will see).
 
     """
-    nist = pl.scan_parquet("/home/analytit_admin/Data/NIST_hr_msms/NIST_hr_msms.parquet").filter(
+    # check if the nist data is available, and if not, use mock data
+    if Path("/home/analytit_admin/Data/NIST_hr_msms/NIST_hr_msms.parquet").exists():
+        nist = pl.scan_parquet("/home/analytit_admin/Data/NIST_hr_msms/NIST_hr_msms.parquet").filter(
         pl.col("PrecursorMZ").le(900),
-    )
+        )
+    else:
+        print(f"NIST not found, using mock data instead, with length {size}.")
+        nist = create_mock_nist(size=size)
     if size != -1:
         nist = nist.sort(by="NIST_ID").head(n=size)
     nist = nist.select(
@@ -485,9 +492,56 @@ def _max_bound(formula_arr:np.ndarray):
     result_arr[:, 14] = MAX_FORMULA[14]  # I
     return result_arr
 
+def create_mock_nist(size:int = 1000) -> pl.DataFrame:
+    """
+    Create a mock NIST DataFrame with random precursor masses and formulas.
+    The DataFrame will have size rows and the following columns:
+    - NIST_ID: unique identifier
+    - PrecursorMZ: random precursor mass between 100 and 900 Da
+    - Formula_array: random formula array with 15 elements, where each element is an int32
+    """
+    np.random.seed(42)  # For reproducibility
+    nist_ids: np.ndarray[tuple[int], np.dtype[np.signedinteger[Any]]] = np.arange(1, size + 1)
+    # generate the formula, and then calculate the precursor mass from it
+    # we will use a random formula, where each element is an int32, and the
+    # element_data: index matches formula_arrays columns
+    element_masses = np.array([
+        1.007825,    # H
+        11.009305,   # B
+        12.0000,     # C
+        14.003074,   # N
+        15.994915,   # O
+        18.998403,   # F
+        22.989770,   # Na
+        27.9769265,  # Si
+        30.973762,   # P
+        31.972071,   # S
+        34.96885271, # Cl
+        38.963707,   # K
+        74.921596,   # As
+        78.918338,   # Br
+        126.904468,  # I
+    ], dtype=np.float64)
 
+    # Use a predefined formula_array (user should fill in the values)
+    formula_array = np.array([
+        # Fill in your predefined formula here, e.g.:
+        30, 0, 18, 3, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    ], dtype=np.int32)
+    print(f"Using formula_array: {formula_array.tolist()}")
+    precursor_mass = float(np.sum(formula_array * element_masses))
+    print(f"resulting precursor mass: {precursor_mass:.4f} Da")
+    formula_arrays = np.tile(formula_array, (size, 1))
+    precursor_masses = np.full(size, precursor_mass, dtype=np.float64)
+    # now we create the DataFrame    
 
-def test_spectra_decomposition(size:int):
+    return pl.DataFrame({
+        "NIST_ID": nist_ids,
+        "PrecursorMZ": precursor_masses,
+        "Formula_array": [arr.tolist() for arr in formula_arrays]
+    }).lazy()
+
+def test_spectra_decomposition(size:int) -> None:
     """
     Test function for spectra decomposition.
     """
@@ -601,7 +655,7 @@ def compare_spectrum_decomposition_strategies(size=1000):
 
 if __name__ == "__main__":
     from time import perf_counter
-    ############### H,  B, C,  N,  O,  F, Na,Si, P, S, Cl, K, As,Br, I
-    MIN_FORMULA = [ 0,  0, 0,  0,  0,  0, 0, 0,  0, 0, 0,  0, 0, 0,  0]
-    MAX_FORMULA = [100, 0, 40, 20, 20, 30, 1, 0, 2, 2, 10, 0, 0, 2,  1]
-    mass_decomposition_test(size=10000)
+    ########################## H,  B, C,  N,  O,  F, Na,Si, P, S, Cl, K, As,Br, I
+    MIN_FORMULA: list[int] = [ 0,  0, 0,  0,  0,  0, 0, 0,  0, 0, 0,  0, 0, 0,  0]
+    MAX_FORMULA: list[int] = [100, 0, 40, 20, 20, 30, 0, 0, 2, 2, 10, 0, 0, 2,  1]
+    mass_decomposition_test(size=100000)
