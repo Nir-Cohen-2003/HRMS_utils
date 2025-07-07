@@ -330,25 +330,33 @@ def decompose_spectra_known_precursor(
     return pl.Series(results, dtype= pl.List(pl.List(pl.Array(pl.Int32, len(min_bounds))))
     )
 
-
-def test_mass_decomposition(size:int):  
+def mass_decomposition_test(size:int):
     """
-    Test function for mass decomposition.
+    this function tests the mass decomposition functions, acros 3 scenarios:
+    1. unifrom bounds, where the same bounds are used for all masses
+    2. per-mass bounds, where each mass has its own bounds, but they happen to be all the same, and the same as in 1
+    3. per-mass bounds, where each mass has its own bounds, and they are determined by the "isotopic pattern" of the mass, so we take the real formula of the mass, and then we assume that the number of carbons is +-1 or +-2, the number of Cl and Br is exacly the same, and add or remove S (so if S is not present, the upper bound is 0, if it is present, the lower bound is 1 and the upper is the one in the general constraints).
+    
+    all masses come from nist, and we filter them to be under 900 Da, since the complexity shoots up above that (and perhaps even before that, but we will see).
+
     """
     nist = pl.scan_parquet("/home/analytit_admin/Data/NIST_hr_msms/NIST_hr_msms.parquet").filter(
         pl.col("PrecursorMZ").le(900),
     )
     if size != -1:
         nist = nist.sort(by="NIST_ID").head(n=size)
-
     nist = nist.select(
         pl.col("NIST_ID"),
-        pl.col("PrecursorMZ")).collect()
-    print(f"number of spectra: {nist.height}")
-    print(f"number of spectra after filtering: {nist.height}")
-    
+        pl.col("PrecursorMZ"),
+        pl.col("Formula_array"),
+    ).collect()
+    nist = nist.cast({
+        "PrecursorMZ": pl.Float64,
+        "Formula_array": pl.Array(pl.Int32, 15),
+    })
+    # scenario 1: uniform bounds
     start = perf_counter()
-    nist = nist.with_columns(
+    nist_uniform_bounds = nist.with_columns(
         pl.col("PrecursorMZ").map_batches(
             function=lambda x: decompose_mass(
                 mass_series=x,
@@ -362,30 +370,10 @@ def test_mass_decomposition(size:int):
             is_elementwise=True
         ).alias("decomposed_formula"))
     end = perf_counter()
-    print(f"Decomposed formulas: {nist.height}")
-    print(nist.head(5))
-    print(nist.item(0, 2))
-    print(f"Time taken: {end - start:.2f} seconds")
+    unifrom_bounds_time = end - start
+    print(f"Uniform bounds decomposition time: {unifrom_bounds_time:.2f} seconds")
 
-def test_mass_decomposition_per_bounds(size:int):
-    """
-    Test function for mass decomposition with per-mass bounds.
-    """
-    nist = pl.scan_parquet("/home/analytit_admin/Data/NIST_hr_msms/NIST_hr_msms.parquet").filter(
-        pl.col("PrecursorMZ").le(900),
-    )
-    if size != -1:
-        nist = nist.sort(by="NIST_ID").head(n=size)
-
-    nist = nist.select(
-        pl.col("NIST_ID"),
-        pl.col("PrecursorMZ"),
-    ).collect()
-    print(f"number of spectra: {nist.height}")
-    nist = nist.cast({
-        "PrecursorMZ": pl.Float64,
-    })
-    print(f"number of spectra after filtering: {nist.height}")
+    # scenario 2: per-mass bounds, where each mass has its own bounds, but they happen to be all the same as in scenario 1
     min_formula = np.array(MIN_FORMULA, dtype=np.int32)
     max_formula = np.array(MAX_FORMULA, dtype=np.int32)
     nist = nist.with_columns(
@@ -399,7 +387,7 @@ def test_mass_decomposition_per_bounds(size:int):
         )
     )
     start = perf_counter()
-    nist = nist.with_columns(
+    nist_non_uniform_bounds = nist.with_columns(
         pl.struct(["PrecursorMZ", "min_bounds", "max_bounds"]).map_batches(
             lambda row: decompose_mass_per_bounds(
                 mass_series=row.struct.field("PrecursorMZ"),
@@ -411,10 +399,93 @@ def test_mass_decomposition_per_bounds(size:int):
             is_elementwise=True
         ).alias("decomposed_spectra")).drop(["min_bounds", "max_bounds"])
     end = perf_counter()
-    print(f"Decomposed spectra: {nist.height}")
-    print(nist.head(5))
-    print(nist.item(0, 2))
-    print(f"Time taken: {end - start:.2f} seconds")
+    per_mass_bounds_time = end - start
+    print(f"Per-mass bounds decomposition time: {per_mass_bounds_time:.2f} seconds")
+
+    # scenario 3: per-mass bounds, where each mass has its own bounds, and they are determined by the "isotopic pattern" of the mass
+    # we will use the formula array to determine the bounds, and then we will use the formula to determine the bounds for each mass
+    # we will assume that the number of carbons is +-1 or +-2, the number of Cl and Br is exactly the same, and add or remove S (so if S is not present, the upper bound is 0, if it is present, the lower bound is 1 and the upper is the one in the general constraints).
+    nist_isotopic_bounds = create_isotopic_bounds(nist, formula_col="Formula_array")
+    start = perf_counter()
+    nist_isotopic_bounds = nist_isotopic_bounds.with_columns(
+        pl.struct(["PrecursorMZ", "min_bounds", "max_bounds"]).map_batches(
+            lambda row: decompose_mass_per_bounds(
+                mass_series=row.struct.field("PrecursorMZ"),
+                min_bounds=row.struct.field("min_bounds"),
+                max_bounds=row.struct.field("max_bounds"),
+                tolerance_ppm=5.0,
+            ),
+            return_dtype=pl.List(pl.Array(pl.Int32, 15)),
+            is_elementwise=True
+        ).alias("decomposed_spectra")).drop(["min_bounds", "max_bounds"])
+    end = perf_counter()
+    isotopic_bounds_time = end - start
+    print(f"Isotopic bounds decomposition time: {isotopic_bounds_time:.2f} seconds")
+    
+
+def create_isotopic_bounds(df:pl.DataFrame, formula_col: str = "Formula_array"):
+    """
+    Create isotopic bounds for a given DataFrame with a formula column.
+    Returns the DataFrame with two new columns: min_bounds and max_bounds.
+    """
+    df = df.with_columns(
+        min_bounds=pl.col(formula_col).map_batches(
+            lambda x: _min_bound(x.to_numpy()),
+            return_dtype=pl.Array(pl.Int32, 15),
+            is_elementwise=True
+        ),
+        max_bounds=pl.col(formula_col).map_batches(
+            lambda x: _max_bound(x.to_numpy()),
+            return_dtype=pl.Array(pl.Int32, 15),
+            is_elementwise=True
+        )
+    )
+    return df
+
+
+def _min_bound(formula_arr:np.ndarray):
+    # we take a 2d array, where each row is a formula, and we return a 2d array with the same shape, but with the min bounds for each formula
+    result_arr = np.zeros((formula_arr.shape[0], 15), dtype=np.int32)
+    result_arr[:, 0] = MIN_FORMULA[0]  # H
+    result_arr[:, 1] = MIN_FORMULA[1]  # B
+    result_arr[:, 2] = np.maximum(MIN_FORMULA[2], formula_arr[:, 2] - 2)  # C: C-2, clipped to [0, MAX]
+    result_arr[:, 3] = MIN_FORMULA[3]  # N
+    result_arr[:, 4] = MIN_FORMULA[4]  # O
+    result_arr[:, 5] = MIN_FORMULA[5]  # F
+    result_arr[:, 6] = MIN_FORMULA[6]  # Na
+    result_arr[:, 7] = MIN_FORMULA[7]  # Si
+    result_arr[:, 8] = MIN_FORMULA[8]  # P
+    # S: 0 if S==0 else MIN, evaluated elementwise
+    result_arr[:, 9] = np.where(formula_arr[:, 9] > 0, MIN_FORMULA[9], 0)
+    result_arr[:, 10] = formula_arr[:, 10]  # Cl: exact
+    result_arr[:, 11] = MIN_FORMULA[11]  # K
+    result_arr[:, 12] = MIN_FORMULA[12]  # As
+    result_arr[:, 13] = formula_arr[:, 13]  # Br: exact
+    result_arr[:, 14] = MIN_FORMULA[14]  # I
+    return result_arr
+
+
+def _max_bound(formula_arr:np.ndarray):
+    # we take a 2d array, where each row is a formula, and we return a 2d array with the same shape, but with the max bounds for each formula
+    result_arr = np.zeros((formula_arr.shape[0], 15), dtype=np.int32)
+    result_arr[:, 0] = MAX_FORMULA[0]  # H
+    result_arr[:, 1] = MAX_FORMULA[1]  # B
+    result_arr[:, 2] = np.minimum(MAX_FORMULA[2], formula_arr[:, 2] + 2)  # C: C+2, clipped to [0, MAX]
+    result_arr[:, 3] = MAX_FORMULA[3]  # N
+    result_arr[:, 4] = MAX_FORMULA[4]  # O
+    result_arr[:, 5] = MAX_FORMULA[5]  # F
+    result_arr[:, 6] = MAX_FORMULA[6]  # Na
+    result_arr[:, 7] = MAX_FORMULA[7]  # Si
+    result_arr[:, 8] = MAX_FORMULA[8]  # P
+    result_arr[:, 9] = np.where(formula_arr[:, 9] > 0, MAX_FORMULA[9], 0)  # S: 0 if S==0 else MAX, evaluated elementwise
+    result_arr[:, 10] = formula_arr[:, 10]  # Cl: exact
+    result_arr[:, 11] = MAX_FORMULA[11]  # K
+    result_arr[:, 12] = MAX_FORMULA[12]  # As
+    result_arr[:, 13] = formula_arr[:, 13]  # Br: exact
+    result_arr[:, 14] = MAX_FORMULA[14]  # I
+    return result_arr
+
+
 
 def test_spectra_decomposition(size:int):
     """
@@ -533,5 +604,4 @@ if __name__ == "__main__":
     ############### H,  B, C,  N,  O,  F, Na,Si, P, S, Cl, K, As,Br, I
     MIN_FORMULA = [ 0,  0, 0,  0,  0,  0, 0, 0,  0, 0, 0,  0, 0, 0,  0]
     MAX_FORMULA = [100, 0, 40, 20, 20, 30, 1, 0, 2, 2, 10, 0, 0, 2,  1]
-    test_mass_decomposition(size=1_000)
-    test_mass_decomposition_per_bounds(size=1_000)
+    mass_decomposition_test(size=10000)

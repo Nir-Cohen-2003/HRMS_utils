@@ -42,10 +42,10 @@ bool MassDecomposer::check_hetero_ratio(const Formula& formula, double max_ratio
 bool MassDecomposer::check_chemical_constraints(const Formula& formula, 
                                               const DecompositionParams& params) const {
     // Get element counts
-    int c_count = formula[FormulaAnnotation::C];
+    // int c_count = formula[FormulaAnnotation::C];
     
-    // Skip if no carbon
-    if (c_count == 0) return false;
+    // // Skip if no carbon
+    // if (c_count == 0) return false;
     
     // Check DBE constraint
     if (!check_dbe(formula, params.min_dbe, params.max_dbe)) {
