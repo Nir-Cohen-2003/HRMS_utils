@@ -331,9 +331,13 @@ def test_mass_decomposition(size:int):
     print(f"number of spectra: {nist.height}")
     print(f"number of spectra after filtering: {nist.height}")
     start = perf_counter()
+    nist = nist.select(
+        pl.col("NIST_ID"),
+        pl.col("PrecursorMZ"))
+    
     nist = nist.with_columns(
         pl.col("PrecursorMZ").map_batches(
-            lambda x: decompose_mass(
+            function=lambda x: decompose_mass(
                 mass_series=x,
                 min_bounds=np.zeros(15, dtype=np.int32),
                 max_bounds=np.array([100, 0, 40, 20, 10, 5, 2, 1, 0, 0, 0, 0, 0, 0, 0], dtype=np.int32),
@@ -341,15 +345,15 @@ def test_mass_decomposition(size:int):
                 min_dbe=0.0,
                 max_dbe=40.0,
             ),
-            return_dtype=pl.List(pl.Array(pl.Int32, 15))
+            return_dtype=pl.List(pl.Array(pl.Int32, 15)),
+            is_elementwise=True
         ).alias("decomposed_formula"))
     print(f"Decomposed formulas: {nist.height}")
     end = perf_counter()
     print(f"Time taken: {end - start:.2f} seconds")
-    print(nist.select(
-        pl.col("NIST_ID"),
-        pl.col("PrecursorMZ"),
-        pl.col("decomposed_formula")))
+    
+    print(nist.head(5))
+    print(nist.item(0, 2))
 
 def test_spectra_decomposition(size:int):
     """
@@ -466,4 +470,4 @@ def compare_spectrum_decomposition_strategies(size=1000):
 if __name__ == "__main__":
     from time import perf_counter
 
-    test_mass_decomposition(size=100000)
+    test_mass_decomposition(size=100_000)

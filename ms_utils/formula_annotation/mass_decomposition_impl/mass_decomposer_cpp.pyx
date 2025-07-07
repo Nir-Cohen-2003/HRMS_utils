@@ -172,6 +172,7 @@ def decompose_mass(
         return python_results
     finally:
         del decomposer
+
 def decompose_mass_parallel(
     target_masses: Iterable[float],
     min_bounds: np.ndarray,
@@ -181,7 +182,7 @@ def decompose_mass_parallel(
     max_dbe: float = 40.0,
     max_hetero_ratio: float = 100.0,
     max_results: int = 100000
-) -> pa.Column:
+) -> pl.Series:
     # Convert iterable to list to allow checking for emptiness and getting length
     target_masses_list = list(target_masses)
     if not target_masses_list:
@@ -237,7 +238,9 @@ def decompose_mass_parallel(
     # 2. Outermost array: ListArray for the list of formulas per mass
     final_array = pa.ListArray.from_arrays(offset_array, formula_list_array)
     
-    return pl.from_arrow(final_array)
+    return pl.from_arrow(
+        data=final_array,
+        schema={"decomposed_formula":pl.List(pl.Array(pl.Int32, NUM_ELEMENTS))})
 
 def decompose_mass_parallel_per_bounds(
     target_masses: Iterable[float],
