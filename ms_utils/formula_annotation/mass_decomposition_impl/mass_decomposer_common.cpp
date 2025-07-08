@@ -7,15 +7,13 @@ MassDecomposer::MassDecomposer(const Formula& min_bounds, const Formula& max_bou
     // No longer need to initialize atomic masses or element indices here
 }
 
-bool MassDecomposer::check_dbe(const Formula& formula, double min_dbe, double max_dbe) const {
+inline bool MassDecomposer::check_dbe(const Formula& formula, double min_dbe, double max_dbe) const {
     int c_count = formula[FormulaAnnotation::C]+ formula[FormulaAnnotation::Si];
     int h_count = formula[FormulaAnnotation::H];
     int n_count = formula[FormulaAnnotation::N]+ formula[FormulaAnnotation::B]+ formula[FormulaAnnotation::As];
     int p_count = formula[FormulaAnnotation::P];
     int x_count = formula[FormulaAnnotation::F] + formula[FormulaAnnotation::Cl] + 
                   formula[FormulaAnnotation::Br] + formula[FormulaAnnotation::I];
-
-    // if (c_count == 0) return false;
 
     double dbe = (2.0 + 2.0*c_count + 3.0*p_count + n_count - h_count - x_count) / 2.0;
     
@@ -25,42 +23,7 @@ bool MassDecomposer::check_dbe(const Formula& formula, double min_dbe, double ma
     return true;
 }
 
-bool MassDecomposer::check_hetero_ratio(const Formula& formula, double max_ratio) const {
-    int c_count = formula[FormulaAnnotation::C];
-    if (c_count == 0) return false;
-    
-    int hetero_count = 0;
-    for (int i = 0; i < FormulaAnnotation::NUM_ELEMENTS; ++i) {
-        if (i != FormulaAnnotation::C && i != FormulaAnnotation::H) {
-            hetero_count += formula[i];
-        }
-    }
-    
-    return static_cast<double>(hetero_count) / static_cast<double>(c_count) <= max_ratio;
-}
 
-bool MassDecomposer::check_chemical_constraints(const Formula& formula, 
-                                              const DecompositionParams& params) const {
-    // Get element counts
-    // int c_count = formula[FormulaAnnotation::C];
-    
-    // // Skip if no carbon
-    // if (c_count == 0) return false;
-    
-    // Check DBE constraint
-    if (!check_dbe(formula, params.min_dbe, params.max_dbe)) {
-        return false;
-    }
-
-    // // Check heteroatom ratio constraint
-    // if (params.max_hetero_ratio < 100.0) {
-    //     if (!check_hetero_ratio(formula, params.max_hetero_ratio)) {
-    //         return false;
-    //     }
-    // }
-    
-    return true;
-}
 
 std::vector<Formula> MassDecomposer::decompose(double target_mass, const DecompositionParams& params) {
     if (!is_initialized_) {
@@ -92,7 +55,7 @@ std::vector<Formula> MassDecomposer::decompose(double target_mass, const Decompo
                 continue;
             }
             // Use unified constraint checking
-            if (!check_chemical_constraints(result, params)) {
+            if (!check_dbe(result, params.min_dbe, params.max_dbe)) {
                 continue;
             }
             results.push_back(result);

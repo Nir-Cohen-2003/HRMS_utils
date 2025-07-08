@@ -62,7 +62,7 @@ cdef extern from "mass_decomposer_common.hpp":
         double tolerance_ppm
         double min_dbe
         double max_dbe
-        double max_hetero_ratio
+        # double max_hetero_ratio
         int max_results
         Formula_cpp min_bounds
         Formula_cpp max_bounds
@@ -128,7 +128,8 @@ cdef void _validate_bounds_array(np.ndarray arr, str name):
 
 cdef DecompositionParams _convert_params(
     double tolerance_ppm, double min_dbe, double max_dbe,
-    double max_hetero_ratio, int max_results,
+    # double max_hetero_ratio,
+    int max_results,
     np.ndarray min_bounds, np.ndarray max_bounds):
     """Convert Python parameters to C++ DecompositionParams."""
     _validate_bounds_array(min_bounds, "min_bounds")
@@ -138,7 +139,7 @@ cdef DecompositionParams _convert_params(
     params.tolerance_ppm = tolerance_ppm
     params.min_dbe = min_dbe
     params.max_dbe = max_dbe
-    params.max_hetero_ratio = max_hetero_ratio
+    # params.max_hetero_ratio = max_hetero_ratio
     params.max_results = max_results
     params.min_bounds = _convert_numpy_to_formula(min_bounds)
     params.max_bounds = _convert_numpy_to_formula(max_bounds)
@@ -166,7 +167,8 @@ def decompose_mass(
     max_results: int = 100000
 ) -> list[np.ndarray]:
     cdef DecompositionParams params = _convert_params(tolerance_ppm, min_dbe, max_dbe,
-                                                     max_hetero_ratio, max_results,
+                                                    #  max_hetero_ratio,
+                                                     max_results,
                                                      min_bounds, max_bounds)
     cdef MassDecomposer* decomposer = new MassDecomposer(params.min_bounds, params.max_bounds)
     cdef vector[Formula_cpp] results
@@ -197,7 +199,7 @@ def decompose_mass_parallel(
     cdef vector[double] masses_vec
     masses_vec.assign(masses_ptr, masses_ptr + n_masses)
 
-    cdef DecompositionParams params = _convert_params(tolerance_ppm, min_dbe, max_dbe,max_hetero_ratio, max_results,min_bounds, max_bounds)
+    cdef DecompositionParams params = _convert_params(tolerance_ppm, min_dbe, max_dbe, max_results,min_bounds, max_bounds)
     cdef vector[vector[Formula_cpp]] all_results
     
     all_results = MassDecomposer.decompose_parallel(masses_vec, params)
@@ -282,7 +284,7 @@ def decompose_mass_parallel_per_bounds(
         # Create a dummy params object; min/max_bounds are ignored by the C++ function
     cdef np.ndarray dummy_bounds = np.zeros(NUM_ELEMENTS, dtype=np.int32)
     cdef DecompositionParams params = _convert_params(tolerance_ppm, min_dbe, max_dbe,
-                                                     max_hetero_ratio, max_results,
+                                                     max_results,
                                                      dummy_bounds, dummy_bounds)
     
     # Efficiently populate C++ vectors from numpy arrays
@@ -359,7 +361,7 @@ def decompose_spectrum(
     if not fragment_masses:
         return []
     cdef DecompositionParams params = _convert_params(tolerance_ppm, min_dbe, max_dbe,
-                                                     max_hetero_ratio, max_results,
+                                                     max_results,
                                                      min_bounds, max_bounds)
     cdef vector[double] frag_masses_vec = fragment_masses
     cdef MassDecomposer* decomposer = new MassDecomposer(params.min_bounds, params.max_bounds)
@@ -397,7 +399,7 @@ def decompose_spectra_parallel(
     if not spectra_data_list:
         return []
     cdef DecompositionParams params = _convert_params(tolerance_ppm, min_dbe, max_dbe,
-                                                     max_hetero_ratio, max_results,
+                                                     max_results,
                                                      min_bounds, max_bounds)
     cdef vector[Spectrum] spectra_vec
     spectra_vec.reserve(len(spectra_data_list))
@@ -440,7 +442,7 @@ def decompose_spectra_parallel_per_bounds(
     
     cdef np.ndarray dummy_bounds = np.zeros(NUM_ELEMENTS, dtype=np.int32)
     cdef DecompositionParams params = _convert_params(tolerance_ppm, min_dbe, max_dbe,
-                                                     max_hetero_ratio, max_results,
+                                                     max_results,
                                                      dummy_bounds, dummy_bounds)
     cdef vector[SpectrumWithBounds] spectra_vec
     spectra_vec.reserve(len(spectra_data_list))
@@ -481,7 +483,7 @@ def decompose_spectrum_known_precursor(
     max_results: int = 100000
 ) -> list:
     _validate_bounds_array(precursor_formula, "precursor_formula")
-    cdef DecompositionParams params = _convert_params(tolerance_ppm, -100.0, 100.0, 100.0, max_results, min_bounds, max_bounds)
+    cdef DecompositionParams params = _convert_params(tolerance_ppm, 0, 100.0, max_results, min_bounds, max_bounds)
     
     cdef Formula_cpp cpp_precursor = _convert_numpy_to_formula(precursor_formula)
     cdef Formula_cpp min_b = _convert_numpy_to_formula(min_bounds)
@@ -507,7 +509,7 @@ def decompose_spectra_known_precursor_parallel(
     spectra_data_list = list(spectra_data)
     if not spectra_data_list:
         return []
-    cdef DecompositionParams params = _convert_params(tolerance_ppm, -100.0, 100.0, 100.0, max_results, min_bounds, max_bounds)
+    cdef DecompositionParams params = _convert_params(tolerance_ppm, 0, 100.0,  max_results, min_bounds, max_bounds)
     
     cdef vector[SpectrumWithKnownPrecursor] spectra_vec
     spectra_vec.reserve(len(spectra_data_list))

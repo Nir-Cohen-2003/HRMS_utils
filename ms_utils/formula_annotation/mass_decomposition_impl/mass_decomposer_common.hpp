@@ -74,7 +74,7 @@ struct DecompositionParams {
     double tolerance_ppm;
     double min_dbe;
     double max_dbe;
-    double max_hetero_ratio;
+    // double max_hetero_ratio;
     int max_results;
     Formula min_bounds;
     Formula max_bounds;
@@ -103,8 +103,8 @@ private:
     
     // Helper methods
     void init_money_changing();
-    bool check_dbe(const Formula& formula, double min_dbe, double max_dbe) const;
-    bool check_hetero_ratio(const Formula& formula, double max_ratio) const;
+    inline bool check_dbe(const Formula& formula, double min_dbe, double max_dbe) const;
+    // bool check_hetero_ratio(const Formula& formula, double max_ratio) const;
     long long gcd(long long u, long long v) const;
     void discretize_masses();
     void divide_by_gcd();
@@ -115,9 +115,6 @@ private:
     bool decomposable_fast(int i, long long m) const; // Fast check for decomposability
     std::vector<Formula> integer_decompose(long long mass) const;
     
-    bool check_chemical_constraints(const Formula& formula, 
-                                  const DecompositionParams& params) const;
-
 public:
     MassDecomposer(const Formula& min_bounds, const Formula& max_bounds);
     ~MassDecomposer() = default;

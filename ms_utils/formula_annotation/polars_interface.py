@@ -23,7 +23,7 @@ def decompose_mass(
     tolerance_ppm: float = 5.0,
     min_dbe: float = 0.0,
     max_dbe: float = 40.0,
-    max_hetero_ratio: float = 100.0,
+
     max_results: int = 100000,
 ):
     """
@@ -71,7 +71,6 @@ def decompose_mass(
     assert tolerance_ppm > 0, f"tolerance_ppm should be a positive value, but got {tolerance_ppm}"
     assert isinstance(min_dbe, (float, int)), f"min_dbe should be a float or int, but got {type(min_dbe)}"
     assert isinstance(max_dbe, (float, int)), f"max_dbe should be a float or int, but got {type(max_dbe)}"
-    assert isinstance(max_hetero_ratio, (float, int)), f"max_hetero_ratio should be a float or int, but got {type(max_hetero_ratio)}"
     assert isinstance(max_results, int) and max_results > 0, f"max_results should be a positive integer, but got {max_results}"
 
     results = decompose_mass_parallel(
@@ -81,7 +80,6 @@ def decompose_mass(
         tolerance_ppm=tolerance_ppm,
         min_dbe=min_dbe,
         max_dbe=max_dbe,
-        max_hetero_ratio=max_hetero_ratio,
         max_results=max_results,
     )
     return results
@@ -93,7 +91,6 @@ def decompose_mass_per_bounds(
     tolerance_ppm: float = 5.0,
     min_dbe: float = 0.0,
     max_dbe: float = 40.0,  
-    max_hetero_ratio: float = 100.0,
     max_results: int = 100000,
 ):
 
@@ -106,7 +103,6 @@ def decompose_mass_per_bounds(
     assert tolerance_ppm > 0, f"tolerance_ppm should be a positive value, but got {tolerance_ppm}"
     assert isinstance(min_dbe   , (float, int)), f"min_dbe should be a float or int, but got {type(min_dbe)}"
     assert isinstance(max_dbe   , (float, int)), f"max_dbe should be a float or int, but got {type(max_dbe)}"
-    assert isinstance(max_hetero_ratio, (float, int)), f"max_hetero_ratio should be a float or int, but got {type(max_hetero_ratio)}"
     assert isinstance(max_results, int) and max_results > 0, f"max_results should be a positive integer, but got {max_results}" 
 
 
@@ -117,7 +113,6 @@ def decompose_mass_per_bounds(
         tolerance_ppm=tolerance_ppm,
         min_dbe=min_dbe,
         max_dbe=max_dbe,
-        max_hetero_ratio=max_hetero_ratio,
         max_results=max_results,
     )
     return results  
@@ -130,7 +125,6 @@ def decompose_spectra(
     tolerance_ppm: float = 5.0,
     min_dbe: float = 0.0,
     max_dbe: float = 40.0,
-    max_hetero_ratio: float = 100.0,
     max_results: int = 100000,
 ):
     """
@@ -197,7 +191,6 @@ def decompose_spectra(
             tolerance_ppm=tolerance_ppm,
             min_dbe=min_dbe,
             max_dbe=max_dbe,
-            max_hetero_ratio=max_hetero_ratio,
             max_results=max_results,
         )
     # Per-spectrum bounds
@@ -221,7 +214,6 @@ def decompose_spectra(
             tolerance_ppm=tolerance_ppm,
             min_dbe=min_dbe,
             max_dbe=max_dbe,
-            max_hetero_ratio=max_hetero_ratio,
             max_results=max_results,
         )
     else:
@@ -481,7 +473,7 @@ def _min_bound(formula_arr:np.ndarray):
 
 def _max_bound(formula_arr:np.ndarray):
     # if 'MAX_FORMULA' not in globals():
-    MAX_FORMULA = np.array([100, 1, 60, 20, 20, 30, 0, 1, 2, 5, 10, 0, 1, 2,  2], dtype=np.int32)
+    MAX_FORMULA = np.array([100, 1, 60, 30, 30, 30, 0, 5, 10, 5, 10, 0, 1, 2,  3], dtype=np.int32)
     # we take a 2d array, where each row is a formula, and we return a 2d array with the same shape, but with the max bounds for each formula
     result_arr = np.zeros((formula_arr.shape[0], 15), dtype=np.int32)
     result_arr[:, 0] = MAX_FORMULA[0]  # H
@@ -666,5 +658,5 @@ if __name__ == "__main__":
     from time import perf_counter
     ########################## H,  B, C,  N,  O,  F, Na,Si, P, S, Cl, K, As,Br, I
     MIN_FORMULA: list[int] = [ 0,  0, 0,  0,  0,  0, 0, 0,  0, 0, 0,  0, 0, 0,  0]
-    MAX_FORMULA: list[int] = [100, 1, 50, 20, 20, 30, 0, 1, 2, 5, 10, 0, 0, 2,  2]
+    MAX_FORMULA: list[int] = [100, 1, 60, 30, 30, 30, 0, 5, 10, 5, 10, 0, 1, 2,  3]
     mass_decomposition_test(size=10000)
