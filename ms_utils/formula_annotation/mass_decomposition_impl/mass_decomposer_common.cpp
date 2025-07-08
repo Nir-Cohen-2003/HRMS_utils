@@ -52,12 +52,12 @@ bool MassDecomposer::check_chemical_constraints(const Formula& formula,
         return false;
     }
 
-    // Check heteroatom ratio constraint
-    if (params.max_hetero_ratio < 100.0) {
-        if (!check_hetero_ratio(formula, params.max_hetero_ratio)) {
-            return false;
-        }
-    }
+    // // Check heteroatom ratio constraint
+    // if (params.max_hetero_ratio < 100.0) {
+    //     if (!check_hetero_ratio(formula, params.max_hetero_ratio)) {
+    //         return false;
+    //     }
+    // }
     
     return true;
 }

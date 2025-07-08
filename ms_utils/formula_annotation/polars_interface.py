@@ -13,6 +13,9 @@ from typing import Iterable
 from pathlib import Path
 from typing import List, Dict,Any
 
+
+
+
 def decompose_mass(
     mass_series:pl.Series,
     min_bounds: np.ndarray,
@@ -343,9 +346,10 @@ def mass_decomposition_test(size:int):
 
     """
     # check if the nist data is available, and if not, use mock data
-    if False:#Path("/home/analytit_admin/Data/NIST_hr_msms/NIST_hr_msms.parquet").exists():
+    if Path("/home/analytit_admin/Data/NIST_hr_msms/NIST_hr_msms.parquet").exists():
         nist = pl.scan_parquet("/home/analytit_admin/Data/NIST_hr_msms/NIST_hr_msms.parquet").filter(
         pl.col("PrecursorMZ").le(900),
+         pl.col("Precursor_type").eq("[M+H]+")
         )
     else:
         print(f"NIST not found, using mock data instead, with length {size}.")
@@ -451,11 +455,14 @@ def create_isotopic_bounds(df:pl.DataFrame, formula_col: str = "Formula_array"):
 
 
 def _min_bound(formula_arr:np.ndarray):
+    #if MIN_FORMULA is not defined, we define it here
+    # if 'MIN_FORMULA' not in globals():
+    MIN_FORMULA = np.array([ 0,  0, 0,  0,  0,  0, 0, 0,  0, 0, 0,  0, 0, 0,  0], dtype=np.int32)
     # we take a 2d array, where each row is a formula, and we return a 2d array with the same shape, but with the min bounds for each formula
     result_arr = np.zeros((formula_arr.shape[0], 15), dtype=np.int32)
     result_arr[:, 0] = MIN_FORMULA[0]  # H
-    result_arr[:, 1] = MIN_FORMULA[1]  # B
-    result_arr[:, 2] = np.maximum(MIN_FORMULA[2], formula_arr[:, 2] - 2)  # C: C-2, clipped to [0, MAX]
+    result_arr[:, 1] = np.where(formula_arr[:, 1]>0, 1, 0)  # B: B if B>0, else 0
+    result_arr[:, 2] = np.maximum(0,formula_arr[:, 2] - 2)  # C: C-2, clipped to [0, MAX]
     result_arr[:, 3] = MIN_FORMULA[3]  # N
     result_arr[:, 4] = MIN_FORMULA[4]  # O
     result_arr[:, 5] = MIN_FORMULA[5]  # F
@@ -463,7 +470,7 @@ def _min_bound(formula_arr:np.ndarray):
     result_arr[:, 7] = MIN_FORMULA[7]  # Si
     result_arr[:, 8] = MIN_FORMULA[8]  # P
     # S: 0 if S==0 else MIN, evaluated elementwise
-    result_arr[:, 9] = np.where(formula_arr[:, 9] > 0, MIN_FORMULA[9], 0)
+    result_arr[:, 9] = np.where(formula_arr[:, 9] > 0, 1, 0)
     result_arr[:, 10] = formula_arr[:, 10]  # Cl: exact
     result_arr[:, 11] = MIN_FORMULA[11]  # K
     result_arr[:, 12] = MIN_FORMULA[12]  # As
@@ -473,11 +480,13 @@ def _min_bound(formula_arr:np.ndarray):
 
 
 def _max_bound(formula_arr:np.ndarray):
+    # if 'MAX_FORMULA' not in globals():
+    MAX_FORMULA = np.array([100, 1, 60, 20, 20, 30, 0, 1, 2, 5, 10, 0, 1, 2,  2], dtype=np.int32)
     # we take a 2d array, where each row is a formula, and we return a 2d array with the same shape, but with the max bounds for each formula
     result_arr = np.zeros((formula_arr.shape[0], 15), dtype=np.int32)
     result_arr[:, 0] = MAX_FORMULA[0]  # H
-    result_arr[:, 1] = MAX_FORMULA[1]  # B
-    result_arr[:, 2] = np.minimum(MAX_FORMULA[2], formula_arr[:, 2] + 2)  # C: C+2, clipped to [0, MAX]
+    result_arr[:, 1] = np.maximum(0,formula_arr[:, 1])  # B
+    result_arr[:, 2] = np.maximum(0,formula_arr[:, 2] + 2)  # C: C+2, clipped to [0, MAX]
     result_arr[:, 3] = MAX_FORMULA[3]  # N
     result_arr[:, 4] = MAX_FORMULA[4]  # O
     result_arr[:, 5] = MAX_FORMULA[5]  # F
@@ -657,5 +666,5 @@ if __name__ == "__main__":
     from time import perf_counter
     ########################## H,  B, C,  N,  O,  F, Na,Si, P, S, Cl, K, As,Br, I
     MIN_FORMULA: list[int] = [ 0,  0, 0,  0,  0,  0, 0, 0,  0, 0, 0,  0, 0, 0,  0]
-    MAX_FORMULA: list[int] = [100, 0, 40, 20, 20, 30, 0, 0, 2, 2, 10, 0, 0, 2,  1]
-    mass_decomposition_test(size=100000)
+    MAX_FORMULA: list[int] = [100, 1, 50, 20, 20, 30, 0, 1, 2, 5, 10, 0, 0, 2,  2]
+    mass_decomposition_test(size=10000)
