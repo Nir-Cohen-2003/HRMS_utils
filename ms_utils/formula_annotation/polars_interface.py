@@ -343,7 +343,7 @@ def mass_decomposition_test(size:int):
 
     """
     # check if the nist data is available, and if not, use mock data
-    if Path("/home/analytit_admin/Data/NIST_hr_msms/NIST_hr_msms.parquet").exists():
+    if False:#Path("/home/analytit_admin/Data/NIST_hr_msms/NIST_hr_msms.parquet").exists():
         nist = pl.scan_parquet("/home/analytit_admin/Data/NIST_hr_msms/NIST_hr_msms.parquet").filter(
         pl.col("PrecursorMZ").le(900),
         )
@@ -526,8 +526,8 @@ def create_mock_nist(size:int = 1000) -> pl.DataFrame:
     # Use a predefined formula_array (user should fill in the values)
     formula_array = np.array([
         # Fill in your predefined formula here, e.g.:
-        30, 0, 18, 3, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
-    ], dtype=np.int32)
+        13, 0, 6, 1, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    ], dtype=np.int32)*4 # C6H10NO2
     print(f"Using formula_array: {formula_array.tolist()}")
     precursor_mass = float(np.sum(formula_array * element_masses))
     print(f"resulting precursor mass: {precursor_mass:.4f} Da")
