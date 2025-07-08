@@ -8,14 +8,14 @@ MassDecomposer::MassDecomposer(const Formula& min_bounds, const Formula& max_bou
 }
 
 bool MassDecomposer::check_dbe(const Formula& formula, double min_dbe, double max_dbe) const {
-    int c_count = formula[FormulaAnnotation::C];
+    int c_count = formula[FormulaAnnotation::C]+ formula[FormulaAnnotation::Si];
     int h_count = formula[FormulaAnnotation::H];
-    int n_count = formula[FormulaAnnotation::N];
+    int n_count = formula[FormulaAnnotation::N]+ formula[FormulaAnnotation::B]+ formula[FormulaAnnotation::As];
     int p_count = formula[FormulaAnnotation::P];
     int x_count = formula[FormulaAnnotation::F] + formula[FormulaAnnotation::Cl] + 
                   formula[FormulaAnnotation::Br] + formula[FormulaAnnotation::I];
 
-    if (c_count == 0) return false;
+    // if (c_count == 0) return false;
 
     double dbe = (2.0 + 2.0*c_count + 3.0*p_count + n_count - h_count - x_count) / 2.0;
     
