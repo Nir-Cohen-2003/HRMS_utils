@@ -76,7 +76,6 @@ def get_NIST(config:search_config) -> pl.DataFrame:
     'Name',
     'NIST_ID',
     'DB_ID',
-    'DB_Name',
     'Precursor_type',
     'PrecursorMZ',
     'Ion_mode',
@@ -574,7 +573,10 @@ if __name__ == "__main__":
         ms2_mass_tolerance=10e-6,
         search_engine='entropy',
         noise_threshold=0.005,
-        NIST_db_path=Path(r"NIST_DB_1.parquet")  # Adjust the path as needed
+        NIST_db_path=Path(r"/home/analytit_admin/Data/NIST_hr_msms/NIST_hr_msms.parquet")  # Adjust the path as needed
     )
-    print(config)
-    # You can add more test cases or examples here to validate the functionality.
+    try:
+        nist = get_NIST(config)
+    except:
+        nist = pl.scan_parquet(source=config.NIST_db_path).collect_schema()
+    print(nist)

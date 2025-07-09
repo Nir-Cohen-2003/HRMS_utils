@@ -25,10 +25,11 @@ def cross_with_EPA(chromatogram : pl.LazyFrame | pl.DataFrame, EPA: pl.LazyFrame
 
         ]
     ).lazy()
+    print(f"EPA columns: {EPA.columns}")
     EPA_lf=EPA.select(
         [
             'DTXSID',
-            'MONOISOTOPIC MASS',
+            'MONOISOTOPIC_MASS',
             'Haz_level',
             'inchikey_EPA',
             'Formula_EPA'
@@ -49,8 +50,8 @@ def cross_with_EPA(chromatogram : pl.LazyFrame | pl.DataFrame, EPA: pl.LazyFrame
         adduct_mass = adducts[adduct]
         suspects = chromatogram_lf.join_where(
             EPA_lf,
-            pl.col('Precursor_mz_MSDIAL') - adduct_mass < pl.col('MONOISOTOPIC MASS').mul(1+config.ms1_mass_tolerance),
-            pl.col('Precursor_mz_MSDIAL') - adduct_mass >  pl.col('MONOISOTOPIC MASS').mul(1-config.ms1_mass_tolerance),
+            pl.col('Precursor_mz_MSDIAL') - adduct_mass < pl.col('MONOISOTOPIC_MASS').mul(1+config.ms1_mass_tolerance),
+            pl.col('Precursor_mz_MSDIAL') - adduct_mass >  pl.col('MONOISOTOPIC_MASS').mul(1-config.ms1_mass_tolerance),
             pl.col('Precursor_type_MSDIAL').str.contains(adduct,literal=True)
         )
         adducts_list.append(suspects)
@@ -286,7 +287,7 @@ def foramt_results(
     'Synonyms_NIST',
     'Synonyms_EPA',
     'Precursor_type', 
-    'MONOISOTOPIC MASS', 
+    'MONOISOTOPIC_MASS', 
     'inchikey', 
     'energy_is_too_low', 'energy_is_too_high',
     'isotopic_pattern_match'
@@ -459,23 +460,14 @@ if __name__ == "__main__":
     sample_dir = Path(r"")
     sample_file_paths = list(sample_dir.glob(pattern=r'*.txt',case_sensitive=True))
     sample_file_paths = [
-        Path(r""),
+        "/home/analytit_admin/Data/iibr_data/250515_005.txt",
+        "/home/analytit_admin/Data/iibr_data/250515_006.txt",
         
     ]
 
-    blank_file_path = Path(r"")
-    config = {
-        'search':
-        {
-            'polarity':'positive',
-        },
-        'isotopic_pattern':
-        {
-            'mass_tolerance' : 3*1e-6, 
-            'ms1_resolution':1.2e5,
-        },
-    }
-
+    blank_file_path = Path(r"/home/analytit_admin/Data/iibr_data/250515_003.txt")
+    config_path = Path("/home/analytit_admin/pyscreen_test_method.yaml")
+    config = pyscreen_config.from_yaml(config_path)
     main(
         sample_file_paths=sample_file_paths,
         blank_file_path=blank_file_path,

@@ -4,6 +4,7 @@ from ms_utils.formula_annotation.isotopic_pattern import isotopic_pattern_config
 from ms_utils.pyscreen.spectral_search import search_config
 from ms_utils.interfaces.msdial import blank_config
 from ms_utils.pyscreen.epa import suspect_list_config
+import yaml
 
 
 
@@ -108,7 +109,14 @@ class pyscreen_config:
             blank=blank_instance,
             suspect_list=suspect_list_instance
         )
-
+    @classmethod
+    def from_yaml(cls, yaml_path: str):
+        """
+        Load the configuration from a YAML file.
+        """
+        with open(yaml_path, 'r') as file:
+            config_dict = yaml.safe_load(file)
+        return cls.from_dict(config_dict)
         
 
 if __name__ == "__main__":

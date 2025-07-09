@@ -14,8 +14,11 @@ class suspect_list_config:
         '''
         if isinstance(self.epa_db_path, str):
             self.epa_db_path = Path(self.epa_db_path)
+            # if its not a parquet file, raise an error
         if not isinstance(self.epa_db_path, Path):
             raise TypeError("epa_db_path must be a Path object or a string")
+        if not self.epa_db_path.suffix == '.parquet':
+            raise ValueError("epa_db_path must point to a .parquet file")
         if not self.epa_db_path.exists():
             raise FileNotFoundError(f"EPA database file {self.epa_db_path} does not exist. Please provide a valid path.")
     def to_dict(self) -> dict:
@@ -59,7 +62,7 @@ def exclude_boring_compounds(EPA:pl.DataFrame) -> pl.DataFrame:
     EPA = pl.concat([EPA,EPA_boring])
     return EPA
 
-def get_EPA(config:suspect_list_config,epa_path:Path|str='EPA_with_Haz_level')-> pl.DataFrame:
+def get_EPA(config:suspect_list_config,)-> pl.DataFrame:
     EPA_important_columns = [
     'DTXSID','Haz_level',
     'PREFERRED_NAME','CASRN','INCHIKEY',
@@ -67,17 +70,10 @@ def get_EPA(config:suspect_list_config,epa_path:Path|str='EPA_with_Haz_level')->
     'MOLECULAR_FORMULA','MONOISOTOPIC_MASS',
     'synonyms'
     ]
-    #make sure the path is a Path object
-    if isinstance(epa_path, str):
-        epa_path = Path(epa_path)
-    if not epa_path.exists():
-        raise FileNotFoundError(f"EPA file {epa_path} does not exist. Please provide a valid path.")
-    #add the parquet file extension if it is not already there
-    if not epa_path.suffix == '.parquet':
-        epa_path = epa_path.with_suffix('.parquet')
+
     
     try :
-        EPA = pl.scan_parquet(epa_path).select(EPA_important_columns).rename(
+        EPA = pl.scan_parquet(config.epa_db_path).select(EPA_important_columns).rename(
             {'INCHIKEY':'inchikey_EPA',
              'CASRN':'CAS_EPA',
              'synonyms':'Synonyms_EPA',
@@ -87,7 +83,7 @@ def get_EPA(config:suspect_list_config,epa_path:Path|str='EPA_with_Haz_level')->
             strict=False
         ).collect()
     except pl.exceptions.ColumnNotFoundError as e:
-        print(f"Error: Missing {e}. The file {epa_path} might not be in the expected format or missing some columns.")
+        print(f"Error: Missing {e}. The file {config.epa_db_path} might not be in the expected format or missing some columns.")
         raise 
 
     if config.exclusion_list is None:
