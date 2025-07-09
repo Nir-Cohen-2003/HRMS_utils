@@ -4,8 +4,8 @@ from tkinter import filedialog, messagebox
 import json
 import threading
 import traceback
-from pathlib import Path
 import os
+from pathlib import Path
 from ms_utils.pyscreen.main import main as run_pyscreen_analysis
 from ms_utils.pyscreen.pyscreen_config import pyscreen_config, blank_config, search_config, isotopic_pattern_config, suspect_list_config
 import datetime
@@ -100,6 +100,20 @@ class PyScreenApp(ctk.CTk):
         # Main container
         self.main_container = ctk.CTkFrame(self)
         self.main_container.pack(fill="both", expand=True, padx=10, pady=10)
+
+        # --- Add method load/save buttons at the top ---
+        self.method_buttons_frame = ctk.CTkFrame(self.main_container)
+        self.method_buttons_frame.pack(fill="x", padx=5, pady=(0, 5))
+
+        self.load_method_btn = ctk.CTkButton(
+            self.method_buttons_frame, text="Load Method...", command=self.load_method_dialog, width=140
+        )
+        self.load_method_btn.pack(side="left", padx=(0, 10), pady=5)
+
+        self.save_method_btn = ctk.CTkButton(
+            self.method_buttons_frame, text="Save Method As...", command=self.save_method_dialog, width=160
+        )
+        self.save_method_btn.pack(side="left", pady=5)
 
         # Menu Bar
         menubar = tk.Menu(self)
@@ -386,10 +400,17 @@ class PyScreenApp(ctk.CTk):
         return config_data
 
     def save_method_dialog(self):
+        # Determine default save directory: ~/pyscreen (create if needed)
+        home_dir = Path.home()
+        pyscreen_dir = home_dir / "pyscreen"
+        pyscreen_dir.mkdir(exist_ok=True)
+        initialdir = str(pyscreen_dir)
+
         filepath = filedialog.asksaveasfilename(
             defaultextension=".yaml",
             filetypes=[("YAML files", "*.yaml"), ("All files", "*.*")],
-            title="Save Method As"
+            title="Save Method As",
+            initialdir=initialdir
         )
         if not filepath:
             return
@@ -410,9 +431,15 @@ class PyScreenApp(ctk.CTk):
             self.show_error_popup("Save Error", f"Failed to save method: {e}\n{traceback.format_exc()}")
 
     def load_method_dialog(self):
+        # Determine default load directory: ~/pyscreen if exists, else ~/
+        home_dir = Path.home()
+        pyscreen_dir = home_dir / "pyscreen"
+        initialdir = str(pyscreen_dir if pyscreen_dir.exists() else home_dir)
+
         filepath = filedialog.askopenfilename(
             filetypes=[("YAML files", "*.yaml"), ("All files", "*.*")],
-            title="Load Method"
+            title="Load Method",
+            initialdir=initialdir
         )
         if not filepath:
             return
