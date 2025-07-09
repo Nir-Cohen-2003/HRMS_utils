@@ -10,6 +10,29 @@ class isotopic_pattern_config:
     ms1_resolution:float
     minimum_intensity : float=5e5
     max_intensity_ratio : float=1.7
+    def to_dict(self) -> dict:
+        return {
+            'mass_tolerance': self.mass_tolerance,
+            'ms1_resolution': self.ms1_resolution,
+            'minimum_intensity': self.minimum_intensity,
+            'max_intensity_ratio': self.max_intensity_ratio
+        }
+
+    @classmethod
+    def from_dict(cls, config_dict: dict) -> 'isotopic_pattern_config':
+        mass_tolerance = config_dict.get('mass_tolerance')
+        ms1_resolution = config_dict.get('ms1_resolution')
+        if mass_tolerance is None:
+            raise ValueError("mass_tolerance is required and cannot be None.")
+        if ms1_resolution is None:
+            raise ValueError("ms1_resolution is required and cannot be None.")
+        kwargs = {}
+        for field_ in cls.__dataclass_fields__:
+            if field_ in config_dict and config_dict[field_] is not None:
+                kwargs[field_] = config_dict[field_]
+        kwargs['mass_tolerance'] = mass_tolerance
+        kwargs['ms1_resolution'] = ms1_resolution
+        return cls(**kwargs)
 
 isotopic_pattern_arr = np.array( 
     #mass difference, zero isotope probability, first isoptope probability

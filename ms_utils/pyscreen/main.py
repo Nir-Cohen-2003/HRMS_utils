@@ -428,7 +428,7 @@ def main(
     print(config)
     
 
-    NIST = get_NIST(condig=config.search)
+    NIST = get_NIST(config=config.search)
     EPA = get_EPA(config=config.suspect_list)
 
     if VERBOSE:

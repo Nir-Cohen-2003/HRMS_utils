@@ -6,8 +6,37 @@ from ms_utils.formats.epa_xlsx import read_xlsx_EPA_list_file
 
 @dataclass
 class suspect_list_config:
-    epa_db_path:Path|str=Path(r"/home/analytit_admin/Data/EPA/suspect_list.parquet") # this is the path to the EPA database, which is a parquet file.
+    epa_db_path:Path|str # this is the path to the EPA database, which is a parquet file.
     exclusion_list:str=None
+    def __post_init__(self):
+        '''
+        Post initialization to ensure epa_db_path is a Path object.
+        '''
+        if isinstance(self.epa_db_path, str):
+            self.epa_db_path = Path(self.epa_db_path)
+        if not isinstance(self.epa_db_path, Path):
+            raise TypeError("epa_db_path must be a Path object or a string")
+        if not self.epa_db_path.exists():
+            raise FileNotFoundError(f"EPA database file {self.epa_db_path} does not exist. Please provide a valid path.")
+    def to_dict(self) -> dict:
+        '''
+        Converts the suspect_list_config to a dictionary.
+        '''
+        return {
+            'epa_db_path':str(self.epa_db_path),
+            'exclusion_list':self.exclusion_list
+        }
+    @classmethod
+    def from_dict(cls, config_dict: dict) -> 'suspect_list_config':
+        epa_db_path = config_dict.get('epa_db_path')
+        if epa_db_path is None:
+            raise ValueError("epa_db_path is required and cannot be None.")
+        kwargs = {}
+        for field_ in cls.__dataclass_fields__:
+            if field_ in config_dict and config_dict[field_] is not None:
+                kwargs[field_] = config_dict[field_]
+        kwargs['epa_db_path'] = epa_db_path
+        return cls(**kwargs)
 
 
 

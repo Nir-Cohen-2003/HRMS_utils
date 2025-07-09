@@ -9,6 +9,7 @@ import os
 from ms_utils.pyscreen.main import main as run_pyscreen_analysis
 from ms_utils.pyscreen.pyscreen_config import pyscreen_config, blank_config, search_config, isotopic_pattern_config, suspect_list_config
 import datetime
+import yaml  # Add this import at the top
 
 # -- Configuration for default values and advanced fields --
 # These would ideally be derived from the actual config classes or a schema
@@ -386,24 +387,23 @@ class PyScreenApp(ctk.CTk):
 
     def save_method_dialog(self):
         filepath = filedialog.asksaveasfilename(
-            defaultextension=".json",
-            filetypes=[("JSON files", "*.json"), ("All files", "*.*")],
+            defaultextension=".yaml",
+            filetypes=[("YAML files", "*.yaml"), ("All files", "*.*")],
             title="Save Method As"
         )
         if not filepath:
             return
 
-        gui_data_to_save = {
-            "sample_files": self.sample_files,
-            "blank_file": self.blank_file,
-            "config": self._collect_config_data()
-        }
-        if gui_data_to_save["config"] is None: # Error during collection
+        config_dict = self._collect_config_data()
+        if config_dict is None:  # Error during collection
             return
 
         try:
+            # Create pyscreen_config object and use its to_dict method
+            config_obj = pyscreen_config.from_dict(config_dict)
+            config_to_save = config_obj.to_dict()
             with open(filepath, 'w') as f:
-                json.dump(gui_data_to_save, f, indent=4)
+                yaml.safe_dump(config_to_save, f, sort_keys=False)
             self.current_method_path = filepath
             self.status_label.configure(text=f"Method saved: {Path(filepath).name}")
         except Exception as e:
@@ -411,7 +411,7 @@ class PyScreenApp(ctk.CTk):
 
     def load_method_dialog(self):
         filepath = filedialog.askopenfilename(
-            filetypes=[("JSON files", "*.json"), ("All files", "*.*")],
+            filetypes=[("YAML files", "*.yaml"), ("All files", "*.*")],
             title="Load Method"
         )
         if not filepath:
@@ -419,15 +419,10 @@ class PyScreenApp(ctk.CTk):
 
         try:
             with open(filepath, 'r') as f:
-                loaded_data = json.load(f)
-            
-            # Load file paths
-            self.sample_files = loaded_data.get("sample_files", [])
-            self.blank_file = loaded_data.get("blank_file", None)
-            self._update_file_paths_for_display()
+                loaded_config = yaml.safe_load(f)
+            # loaded_config is a dict as returned by to_dict
 
-            # Load config
-            loaded_config = loaded_data.get("config", {})
+            # Set config fields in GUI
             for category, params in loaded_config.items():
                 if category in self.config_vars:
                     for param_key, value in params.items():
@@ -438,8 +433,8 @@ class PyScreenApp(ctk.CTk):
                                 if i < len(value) and key_suffix in self.config_vars[category]:
                                     self.config_vars[category][key_suffix].set(value[i])
                         elif param_key in self.config_vars[category]:
-                             self.config_vars[category][param_key].set(value)
-            
+                            self.config_vars[category][param_key].set(value)
+
             self.current_method_path = filepath
             self.status_label.configure(text=f"Method loaded: {Path(filepath).name}")
 
@@ -487,6 +482,18 @@ class PyScreenApp(ctk.CTk):
             self.after(0, self.on_analysis_complete) # Schedule GUI update in main thread
         except Exception as e:
             tb_str = traceback.format_exc()
+            # --- Save error to file automatically ---
+            import datetime
+            now = datetime.datetime.now()
+            timestamp = now.strftime("%Y%m%d_%H%M%S")
+            filename = f"pyscreen_errors_{timestamp}.txt"
+            filepath = os.path.join(os.getcwd(), filename)
+            try:
+                with open(filepath, "w") as f:
+                    f.write(f"{str(e)}\n\nFull traceback:\n{tb_str}")
+            except Exception as file_err:
+                print(f"Failed to write error log: {file_err}")
+            # --- End save error to file ---
             self.after(0, self.on_analysis_error, e, tb_str) # Schedule GUI update
 
     def update_gui_progress(self, value, status_text):

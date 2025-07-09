@@ -13,3 +13,4 @@ ms_utils/formula_annotation/mass_decomposition_impl/benchmark_results.txt
 ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.cpp
 **.json
 **.ipynb
+pyscreen_errors_**.txt

@@ -44,6 +44,24 @@ class blank_config:
     dRT_min_with_ms2:float=0.3
     ms2_fit:float=0.85
 
+    def to_dict(self) -> dict:
+        return {
+            'ms1_mass_tolerance': self.ms1_mass_tolerance,
+            'dRT_min': self.dRT_min,
+            'ratio': self.ratio,
+            'use_ms2': self.use_ms2,
+            'dRT_min_with_ms2': self.dRT_min_with_ms2,
+            'ms2_fit': self.ms2_fit
+        }
+
+    @classmethod
+    def from_dict(cls, config_dict: dict) -> 'blank_config':
+        kwargs = {}
+        for field_ in cls.__dataclass_fields__: # why complicate it and not just use cls(**config_dict)? because we want to avoid keys that are not in the dataclass
+            if field_ in config_dict and config_dict[field_] is not None:
+                kwargs[field_] = config_dict[field_]
+        return cls(**kwargs)
+
 
 
 def get_chromatogram(path: str | Path)-> pl.DataFrame :
