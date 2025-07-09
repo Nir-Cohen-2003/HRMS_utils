@@ -75,10 +75,10 @@ def annotate_isotopic_pattern(suspects:pl.DataFrame,config:isotopic_pattern_conf
             pl.col('Precursor_mz_MSDIAL')
         ).map_batches(
             function= lambda x: fits_isotopic_pattern_batch(
-                x.struct.field('ms1_isotopes_m/z'),
-                x.struct.field('ms1_isotopes_intensity'),
+                x.struct.field('ms1_isotopes_m/z').to_numpy(),
+                x.struct.field('ms1_isotopes_intensity').to_numpy(),
                 x.struct.field('Formula_EPA'),
-                x.struct.field('Precursor_mz_MSDIAL'),
+                x.struct.field('Precursor_mz_MSDIAL').to_numpy(),
                 config
             ), is_elementwise=True, return_dtype=pl.Boolean
         ).alias('isotopic_pattern_match')
@@ -145,7 +145,7 @@ def search_in_NIST(
             'DotProd', 
             'Name_NIST', 
             'DB_ID', 
-            'DB_Name', 
+            # 'DB_Name', 
             'PrecursorMZ',
             'Precursor_type_NIST', 
             'Instrument_type', 
@@ -496,9 +496,13 @@ if __name__ == "__main__":
     sample_dir = Path(r"")
     sample_file_paths = list(sample_dir.glob(pattern=r'*.txt',case_sensitive=True))
     sample_file_paths = [
-        "/home/analytit_admin/Data/iibr_data/250515_017.txt",
-        "/home/analytit_admin/Data/iibr_data/250514_019.txt",
-        
+        "/home/analytit_admin/Data/raw_data/wine/0717_kinetex_wine_50_4min_pos_IDA_A1.txt",
+        "/home/analytit_admin/Data/raw_data/wine/0717_kinetex_wine_50_4min_pos_IDA_B1.txt",  
+        "/home/analytit_admin/Data/raw_data/wine/0717_kinetex_wine_50_4min_pos_IDA_C1.txt",
+        "/home/analytit_admin/Data/raw_data/wine/0717_kinetex_wine_50_4min_pos_IDA_D1.txt",
+        "/home/analytit_admin/Data/raw_data/wine/0717_kinetex_wine_50_4min_pos_IDA_E1.txt",
+        "/home/analytit_admin/Data/raw_data/wine/0717_kinetex_wine_50_4min_pos_IDA_F1.txt",
+              
     ]
 
     # blank_file_path = Path(r"/home/analytit_admin/Data/iibr_data/250515_003.txt")
