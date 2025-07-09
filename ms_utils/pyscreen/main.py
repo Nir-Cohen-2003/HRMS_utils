@@ -2,6 +2,7 @@ import polars as pl
 # import numpy as np
 from pathlib import Path
 from time import time
+from typing import List, Dict,Optional
 from ms_utils.interfaces.msdial import get_chromatogram, subtract_blank_frame
 from ms_utils.formula_annotation.isotopic_pattern import fits_isotopic_pattern_batch
 from ms_utils.pyscreen.pyscreen_config import blank_config, search_config, isotopic_pattern_config, suspect_list_config,pyscreen_config, adducts_neg, adducts_pos
@@ -15,6 +16,7 @@ def cross_with_EPA(chromatogram : pl.LazyFrame | pl.DataFrame, EPA: pl.LazyFrame
     crosses with EPA based on exact mass and isotopic pattern, with tolerance defined in the global constants file. 
     then fitlers based on Height and haz level.
     every Peak ID can get more than one suspect.'''
+    #TODO: make this work with lazy frames, so it can be used with streaming. it fails when there are not matches.
     chromatogram_lf = chromatogram.select(
         [
             'Peak ID',
@@ -24,8 +26,7 @@ def cross_with_EPA(chromatogram : pl.LazyFrame | pl.DataFrame, EPA: pl.LazyFrame
             'ms1_isotopes_m/z', 'ms1_isotopes_intensity'
 
         ]
-    ).lazy()
-    print(f"EPA columns: {EPA.columns}")
+    )#.lazy()
     EPA_lf=EPA.select(
         [
             'DTXSID',
@@ -34,10 +35,10 @@ def cross_with_EPA(chromatogram : pl.LazyFrame | pl.DataFrame, EPA: pl.LazyFrame
             'inchikey_EPA',
             'Formula_EPA'
         ]
-    ).lazy()
+    )#.lazy()
 
     match  config.polarity.lower():
-        case"positive": 
+        case "positive": 
             adducts = adducts_pos
         case "negative":
             adducts = adducts_neg
@@ -45,7 +46,7 @@ def cross_with_EPA(chromatogram : pl.LazyFrame | pl.DataFrame, EPA: pl.LazyFrame
             print("ERROR: Must choose operational mode, positive or negative")
             raise Exception("Mode Error: mode was not set, or is not positive/negative!")
         
-    adducts_list = []
+    adducts_list : List[pl.LazyFrame] = []
     for adduct in adducts.keys():
         adduct_mass = adducts[adduct]
         suspects = chromatogram_lf.join_where(
@@ -62,7 +63,7 @@ def cross_with_EPA(chromatogram : pl.LazyFrame | pl.DataFrame, EPA: pl.LazyFrame
     suspects = pl.concat(adducts_list,how='vertical')
     del adducts_list
 
-    suspects=suspects.collect(streaming=True)
+    # suspects=suspects.collect(engine="streaming")
     return suspects
 
 def annotate_isotopic_pattern(suspects:pl.DataFrame,config:isotopic_pattern_config) -> pl.DataFrame:
@@ -127,7 +128,7 @@ def search_in_NIST(
 
     if config.search_engine.lower() == 'nist': # so through the MS search software, which is slow but gives a graphical interface
         if isinstance(suspect_to_NIST,pl.LazyFrame):
-            suspect_to_NIST = suspect_to_NIST.collect(streaming=True)
+            suspect_to_NIST = suspect_to_NIST.collect(engine="streaming")
         NIST_search_results = NIST_search_external(
             query_df=suspect_to_NIST,
             NIST=NIST,
@@ -207,7 +208,7 @@ def cross_NIST_results_with_suspects(
         print(suspects_found_in_NIST.columns)
     # this removes the fit to several energies, since we already made sure nist found the same compound as we suspected it is
     suspects_found_in_NIST = suspects_found_in_NIST.group_by(['Peak ID','DTXSID'],maintain_order=True).last() #TODO:check if using unique is better
-    # suspects_found_in_NIST = suspects_found_in_NIST.collect(streaming=True)
+    # suspects_found_in_NIST = suspects_found_in_NIST.collect(engine="streaming")
     if VERBOSE:
         print('grouped')
  
@@ -255,7 +256,7 @@ def not_in_lib(
     suspects_not_in_lib = suspects_not_discovered_in_sample.join(suspects_not_present_in_sample,on='Peak ID',how='anti')
     important_suspects_not_in_lib = suspects_not_in_lib.filter(pl.col('Haz_level').le(1))
     important_suspects_not_in_lib = important_suspects_not_in_lib.join(EPA_names,on='DTXSID',how='left')
-    return important_suspects_not_in_lib.collect(streaming=True)
+    return important_suspects_not_in_lib.collect(engine="streaming")
 
 
 def foramt_results(
@@ -310,6 +311,11 @@ def screen_per_file(
     if previous results are present, uses them.
     reads the reuslts, filters based on molecular identifier and iddentification quality (again- based on haz_level)
     writes the results to excel.'''
+    if isinstance(MSDIAL_file_path, str):
+        MSDIAL_file_path = Path(MSDIAL_file_path)
+    if not MSDIAL_file_path.exists():
+        raise FileNotFoundError(f"MSDIAL file {MSDIAL_file_path} does not exist.")
+
     print(f'MSDIAL_file_path {MSDIAL_file_path}')
 
     chromatogram = get_chromatogram(MSDIAL_file_path)
@@ -328,6 +334,36 @@ def screen_per_file(
 
     start_cross = time()
     suspects = cross_with_EPA(chromatogram=chromatogram,EPA=EPA,config=config.search)
+    if suspects.height == 0:
+        print(f'No suspects found in {str(MSDIAL_file_path)}, skipping the rest of the process')
+        #now write the empty results file, and add the suffix "-no_suspects found"
+        empty_results = pl.DataFrame(
+            {
+                'Peak ID': [],
+                'RT (min)': [],
+                'Name_NIST': [],
+                'Haz_level': [],
+                'DotProd': [],
+                'Height': [],
+                'Precursor_mz_MSDIAL': [],
+                'Formula_NIST': [],
+                'NIST_ID': [],
+                'collision_energy_NIST': [],
+                'CAS_EPA': [],
+                'DTXSID': [],
+                'Synonyms_NIST': [],
+                'Synonyms_EPA': [],
+                'Precursor_type': [],
+                'MONOISOTOPIC_MASS': [],
+                'inchikey': [],
+                'energy_is_too_low':[],
+                'energy_is_too_high':[],
+                'isotopic_pattern_match':[]
+            }
+        )
+        empty_results.write_excel(MSDIAL_file_path.parent.joinpath(MSDIAL_file_path.stem+"_no_suspects_found.xlsx"))
+        print(f'Wrote empty results file for {str(MSDIAL_file_path)}')
+        return
     suspects = annotate_isotopic_pattern(suspects=suspects,config=config.isotopic_pattern)
     #TODO: somewhere here we should send to sirius or msbuddy (or something that I'll write) to get possible formulae, and see if there ius one that matches the isotopic pattern, if the epa formula doesn't match.
     suspects = filter_suspects(suspects=suspects,chromatogram=chromatogram)
@@ -460,12 +496,13 @@ if __name__ == "__main__":
     sample_dir = Path(r"")
     sample_file_paths = list(sample_dir.glob(pattern=r'*.txt',case_sensitive=True))
     sample_file_paths = [
-        "/home/analytit_admin/Data/iibr_data/250515_005.txt",
-        "/home/analytit_admin/Data/iibr_data/250515_006.txt",
+        "/home/analytit_admin/Data/iibr_data/250515_017.txt",
+        "/home/analytit_admin/Data/iibr_data/250514_019.txt",
         
     ]
 
-    blank_file_path = Path(r"/home/analytit_admin/Data/iibr_data/250515_003.txt")
+    # blank_file_path = Path(r"/home/analytit_admin/Data/iibr_data/250515_003.txt")
+    blank_file_path = None
     config_path = Path("/home/analytit_admin/pyscreen_test_method.yaml")
     config = pyscreen_config.from_yaml(config_path)
     main(

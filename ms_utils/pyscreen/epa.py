@@ -139,7 +139,10 @@ def construct_suspect_list(list_dir:str|Path,lists:Iterable[Tuple[str,int]]) -> 
     if not all(0 <= haz_level <= 5 for _, haz_level in lists):
         raise ValueError("Haz_level must be an integer between 0 and 5 (inclusive).")
     #make sure that all banes exist in the directory
-    list_paths = [list_dir / f"{name}.xlsx" for name, _ in lists]
+    # we want to accept both with .xlsx and without .xlsx, so we will append .xlsx to the names only if they don't already have it
+    list_paths = [(name if name.endswith('.xlsx') else f"{name}.xlsx", haz_level) for name, haz_level in lists]
+    # now we append the directory to the names
+    list_paths = [list_dir / name for name, _ in list_paths]
     if not all(path.exists() for path in list_paths):
         missing_files = [path for path in list_paths if not path.exists()]
         raise FileNotFoundError(f"Files {missing_files} do not exist in the directory {list_dir}")
@@ -166,13 +169,29 @@ if __name__ == "__main__":
     # Example of constructing a suspect list
     list_of_lists = [
         ('PPDB Pesticide Properties DataBase ', 0),
+        ('FDA Center for Drug Evaluation & Research - Maximum (Recommended) Daily Dose ', 0),
+        ('FDA Orange Book Approved Drug Products', 0),
+        ("Agilent PCDL Veterinarian Drug library",0),
+        ("Swiss Pesticides and Metabolites from Keifer et al 2019", 0),
+        ("PA Office of Pesticide Programs Information Network (OPPIN) ", 0),
+        ("EPA Pesticide Chemical Search Database " ,0), 
+        
+        #pfas are level 2
+        ("PFAS structures in DSSTox 2022", 2),
+        ("Chemical Contaminants - CCL 5 PFAS subset ", 2),
+        ("PFAS structures in DSSTox", 2),
+        ("PFASToxic Substances Control Act", 2),
+
+
         ('GHS Skin and Eye  II', 3),
-        ('Agilent PCDL Veterinarian Drug library', 1)
+        # ("Chemical List MZCLOUD0722-2025-07-03", 0),
     ]
-    suspect_list = construct_suspect_list('/home/analytit_admin/Data/EPA/EPA_lists/', list_of_lists)
+    suspect_list = construct_suspect_list('/home/analytit_admin/Data/EPA/EPA_lists_full_format/', list_of_lists)
     print(suspect_list.head())
     suspect_list.write_parquet('/home/analytit_admin/Data/EPA/suspect_list.parquet')
     # Example usage
-    config = suspect_list_config()
-    EPA_df = get_EPA(config, epa_path='/home/analytit_admin/Data/EPA/suspect_list.parquet')
+    config = suspect_list_config(
+        epa_db_path='/home/analytit_admin/Data/EPA/suspect_list.parquet'
+    )
+    EPA_df = get_EPA(config)
     print(EPA_df.head())
