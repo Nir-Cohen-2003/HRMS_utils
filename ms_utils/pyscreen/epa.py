@@ -6,6 +6,7 @@ from ms_utils.formats.epa_xlsx import read_xlsx_EPA_list_file
 
 @dataclass
 class suspect_list_config:
+    epa_db_path:Path|str=Path(r"EPA_with_Haz_level.parquet") # this is the path to the EPA database, which is a parquet file.
     exclusion_list:str=None
 
 

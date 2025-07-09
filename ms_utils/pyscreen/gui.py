@@ -51,10 +51,7 @@ CONFIG_STRUCTURE = {
         "DotProd_threshold_haz3": ("DotProd Threshold Haz3", 900.0, 'float', False), # Default from factory: 3:900
         "search_engine": ("Search Engine", (["nist", "custom", "entropy"], "entropy"), 'choice', False),
         "noise_threshold": ("Search MS2 Noise Threshold (relative)", 0.005, 'float', False),
-        # GUI-specific parameters, not directly in search_config dataclass but handled by GUI/workflow
-        "NIST_db_path": ("NIST DB Path (.msp)", "", 'path', False),
-        "custom_library_path": ("Custom Library Path (.msp)", "", 'path', False),
-        "min_peaks_for_search": ("Min MS2 Peaks for Search", 3, 'int', False),
+        "NIST_db_path": ("NIST DB Path (parquet)", "", 'path', False),
     },
     "isotopic_pattern": {
         # Based on isotopic_pattern_config from ms_utils.formula_annotation.isotopic_pattern
@@ -272,14 +269,21 @@ class PyScreenApp(ctk.CTk):
         ctk.CTkButton(blank_frame, text="Clear", command=self._clear_blank_file).pack(side="left", padx=5)
 
     def _browse_sample_files(self):
+        # Use the standard file dialog for multi-file selection
+        filetypes = (("Text files", "*.txt"), ("All files", "*.*"))
+        initialdir = str(Path.home())
+        # Try to set the root window geometry before opening dialog (may not affect dialog size)
+        self.geometry("1200x800")
         files = filedialog.askopenfilenames(
             title="Select Sample Files",
-            filetypes=(("Text files", "*.txt"), ("All files", "*.*"))
+            filetypes=filetypes,
+            initialdir=initialdir,
+            parent=self
         )
         if files:
-            for f_path in files:
-                if f_path not in self.sample_files:
-                    self.sample_files.append(f_path)
+            for f in files:
+                if f not in self.sample_files:
+                    self.sample_files.append(f)
             self._update_file_paths_for_display()
 
     def _remove_selected_sample(self):
@@ -320,7 +324,7 @@ class PyScreenApp(ctk.CTk):
         initial_dir = Path(var_tk.get()).parent if var_tk.get() and Path(var_tk.get()).exists() else Path.home()
         if type_hint == 'path':
             # Adjust filetypes as needed
-            filetypes = (("Database/Library files", "*.msp *.csv *.xlsx *.txt"), ("All files", "*.*"))
+            filetypes = (("Database/Library files", "*.parquet"), ("All files", "*.*"))
             filepath = filedialog.askopenfilename(title="Select File", initialdir=initial_dir, filetypes=filetypes)
             if filepath:
                 var_tk.set(filepath)

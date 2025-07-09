@@ -20,12 +20,13 @@ class search_config:
                 3:900})
     search_engine:str='entropy'
     noise_threshold:float=0.005
+    NIST_db_path:Path|str = Path(r"NIST_DB.parquet") # this is the path to the NIST database, which is a parquet file.
 
 
 NIST_path = Path(r"")
 
 def get_NIST(condig:search_config) -> pl.DataFrame:
-    NIST = pl.scan_parquet(source=r"NIST_DB.parquet")
+    NIST = pl.scan_parquet(source=search_config.NIST_db_path)
     NIST = NIST.select([
     'Name',
     'NIST_ID',
