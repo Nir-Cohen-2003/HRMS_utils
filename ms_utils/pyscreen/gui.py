@@ -8,6 +8,7 @@ from pathlib import Path
 import os
 from ms_utils.pyscreen.main import main as run_pyscreen_analysis
 from ms_utils.pyscreen.pyscreen_config import pyscreen_config, blank_config, search_config, isotopic_pattern_config, suspect_list_config
+import datetime
 
 # -- Configuration for default values and advanced fields --
 # These would ideally be derived from the actual config classes or a schema
@@ -75,8 +76,7 @@ CONFIG_STRUCTURE = {
         # exclusion_list: str = None
         "exclusion_list": ("Exclusion List Name", (["None", "boring_compounds"], "None"), 'choice', False),
         # GUI-specific parameters, not directly in suspect_list_config dataclass but handled by GUI/workflow
-        "epa_db_path": ("EPA CompTox DB Path (.csv/.xlsx)", "", 'path', False),
-        "filter_by_presence_in_epa": ("Filter by EPA Presence", True, 'bool', False),
+        "epa_db_path": ("EPA CompTox DB Path (.parquet)", "", 'path', False),
     }
 }
 
@@ -511,8 +511,6 @@ class PyScreenApp(ctk.CTk):
         self.show_error_popup("Analysis Error", f"{str(error_exception)}\n\nFull traceback:\n{traceback_str}")
 
     def show_error_popup(self, title, message):
-        # Simple messagebox for now, could be an internal panel
-        # messagebox.showerror(title, message) 
         self.error_label.configure(text=f"{title}. Click to expand details.")
         self.error_text_area.configure(state="normal")
         self.error_text_area.delete("1.0", tk.END)
@@ -520,22 +518,53 @@ class PyScreenApp(ctk.CTk):
         self.error_text_area.configure(state="disabled")
         
         if not self.error_frame.winfo_ismapped():
-             self.error_frame.pack(fill="x", padx=5, pady=5, before=self.status_frame) # Pack above status
+            self.error_frame.pack(fill="x", padx=5, pady=5, before=self.status_frame)
         
-        # Ensure error details are initially hidden if they were visible from a previous error
         if self.error_details_visible:
             self.error_text_area.pack_forget()
             self.error_details_visible = False
-            # self.toggle_error_details() # Call to reset view if needed
+
+        # Store the error message for export
+        self._last_error_message = message
 
     def toggle_error_details(self, event=None):
-        if self.error_details_visible:
-            self.error_text_area.pack_forget()
-            self.error_details_visible = False
-        else:
-            self.error_text_area.pack(fill="both", expand=True, padx=5, pady=(0,5))
-            self.error_details_visible = True
-            
+        if hasattr(self, 'error_details_window') and self.error_details_window.winfo_exists():
+            self.error_details_window.lift()
+            return
+
+        # Create a new resizable Toplevel window for error details
+        self.error_details_window = tk.Toplevel(self)
+        self.error_details_window.title("Error Details")
+        self.error_details_window.geometry("700x400")
+        self.error_details_window.resizable(True, True)
+
+        # Text area for error message
+        text_area = tk.Text(self.error_details_window, wrap="word")
+        text_area.insert("1.0", getattr(self, "_last_error_message", "No error message."))
+        text_area.configure(state="disabled")
+        text_area.pack(fill="both", expand=True, padx=10, pady=10)
+
+        # Export button
+        export_btn = ctk.CTkButton(self.error_details_window, text="Export Error Message", command=lambda: self.export_error_message(getattr(self, "_last_error_message", "")))
+        export_btn.pack(pady=(0, 10))
+
+        # Close button
+        close_btn = ctk.CTkButton(self.error_details_window, text="Close", command=self.error_details_window.destroy)
+        close_btn.pack(pady=(0, 10))
+
+        self.error_details_window.focus_set()
+
+    def export_error_message(self, message):
+        now = datetime.datetime.now()
+        filename = f"pyscreen_error_{now.strftime('%Y%m%d_%H%M%S')}.txt"
+        filepath = os.path.join(os.getcwd(), filename)
+        try:
+            with open(filepath, "w") as f:
+                f.write(message)
+            messagebox.showinfo("Export Successful", f"Error message exported to:\n{filepath}")
+        except Exception as e:
+            messagebox.showerror("Export Failed", f"Could not export error message:\n{e}")
+
     def hide_error_details(self):
         if self.error_frame.winfo_ismapped():
             self.error_frame.pack_forget()

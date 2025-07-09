@@ -10,6 +10,7 @@ from ms_entropy import calculate_entropy_similarity
 from dataclasses import dataclass, field
 @dataclass
 class search_config:
+    NIST_db_path:Path|str # this is the path to the NIST database, which is a parquet file.
     polarity:str
     ms1_mass_tolerance:float=5e-6
     ms2_mass_tolerance:float=10e-6 # high, but it's because NIST can have pretty high mass error.
@@ -20,7 +21,6 @@ class search_config:
                 3:900})
     search_engine:str='entropy'
     noise_threshold:float=0.005
-    NIST_db_path:Path|str = Path(r"NIST_DB.parquet") # this is the path to the NIST database, which is a parquet file.
 
 
 NIST_path = Path(r"")
@@ -520,3 +520,16 @@ def entropy_score(
     score = np.float64(score)
     return score
 entropy_score_batch=np.vectorize(entropy_score)
+
+if __name__ == "__main__":
+    # Example usage
+    config = search_config(
+        polarity='positive',
+        ms1_mass_tolerance=5e-6,
+        ms2_mass_tolerance=10e-6,
+        search_engine='entropy',
+        noise_threshold=0.005,
+        NIST_db_path=Path(r"NIST_DB_1.parquet")  # Adjust the path as needed
+    )
+    print(config)
+    # You can add more test cases or examples here to validate the functionality.

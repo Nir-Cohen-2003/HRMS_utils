@@ -414,7 +414,8 @@ def main(
     
     if isinstance(config,dict):
         config = pyscreen_config(**config) ## converts it to the correct format and sets default values. also works when reading from yaml
-
+    if not isinstance(config,pyscreen_config):
+        raise Exception("config must be a pyscreen_config object or a dict that can be converted to one")
     if blank_file_path in sample_file_paths:
         sample_file_paths.remove(blank_file_path)
     # tells you what it got.
