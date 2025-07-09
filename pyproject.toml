@@ -20,5 +20,6 @@ dependencies = [
     "pyyaml>=6.0.2",
     "rdkit>=2024.9.6",
     "requests>=2.32.3",
+    "seaborn>=0.13.2",
     "torch>=2.7.0",
 ]

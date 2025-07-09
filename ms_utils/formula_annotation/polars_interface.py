@@ -454,8 +454,8 @@ def _min_bound(formula_arr:np.ndarray):
     result_arr = np.zeros((formula_arr.shape[0], 15), dtype=np.int32)
     result_arr[:, 0] = MIN_FORMULA[0]  # H
     result_arr[:, 1] = np.where(formula_arr[:, 1]>0, 1, 0)  # B: B if B>0, else 0
-    result_arr[:, 2] = np.maximum(0,formula_arr[:, 2] - 2)  # C: C-2, clipped to [0, MAX]
-    result_arr[:, 3] = MIN_FORMULA[3]  # N
+    result_arr[:, 2] = np.maximum(0,formula_arr[:, 2] - 1)  # C: C-2, clipped to [0, MAX]
+    result_arr[:, 3] = np.where(formula_arr[:, 3] > 0, 1, 0)  # N: N if N>0, else 0
     result_arr[:, 4] = MIN_FORMULA[4]  # O
     result_arr[:, 5] = MIN_FORMULA[5]  # F
     result_arr[:, 6] = MIN_FORMULA[6]  # Na
@@ -473,13 +473,14 @@ def _min_bound(formula_arr:np.ndarray):
 
 def _max_bound(formula_arr:np.ndarray):
     # if 'MAX_FORMULA' not in globals():
-    MAX_FORMULA = np.array([100, 1, 60, 30, 30, 30, 0, 5, 10, 5, 10, 0, 1, 2,  3], dtype=np.int32)
+    ####################### H,   B, C,  N,  O,  F, Na,Si, P, S, Cl, K, As,Br, I
+    MAX_FORMULA = np.array([100, 0, 60, 30, 30, 30, 0, 1, 2, 5, 10, 0, 0, 3,  3], dtype=np.int32)
     # we take a 2d array, where each row is a formula, and we return a 2d array with the same shape, but with the max bounds for each formula
     result_arr = np.zeros((formula_arr.shape[0], 15), dtype=np.int32)
     result_arr[:, 0] = MAX_FORMULA[0]  # H
     result_arr[:, 1] = np.maximum(0,formula_arr[:, 1])  # B
-    result_arr[:, 2] = np.maximum(0,formula_arr[:, 2] + 2)  # C: C+2, clipped to [0, MAX]
-    result_arr[:, 3] = MAX_FORMULA[3]  # N
+    result_arr[:, 2] = np.maximum(0,formula_arr[:, 2] + 1)  # C: C+2, clipped to [0, MAX]
+    result_arr[:, 3] = np.where(formula_arr[:, 3] > 0, MAX_FORMULA[3], 0)  # N: N if N>0, else 0
     result_arr[:, 4] = MAX_FORMULA[4]  # O
     result_arr[:, 5] = MAX_FORMULA[5]  # F
     result_arr[:, 6] = MAX_FORMULA[6]  # Na
