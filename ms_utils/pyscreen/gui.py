@@ -6,8 +6,8 @@ import threading
 import traceback
 from pathlib import Path
 import os
-from main import main as run_pyscreen_analysis
-from pyscreen_config import pyscreen_config, blank_config, search_config, isotopic_pattern_config, suspect_list_config
+from ms_utils.pyscreen.main import main as run_pyscreen_analysis
+from ms_utils.pyscreen.pyscreen_config import pyscreen_config, blank_config, search_config, isotopic_pattern_config, suspect_list_config
 
 # -- Configuration for default values and advanced fields --
 # These would ideally be derived from the actual config classes or a schema
@@ -122,6 +122,7 @@ class PyScreenApp(ctk.CTk):
         self.tab_view.add("Search Config")
         self.tab_view.add("Isotopic Pattern Config")
         self.tab_view.add("Suspect List Config")
+        self.tab_view.set("File Selection")  # <-- Ensure File Selection tab is active
 
         self._create_file_selection_tab(self.tab_view.tab("File Selection"))
         self._create_config_tabs()
@@ -244,17 +245,23 @@ class PyScreenApp(ctk.CTk):
         # Sample Files Section
         sample_frame = ctk.CTkFrame(tab)
         sample_frame.pack(fill="x", expand=False, padx=10, pady=10)
-        ctk.CTkLabel(sample_frame, text="Sample Files:").pack(side="left", padx=5)
-        self.sample_listbox = tk.Listbox(sample_frame, height=5, width=70)
-        self.sample_listbox.pack(side="left", fill="x", expand=True, padx=5)
-        
-        sample_buttons_frame = ctk.CTkFrame(sample_frame)
-        sample_buttons_frame.pack(side="left", padx=5)
-        ctk.CTkButton(sample_buttons_frame, text="Add Files", command=self._browse_sample_files).pack(fill="x", pady=2)
-        ctk.CTkButton(sample_buttons_frame, text="Remove Selected", command=self._remove_selected_sample).pack(fill="x", pady=2)
-        ctk.CTkButton(sample_buttons_frame, text="Clear All", command=self._clear_all_samples).pack(fill="x", pady=2)
 
-        # Blank File Section
+        # Use grid for better control
+        ctk.CTkLabel(sample_frame, text="Sample Files:").grid(row=0, column=0, sticky="nw", padx=5, pady=2)
+        self.sample_listbox = tk.Listbox(sample_frame, height=5, width=60)
+        self.sample_listbox.grid(row=0, column=1, sticky="nsew", padx=5, pady=2)
+
+        sample_buttons_frame = ctk.CTkFrame(sample_frame)
+        sample_buttons_frame.grid(row=0, column=2, sticky="ns", padx=5, pady=2)
+        ctk.CTkButton(sample_buttons_frame, text="Add Files", command=self._browse_sample_files, width=100).pack(fill="x", pady=2)
+        ctk.CTkButton(sample_buttons_frame, text="Remove Selected", command=self._remove_selected_sample, width=100).pack(fill="x", pady=2)
+        ctk.CTkButton(sample_buttons_frame, text="Clear All", command=self._clear_all_samples, width=100).pack(fill="x", pady=2)
+
+        # Make listbox expand with window
+        sample_frame.grid_columnconfigure(1, weight=1)
+        sample_frame.grid_rowconfigure(0, weight=1)
+
+        # Blank File Section (unchanged)
         blank_frame = ctk.CTkFrame(tab)
         blank_frame.pack(fill="x", expand=False, padx=10, pady=10)
         ctk.CTkLabel(blank_frame, text="Blank File (Optional):").pack(side="left", padx=5)
@@ -273,18 +280,15 @@ class PyScreenApp(ctk.CTk):
             for f_path in files:
                 if f_path not in self.sample_files:
                     self.sample_files.append(f_path)
-                    self.sample_listbox.insert(tk.END, Path(f_path).name)
             self._update_file_paths_for_display()
 
     def _remove_selected_sample(self):
-        selected_indices = self.sample_listbox.curselection()
+        selected_indices = list(self.sample_listbox.curselection())
         for i in reversed(selected_indices):
-            self.sample_listbox.delete(i)
             del self.sample_files[i]
         self._update_file_paths_for_display()
 
     def _clear_all_samples(self):
-        self.sample_listbox.delete(0, tk.END)
         self.sample_files.clear()
         self._update_file_paths_for_display()
 
