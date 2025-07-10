@@ -6,8 +6,8 @@ import threading
 import traceback
 from pathlib import Path
 import os
-from main import main as run_pyscreen_analysis
-from pyscreen_config import pyscreen_config, blank_config, search_config, isotopic_pattern_config, suspect_list_config
+from .main import main as run_pyscreen_analysis
+from .pyscreen_config import pyscreen_config, blank_config, search_config, isotopic_pattern_config, suspect_list_config
 
 # -- Configuration for default values and advanced fields --
 # These would ideally be derived from the actual config classes or a schema
