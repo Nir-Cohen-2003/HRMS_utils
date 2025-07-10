@@ -9,8 +9,12 @@ ms_utils/formats/epa_xlsx.py
 ms_utils/formats/nist_mspec.py
 ms_utils/formula_annotation/isotopic_pattern.py
 ms_utils/formula_annotation/ms_buddy.py
+ms_utils/formula_annotation/polars_interface.py
 ms_utils/formula_annotation/sirius.py
 ms_utils/formula_annotation/utils.py
+ms_utils/formula_annotation/mass_decomposition_impl/benchmark.py
+ms_utils/formula_annotation/mass_decomposition_impl/python_impl.py
+ms_utils/formula_annotation/mass_decomposition_impl/setup.py
 ms_utils/interfaces/msdial.py
 ms_utils/interfaces/pubchem.py
 ms_utils/mces/dataset_splitting.py
@@ -18,6 +22,7 @@ ms_utils/mces/lib.py
 ms_utils/mces/mces.py
 ms_utils/mces/par.py
 ms_utils/pyscreen/epa.py
+ms_utils/pyscreen/gui.py
 ms_utils/pyscreen/main.py
 ms_utils/pyscreen/pyscreen_config.py
 ms_utils/pyscreen/spectral_search.py

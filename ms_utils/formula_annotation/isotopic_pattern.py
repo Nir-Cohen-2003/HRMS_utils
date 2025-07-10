@@ -10,6 +10,29 @@ class isotopic_pattern_config:
     ms1_resolution:float
     minimum_intensity : float=5e5
     max_intensity_ratio : float=1.7
+    def to_dict(self) -> dict:
+        return {
+            'mass_tolerance': self.mass_tolerance,
+            'ms1_resolution': self.ms1_resolution,
+            'minimum_intensity': self.minimum_intensity,
+            'max_intensity_ratio': self.max_intensity_ratio
+        }
+
+    @classmethod
+    def from_dict(cls, config_dict: dict) -> 'isotopic_pattern_config':
+        mass_tolerance = config_dict.get('mass_tolerance')
+        ms1_resolution = config_dict.get('ms1_resolution')
+        if mass_tolerance is None:
+            raise ValueError("mass_tolerance is required and cannot be None.")
+        if ms1_resolution is None:
+            raise ValueError("ms1_resolution is required and cannot be None.")
+        kwargs = {}
+        for field_ in cls.__dataclass_fields__:
+            if field_ in config_dict and config_dict[field_] is not None:
+                kwargs[field_] = config_dict[field_]
+        kwargs['mass_tolerance'] = mass_tolerance
+        kwargs['ms1_resolution'] = ms1_resolution
+        return cls(**kwargs)
 
 isotopic_pattern_arr = np.array( 
     #mass difference, zero isotope probability, first isoptope probability
@@ -22,31 +45,70 @@ isotopic_pattern_arr = np.array(
     ]
 )
 
-def fits_isotopic_pattern(mzs,intensities,formula:str,precursor_mz:float,config:isotopic_pattern_config):
-    mzs = np.array(mzs)
-    intensities = np.array(intensities)
-    element_numbers = get_element_numbers(formula=formula)
-    element_fits = np.full_like(element_numbers,fill_value=False,dtype=np.bool)
-    
-    precursor_index = (np.abs(mzs-precursor_mz)).argmin()
-    precursor_intensity = intensities[precursor_index]
+def fits_isotopic_pattern_batch(mzs_batch, intensities_batch, formulas, precursor_mzs, config):
+    """
+    mzs_batch: list of arrays, each shape (n_peaks_i,)
+    intensities_batch: list of arrays, each shape (n_peaks_i,)
+    formulas: list/array of formula strings, length=batch
+    precursor_mzs: array, length=batch
+    config: isotopic_pattern_config (same for all)
+    Returns: array of bool, shape (batch,)
+    """
+    if len(formulas) == 0:
+        return np.array([], dtype=bool)
 
-    #check for C and N
+    batch_size = len(formulas)
+    # Get element numbers for all formulas (shape: batch, 5)
+    element_numbers_batch = np.stack([get_element_numbers(f) for f in formulas])
+
+    # Find precursor indices and intensities for each spectrum
+    precursor_indices = []
+    precursor_intensities = []
+    for i in range(batch_size):
+        mzs = mzs_batch[i]
+        intensities = intensities_batch[i]
+        diffs = np.abs(mzs - precursor_mzs[i])
+        idx = diffs.argmin()
+        precursor_indices.append(idx)
+        precursor_intensities.append(intensities[idx])
+
+    # Prepare element_fits (batch, 5)
+    element_fits = np.zeros_like(element_numbers_batch, dtype=bool)
+
+    # C and N
     if config.ms1_resolution > NITROGEN_SEPARATION_RESOLUTION:
-        element_fits[0] = check_element_fit(config,0,mzs,intensities,element_numbers[0],precursor_mz,precursor_intensity) #C
-        element_fits[1] = check_element_fit(config,1,mzs,intensities,element_numbers[1],precursor_mz,precursor_intensity) #N
+        # C
+        for idx in range(batch_size):
+            element_fits[idx, 0] = check_element_fit(
+                config, 0, mzs_batch[idx], intensities_batch[idx],
+                element_numbers_batch[idx, 0], precursor_mzs[idx], precursor_intensities[idx]
+            )
+        # N
+        for idx in range(batch_size):
+            element_fits[idx, 1] = check_element_fit(
+                config, 1, mzs_batch[idx], intensities_batch[idx],
+                element_numbers_batch[idx, 1], precursor_mzs[idx, 0], precursor_intensities[idx]
+            )
     else:
-        CN_fit = check_CN_fit(config,mzs,intensities,element_numbers[0],element_numbers[1],precursor_mz,precursor_intensity)
-        element_fits[0] = CN_fit
-        element_fits[1] = CN_fit
+        # CN combined
+        for idx in range(batch_size):
+            CN_fit = check_CN_fit(
+                config, mzs_batch[idx], intensities_batch[idx],
+                element_numbers_batch[idx, 0], element_numbers_batch[idx, 1],
+                precursor_mzs[idx], precursor_intensities[idx]
+            )
+            element_fits[idx, 0] = CN_fit
+            element_fits[idx, 1] = CN_fit
 
-    # check for S,Cl,Br
-    for i in [2,3,4]:
-        element_fits[i] = check_element_fit(config,i,mzs,intensities,element_numbers[i],precursor_mz,precursor_intensity)
-    
-    return np.all(element_fits)
+    # S, Cl, Br
+    for i in [2, 3, 4]:
+        for idx in range(batch_size):
+            element_fits[idx, i] = check_element_fit(
+                config, i, mzs_batch[idx], intensities_batch[idx],
+                element_numbers_batch[idx, i], precursor_mzs[idx], precursor_intensities[idx]
+            )
 
-fits_isotopic_pattern_batch =np.vectorize(fits_isotopic_pattern)
+    return np.all(element_fits, axis=1)
 
 def get_element_numbers(formula:str) -> np.ndarray:
     has_C = re.search(r"C((\d+)|[A-Z]|$)",formula)
@@ -162,13 +224,4 @@ def check_CN_fit(
 
 
 
-if __name__ == "__main__":
-    mzs = []#[246.12357, 247.12074, 247.12688, 248.12413, 248.13025]	
-    intensities =[]#[230812832.0, 2362436.0, 30514068.0, 473412.0, 2097496.0]
-    formula = "C13H15N3O2"
-    precursor_mz=246.124
-    config = isotopic_pattern_config(mass_tolerance=3e-6,ms1_resolution=1.2e5,minimum_intensity=5e5,max_intensity_ratio=1.7)
-    fit=fits_isotopic_pattern(mzs=mzs,intensities=intensities,precursor_mz=precursor_mz,formula=formula,config=config)
-    print(fit)
-    print(fit.shape)
-    print(type(fit))
+# if __name__ == "__main__":

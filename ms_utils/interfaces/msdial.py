@@ -6,15 +6,19 @@ from ms_entropy import calculate_spectral_entropy
 from dataclasses import dataclass
 from ms_utils.pyscreen.spectral_search import entropy_score_batch # used to compare chromatograms agianst each other, which is a case of spectral search
 
-MSDIAL_columns_to_read = [
-    'Peak ID','Scan',
-    'RT left(min)', 'RT (min)', 'RT right (min)',
-    'Precursor m/z',
-    'Height', 
-    'Adduct','Isotope', 
-    'MSMS spectrum',
-    'MS1 isotopes'
-]
+MSDIAL_columns_to_read = {
+    'Peak ID': pl.Int64,
+    'Scan': pl.Int64,
+    'RT left(min)': pl.Float64, 
+    'RT (min)': pl.Float64, 
+    'RT right (min)': pl.Float64,
+    'Precursor m/z': pl.Float64,
+    'Height': pl.Float64, 
+    'Adduct': pl.String,
+    'Isotope': pl.String, 
+    'MSMS spectrum': pl.String, # will be converted to 2 lists, m/z and intensity
+    'MS1 isotopes': pl.String, # will be converted to 2 lists, m/z and intensity
+}
 
 MSDIAL_other_columns = [
     'Estimated noise', 'S/N',
@@ -37,12 +41,33 @@ MSDIAL_columns_to_output= [
 ]
 @dataclass
 class blank_config:
-    ms1_mass_tolerance : float=3e-6
+    ms1_mass_tolerance: float=3e-6
     dRT_min : float=0.1
     ratio : float | int=5
     use_ms2:bool=False
     dRT_min_with_ms2:float=0.3
     ms2_fit:float=0.85
+    def __post_init__(self):
+        if self.ms1_mass_tolerance > 0.0001: # if the value is more than 0.0001, its a ppm value and we multiply by 1e-6
+            self.ms1_mass_tolerance = self.ms1_mass_tolerance * 1e-6
+            
+    def to_dict(self) -> dict:
+        return {
+            'ms1_mass_tolerance': self.ms1_mass_tolerance,
+            'dRT_min': self.dRT_min,
+            'ratio': self.ratio,
+            'use_ms2': self.use_ms2,
+            'dRT_min_with_ms2': self.dRT_min_with_ms2,
+            'ms2_fit': self.ms2_fit
+        }
+
+    @classmethod
+    def from_dict(cls, config_dict: dict) -> 'blank_config':
+        kwargs = {}
+        for field_ in cls.__dataclass_fields__: # why complicate it and not just use cls(**config_dict)? because we want to avoid keys that are not in the dataclass
+            if field_ in config_dict and config_dict[field_] is not None:
+                kwargs[field_] = config_dict[field_]
+        return cls(**kwargs)
 
 
 
@@ -87,10 +112,10 @@ def subtract_blank_frame(
             blank_lf,
             pl.col("RT (min)") < pl.col("RT (min)_blank") + config.dRT_min,
             pl.col("RT (min)") > pl.col("RT (min)_blank") -  config.dRT_min,
-            (pl.col("Precursor_mz_MSDIAL").truediv(pl.col("Precursor_mz_MSDIAL_blank"))-1).abs().le(config.ms1_mass_tolerance),
+            (pl.col("Precursor_mz_MSDIAL").truediv(pl.col("Precursor_mz_MSDIAL_blank"))-1.0).abs().le(config.ms1_mass_tolerance),
             pl.col("Height") <  pl.col("Height_blank") * config.ratio,
             suffix="_blank"
-        ).collect(streaming=True)
+        ).collect(engine="streaming")
     else: # so we just use strict rt
         sample_lf = sample_df.select(
             [
@@ -131,7 +156,7 @@ def subtract_blank_frame(
         subtract_df_ms2 = subtract_lf.filter(
             pl.col('msms_m/z').is_not_null(),
             pl.col('msms_m/z_blank').is_not_null()
-        ).collect(streaming=True)
+        ).collect(engine="streaming")
         
         subtract_df_ms2 = subtract_df_ms2.filter(
             pl.struct(
@@ -151,7 +176,7 @@ def subtract_blank_frame(
                 is_elementwise=True
             ).ge(config.ms2_fit))
         
-        subtract_df = pl.concat([subtract_df_ms2,subtract_lf_rt_strict.collect(streaming=True)])
+        subtract_df = pl.concat([subtract_df_ms2,subtract_lf_rt_strict.collect(engine="streaming")])
 
     cleaned_sample_df = sample_df.join(subtract_df,on="Peak ID", how='anti')
     return cleaned_sample_df
@@ -159,9 +184,12 @@ def subtract_blank_frame(
 
 
 def _get_chromatogram_basic(path: str | Path)-> pl.LazyFrame :
-    chromatogram=pl.read_csv(source=path,has_header=True,skip_rows=0,separator="	", null_values='null')
-    chromatogram = chromatogram.select(MSDIAL_columns_to_read)
-    chromatogram=_convert_MSMS_to_list(chromatogram).drop('MSMS spectrum')
+    chromatogram = pl.read_csv(
+        source=path,has_header=True,skip_rows=0,separator="	", null_values='null',
+        columns=list(MSDIAL_columns_to_read.keys()),
+        schema_overrides=MSDIAL_columns_to_read)
+    # chromatogram = chromatogram.select(MSDIAL_columns_to_read.keys())
+    chromatogram = _convert_MSMS_to_list(chromatogram).drop('MSMS spectrum')
     chromatogram = _convert_MS1_to_list(chromatogram).drop('MS1 isotopes')
     chromatogram=chromatogram.with_columns(
         pl.col('RT right (min)').sub(pl.col('RT left(min)')).alias('peak_width_min'),
@@ -187,7 +215,7 @@ def _add_energy_annotation(chromatogram:pl.DataFrame) -> pl.DataFrame:
         molecular_ion_intensity=pl.when(
             (pl.col('msms_m/z').list.get(pl.col('molecular_ion_index')) - pl.col('Precursor_mz_MSDIAL'))<0.003 # 3 mDa as the tolerance
         ).then(pl.col('msms_intensity').list.get(pl.col('molecular_ion_index'))).otherwise(pl.lit(0)),
-        second_highest_intensity=pl.col('msms_intensity').list.sort(descending=True,nulls_last=True).list.get(1) # so the second highest intesity
+        second_highest_intensity=pl.col('msms_intensity').list.sort(descending=True,nulls_last=True).list.get(1,null_on_oob=True).fill_null(pl.lit(0))#for cases where there is only one peak, we fill this value with 0 
     )
     chromatogram_with_msms = chromatogram_with_msms.with_columns(
         pl.col('molecular_ion_intensity').le(0.1).alias('energy_is_too_high'),
@@ -371,19 +399,25 @@ if __name__ == '__main__':
     pl.Config(
     tbl_rows=20,
     tbl_cols=15)
-    path = Path(r'/home/analytit_admin/Downloads/250514_015.txt')
-    
+    path = Path(r'/home/analytit_admin/Data/iibr_data/250515_006.txt')
+    blank_path = Path(r'/home/analytit_admin/Data/iibr_data/250515_003.txt')
     chromatogram = get_chromatogram(path=path)
+    blank = get_chromatogram(path=blank_path)
 
-    if isinstance(chromatogram,pl.LazyFrame):
-        print(chromatogram.collect_schema())
-        print(chromatogram.collect())
-    elif isinstance(chromatogram,pl.DataFrame):
-        print(chromatogram.schema)
-        print(chromatogram)
-    else:
-        print("wrong output! this must be either a polars lazyframe or dataframe")
-        print(type(chromatogram))
-
+    # if isinstance(chromatogram,pl.LazyFrame):
+    #     print(chromatogram.collect_schema())
+    #     print(chromatogram.collect())
+    # elif isinstance(chromatogram,pl.DataFrame):
+    #     print(chromatogram.schema)
+    #     print(chromatogram)
+    # else:
+    #     print("wrong output! this must be either a polars lazyframe or dataframe")
+    #     print(type(chromatogram))
+    chromatogram = subtract_blank_frame(
+        sample_df=chromatogram,
+        blank_df=blank,
+        config=blank_config()
+    )
+    print(chromatogram.head(10))
 
     print(time()-start)

@@ -4,6 +4,7 @@ from tkinter import filedialog, messagebox
 import json
 import threading
 import traceback
+import os
 from pathlib import Path
 import os
 from .main import main as run_pyscreen_analysis
@@ -26,7 +27,7 @@ CONFIG_STRUCTURE = {
         # use_ms2: bool = False
         # dRT_min_with_ms2: float = 0.3
         # ms2_fit: float = 0.85
-        "ms1_mass_tolerance": ("Blank MS1 Mass Tolerance (abs)", 3e-6, 'float', False),
+        "ms1_mass_tolerance": ("Blank MS1 Mass Tolerance (ppm)", 3, 'float', False),
         "dRT_min": ("Blank RT Tolerance (min)", 0.1, 'float', False),
         "ratio": ("Blank Intensity Fold Change Ratio", 5.0, 'float', False),
         "use_ms2": ("Blank Use MS2 Subtraction", False, 'bool', False),
@@ -43,18 +44,15 @@ CONFIG_STRUCTURE = {
         # search_engine: str = 'entropy'
         # noise_threshold: float = 0.005
         "polarity": ("Polarity", (["positive", "negative"], "positive"), 'choice', False),
-        "ms1_mass_tolerance": ("Search MS1 Mass Tolerance (abs)", 5e-6, 'float', False),
-        "ms2_mass_tolerance": ("Search MS2 Mass Tolerance (abs)", 10e-6, 'float', False),
+        "ms1_mass_tolerance": ("Search MS1 Mass Tolerance (ppm)", 5, 'float', False),
+        "ms2_mass_tolerance": ("Search MS2 Mass Tolerance (ppm)", 10, 'float', False),
         "DotProd_threshold_haz0": ("DotProd Threshold Haz0", 650.0, 'float', False), # Default from factory: 0:650
         "DotProd_threshold_haz1": ("DotProd Threshold Haz1", 700.0, 'float', False), # Default from factory: 1:700
         "DotProd_threshold_haz2": ("DotProd Threshold Haz2", 800.0, 'float', False), # Default from factory: 2:800
         "DotProd_threshold_haz3": ("DotProd Threshold Haz3", 900.0, 'float', False), # Default from factory: 3:900
         "search_engine": ("Search Engine", (["nist", "custom", "entropy"], "entropy"), 'choice', False),
         "noise_threshold": ("Search MS2 Noise Threshold (relative)", 0.005, 'float', False),
-        # GUI-specific parameters, not directly in search_config dataclass but handled by GUI/workflow
-        "NIST_db_path": ("NIST DB Path (.msp)", "", 'path', False),
-        "custom_library_path": ("Custom Library Path (.msp)", "", 'path', False),
-        "min_peaks_for_search": ("Min MS2 Peaks for Search", 3, 'int', False),
+        "NIST_db_path": ("NIST DB Path (parquet)", "", 'path', False),
     },
     "isotopic_pattern": {
         # Based on isotopic_pattern_config from ms_utils.formula_annotation.isotopic_pattern
@@ -78,8 +76,7 @@ CONFIG_STRUCTURE = {
         # exclusion_list: str = None
         "exclusion_list": ("Exclusion List Name", (["None", "boring_compounds"], "None"), 'choice', False),
         # GUI-specific parameters, not directly in suspect_list_config dataclass but handled by GUI/workflow
-        "epa_db_path": ("EPA CompTox DB Path (.csv/.xlsx)", "", 'path', False),
-        "filter_by_presence_in_epa": ("Filter by EPA Presence", True, 'bool', False),
+        "epa_db_path": ("EPA CompTox DB Path (.parquet)", "", 'path', False),
     }
 }
 
@@ -103,6 +100,20 @@ class PyScreenApp(ctk.CTk):
         self.main_container = ctk.CTkFrame(self)
         self.main_container.pack(fill="both", expand=True, padx=10, pady=10)
 
+        # --- Add method load/save buttons at the top ---
+        self.method_buttons_frame = ctk.CTkFrame(self.main_container)
+        self.method_buttons_frame.pack(fill="x", padx=5, pady=(0, 5))
+
+        self.load_method_btn = ctk.CTkButton(
+            self.method_buttons_frame, text="Load Method...", command=self.load_method_dialog, width=140
+        )
+        self.load_method_btn.pack(side="left", padx=(0, 10), pady=5)
+
+        self.save_method_btn = ctk.CTkButton(
+            self.method_buttons_frame, text="Save Method As...", command=self.save_method_dialog, width=160
+        )
+        self.save_method_btn.pack(side="left", pady=5)
+
         # Menu Bar
         menubar = tk.Menu(self)
         filemenu = tk.Menu(menubar, tearoff=0)
@@ -122,6 +133,7 @@ class PyScreenApp(ctk.CTk):
         self.tab_view.add("Search Config")
         self.tab_view.add("Isotopic Pattern Config")
         self.tab_view.add("Suspect List Config")
+        self.tab_view.set("File Selection")  # <-- Ensure File Selection tab is active
 
         self._create_file_selection_tab(self.tab_view.tab("File Selection"))
         self._create_config_tabs()
@@ -244,17 +256,23 @@ class PyScreenApp(ctk.CTk):
         # Sample Files Section
         sample_frame = ctk.CTkFrame(tab)
         sample_frame.pack(fill="x", expand=False, padx=10, pady=10)
-        ctk.CTkLabel(sample_frame, text="Sample Files:").pack(side="left", padx=5)
-        self.sample_listbox = tk.Listbox(sample_frame, height=5, width=70)
-        self.sample_listbox.pack(side="left", fill="x", expand=True, padx=5)
-        
-        sample_buttons_frame = ctk.CTkFrame(sample_frame)
-        sample_buttons_frame.pack(side="left", padx=5)
-        ctk.CTkButton(sample_buttons_frame, text="Add Files", command=self._browse_sample_files).pack(fill="x", pady=2)
-        ctk.CTkButton(sample_buttons_frame, text="Remove Selected", command=self._remove_selected_sample).pack(fill="x", pady=2)
-        ctk.CTkButton(sample_buttons_frame, text="Clear All", command=self._clear_all_samples).pack(fill="x", pady=2)
 
-        # Blank File Section
+        # Use grid for better control
+        ctk.CTkLabel(sample_frame, text="Sample Files:").grid(row=0, column=0, sticky="nw", padx=5, pady=2)
+        self.sample_listbox = tk.Listbox(sample_frame, height=5, width=60)
+        self.sample_listbox.grid(row=0, column=1, sticky="nsew", padx=5, pady=2)
+
+        sample_buttons_frame = ctk.CTkFrame(sample_frame)
+        sample_buttons_frame.grid(row=0, column=2, sticky="ns", padx=5, pady=2)
+        ctk.CTkButton(sample_buttons_frame, text="Add Files", command=self._browse_sample_files, width=100).pack(fill="x", pady=2)
+        ctk.CTkButton(sample_buttons_frame, text="Remove Selected", command=self._remove_selected_sample, width=100).pack(fill="x", pady=2)
+        ctk.CTkButton(sample_buttons_frame, text="Clear All", command=self._clear_all_samples, width=100).pack(fill="x", pady=2)
+
+        # Make listbox expand with window
+        sample_frame.grid_columnconfigure(1, weight=1)
+        sample_frame.grid_rowconfigure(0, weight=1)
+
+        # Blank File Section (unchanged)
         blank_frame = ctk.CTkFrame(tab)
         blank_frame.pack(fill="x", expand=False, padx=10, pady=10)
         ctk.CTkLabel(blank_frame, text="Blank File (Optional):").pack(side="left", padx=5)
@@ -265,26 +283,30 @@ class PyScreenApp(ctk.CTk):
         ctk.CTkButton(blank_frame, text="Clear", command=self._clear_blank_file).pack(side="left", padx=5)
 
     def _browse_sample_files(self):
+        # Use the standard file dialog for multi-file selection
+        filetypes = (("Text files", "*.txt"), ("All files", "*.*"))
+        initialdir = str(Path.home())
+        # Try to set the root window geometry before opening dialog (may not affect dialog size)
+        self.geometry("1200x800")
         files = filedialog.askopenfilenames(
             title="Select Sample Files",
-            filetypes=(("Text files", "*.txt"), ("All files", "*.*"))
+            filetypes=filetypes,
+            initialdir=initialdir,
+            parent=self
         )
         if files:
-            for f_path in files:
-                if f_path not in self.sample_files:
-                    self.sample_files.append(f_path)
-                    self.sample_listbox.insert(tk.END, Path(f_path).name)
+            for f in files:
+                if f not in self.sample_files:
+                    self.sample_files.append(f)
             self._update_file_paths_for_display()
 
     def _remove_selected_sample(self):
-        selected_indices = self.sample_listbox.curselection()
+        selected_indices = list(self.sample_listbox.curselection())
         for i in reversed(selected_indices):
-            self.sample_listbox.delete(i)
             del self.sample_files[i]
         self._update_file_paths_for_display()
 
     def _clear_all_samples(self):
-        self.sample_listbox.delete(0, tk.END)
         self.sample_files.clear()
         self._update_file_paths_for_display()
 
@@ -316,7 +338,7 @@ class PyScreenApp(ctk.CTk):
         initial_dir = Path(var_tk.get()).parent if var_tk.get() and Path(var_tk.get()).exists() else Path.home()
         if type_hint == 'path':
             # Adjust filetypes as needed
-            filetypes = (("Database/Library files", "*.msp *.csv *.xlsx *.txt"), ("All files", "*.*"))
+            filetypes = (("Database/Library files", "*.parquet"), ("All files", "*.*"))
             filepath = filedialog.askopenfilename(title="Select File", initialdir=initial_dir, filetypes=filetypes)
             if filepath:
                 var_tk.set(filepath)
@@ -377,49 +399,56 @@ class PyScreenApp(ctk.CTk):
         return config_data
 
     def save_method_dialog(self):
+        # Determine default save directory: ~/pyscreen (create if needed)
+        home_dir = Path.home()
+        pyscreen_dir = home_dir / "pyscreen"
+        pyscreen_dir.mkdir(exist_ok=True)
+        initialdir = str(pyscreen_dir)
+
         filepath = filedialog.asksaveasfilename(
-            defaultextension=".json",
-            filetypes=[("JSON files", "*.json"), ("All files", "*.*")],
-            title="Save Method As"
+            defaultextension=".yaml",
+            filetypes=[("YAML files", "*.yaml"), ("All files", "*.*")],
+            title="Save Method As",
+            initialdir=initialdir
         )
         if not filepath:
             return
 
-        gui_data_to_save = {
-            "sample_files": self.sample_files,
-            "blank_file": self.blank_file,
-            "config": self._collect_config_data()
-        }
-        if gui_data_to_save["config"] is None: # Error during collection
+        config_dict = self._collect_config_data()
+        if config_dict is None:  # Error during collection
             return
 
         try:
+            # Create pyscreen_config object and use its to_dict method
+            config_obj = pyscreen_config.from_dict(config_dict)
+            config_to_save = config_obj.to_dict()
             with open(filepath, 'w') as f:
-                json.dump(gui_data_to_save, f, indent=4)
+                yaml.safe_dump(config_to_save, f, sort_keys=False)
             self.current_method_path = filepath
             self.status_label.configure(text=f"Method saved: {Path(filepath).name}")
         except Exception as e:
             self.show_error_popup("Save Error", f"Failed to save method: {e}\n{traceback.format_exc()}")
 
     def load_method_dialog(self):
+        # Determine default load directory: ~/pyscreen if exists, else ~/
+        home_dir = Path.home()
+        pyscreen_dir = home_dir / "pyscreen"
+        initialdir = str(pyscreen_dir if pyscreen_dir.exists() else home_dir)
+
         filepath = filedialog.askopenfilename(
-            filetypes=[("JSON files", "*.json"), ("All files", "*.*")],
-            title="Load Method"
+            filetypes=[("YAML files", "*.yaml"), ("All files", "*.*")],
+            title="Load Method",
+            initialdir=initialdir
         )
         if not filepath:
             return
 
         try:
             with open(filepath, 'r') as f:
-                loaded_data = json.load(f)
-            
-            # Load file paths
-            self.sample_files = loaded_data.get("sample_files", [])
-            self.blank_file = loaded_data.get("blank_file", None)
-            self._update_file_paths_for_display()
+                loaded_config = yaml.safe_load(f)
+            # loaded_config is a dict as returned by to_dict
 
-            # Load config
-            loaded_config = loaded_data.get("config", {})
+            # Set config fields in GUI
             for category, params in loaded_config.items():
                 if category in self.config_vars:
                     for param_key, value in params.items():
@@ -430,8 +459,8 @@ class PyScreenApp(ctk.CTk):
                                 if i < len(value) and key_suffix in self.config_vars[category]:
                                     self.config_vars[category][key_suffix].set(value[i])
                         elif param_key in self.config_vars[category]:
-                             self.config_vars[category][param_key].set(value)
-            
+                            self.config_vars[category][param_key].set(value)
+
             self.current_method_path = filepath
             self.status_label.configure(text=f"Method loaded: {Path(filepath).name}")
 
@@ -479,6 +508,18 @@ class PyScreenApp(ctk.CTk):
             self.after(0, self.on_analysis_complete) # Schedule GUI update in main thread
         except Exception as e:
             tb_str = traceback.format_exc()
+            # --- Save error to file automatically ---
+            import datetime
+            now = datetime.datetime.now()
+            timestamp = now.strftime("%Y%m%d_%H%M%S")
+            filename = f"pyscreen_errors_{timestamp}.txt"
+            filepath = os.path.join(os.getcwd(), filename)
+            try:
+                with open(filepath, "w") as f:
+                    f.write(f"{str(e)}\n\nFull traceback:\n{tb_str}")
+            except Exception as file_err:
+                print(f"Failed to write error log: {file_err}")
+            # --- End save error to file ---
             self.after(0, self.on_analysis_error, e, tb_str) # Schedule GUI update
 
     def update_gui_progress(self, value, status_text):
@@ -503,8 +544,6 @@ class PyScreenApp(ctk.CTk):
         self.show_error_popup("Analysis Error", f"{str(error_exception)}\n\nFull traceback:\n{traceback_str}")
 
     def show_error_popup(self, title, message):
-        # Simple messagebox for now, could be an internal panel
-        # messagebox.showerror(title, message) 
         self.error_label.configure(text=f"{title}. Click to expand details.")
         self.error_text_area.configure(state="normal")
         self.error_text_area.delete("1.0", tk.END)
@@ -512,22 +551,53 @@ class PyScreenApp(ctk.CTk):
         self.error_text_area.configure(state="disabled")
         
         if not self.error_frame.winfo_ismapped():
-             self.error_frame.pack(fill="x", padx=5, pady=5, before=self.status_frame) # Pack above status
+            self.error_frame.pack(fill="x", padx=5, pady=5, before=self.status_frame)
         
-        # Ensure error details are initially hidden if they were visible from a previous error
         if self.error_details_visible:
             self.error_text_area.pack_forget()
             self.error_details_visible = False
-            # self.toggle_error_details() # Call to reset view if needed
+
+        # Store the error message for export
+        self._last_error_message = message
 
     def toggle_error_details(self, event=None):
-        if self.error_details_visible:
-            self.error_text_area.pack_forget()
-            self.error_details_visible = False
-        else:
-            self.error_text_area.pack(fill="both", expand=True, padx=5, pady=(0,5))
-            self.error_details_visible = True
-            
+        if hasattr(self, 'error_details_window') and self.error_details_window.winfo_exists():
+            self.error_details_window.lift()
+            return
+
+        # Create a new resizable Toplevel window for error details
+        self.error_details_window = tk.Toplevel(self)
+        self.error_details_window.title("Error Details")
+        self.error_details_window.geometry("700x400")
+        self.error_details_window.resizable(True, True)
+
+        # Text area for error message
+        text_area = tk.Text(self.error_details_window, wrap="word")
+        text_area.insert("1.0", getattr(self, "_last_error_message", "No error message."))
+        text_area.configure(state="disabled")
+        text_area.pack(fill="both", expand=True, padx=10, pady=10)
+
+        # Export button
+        export_btn = ctk.CTkButton(self.error_details_window, text="Export Error Message", command=lambda: self.export_error_message(getattr(self, "_last_error_message", "")))
+        export_btn.pack(pady=(0, 10))
+
+        # Close button
+        close_btn = ctk.CTkButton(self.error_details_window, text="Close", command=self.error_details_window.destroy)
+        close_btn.pack(pady=(0, 10))
+
+        self.error_details_window.focus_set()
+
+    def export_error_message(self, message):
+        now = datetime.datetime.now()
+        filename = f"pyscreen_error_{now.strftime('%Y%m%d_%H%M%S')}.txt"
+        filepath = os.path.join(os.getcwd(), filename)
+        try:
+            with open(filepath, "w") as f:
+                f.write(message)
+            messagebox.showinfo("Export Successful", f"Error message exported to:\n{filepath}")
+        except Exception as e:
+            messagebox.showerror("Export Failed", f"Could not export error message:\n{e}")
+
     def hide_error_details(self):
         if self.error_frame.winfo_ismapped():
             self.error_frame.pack_forget()

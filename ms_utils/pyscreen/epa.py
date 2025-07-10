@@ -6,7 +6,40 @@ from ms_utils.formats.epa_xlsx import read_xlsx_EPA_list_file
 
 @dataclass
 class suspect_list_config:
+    epa_db_path:Path|str # this is the path to the EPA database, which is a parquet file.
     exclusion_list:str=None
+    def __post_init__(self):
+        '''
+        Post initialization to ensure epa_db_path is a Path object.
+        '''
+        if isinstance(self.epa_db_path, str):
+            self.epa_db_path = Path(self.epa_db_path)
+            # if its not a parquet file, raise an error
+        if not isinstance(self.epa_db_path, Path):
+            raise TypeError("epa_db_path must be a Path object or a string")
+        if not self.epa_db_path.suffix == '.parquet':
+            raise ValueError("epa_db_path must point to a .parquet file")
+        if not self.epa_db_path.exists():
+            raise FileNotFoundError(f"EPA database file {self.epa_db_path} does not exist. Please provide a valid path.")
+    def to_dict(self) -> dict:
+        '''
+        Converts the suspect_list_config to a dictionary.
+        '''
+        return {
+            'epa_db_path':str(self.epa_db_path),
+            'exclusion_list':self.exclusion_list
+        }
+    @classmethod
+    def from_dict(cls, config_dict: dict) -> 'suspect_list_config':
+        epa_db_path = config_dict.get('epa_db_path')
+        if epa_db_path is None:
+            raise ValueError("epa_db_path is required and cannot be None.")
+        kwargs = {}
+        for field_ in cls.__dataclass_fields__:
+            if field_ in config_dict and config_dict[field_] is not None:
+                kwargs[field_] = config_dict[field_]
+        kwargs['epa_db_path'] = epa_db_path
+        return cls(**kwargs)
 
 
 
@@ -29,7 +62,7 @@ def exclude_boring_compounds(EPA:pl.DataFrame) -> pl.DataFrame:
     EPA = pl.concat([EPA,EPA_boring])
     return EPA
 
-def get_EPA(config:suspect_list_config,epa_path:Path|str='EPA_with_Haz_level')-> pl.DataFrame:
+def get_EPA(config:suspect_list_config,)-> pl.DataFrame:
     EPA_important_columns = [
     'DTXSID','Haz_level',
     'PREFERRED_NAME','CASRN','INCHIKEY',
@@ -37,17 +70,10 @@ def get_EPA(config:suspect_list_config,epa_path:Path|str='EPA_with_Haz_level')->
     'MOLECULAR_FORMULA','MONOISOTOPIC_MASS',
     'synonyms'
     ]
-    #make sure the path is a Path object
-    if isinstance(epa_path, str):
-        epa_path = Path(epa_path)
-    if not epa_path.exists():
-        raise FileNotFoundError(f"EPA file {epa_path} does not exist. Please provide a valid path.")
-    #add the parquet file extension if it is not already there
-    if not epa_path.suffix == '.parquet':
-        epa_path = epa_path.with_suffix('.parquet')
+
     
     try :
-        EPA = pl.scan_parquet(epa_path).select(EPA_important_columns).rename(
+        EPA = pl.scan_parquet(config.epa_db_path).select(EPA_important_columns).rename(
             {'INCHIKEY':'inchikey_EPA',
              'CASRN':'CAS_EPA',
              'synonyms':'Synonyms_EPA',
@@ -57,7 +83,7 @@ def get_EPA(config:suspect_list_config,epa_path:Path|str='EPA_with_Haz_level')->
             strict=False
         ).collect()
     except pl.exceptions.ColumnNotFoundError as e:
-        print(f"Error: Missing {e}. The file {epa_path} might not be in the expected format or missing some columns.")
+        print(f"Error: Missing {e}. The file {config.epa_db_path} might not be in the expected format or missing some columns.")
         raise 
 
     if config.exclusion_list is None:
@@ -113,7 +139,10 @@ def construct_suspect_list(list_dir:str|Path,lists:Iterable[Tuple[str,int]]) -> 
     if not all(0 <= haz_level <= 5 for _, haz_level in lists):
         raise ValueError("Haz_level must be an integer between 0 and 5 (inclusive).")
     #make sure that all banes exist in the directory
-    list_paths = [list_dir / f"{name}.xlsx" for name, _ in lists]
+    # we want to accept both with .xlsx and without .xlsx, so we will append .xlsx to the names only if they don't already have it
+    list_paths = [(name if name.endswith('.xlsx') else f"{name}.xlsx", haz_level) for name, haz_level in lists]
+    # now we append the directory to the names
+    list_paths = [list_dir / name for name, _ in list_paths]
     if not all(path.exists() for path in list_paths):
         missing_files = [path for path in list_paths if not path.exists()]
         raise FileNotFoundError(f"Files {missing_files} do not exist in the directory {list_dir}")
@@ -140,13 +169,29 @@ if __name__ == "__main__":
     # Example of constructing a suspect list
     list_of_lists = [
         ('PPDB Pesticide Properties DataBase ', 0),
+        ('FDA Center for Drug Evaluation & Research - Maximum (Recommended) Daily Dose ', 0),
+        ('FDA Orange Book Approved Drug Products', 0),
+        ("Agilent PCDL Veterinarian Drug library",0),
+        ("Swiss Pesticides and Metabolites from Keifer et al 2019", 0),
+        ("PA Office of Pesticide Programs Information Network (OPPIN) ", 0),
+        ("EPA Pesticide Chemical Search Database " ,0), 
+        
+        #pfas are level 2
+        ("PFAS structures in DSSTox 2022", 2),
+        ("Chemical Contaminants - CCL 5 PFAS subset ", 2),
+        ("PFAS structures in DSSTox", 2),
+        ("PFASToxic Substances Control Act", 2),
+
+
         ('GHS Skin and Eye  II', 3),
-        ('Agilent PCDL Veterinarian Drug library', 1)
+        # ("Chemical List MZCLOUD0722-2025-07-03", 0),
     ]
-    suspect_list = construct_suspect_list('/home/analytit_admin/Data/EPA/EPA_lists/', list_of_lists)
+    suspect_list = construct_suspect_list('/home/analytit_admin/Data/EPA/EPA_lists_full_format/', list_of_lists)
     print(suspect_list.head())
     suspect_list.write_parquet('/home/analytit_admin/Data/EPA/suspect_list.parquet')
     # Example usage
-    config = suspect_list_config()
-    EPA_df = get_EPA(config, epa_path='/home/analytit_admin/Data/EPA/suspect_list.parquet')
+    config = suspect_list_config(
+        epa_db_path='/home/analytit_admin/Data/EPA/suspect_list.parquet'
+    )
+    EPA_df = get_EPA(config)
     print(EPA_df.head())

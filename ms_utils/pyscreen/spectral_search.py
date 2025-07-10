@@ -10,6 +10,7 @@ from ms_entropy import calculate_entropy_similarity
 from dataclasses import dataclass, field
 @dataclass
 class search_config:
+    NIST_db_path:Path|str # this is the path to the NIST database, which is a parquet file.
     polarity:str
     ms1_mass_tolerance:float=5e-6
     ms2_mass_tolerance:float=10e-6 # high, but it's because NIST can have pretty high mass error.
@@ -20,17 +21,65 @@ class search_config:
                 3:900})
     search_engine:str='entropy'
     noise_threshold:float=0.005
+    def __post_init__(self):
+        # make sure the NIST_db_path is a Path object, and that the file exists
+        if isinstance(self.NIST_db_path, str):
+            self.NIST_db_path = Path(self.NIST_db_path)
+        if not isinstance(self.NIST_db_path, Path):
+            raise TypeError("NIST_db_path must be a Path object or a string")
+        if not self.NIST_db_path.exists():
+            raise FileNotFoundError(f"NIST_db_path {self.NIST_db_path} does not exist.")
+        # we  want to accept tolerance both in ppm and in absolute values, so we convert them to absolute values. how? the tolerance would never be over 100 ppm, which is 0.0001, so if the value is more than that, its a ppm value and we multiply by 1e-6
+        if self.ms1_mass_tolerance > 0.0001:
+            self.ms1_mass_tolerance = self.ms1_mass_tolerance * 1e-6
+        if self.ms2_mass_tolerance > 0.0001:
+            self.ms2_mass_tolerance = self.ms2_mass_tolerance * 1e-6
+    # method for getting a dict from this config
+    def to_dict(self) -> dict:
+        return {
+            'NIST_db_path': str(self.NIST_db_path),
+            'polarity': self.polarity,
+            'ms1_mass_tolerance': self.ms1_mass_tolerance,  
+            'ms2_mass_tolerance': self.ms2_mass_tolerance,
+            'DotProd_threshold': self.DotProd_threshold,
+            'search_engine': self.search_engine,
+            'noise_threshold': self.noise_threshold
+        }
+    @classmethod
+    def from_dict(cls, config_dict: dict) -> 'search_config':
+        """Create a search_config instance from a dictionary, using defaults for None or missing values.
+        Raises ValueError if required fields are missing or None."""
+        if isinstance(config_dict, cls):
+            return config_dict
+        if not isinstance(config_dict, dict):
+            raise TypeError("the input to search_config.from_dict() must be a dictionary or a search_config instance.")
+        nist_db_path = config_dict.get('NIST_db_path')
+        polarity = config_dict.get('polarity')
+
+        if nist_db_path is None:
+            raise ValueError("NIST_db_path is required and cannot be None.")
+        if polarity is None:
+            raise ValueError("polarity is required and cannot be None.")
+
+        # Use the class defaults for any missing or None values
+        kwargs = {}
+        for field_ in cls.__dataclass_fields__:
+            if field_ in config_dict and config_dict[field_] is not None:
+                kwargs[field_] = config_dict[field_]
+        # Ensure required fields are set
+        kwargs['NIST_db_path'] = Path(nist_db_path)
+        kwargs['polarity'] = polarity
+        return cls(**kwargs)
 
 
 NIST_path = Path(r"")
 
-def get_NIST(condig:search_config) -> pl.DataFrame:
-    NIST = pl.scan_parquet(source=r"NIST_DB.parquet")
+def get_NIST(config:search_config) -> pl.DataFrame:
+    NIST = pl.scan_parquet(source=config.NIST_db_path)
     NIST = NIST.select([
     'Name',
     'NIST_ID',
     'DB_ID',
-    'DB_Name',
     'Precursor_type',
     'PrecursorMZ',
     'Ion_mode',
@@ -59,9 +108,9 @@ def get_NIST(condig:search_config) -> pl.DataFrame:
         )
     
 
-    if condig.polarity.lower()=="positive":
+    if config.polarity.lower()=="positive":
         mode="P"
-    elif condig.polarity.lower()=="negative":
+    elif config.polarity.lower()=="negative":
         mode="N"
 
     if mode is not None:
@@ -519,3 +568,19 @@ def entropy_score(
     score = np.float64(score)
     return score
 entropy_score_batch=np.vectorize(entropy_score)
+
+if __name__ == "__main__":
+    # Example usage
+    config = search_config(
+        polarity='positive',
+        ms1_mass_tolerance=5e-6,
+        ms2_mass_tolerance=10e-6,
+        search_engine='entropy',
+        noise_threshold=0.005,
+        NIST_db_path=Path(r"/home/analytit_admin/Data/NIST_hr_msms/NIST_hr_msms.parquet")  # Adjust the path as needed
+    )
+    try:
+        nist = get_NIST(config)
+    except:
+        nist = pl.scan_parquet(source=config.NIST_db_path).collect_schema()
+    print(nist)
