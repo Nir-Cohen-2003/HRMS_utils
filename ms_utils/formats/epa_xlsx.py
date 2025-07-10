@@ -68,7 +68,12 @@ EPA_main_data_shcema_initial = dict({
     'TOXCAST_PERCENT_ACTIVE': pl.Float64
 })
 
-def read_file_idetifiers_only(file_path):
+def read_file_idetifiers_only(file_path: Path | str):
+    file_path = Path(file_path) if isinstance(file_path, str) else file_path
+    assert isinstance(file_path, (Path, str)), "file_path must be a Path or str"
+    assert file_path.exists(), f"file_path does not exist: {file_path}"
+    assert file_path.suffix.lower() == '.xlsx', "file_path must be an Excel file with .xlsx extension"
+
     df = pl.read_excel(file_path, schema_overrides={
         'AVERAGE_MASS': pl.Float64,
         'MONOISOTOPIC_MASS': pl.Float64})
@@ -80,12 +85,30 @@ def read_file_idetifiers_only(file_path):
     df = formula_to_array_EPA(df)
     return df
 
-
-def read_xlsx_EPA_list_file(file_path):
-    main_df = pl.read_excel(file_path, sheet_name=['Main Data'], schema_overrides=EPA_main_data_shcema_initial)
-    main_df = main_df['Main Data']
-    synonym_df = pl.read_excel(file_path, sheet_name=['Synonym Identifier'], infer_schema_length=None)
-    synonym_df = synonym_df['Synonym Identifier']
+def read_xlsx_EPA_list_file_short_format(file_path: Path | str):
+    file_path = Path(file_path) if isinstance(file_path, str) else file_path
+    assert isinstance(file_path, (Path, str)), "file_path must be a Path or str"
+    assert file_path.exists(), f"file_path does not exist: {file_path}"
+    assert file_path.suffix.lower() == '.xlsx', "file_path must be an Excel file with .xlsx extension"
+    data = pl.read_excel(file_path).with_columns(
+        pl.col('DTXSID').str.strip_prefix('DTXSID').cast(pl.Int64).alias('DTXSID'))
+    return data
+    
+def read_xlsx_EPA_list_file_full_format(file_path):
+    file_path = Path(file_path) if isinstance(file_path, str) else file_path
+    assert isinstance(file_path, (Path, str)), "file_path must be a Path or str"
+    assert file_path.exists(), f"file_path does not exist: {file_path}"
+    assert file_path.suffix.lower() == '.xlsx', "file_path must be an Excel file with .xlsx extension"
+    try:
+        main_df = pl.read_excel(file_path, sheet_name=['Main Data'], schema_overrides=EPA_main_data_shcema_initial)
+        main_df = main_df['Main Data']
+    except (KeyError, ValueError):
+        raise KeyError("The Excel file must contain a sheet named 'Main Data' with the expected schema. Are you sure this is a full format list (with Main Data and Synonym Identifier sheets), or a short format list (without synonyms, and only one sheet)?")
+    try:
+        synonym_df = pl.read_excel(file_path, sheet_name=['Synonym Identifier'], infer_schema_length=None)
+        synonym_df = synonym_df['Synonym Identifier']
+    except (KeyError, ValueError):
+        raise KeyError("The Excel file must contain a sheet named 'Synonym Identifier'. are you sure this is a full format list (with Main Data and Synonym Identifier sheets), or a short format list (without synonyms, and only one sheet)?")
     main_df = Main_sheet_cleaner(main_df)
     synonym_df = Synonym_sheet_cleaner(synonym_df)
     combined_df = main_df.join(synonym_df, left_on='PREFERRED_NAME', right_on='SEARCHED_CHEMICAL', how='left')
@@ -120,10 +143,15 @@ if __name__ == '__main__':
     start = time.time()
     # file_path = Path(r'D:\Nir\Data_from_Nitzan\EPA_format\SWGDRUG Mass Spectral Library Chemical Collection .xlsx')
     # data = read_xlsx_EPA_list_file(file_path)
-    file_path = Path(r'D:\Nir\Data_from_Nitzan\EPA_BY_DATA\identifiers_only\DSSToxDump1.xlsx')
-    data = read_file_idetifiers_only(file_path)
-    print(data.schema)
-    print(data.shape)
-    print(data.head(10))#'MOLECULAR_FORMULA_list',
-    print('Time:', time.time()-start)
+    # file_path = Path(r'D:\Nir\Data_from_Nitzan\EPA_BY_DATA\identifiers_only\DSSToxDump1.xlsx')
+    # data = read_file_idetifiers_only(file_path)
+    # print(data.schema)
+    # print(data.shape)
+    # print(data.head(10))#'MOLECULAR_FORMULA_list',
+    # print('Time:', time.time()-start)
 
+    path = "/home/analytit_admin/Data/EPA/EPA_lists_short_format/Chemical List MZCLOUD0722-2025-07-03.xlsx"
+    data = read_xlsx_EPA_list_file_short_format(path)
+    print(data)
+    data = read_xlsx_EPA_list_file_full_format(path)
+    print(data)
