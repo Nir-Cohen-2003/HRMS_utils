@@ -2,7 +2,7 @@ from dataclasses import dataclass
 import polars as pl
 from pathlib import Path
 from typing import Iterable, Tuple
-from ms_utils.formats.epa_xlsx import read_xlsx_EPA_list_file
+from ..formats.epa_xlsx import read_xlsx_EPA_list_file
 
 @dataclass
 class suspect_list_config:
@@ -186,12 +186,12 @@ if __name__ == "__main__":
         ('GHS Skin and Eye  II', 3),
         # ("Chemical List MZCLOUD0722-2025-07-03", 0),
     ]
-    suspect_list = construct_suspect_list('/home/analytit_admin/Data/EPA/EPA_lists_full_format/', list_of_lists)
+    suspect_list = construct_suspect_list(r'D:\Nir\EPA_lists', list_of_lists)
     print(suspect_list.head())
-    suspect_list.write_parquet('/home/analytit_admin/Data/EPA/suspect_list.parquet')
+    suspect_list.write_parquet(r'D:\Nir\EPA_DB\suspect_list.parquet')
     # Example usage
     config = suspect_list_config(
-        epa_db_path='/home/analytit_admin/Data/EPA/suspect_list.parquet'
+        epa_db_path=r'D:\Nir\EPA_DB\suspect_list.parquet'
     )
     EPA_df = get_EPA(config)
     print(EPA_df.head())
