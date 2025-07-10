@@ -29,7 +29,11 @@ class search_config:
             raise TypeError("NIST_db_path must be a Path object or a string")
         if not self.NIST_db_path.exists():
             raise FileNotFoundError(f"NIST_db_path {self.NIST_db_path} does not exist.")
-
+        # we  want to accept tolerance both in ppm and in absolute values, so we convert them to absolute values. how? the tolerance would never be over 100 ppm, which is 0.0001, so if the value is more than that, its a ppm value and we multiply by 1e-6
+        if self.ms1_mass_tolerance > 0.0001:
+            self.ms1_mass_tolerance = self.ms1_mass_tolerance * 1e-6
+        if self.ms2_mass_tolerance > 0.0001:
+            self.ms2_mass_tolerance = self.ms2_mass_tolerance * 1e-6
     # method for getting a dict from this config
     def to_dict(self) -> dict:
         return {

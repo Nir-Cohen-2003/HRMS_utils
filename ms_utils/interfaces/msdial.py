@@ -41,13 +41,16 @@ MSDIAL_columns_to_output= [
 ]
 @dataclass
 class blank_config:
-    ms1_mass_tolerance : float=3e-6
+    ms1_mass_tolerance: float=3e-6
     dRT_min : float=0.1
     ratio : float | int=5
     use_ms2:bool=False
     dRT_min_with_ms2:float=0.3
     ms2_fit:float=0.85
-
+    def __post_init__(self):
+        if self.ms1_mass_tolerance > 0.0001: # if the value is more than 0.0001, its a ppm value and we multiply by 1e-6
+            self.ms1_mass_tolerance = self.ms1_mass_tolerance * 1e-6
+            
     def to_dict(self) -> dict:
         return {
             'ms1_mass_tolerance': self.ms1_mass_tolerance,

@@ -28,7 +28,7 @@ CONFIG_STRUCTURE = {
         # use_ms2: bool = False
         # dRT_min_with_ms2: float = 0.3
         # ms2_fit: float = 0.85
-        "ms1_mass_tolerance": ("Blank MS1 Mass Tolerance (abs)", 3e-6, 'float', False),
+        "ms1_mass_tolerance": ("Blank MS1 Mass Tolerance (ppm)", 3, 'float', False),
         "dRT_min": ("Blank RT Tolerance (min)", 0.1, 'float', False),
         "ratio": ("Blank Intensity Fold Change Ratio", 5.0, 'float', False),
         "use_ms2": ("Blank Use MS2 Subtraction", False, 'bool', False),
@@ -45,8 +45,8 @@ CONFIG_STRUCTURE = {
         # search_engine: str = 'entropy'
         # noise_threshold: float = 0.005
         "polarity": ("Polarity", (["positive", "negative"], "positive"), 'choice', False),
-        "ms1_mass_tolerance": ("Search MS1 Mass Tolerance (abs)", 5e-6, 'float', False),
-        "ms2_mass_tolerance": ("Search MS2 Mass Tolerance (abs)", 10e-6, 'float', False),
+        "ms1_mass_tolerance": ("Search MS1 Mass Tolerance (ppm)", 5, 'float', False),
+        "ms2_mass_tolerance": ("Search MS2 Mass Tolerance (ppm)", 10, 'float', False),
         "DotProd_threshold_haz0": ("DotProd Threshold Haz0", 650.0, 'float', False), # Default from factory: 0:650
         "DotProd_threshold_haz1": ("DotProd Threshold Haz1", 700.0, 'float', False), # Default from factory: 1:700
         "DotProd_threshold_haz2": ("DotProd Threshold Haz2", 800.0, 'float', False), # Default from factory: 2:800
