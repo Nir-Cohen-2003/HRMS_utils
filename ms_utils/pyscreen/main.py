@@ -2,6 +2,7 @@ import polars as pl
 # import numpy as np
 from pathlib import Path
 from time import time
+from typing import List, Iterable
 from ..interfaces.msdial import get_chromatogram, subtract_blank_frame
 from ..formula_annotation.isotopic_pattern import fits_isotopic_pattern_batch
 from .pyscreen_config import blank_config, search_config, isotopic_pattern_config, suspect_list_config,pyscreen_config, adducts_neg, adducts_pos
@@ -443,7 +444,7 @@ def screen_per_file(
 # currently impossible to make parrallel, since NIST cant work this way and its the most time consuming step by a mile.
 # if not using NIST, it can be parallelized, but then its already fast enough, and polars already does it in parallel.
 def main(
-        sample_file_paths:  list[str] | list[Path] , 
+        sample_file_paths:  Iterable[str | Path], 
         blank_file_path : str | Path | None, 
         config:pyscreen_config | dict
         ):
