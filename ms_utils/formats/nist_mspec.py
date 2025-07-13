@@ -1,7 +1,7 @@
 import re
 import polars as pl
 import numpy as np
-from MS_utils.formula import formula_fits_mass, format_formula_string_to_array,  get_precursor_ion_formula_array, num_elements
+from ..formula_annotation.utils import formula_fits_mass, format_formula_string_to_array,  get_precursor_ion_formula_array, num_elements
 from pathlib import Path 
 from scipy.stats import linregress
 
