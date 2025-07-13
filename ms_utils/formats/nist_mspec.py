@@ -6,6 +6,25 @@ from pathlib import Path
 from scipy.stats import linregress
 
 
+def create_nist_dataframe(named_file_list: list[tuple[str|Path, str]]) -> pl.DataFrame:
+    '''takes a list of tuples with the first element being the path to the file and the second being the to write as "DB_Name" column, and returns a polars DataFrame with the data from all files'''
+    for file_path, db_name in named_file_list:
+        if not isinstance(file_path, Path):
+            file_path = Path(file_path)
+        if not file_path.exists():
+            raise FileNotFoundError(f"File {file_path} does not exist.")
+        if not file_path.is_file():
+            raise ValueError(f"Path {file_path} is not a file.")
+        # make sure the file is a MSPEC, mspec, MSP or msp file
+        if file_path.suffix.lower() not in ['.mspec', '.msp']:
+            raise ValueError(f"File {file_path} is not a MSPEC or MSP file.")
+    dataframes = []
+    for file_path, db_name in named_file_list:
+        df = read_MSPEC_file(file_path)
+        df = df.with_columns(pl.lit(db_name).alias('DB_Name'))
+        dataframes.append(df)
+    combined_df = pl.concat(dataframes, how='vertical')
+    return combined_df
 
 def read_MSPEC_file(path: Path | str) -> pl.DataFrame:
     with open(path, 'r') as file:
@@ -375,3 +394,35 @@ def get_energy_relation(NIST_with_ev_and_NCE: pl.DataFrame):
 
     return {'slope':slope, 'intercept':intercept,'r_value': r_value}
 
+if __name__ == "__main__":
+    # Example usage
+    from time import perf_counter
+    start_time = perf_counter()
+   
+
+
+    #### creation of NIST23 dataframe
+    file_dir = Path('/home/analytit_admin/Data/NIST_hr_msms/')
+    # now the names and DB_name of the files:
+    file_names = [
+        ('hr_msms_1.MSPEC', 'hr_msms'),
+        ('hr_msms_2.MSPEC', 'hr_msms'),
+        ('hr_msms_3.MSPEC', 'hr_msms'),
+        ('hr_msms_4.MSPEC', 'hr_msms'),
+        ('hr_msms_5.MSPEC', 'hr_msms'),
+        ('hr_msms_6.MSPEC', 'hr_msms'),
+        ('NIST_hr_msms2_1.MSPEC', 'NIST_hr_msms2'),
+        ('NIST_hr_msms2_2.MSPEC', 'NIST_hr_msms2'),
+        ('NIST_hr_msms2_3.MSPEC', 'NIST_hr_msms2'),
+        ('NIST_hr_msms2_4.MSPEC', 'NIST_hr_msms2'),
+        ('NIST_hr_msms2_5.MSPEC', 'NIST_hr_msms2'),
+    ]
+    file_list = [(file_dir / file_name, db_name) for file_name, db_name in file_names]
+    nist_df = create_nist_dataframe(file_list)
+    end_create_time = perf_counter()
+    print(f"Time taken to create NIST23 DataFrame: {end_create_time - start_time:.2f} seconds")
+    nist_df.write_parquet(file_dir / 'NIST23.parquet')
+    print("NIST23 DataFrame created and saved to NIST23.parquet")
+    end_write_time = perf_counter()
+    print(f"Time taken to write NIST23 DataFrame: {end_write_time - end_create_time:.2f} seconds")
+    print(f"Total time taken: {end_write_time - start_time:.2f} seconds")

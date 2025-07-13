@@ -79,6 +79,7 @@ def get_NIST(config:search_config) -> pl.DataFrame:
     NIST = NIST.select([
     'Name',
     'NIST_ID',
+    'DB_Name',
     'DB_ID',
     'Precursor_type',
     'PrecursorMZ',

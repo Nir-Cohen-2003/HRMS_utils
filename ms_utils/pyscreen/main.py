@@ -144,7 +144,7 @@ def search_in_NIST(
             'DotProd', 
             'Name_NIST', 
             'DB_ID', 
-            # 'DB_Name', 
+            'DB_Name', 
             'PrecursorMZ',
             'Precursor_type_NIST', 
             'Instrument_type', 
