@@ -1,6 +1,7 @@
 import polars as pl
 from pathlib import Path
 import re
+from ..formula_annotation.utils import formula_to_array
 
 def split_mgf_entries(mgf_text: str) -> list[str]:
     # Split on BEGIN IONS ... END IONS blocks
@@ -46,15 +47,45 @@ def mgf_entries_to_dataframe(entries: list[str]) -> pl.DataFrame:
         pl.col("mz_int_pairs")
         .list.eval(pl.element().str.split(by=" ").list.get(1).cast(pl.Float64))
         .alias("spectrum_intensity"),
-    # name changes for clarity
-        pl.col("INCHIAUX").alias("inchikey"),
-    # conversion fo formula to array
+    ).drop(
+        ["mz_int_pairs"]
     )
 
-    # Optionally, drop the raw entry and mz_int_pairs columns
-    df = df.drop(["mz_int_pairs"])
+    df=df.rename(
+        {
+            "INCHIAUX": "inchikey"
+        }
+    ).cast(
+        {
+            "EXACTMASS": pl.Float64,
+            "RTINSECONDS": pl.Float64,
+            "PEPMASS": pl.Float64,
+            "CHARGE": pl.Int64,
+            "FEATURE_MS1_HEIGHT": pl.Float64,
+            "MSLEVEL": pl.Int64,
+            "ISOLATION_WINDOW": pl.Float64,
+            "Num peaks": pl.Int64
+        }
+    )
 
+    # convert the formula to an array of elements
+    df = formula_to_array(df, input_col_name='FORMULA', output_col_name='FORMULA_array')
 
+    # the collision energy might be a list with multiple values, which would be in [] brackets, or a single float value.
+    # make a column to indicate if it is a list or not named multiple_collision_energies and then create a list of collision energies, which might be a single value or multiple values
+    df = df.with_columns(
+        pl.col("COLLISION_ENERGY").str.strip_chars("[]").str.split(by=",").list.eval(
+            pl.element().str.strip_chars(" ")
+        ).cast(
+            pl.List(pl.Float64)
+        ).alias("collision_energy_list")
+    ).drop(
+        "COLLISION_ENERGY"
+    ).with_columns(
+        pl.when(pl.col("collision_energy_list").list.len() > 1)
+        .then(pl.lit(True)).otherwise(pl.lit(False)).alias("multiple_collision_energies"),
+        pl.col("collision_energy_list").list.mean().alias("collision_energy_mean")
+    )
 
     return df
 
@@ -72,6 +103,19 @@ if __name__ == "__main__":
     df = read_mgf_to_dataframe(mgf_file)
     end_time = perf_counter()
     print(df.head())
+    # print only the casted columns
+    print(df.select([
+        pl.col("EXACTMASS"),
+        pl.col("RTINSECONDS"),
+        pl.col("PEPMASS"),
+        pl.col("CHARGE"),
+        pl.col("FEATURE_MS1_HEIGHT"),
+        pl.col("MSLEVEL"),
+        pl.col("ISOLATION_WINDOW"),
+        pl.col("Num peaks"),
+        pl.col("collision_energy_mean"),
+        pl.col("multiple_collision_energies")
+    ]))
     print(f"Time taken: {end_time - start_time:.2f} seconds")
     print(f"Number of entries: {df.height}")
     print(f'time per entry: {(end_time - start_time) / df.height:.8f} seconds')
