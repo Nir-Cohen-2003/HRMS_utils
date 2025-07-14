@@ -405,17 +405,17 @@ if __name__ == "__main__":
     file_dir = Path('/home/analytit_admin/Data/NIST_hr_msms/')
     # now the names and DB_name of the files:
     file_names = [
-        ('hr_msms_1.MSPEC', 'hr_msms'),
-        ('hr_msms_2.MSPEC', 'hr_msms'),
-        ('hr_msms_3.MSPEC', 'hr_msms'),
-        ('hr_msms_4.MSPEC', 'hr_msms'),
-        ('hr_msms_5.MSPEC', 'hr_msms'),
-        ('hr_msms_6.MSPEC', 'hr_msms'),
-        ('NIST_hr_msms2_1.MSPEC', 'NIST_hr_msms2'),
-        ('NIST_hr_msms2_2.MSPEC', 'NIST_hr_msms2'),
-        ('NIST_hr_msms2_3.MSPEC', 'NIST_hr_msms2'),
-        ('NIST_hr_msms2_4.MSPEC', 'NIST_hr_msms2'),
-        ('NIST_hr_msms2_5.MSPEC', 'NIST_hr_msms2'),
+        ('hr_msms_1.MSPEC', 'hr_msms_nist'),
+        ('hr_msms_2.MSPEC', 'hr_msms_nist'),
+        ('hr_msms_3.MSPEC', 'hr_msms_nist'),
+        ('hr_msms_4.MSPEC', 'hr_msms_nist'),
+        ('hr_msms_5.MSPEC', 'hr_msms_nist'),
+        ('hr_msms_6.MSPEC', 'hr_msms_nist'),
+        ('NIST_hr_msms2_1.MSPEC', 'NIST_hr_msms#2'),
+        ('NIST_hr_msms2_2.MSPEC', 'NIST_hr_msms#2'),
+        ('NIST_hr_msms2_3.MSPEC', 'NIST_hr_msms#2'),
+        ('NIST_hr_msms2_4.MSPEC', 'NIST_hr_msms#2'),
+        ('NIST_hr_msms2_5.MSPEC', 'NIST_hr_msms#2'),
     ]
     file_list = [(file_dir / file_name, db_name) for file_name, db_name in file_names]
     nist_df = create_nist_dataframe(file_list)

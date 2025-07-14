@@ -237,7 +237,7 @@ def NIST_search_external(
         ignore_previous_results:bool=True,
         ) -> pl.DataFrame:
     
-    NIST.select(['NIST_ID','DB_ID',"DB_Name"])
+    # NIST.select(['NIST_ID','DB_ID',"DB_Name"])
 
     searched = _searched_already(file_path=MSDIAL_file_path)
     if not searched['searched'] or ignore_previous_results:
@@ -249,7 +249,7 @@ def NIST_search_external(
     else:
         results = _read_NIST_eager(results_path=searched['path'])
     results = results.select(['Peak ID','DotProd','DB_Name','DB_ID'])
-    results = results.join(NIST,on=['DB_Name','DB_ID'],how='left')
+    results = results.join(NIST.select(['NIST_ID','DB_ID',"DB_Name"]),on=['DB_Name','DB_ID'],how='left')
     results = results.drop(['DB_Name','DB_ID'])
     
     
@@ -396,11 +396,11 @@ _convert_spectrum_to_text_batch = np.vectorize(_convert_spectrum_to_text)
 def _read_SRCRESLT_type_file(file_path : str | Path ) -> pl.DataFrame:
     if isinstance(file_path,str):
         file_path = Path(file_path)
-    srcrsults = open(file_path, mode='r',encoding='ANSI',errors="ignore")  # ignoring encoding errors
+    srcrsults = open(file_path, mode='r',encoding='ANSI',errors="ignore") 
     search_results = srcrsults.read()
     search_results = search_results.split('\nUnknown: ')
     srcrsults.close()
-    search_results[0] = search_results[0].strip("Unknown: ")
+    search_results[0] = search_results[0].strip("Unknown: ") # it stays only for the first line, so we remove it.
     NIST_results = pl.DataFrame(search_results,schema={'raw':pl.String})
     NIST_results = NIST_results.with_columns(
         pl.col('raw').str.extract(pattern=r"^(\d+)",group_index=1).str.to_integer().alias('Peak ID'))
@@ -613,17 +613,10 @@ def entropy_score(
 entropy_score_batch=np.vectorize(entropy_score)
 
 if __name__ == "__main__":
-    # Example usage
-    config = search_config(
-        polarity='positive',
-        ms1_mass_tolerance=5e-6,
-        ms2_mass_tolerance=10e-6,
-        search_engine='entropy',
-        noise_threshold=0.005,
-        NIST_db_path=Path(r"/home/analytit_admin/Data/NIST_hr_msms/NIST_hr_msms.parquet")  # Adjust the path as needed
-    )
-    try:
-        nist = get_NIST(config)
-    except:
-        nist = pl.scan_parquet(source=config.NIST_db_path).collect_schema()
-    print(nist)
+    # testing the _read_SRCRESLT_type_file function
+    file = Path(r"D:\Nir\pyscreen_test\250120_04amph_NIST_results.txt")
+    results = _read_SRCRESLT_type_file(file)
+    
+    print(results)
+    print(results.schema)
+    results.write_csv(file="test_results.csv",separator='|')
