@@ -8,8 +8,8 @@ from ..formula_annotation.isotopic_pattern import fits_isotopic_pattern_batch
 from .pyscreen_config import blank_config, search_config, isotopic_pattern_config, suspect_list_config,pyscreen_config, adducts_neg, adducts_pos
 from .spectral_search import NIST_search_external , custom_search, get_NIST
 from .epa import get_EPA
-VERBOSE = False
-SHORT = False
+VERBOSE = True
+SHORT = True
 
 def cross_with_EPA(chromatogram : pl.LazyFrame | pl.DataFrame, EPA: pl.LazyFrame | pl.DataFrame, config:search_config) -> pl.DataFrame:
     '''
