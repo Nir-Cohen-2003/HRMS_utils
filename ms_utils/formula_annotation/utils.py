@@ -3,6 +3,7 @@ import numpy as np
 import polars as pl
 import math
 from functools import lru_cache
+from typing import TypeVar, overload
 
 num_elements = 15
 formula_array_element_dtype = np.int64
@@ -113,49 +114,59 @@ def clean_formula_string_to_array(formula: str) -> np.ndarray:
     return element_array
 
 
-def formula_to_array_EPA(main_df):
-    main_df = main_df.with_columns(
-        pl.col('MOLECULAR_FORMULA').str.extract(element_data['H'][1],2).str.to_integer(strict=False).cast(pl.UInt16).fill_null(strategy='zero').alias('H'),
-        pl.col('MOLECULAR_FORMULA').str.extract(element_data['B'][1],2).str.to_integer(strict=False).cast(pl.UInt16).fill_null(strategy='zero').alias('B'),
-        pl.col('MOLECULAR_FORMULA').str.extract(element_data['C'][1],2).str.to_integer(strict=False).cast(pl.UInt16).fill_null(strategy='zero').alias('C'),
-        pl.col('MOLECULAR_FORMULA').str.extract(element_data['N'][1],2).str.to_integer(strict=False).cast(pl.UInt16).fill_null(strategy='zero').alias('N'),
-        pl.col('MOLECULAR_FORMULA').str.extract(element_data['O'][1],2).str.to_integer(strict=False).cast(pl.UInt16).fill_null(strategy='zero').alias('O'),
-        pl.col('MOLECULAR_FORMULA').str.extract(element_data['F'][1],2).str.to_integer(strict=False).cast(pl.UInt16).fill_null(strategy='zero').alias('F'),
-        pl.col('MOLECULAR_FORMULA').str.extract(element_data['Na'][1],2).str.to_integer(strict=False).cast(pl.UInt16).fill_null(strategy='zero').alias('Na'),
-        pl.col('MOLECULAR_FORMULA').str.extract(element_data['Si'][1],2).str.to_integer(strict=False).cast(pl.UInt16).fill_null(strategy='zero').alias('Si'),
-        pl.col('MOLECULAR_FORMULA').str.extract(element_data['P'][1],2).str.to_integer(strict=False).cast(pl.UInt16).fill_null(strategy='zero').alias('P'),
-        pl.col('MOLECULAR_FORMULA').str.extract(element_data['S'][1],2).str.to_integer(strict=False).cast(pl.UInt16).fill_null(strategy='zero').alias('S'),
-        pl.col('MOLECULAR_FORMULA').str.extract(element_data['Cl'][1],2).str.to_integer(strict=False).cast(pl.UInt16).fill_null(strategy='zero').alias('Cl'),
-        pl.col('MOLECULAR_FORMULA').str.extract(element_data['K'][1],2).str.to_integer(strict=False).cast(pl.UInt16).fill_null(strategy='zero').alias('K'),
-        pl.col('MOLECULAR_FORMULA').str.extract(element_data['As'][1],2).str.to_integer(strict=False).cast(pl.UInt16).fill_null(strategy='zero').alias('As'),
-        pl.col('MOLECULAR_FORMULA').str.extract(element_data['Br'][1],2).str.to_integer(strict=False).cast(pl.UInt16).fill_null(strategy='zero').alias('Br'),
-        pl.col('MOLECULAR_FORMULA').str.extract(element_data['I'][1],2).str.to_integer(strict=False).cast(pl.UInt16).fill_null(strategy='zero').alias('I'),
-        )
+T = TypeVar("T", pl.DataFrame, pl.LazyFrame)
 
+@overload
+def formula_to_array(main_df: pl.DataFrame) -> pl.DataFrame: ...
+@overload
+def formula_to_array(main_df: pl.LazyFrame) -> pl.LazyFrame: ...
+
+def formula_to_array(main_df: T) -> T:
+    # Build columns dynamically using element_data
+    regex_expressions = []
+    for element, (mass, regex) in element_data.items(): # note- this doesn't execute the expressions, it just builds them, they are executed at once later
+        # Use the regex pattern for both contains and extract, but extract only the digits
+        # Remove the trailing {1} for extract, use (\d*) for capturing the count
+        extract_pattern = regex.replace(r'(\d+|[A-Z]|$){1}', r'(\d*)')
+        regex_expressions.append(
+            pl.when(pl.col('MOLECULAR_FORMULA').str.contains(regex))
+            .then(
+                pl.col('MOLECULAR_FORMULA').str.extract(extract_pattern, 1)
+                .str.replace_all('^$', '1')
+                .str.to_integer(strict=False)
+            )
+            .otherwise(0)
+            .alias(element)
+        )
+    main_df = main_df.with_columns(*regex_expressions)
     main_df = main_df.with_columns(
-        pl.concat_list([
-            pl.col('H'), pl.col('C'), pl.col('N'), pl.col('O'), pl.col('F'), pl.col('Na'),
-            pl.col('P'), pl.col('S'), pl.col('Cl'), pl.col('K'), pl.col('Br'), pl.col('I'),
-            pl.col('B'), pl.col('Si'), pl.col('As')
-        ]).list.to_array(num_elements).alias('MOLECULAR_FORMULA_array')
+        pl.concat_list([pl.col(e) for e in element_data.keys()]).list.to_array(num_elements).alias('MOLECULAR_FORMULA_array')
     )
-    main_df = main_df.drop(['H', 'B', 'C', 'N', 'O', 'F', 'Na','Si', 'P', 'S', 'Cl', 'K',  'As', 'Br', 'I'])
-    
+    # and get rid of the per element columns
+    main_df = main_df.drop(list(element_data.keys()))
     return main_df
 
 
 
 if __name__ == '__main__':
 
-    formulas = ['C11H14BrNO2', 'C9H12BrN', 'C9H12BN', 'C9H12Br','C9H12B','Br']
+    # formulas = ['C11H14BrNO2', 'C9H12BrN', 'C9H12BN', 'C9H12Br','C9H12B','Br']
 
-    # clear_python_cache()
-    boron=element_data['B'][1]
-    for formula in formulas:
-        print(formula)
-        print(format_formula_string_to_array(formula))
-        print(clean_formula_string_to_array(formula))
-        if re.search(boron, formula) is not None:
-            print('Boron found')
-        print('\n')
-    print(boron)
+    # # clear_python_cache()
+    # boron=element_data['B'][1]
+    # for formula in formulas:
+    #     print(formula)
+    #     print(format_formula_string_to_array(formula))
+    #     print(clean_formula_string_to_array(formula))
+    #     if re.search(boron, formula) is not None:
+    #         print('Boron found')
+    #     print('\n')
+    # print(boron)
+
+
+    # testing for formula_to_array_EPA
+    main_df = pl.DataFrame({
+        'MOLECULAR_FORMULA': ['C11H14BrNO2', 'C9H12BrN', 'C9H12BN', 'C9H12Br','C9H12B','Br', 'Br2']
+    }).lazy()
+    main_df = formula_to_array(main_df)
+    print(main_df.collect())

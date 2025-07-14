@@ -1,7 +1,7 @@
 import time
 import polars as pl
 from pathlib import Path
-from ms_utils.formula_annotation.utils import formula_to_array_EPA
+from ms_utils.formula_annotation.utils import formula_to_array
 
 EPA_main_data_shcema_initial = dict({
     'INPUT': pl.String,
@@ -82,7 +82,7 @@ def read_file_idetifiers_only(file_path: Path | str):
         pl.col('IDENTIFIER').str.split(by='|').alias('synonyms')
         ) 
     df = df.drop('IDENTIFIER')
-    df = formula_to_array_EPA(df)
+    df = formula_to_array(df)
     return df
 
 def read_xlsx_EPA_list_file_short_format(file_path: Path | str):
@@ -128,7 +128,7 @@ def Main_sheet_cleaner(main_df):
         #pl.col('DTXCID').str.strip_prefix('DTXCID').cast(pl.Int64).alias('DTXCID'),
         ) 
     
-    main_df = formula_to_array_EPA(main_df)
+    main_df = formula_to_array(main_df)
     return main_df
 
 def Synonym_sheet_cleaner(synonym_df):
