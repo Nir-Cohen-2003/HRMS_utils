@@ -117,34 +117,31 @@ def clean_formula_string_to_array(formula: str) -> np.ndarray:
 T = TypeVar("T", pl.DataFrame, pl.LazyFrame)
 
 @overload
-def formula_to_array(main_df: pl.DataFrame) -> pl.DataFrame: ...
+def formula_to_array(df: pl.DataFrame, input_col_name: str, output_col_name: str) -> pl.DataFrame: ...
 @overload
-def formula_to_array(main_df: pl.LazyFrame) -> pl.LazyFrame: ...
+def formula_to_array(df: pl.LazyFrame, input_col_name: str, output_col_name: str) -> pl.LazyFrame: ...
 
-def formula_to_array(main_df: T) -> T:
+def formula_to_array(df: T, input_col_name: str, output_col_name: str) -> T:
     # Build columns dynamically using element_data
     regex_expressions = []
-    for element, (mass, regex) in element_data.items(): # note- this doesn't execute the expressions, it just builds them, they are executed at once later
-        # Use the regex pattern for both contains and extract, but extract only the digits
-        # Remove the trailing {1} for extract, use (\d*) for capturing the count
+    for element, (mass, regex) in element_data.items():
         extract_pattern = regex.replace(r'(\d+|[A-Z]|$){1}', r'(\d*)')
         regex_expressions.append(
-            pl.when(pl.col('MOLECULAR_FORMULA').str.contains(regex))
+            pl.when(pl.col(input_col_name).str.contains(regex))
             .then(
-                pl.col('MOLECULAR_FORMULA').str.extract(extract_pattern, 1)
+                pl.col(input_col_name).str.extract(extract_pattern, 1)
                 .str.replace_all('^$', '1')
                 .str.to_integer(strict=False)
             )
             .otherwise(0)
             .alias(element)
         )
-    main_df = main_df.with_columns(*regex_expressions)
-    main_df = main_df.with_columns(
-        pl.concat_list([pl.col(e) for e in element_data.keys()]).list.to_array(num_elements).alias('MOLECULAR_FORMULA_array')
+    df = df.with_columns(*regex_expressions)
+    df = df.with_columns(
+        pl.concat_list([pl.col(e) for e in element_data.keys()]).list.to_array(num_elements).alias(output_col_name)
     )
-    # and get rid of the per element columns
-    main_df = main_df.drop(list(element_data.keys()))
-    return main_df
+    df = df.drop(list(element_data.keys()))
+    return df
 
 
 
