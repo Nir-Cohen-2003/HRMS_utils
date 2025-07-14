@@ -72,7 +72,38 @@ class search_config:
         return cls(**kwargs)
 
 
+
+#### runs at import of this file, to automagically set the NIST_path variable to the NIST23 installation path.
+
+#
 NIST_path = Path(r"")
+
+# search the following location, in order:
+# if its windows, it will search the default NIST installation paths.
+if os.name == 'nt':
+    possible_paths = [
+        Path(r"C:\NIST23\MSSEARCH"),
+        Path(r"D:\NIST23\MSSEARCH"),
+        Path(r"P:\NIST23\MSSEARCH"),
+        Path(r"C:\Program Files\NIST23\MSSEARCH"),
+        Path(r"C:\Program Files\NIST\NIST23"),
+        Path(r"C:\Program Files\NIST\NIST23\MSSEARCH"),
+        Path(r"C:\Program Files (x86)\NIST\NIST23"),
+        Path(r"C:\Program Files (x86)\NIST23\MSSEARCH"),
+        Path(r"C:\Program Files (x86)\NIST\NIST23\MSSEARCH"),
+    ]
+else:
+    # if its not windows, it won't work
+    possible_paths = [
+        Path(r"/home/analytit_admin/Data/NIST_hr_msms/NIST23/MSSEARCH"),
+        Path(r"/home/analytit_admin/Data/NIST_hr_msms/NIST23/MSSEARCH"),
+    ]
+# now we go over them, searching for the nist executable: nistms.exe
+for path in possible_paths:
+    if path.exists() and (path / 'NISTMS$.EXE').exists():
+        NIST_path = path
+        # print(f"NIST path found: {NIST_path}")
+        break
 
 def get_NIST(config:search_config) -> pl.DataFrame:
     NIST = pl.scan_parquet(source=config.NIST_db_path)
