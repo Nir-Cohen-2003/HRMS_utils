@@ -2,6 +2,7 @@ import polars as pl
 import numpy as np
 from pathlib import Path
 import os
+from typing import List,Literal
 from time import sleep
 import shutil as sh 
 from numba import njit
@@ -19,7 +20,7 @@ class search_config:
                 1:700,
                 2:800,
                 3:900})
-    search_engine:str='entropy'
+    search_engine:Literal['entropy','nir_cosine','cosine']='entropy' # the search engine to use, can be 'entropy', 'nir_cosine' or 'cosine'
     noise_threshold:float=0.005
     def __post_init__(self):
         # make sure the NIST_db_path is a Path object, and that the file exists
@@ -76,7 +77,7 @@ class search_config:
 #### runs at import of this file, to automagically set the NIST_path variable to the NIST23 installation path.
 
 #
-NIST_path = Path(r"")
+NIST_PATH = Path(r"")
 
 # search the following location, in order:
 # if its windows, it will search the default NIST installation paths.
@@ -98,11 +99,11 @@ else:
         Path(r"/home/analytit_admin/Data/NIST_hr_msms/NIST23/MSSEARCH"),
         Path(r"/home/analytit_admin/Data/NIST_hr_msms/NIST23/MSSEARCH"),
     ]
-# now we go over them, searching for the nist executable: nistms.exe
+# now we go over them, searching for the nist executable: nistms.exe 
 for path in possible_paths:
-    if path.exists() and (path / 'NISTMS$.EXE').exists():
-        NIST_path = path
-        # print(f"NIST path found: {NIST_path}")
+    if path.exists() and (path / 'nistms.exe').exists():
+        NIST_PATH = path
+        print(f"NIST path found: {NIST_PATH}")
         break
 
 def get_NIST(config:search_config) -> pl.DataFrame:
@@ -236,7 +237,7 @@ def NIST_search_external(
         ignore_previous_results:bool=True,
         ) -> pl.DataFrame:
     
-    NIST.select(['NIST_ID','DB_ID',"DB_Name"])
+    # NIST.select(['NIST_ID','DB_ID',"DB_Name"])
 
     searched = _searched_already(file_path=MSDIAL_file_path)
     if not searched['searched'] or ignore_previous_results:
@@ -248,7 +249,7 @@ def NIST_search_external(
     else:
         results = _read_NIST_eager(results_path=searched['path'])
     results = results.select(['Peak ID','DotProd','DB_Name','DB_ID'])
-    results = results.join(NIST,on=['DB_Name','DB_ID'],how='left')
+    results = results.join(NIST.select(['NIST_ID','DB_ID',"DB_Name"]),on=['DB_Name','DB_ID'],how='left')
     results = results.drop(['DB_Name','DB_ID'])
     
     
@@ -300,20 +301,30 @@ def send_frame_to_NIST(chromatogram: pl.LazyFrame | pl.DataFrame):
 
     
     msp_to_print = msp.str.join(delimiter="\n\n")
-    data_file_path = NIST_path.joinpath('data2nist.msp')
+    data_file_path = NIST_PATH.joinpath('data2nist.msp')
     msp_file = open(data_file_path,'w')
     msp_file.write(msp_to_print[0])
     msp_file.close()
 
+    #first we need to make sure that autoimp.msd exists, and points to filespec.fil
+    autoimp_path = NIST_PATH.joinpath('autoimp.msd')
+    if not autoimp_path.exists():
+        with open(autoimp_path, 'w') as autoimp_file:
+            autoimp_file.write(str(NIST_PATH.joinpath('filespec.fil')))
+    # even if it exists, we need to make sure it points to the right file.
+    if autoimp_path.read_text().strip() != str(NIST_PATH.joinpath('filespec.fil')):
+        with open(autoimp_path, 'w') as autoimp_file:
+            autoimp_file.write(str(NIST_PATH.joinpath('filespec.fil')))
 
-    filespec = open(NIST_path.joinpath('filespec.fil'),'w')
+
+    filespec = open(NIST_PATH.joinpath('filespec.fil'),'w')
     filespec.write(str(data_file_path) +' APPEND'+ '\n'+ '10 724')
     filespec.close()
-    srcreslt = open(NIST_path.joinpath('SRCRESLT.txt'),'w')
+    srcreslt = open(NIST_PATH.joinpath('SRCRESLT.txt'),'w')
     srcreslt.close()
-    if os.path.isfile(NIST_path.joinpath('SRCREADY.txt')):
-        os.remove(NIST_path.joinpath('SRCREADY.txt'))
-    command = str(NIST_path) +r'\NISTMS$.EXE /INSTRUMENT /PAR=2' # 
+    if os.path.isfile(NIST_PATH.joinpath('SRCREADY.txt')):
+        os.remove(NIST_PATH.joinpath('SRCREADY.txt'))
+    command = str(NIST_PATH) +r'\NISTMS$.EXE /INSTRUMENT /PAR=2' # 
     # print(command)
     os.system(command)
 
@@ -322,7 +333,7 @@ def _wait_for_NIST_ready():
     stp = 0
     while stp == 0:
         try:
-            srcready = open(NIST_path.joinpath('SRCREADY.txt'),'r')
+            srcready = open(NIST_PATH.joinpath('SRCREADY.txt'),'r')
             srcready.close()
             sleep(2)  # waiting to make sure
 
@@ -334,7 +345,7 @@ def _wait_for_NIST_ready():
 
 def remove_HLMs():
     '''cleans all the *.HLM files nist search leaves behind'''
-    for file in NIST_path.glob('*.HLM'):
+    for file in NIST_PATH.glob('*.HLM'):
         file.unlink()
 
 def format_MSP(chromatogram: pl.LazyFrame | pl.DataFrame) -> pl.LazyFrame | pl.DataFrame:
@@ -385,11 +396,11 @@ _convert_spectrum_to_text_batch = np.vectorize(_convert_spectrum_to_text)
 def _read_SRCRESLT_type_file(file_path : str | Path ) -> pl.DataFrame:
     if isinstance(file_path,str):
         file_path = Path(file_path)
-    srcrsults = open(file_path, mode='r',encoding='ANSI',errors="ignore")  # ignoring encoding errors
+    srcrsults = open(file_path, mode='r',encoding='ANSI',errors="ignore") 
     search_results = srcrsults.read()
     search_results = search_results.split('\nUnknown: ')
     srcrsults.close()
-    search_results[0] = search_results[0].strip("Unknown: ")
+    search_results[0] = search_results[0].strip("Unknown: ") # it stays only for the first line, so we remove it.
     NIST_results = pl.DataFrame(search_results,schema={'raw':pl.String})
     NIST_results = NIST_results.with_columns(
         pl.col('raw').str.extract(pattern=r"^(\d+)",group_index=1).str.to_integer().alias('Peak ID'))
@@ -444,7 +455,7 @@ def _read_SRCRESLT_type_file(file_path : str | Path ) -> pl.DataFrame:
     return NIST_results
 
 def read_NIST_default_location() -> pl.DataFrame:
-    NIST_results = _read_SRCRESLT_type_file(file_path=NIST_path.joinpath('SRCRESLT.txt'))
+    NIST_results = _read_SRCRESLT_type_file(file_path=NIST_PATH.joinpath('SRCRESLT.txt'))
     return NIST_results
 
 # filters the results to be only of orbitrap, and from the right libraries
@@ -461,7 +472,7 @@ def _save_search_results(data_path: str | Path) -> Path:
     if isinstance(data_path,str):
         data_path = Path(data_path)
     results_path = data_path.parent.joinpath(data_path.stem+'_NIST_results.txt')
-    sh.copyfile(src=NIST_path.joinpath('SRCRESLT.txt'),dst=results_path)
+    sh.copyfile(src=NIST_PATH.joinpath('SRCRESLT.txt'),dst=results_path)
     return results_path
 
 def plot_result_stats(NIST_results):
@@ -602,17 +613,10 @@ def entropy_score(
 entropy_score_batch=np.vectorize(entropy_score)
 
 if __name__ == "__main__":
-    # Example usage
-    config = search_config(
-        polarity='positive',
-        ms1_mass_tolerance=5e-6,
-        ms2_mass_tolerance=10e-6,
-        search_engine='entropy',
-        noise_threshold=0.005,
-        NIST_db_path=Path(r"/home/analytit_admin/Data/NIST_hr_msms/NIST_hr_msms.parquet")  # Adjust the path as needed
-    )
-    try:
-        nist = get_NIST(config)
-    except:
-        nist = pl.scan_parquet(source=config.NIST_db_path).collect_schema()
-    print(nist)
+    # testing the _read_SRCRESLT_type_file function
+    file = Path(r"D:\Nir\pyscreen_test\250120_04amph_NIST_results.txt")
+    results = _read_SRCRESLT_type_file(file)
+    
+    print(results)
+    print(results.schema)
+    results.write_csv(file="test_results.csv",separator='|')

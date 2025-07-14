@@ -8,7 +8,7 @@ from ..formula_annotation.isotopic_pattern import fits_isotopic_pattern_batch
 from .pyscreen_config import blank_config, search_config, isotopic_pattern_config, suspect_list_config,pyscreen_config, adducts_neg, adducts_pos
 from .spectral_search import NIST_search_external , custom_search, get_NIST
 from .epa import get_EPA
-VERBOSE = False
+VERBOSE = True
 SHORT = False
 
 def cross_with_EPA(chromatogram : pl.LazyFrame | pl.DataFrame, EPA: pl.LazyFrame | pl.DataFrame, config:search_config) -> pl.DataFrame:
@@ -134,8 +134,10 @@ def search_in_NIST(
             NIST=NIST,
             MSDIAL_file_path=MSDIAL_file_path,
             ignore_previous_results=True)   
-    else:
+    elif config.search_engine.lower() in ['nir_cosine','entropy']:
         NIST_search_results = custom_search(query_df=suspect_to_NIST,NIST=NIST,config=config)
+    else:
+        raise ValueError(f"Unknown search engine: {config.search_engine}. Must be 'nist', 'nir_cosine' or 'entropy'.")
 
     NIST_search_results = NIST_search_results.join(NIST.drop('Synonyms_NIST',strict=False),on='NIST_ID')
     NIST_search_results = NIST_search_results.select(

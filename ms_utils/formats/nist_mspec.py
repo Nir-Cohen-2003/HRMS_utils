@@ -398,31 +398,38 @@ if __name__ == "__main__":
     # Example usage
     from time import perf_counter
     start_time = perf_counter()
-   
+    nist= pl.read_parquet(r"D:\Nir\pyscreen_test\NIST23.parquet")
+    # replace the DB_Name with the correct one: 
+    # hr_msms -> hr_msms_nist
+    # NIST_hr_msms2 -> nist_hr_msms#2
+    nist = nist.with_columns(
+        pl.when(pl.col('DB_Name').eq('hr_msms')).then(pl.lit('hr_msms_nist'))
+        .when(pl.col('DB_Name').eq('NIST_hr_msms2')).then(pl.lit('nist_hr_msms#2'))
+        .otherwise(pl.col('DB_Name')).alias('DB_Name'))
+    nist.write_parquet(r"D:\Nir\pyscreen_test\NIST23_fixed.parquet")
 
-
-    #### creation of NIST23 dataframe
-    file_dir = Path('/home/analytit_admin/Data/NIST_hr_msms/')
-    # now the names and DB_name of the files:
-    file_names = [
-        ('hr_msms_1.MSPEC', 'hr_msms'),
-        ('hr_msms_2.MSPEC', 'hr_msms'),
-        ('hr_msms_3.MSPEC', 'hr_msms'),
-        ('hr_msms_4.MSPEC', 'hr_msms'),
-        ('hr_msms_5.MSPEC', 'hr_msms'),
-        ('hr_msms_6.MSPEC', 'hr_msms'),
-        ('NIST_hr_msms2_1.MSPEC', 'NIST_hr_msms2'),
-        ('NIST_hr_msms2_2.MSPEC', 'NIST_hr_msms2'),
-        ('NIST_hr_msms2_3.MSPEC', 'NIST_hr_msms2'),
-        ('NIST_hr_msms2_4.MSPEC', 'NIST_hr_msms2'),
-        ('NIST_hr_msms2_5.MSPEC', 'NIST_hr_msms2'),
-    ]
-    file_list = [(file_dir / file_name, db_name) for file_name, db_name in file_names]
-    nist_df = create_nist_dataframe(file_list)
-    end_create_time = perf_counter()
-    print(f"Time taken to create NIST23 DataFrame: {end_create_time - start_time:.2f} seconds")
-    nist_df.write_parquet(file_dir / 'NIST23.parquet')
-    print("NIST23 DataFrame created and saved to NIST23.parquet")
-    end_write_time = perf_counter()
-    print(f"Time taken to write NIST23 DataFrame: {end_write_time - end_create_time:.2f} seconds")
-    print(f"Total time taken: {end_write_time - start_time:.2f} seconds")
+    # #### creation of NIST23 dataframe
+    # file_dir = Path('/home/analytit_admin/Data/NIST_hr_msms/')
+    # # now the names and DB_name of the files:
+    # file_names = [
+    #     ('hr_msms_1.MSPEC', 'hr_msms_nist'),
+    #     ('hr_msms_2.MSPEC', 'hr_msms_nist'),
+    #     ('hr_msms_3.MSPEC', 'hr_msms_nist'),
+    #     ('hr_msms_4.MSPEC', 'hr_msms_nist'),
+    #     ('hr_msms_5.MSPEC', 'hr_msms_nist'),
+    #     ('hr_msms_6.MSPEC', 'hr_msms_nist'),
+    #     ('NIST_hr_msms2_1.MSPEC', 'nist_hr_msms#2'),
+    #     ('NIST_hr_msms2_2.MSPEC', 'nist_hr_msms#2'),
+    #     ('NIST_hr_msms2_3.MSPEC', 'nist_hr_msms#2'),
+    #     ('NIST_hr_msms2_4.MSPEC', 'nist_hr_msms#2'),
+    #     ('NIST_hr_msms2_5.MSPEC', 'nist_hr_msms#2'),
+    # ]
+    # file_list = [(file_dir / file_name, db_name) for file_name, db_name in file_names]
+    # nist_df = create_nist_dataframe(file_list)
+    # end_create_time = perf_counter()
+    # print(f"Time taken to create NIST23 DataFrame: {end_create_time - start_time:.2f} seconds")
+    # nist_df.write_parquet(file_dir / 'NIST23.parquet')
+    # print("NIST23 DataFrame created and saved to NIST23.parquet")
+    # end_write_time = perf_counter()
+    # print(f"Time taken to write NIST23 DataFrame: {end_write_time - end_create_time:.2f} seconds")
+    # print(f"Total time taken: {end_write_time - start_time:.2f} seconds")
