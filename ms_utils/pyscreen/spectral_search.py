@@ -306,6 +306,16 @@ def send_frame_to_NIST(chromatogram: pl.LazyFrame | pl.DataFrame):
     msp_file.write(msp_to_print[0])
     msp_file.close()
 
+    #first we need to make sure that autoimp.msd exists, and points to filespec.fil
+    autoimp_path = NIST_PATH.joinpath('autoimp.msd')
+    if not autoimp_path.exists():
+        with open(autoimp_path, 'w') as autoimp_file:
+            autoimp_file.write(str(NIST_PATH.joinpath('filespec.fil')))
+    # even if it exists, we need to make sure it points to the right file.
+    if autoimp_path.read_text().strip() != str(NIST_PATH.joinpath('filespec.fil')):
+        with open(autoimp_path, 'w') as autoimp_file:
+            autoimp_file.write(str(NIST_PATH.joinpath('filespec.fil')))
+
 
     filespec = open(NIST_PATH.joinpath('filespec.fil'),'w')
     filespec.write(str(data_file_path) +' APPEND'+ '\n'+ '10 724')
