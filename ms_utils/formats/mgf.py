@@ -16,10 +16,10 @@ def read_all_ms2_files(dir_path:Path|str)->pl.DataFrame:
         pl.col("is_single_spectra"),
         pl.col("MSLEVEL").eq(2)
         )
-    df = df.with_columns(
-        USI=pl.col("USI").list.get(0)
-    )
-    df = df.unique(["USI"])
+    # df = df.with_columns(
+    #     USI=pl.col("USI").list.get(0)
+    # )
+    # df = df.unique(["USI"])
     return df
 
 
@@ -70,7 +70,8 @@ def read_mgf_to_dataframe(
             "INCHIAUX": "inchikey"
         }
     ).with_columns(
-        pl.col("SPECTYPE").fill_null(value="SINGLE_BEST_SCAN")
+        pl.col("SPECTYPE").fill_null(value="SINGLE_BEST_SCAN"),
+        pl.col("IONMODE").str.to_lowercase()
     ).cast(
         {
             "EXACTMASS": pl.Float64,
@@ -83,7 +84,7 @@ def read_mgf_to_dataframe(
             "Num peaks": pl.Int64,
             "ION_SOURCE": pl.Enum(['ESI']),
             "SPECTYPE": pl.Enum(['SINGLE_SCAN',"SINGLE_BEST_SCAN","SAME_ENERGY","ALL_ENERGIES","ALL_MSN_TO_PSEUDO_MS2"]),
-            # "ADDUCT":pl.Enum(['[M-H]-',"[M+H]+"])
+            "IONMODE":pl.Enum(["positive","negative"]),
             "PRECURSOR_PURITY": pl.Float64,
             "QUALITY_EXPLAINED_INTENSITY":pl.Float64,
             "QUALITY_EXPLAINED_SIGNALS":pl.Float64
