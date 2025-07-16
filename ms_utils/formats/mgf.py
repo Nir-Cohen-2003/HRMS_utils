@@ -69,6 +69,8 @@ def read_mgf_to_dataframe(
         {
             "INCHIAUX": "inchikey"
         }
+    ).with_columns(
+        pl.col("SPECTYPE").fill_null(value="SINGLE_BEST_SCAN")
     ).cast(
         {
             "EXACTMASS": pl.Float64,
@@ -80,6 +82,7 @@ def read_mgf_to_dataframe(
             "ISOLATION_WINDOW": pl.Float64,
             "Num peaks": pl.Int64,
             "ION_SOURCE": pl.Enum(['ESI']),
+            "SPECTYPE": pl.Enum(['SINGLE_SCAN',"SINGLE_BEST_SCAN","SAME_ENERGY","ALL_ENERGIES","ALL_MSN_TO_PSEUDO_MS2"]),
             # "ADDUCT":pl.Enum(['[M-H]-',"[M+H]+"])
             "PRECURSOR_PURITY": pl.Float64,
             "QUALITY_EXPLAINED_INTENSITY":pl.Float64,
