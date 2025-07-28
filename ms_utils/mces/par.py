@@ -1,9 +1,9 @@
 import os
-import numpy as np
-import polars as pl
 from joblib import Memory
-from ms_utils.mces.lib import construct_graph, filter2, MCES_ILP
+from .lib import construct_graph, MCES_ILP
+from .bounds import filter2_batch
 from typing import List, Tuple, Any, Generator
+import networkx as nx
 from contextlib import contextmanager
 import sys
 # Keep the memory cache configuration
@@ -36,23 +36,46 @@ def suppress_output() -> Generator[None, None, None]:
 
 # This function now provides the only caching layer
 @memory.cache
-def _cached_construct_graph(smiles: str) -> Any:
+def _cached_construct_graph(smiles: str) -> nx.Graph:
     return construct_graph(smiles)
 
-# Process bounds in batches to reduce overhead
+# Process bounds in batches to reduce overhead using optimized batch processing
 def _calculate_bounds_batch(smiles_list1: List[str], smiles_list2: List[str], batch_pairs: List[Tuple[int, int]]) -> List[Tuple[int, int, float]]:
+    
+    
     with suppress_output():
+        # Extract unique molecule indices from batch_pairs
+        indices1 = sorted(set(i for i, j in batch_pairs))
+        indices2 = sorted(set(j for i, j in batch_pairs))
+        
+        # Build graphs for the unique molecules only
+        graphs1: List[nx.Graph] = [_cached_construct_graph(smiles_list1[i]) for i in indices1]
+        # Use batch processing to calculate all distances at once
+        if smiles_list1 is smiles_list2 and indices1 == indices2:
+            # Same molecule list case - use symmetric batch processing
+            distance_matrix = filter2_batch(graphs1)
+        else:
+            # Different molecule lists case - use asymmetric batch processing
+            graphs2: List[nx.Graph] = [_cached_construct_graph(smiles_list2[j]) for j in indices2]
+            distance_matrix = filter2_batch(graphs1, graphs2)
+        
+        # Create index mappings for fast lookup
+        idx1_to_pos = {idx: pos for pos, idx in enumerate(indices1)}
+        idx2_to_pos = {idx: pos for pos, idx in enumerate(indices2)}
+        
+        
+        # Extract results for the requested pairs
         results = []
         for i, j in batch_pairs:
-            # Load graphs on-demand
-            g1 = _cached_construct_graph(smiles_list1[i])
-            g2 = _cached_construct_graph(smiles_list2[j])
-            bound = filter2(g1, g2)
+            pos1 = idx1_to_pos[i]
+            pos2 = idx2_to_pos[j]
+            bound = distance_matrix[pos1, pos2]
             results.append((i, j, bound))
+    
     return results
 
 # Process exact calculations in batches
-def _calculate_exact_batch(smiles_list1: List[str], smiles_list2: List[str], batch_pairs: List[Tuple[int, int]], threshold: int) -> List[Tuple[int, int, int]]:
+def _calculate_exact_batch(smiles_list1: List[str], smiles_list2: List[str], batch_pairs: List[Tuple[int, int]], threshold: int, solver="default") -> List[Tuple[int, int, int]]:
     '''this function is used to calculate the exact MCES distance in batches.
     if the distance is greater than the threshold, it will return the threshold value.
     if the distance is less than the threshold, it will return the distance value.
@@ -63,28 +86,35 @@ def _calculate_exact_batch(smiles_list1: List[str], smiles_list2: List[str], bat
         results = []
         for i, j in batch_pairs:
             # Load graphs on-demand
-            g1 = _cached_construct_graph(smiles_list1[i])
-            g2 = _cached_construct_graph(smiles_list2[j])
+            g1: nx.Graph = _cached_construct_graph(smiles_list1[i])
+            g2: nx.Graph = _cached_construct_graph(smiles_list2[j])
             try:
-                distance, _ = MCES_ILP(g1, g2, threshold=threshold)
-            except Exception("GurobiError") as e:
-                # Handle GurobiError gracefully
-                print(f"GurobiError for pair ({i}, {j}): {e}")
+                distance, _ = MCES_ILP(g1, g2, threshold=threshold, solver=solver)
+            except Exception as e:
+                # Handle errors gracefully (including GurobiError)
+                if "Gurobi" in str(type(e)) or "gurobi" in str(e).lower():
+                    print(f"GurobiError for pair ({i}, {j}): {e}")
+                else:
+                    print(f"Error for pair ({i}, {j}): {e}")
                 distance = None
             results.append((i, j, distance))
     return results
-
-def _calculate_distinct_batch(smiles_list1, smiles_list2, batch_pairs):
-    with suppress_output():
-        results = []
-        for i, j in batch_pairs:
-            # Load graphs on-demand
-            g1 = _cached_construct_graph(smiles_list1[i])
-            g2 = _cached_construct_graph(smiles_list2[j])
-            distance, _ = MCES_ILP(g1, g2, threshold=10)
-            is_distinct = distance > 10
-            results.append((i, j, is_distinct))
-    return results
+def _calculate_distinct_batch(
+        smiles_list1: List[str],
+        smiles_list2: List[str],
+        batch_pairs: List[Tuple[int, int]],
+        solver: str = "default"
+    ) -> List[Tuple[int, int, bool]]:
+        with suppress_output():
+            results: List[Tuple[int, int, bool]] = []
+            for i, j in batch_pairs:
+                # Load graphs on-demand
+                g1 = _cached_construct_graph(smiles_list1[i])
+                g2 = _cached_construct_graph(smiles_list2[j])
+                distance, _ = MCES_ILP(g1, g2, threshold=10, solver=solver)
+                is_distinct: bool = distance > 10
+                results.append((i, j, is_distinct))
+        return results
 
 
 def calculate_mces_distance_pair(smiles1: str, smiles2: str, threshold:int=10) -> float:
