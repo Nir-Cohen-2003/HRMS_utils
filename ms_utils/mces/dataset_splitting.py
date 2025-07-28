@@ -1,6 +1,6 @@
 import polars as pl
 import numpy as np
-from mces import are_very_distinct, suppress_output
+from .mces import are_very_distinct, suppress_output
 from typing import Tuple
 from time import time
 import os

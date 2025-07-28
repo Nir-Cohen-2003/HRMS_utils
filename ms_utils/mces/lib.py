@@ -183,7 +183,7 @@ def construct_graph(smiles:str) -> nx.Graph:
         The atom types are represented as atom attributes of the nodes.
     """
     #read the smile
-    m: Chem.Mol = Chem.MolFromSmiles(smiles)
+    m: Chem.Mol = Chem.MolFromSmiles(smiles) # type :ignore
     # convert the molecule into a graph
     # The bond and atom types are converted to node/edge attributes
     G: nx.Graph = nx.Graph()
@@ -215,7 +215,7 @@ def construct_graph_rustworkx(smiles: str):
         raise ImportError("RustWorkX is required for this function. Install with: pip install rustworkx")
     
     # Read the SMILES
-    m: Chem.Mol = Chem.MolFromSmiles(smiles)
+    m: Chem.Mol = Chem.MolFromSmiles(smiles) # type: ignore
     
     # Create RustWorkX graph
     G = rx.PyGraph()

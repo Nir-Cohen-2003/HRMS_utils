@@ -1,7 +1,7 @@
 import os
 from joblib import Memory
 from .lib import construct_graph, MCES_ILP
-from .bounds import filter2_batch
+from .bounds import filter2_batch, filter2
 from typing import List, Tuple, Any, Generator
 import networkx as nx
 from contextlib import contextmanager
