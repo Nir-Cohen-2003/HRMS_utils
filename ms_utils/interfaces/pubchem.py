@@ -1,6 +1,6 @@
 import polars as pl
 from time import time
-from ms_utils.rdkit.mol import sanitize_smiles_polars
+from ..rdkit.mol import sanitize_smiles_polars
 import requests
 import shutil
 from rdkit import Chem

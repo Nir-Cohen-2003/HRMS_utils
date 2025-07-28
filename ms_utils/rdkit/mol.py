@@ -1,7 +1,6 @@
-
 from typing import List
 from itertools import batched, chain
-import joblib
+from concurrent.futures import ProcessPoolExecutor
 from rdkit import Chem
 from rdkit import RDLogger
 import polars as pl
@@ -10,13 +9,14 @@ RDLogger.DisableLog('rdApp.*')
 
 def sanitize_smiles_polars(smiles: List[str], batch_size: int = 10000) -> pl.Series:
     sanitized = sanitize_smiles(smiles, batch_size)
-    return pl.Series(sanitized)
+    return pl.Series(sanitized,dtype=pl.String)
 
 
 def sanitize_smiles(smiles: List[str], batch_size: int = 10000) -> List[str]:
     batches = list(batched(smiles, batch_size))
-    sanitized = joblib.Parallel(n_jobs=-1)(joblib.delayed(_sanitize_smiles_batch)(batch) for batch in batches)
-    return list(chain(*sanitized))
+    with ProcessPoolExecutor() as executor:
+        sanitized_batches = list(executor.map(_sanitize_smiles_batch, batches))
+    return list(chain(*sanitized_batches))
 
 
 def _sanitize_smiles_batch(smiles: List[str]) -> List[str]:
@@ -45,8 +45,9 @@ def inchi_to_smiles_polars(inchi: List[str], batch_size: int = 10000) -> pl.Seri
 def inchi_to_smiles_list(inchi_list: List[str], batch_size: int = 10000) -> List[str]:
     """Convert a list of InChI strings to SMILES."""
     batches = list(batched(inchi_list, batch_size))
-    smiles_list = joblib.Parallel(n_jobs=-1)(joblib.delayed(_inchi_to_smiles_batch)(batch) for batch in batches)
-    return list(chain(*smiles_list))
+    with ProcessPoolExecutor() as executor:
+        smiles_batches = list(executor.map(_inchi_to_smiles_batch, batches))
+    return list(chain(*smiles_batches))
 
 
 def _inchi_to_smiles_batch(inchi_list: List[str]) -> List[str]:
@@ -76,8 +77,9 @@ def smiles_to_inchi_polars(smiles: List[str], batch_size: int = 10000) -> pl.Ser
 def smiles_to_inchi_list(smiles_list: List[str], batch_size: int = 10000) -> List[str]:
     """Convert a list of SMILES strings to InChI."""
     batches = list(batched(smiles_list, batch_size))
-    inchi_list = joblib.Parallel(n_jobs=-1)(joblib.delayed(_smiles_to_inchi_batch)(batch) for batch in batches)
-    return list(chain(*inchi_list))
+    with ProcessPoolExecutor() as executor:
+        inchi_batches = list(executor.map(_smiles_to_inchi_batch, batches))
+    return list(chain(*inchi_batches))
 
 
 def _smiles_to_inchi_batch(smiles_list: List[str]) -> List[str]:
@@ -108,8 +110,9 @@ def smiles_to_inchikey_polars(smiles: List[str], batch_size: int = 10000) -> pl.
 def smiles_to_inchikey_list(smiles_list: List[str], batch_size: int = 10000) -> List[str]:
     """Convert a list of SMILES strings to InChIKey."""
     batches = list(batched(smiles_list, batch_size))
-    inchikey_list = joblib.Parallel(n_jobs=-1)(joblib.delayed(_smiles_to_inchikey_batch)(batch) for batch in batches)
-    return list(chain(*inchikey_list))
+    with ProcessPoolExecutor() as executor:
+        inchikey_batches = list(executor.map(_smiles_to_inchikey_batch, batches))
+    return list(chain(*inchikey_batches))
 
 
 def _smiles_to_inchikey_batch(smiles_list: List[str]) -> List[str]:
