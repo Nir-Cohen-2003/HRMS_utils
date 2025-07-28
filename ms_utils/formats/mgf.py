@@ -2,7 +2,7 @@ import polars as pl
 from pathlib import Path
 import re
 from typing import Iterable, List
-from ms_utils.formula_annotation.utils import formula_to_array
+from ..formula_annotation.utils import formula_to_array
 
 
 def read_all_ms2_files(dir_path:Path|str)->pl.DataFrame:

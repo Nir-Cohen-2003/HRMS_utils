@@ -1,9 +1,9 @@
 import time
 import polars as pl
 from pathlib import Path
-from ms_utils.formula_annotation.utils import formula_to_array
+from ..formula_annotation.utils import formula_to_array
 
-EPA_main_data_shcema_initial = dict({
+EPA_main_data_schema_initial = dict({
     'INPUT': pl.String,
     'FOUND_BY': pl.String,
     'DTXSID': pl.String,
@@ -100,7 +100,7 @@ def read_xlsx_EPA_list_file_full_format(file_path):
     assert file_path.exists(), f"file_path does not exist: {file_path}"
     assert file_path.suffix.lower() == '.xlsx', "file_path must be an Excel file with .xlsx extension"
     try:
-        main_df = pl.read_excel(file_path, sheet_name=['Main Data'], schema_overrides=EPA_main_data_shcema_initial)
+        main_df = pl.read_excel(file_path, sheet_name=['Main Data'], schema_overrides=EPA_main_data_schema_initial)
         main_df = main_df['Main Data']
     except (KeyError, ValueError):
         raise KeyError("The Excel file must contain a sheet named 'Main Data' with the expected schema. Are you sure this is a full format list (with Main Data and Synonym Identifier sheets), or a short format list (without synonyms, and only one sheet)?")
