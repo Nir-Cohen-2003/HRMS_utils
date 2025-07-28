@@ -6,9 +6,9 @@ from typing import List, Iterable
 from ..interfaces.msdial import get_chromatogram, subtract_blank_frame
 from ..formula_annotation.isotopic_pattern import fits_isotopic_pattern_batch
 from .pyscreen_config import blank_config, search_config, isotopic_pattern_config, suspect_list_config,pyscreen_config, adducts_neg, adducts_pos
-from .spectral_search import NIST_search_external , custom_search, get_NIST
+from .spectral_search import NIST_search_external , custom_search, format_MSP, get_NIST, send_frame_to_NIST, _wait_for_NIST_ready
 from .epa import get_EPA
-VERBOSE = False
+VERBOSE = True
 SHORT = False
 
 def cross_with_EPA(chromatogram : pl.LazyFrame | pl.DataFrame, EPA: pl.LazyFrame | pl.DataFrame, config:search_config) -> pl.DataFrame:
@@ -134,8 +134,10 @@ def search_in_NIST(
             NIST=NIST,
             MSDIAL_file_path=MSDIAL_file_path,
             ignore_previous_results=True)   
-    else:
+    elif config.search_engine.lower() in ['nir_cosine','entropy']:
         NIST_search_results = custom_search(query_df=suspect_to_NIST,NIST=NIST,config=config)
+    else:
+        raise ValueError(f"Unknown search engine: {config.search_engine}. Must be 'nist', 'nir_cosine' or 'entropy'.")
 
     NIST_search_results = NIST_search_results.join(NIST.drop('Synonyms_NIST',strict=False),on='NIST_ID')
     NIST_search_results = NIST_search_results.select(
@@ -293,6 +295,8 @@ def foramt_results(
     'energy_is_too_low', 'energy_is_too_high',
     'isotopic_pattern_match'
     ]
+    ).with_columns(
+        rerun=pl.lit(value='',dtype=pl.String)  # adds a column for rerun, which is empty by default
     )
 
     return suspects_found_in_NIST
@@ -489,6 +493,122 @@ def main(
             print("error in file: "+ str(MSDIAL_file_path))
             print(e)
             raise e
+
+
+def rerun(results_file_paths: Iterable[str | Path]):
+    """
+    Takes results files from the main function, reads them, and sends rows with non-empty 'rerun' column
+    to NIST software for re-analysis using the external NIST search.
+    This is only to put the rows that were marked higher in the list of searched spectra in nist, no file is written.
+
+    Args:
+        results_file_paths: Paths to Excel results files from main function
+    """
+    if VERBOSE:
+        print("Starting rerun process...")
+
+    for results_path in results_file_paths:
+        try:
+            if isinstance(results_path, str):
+                results_path = Path(results_path)
+            
+            if not results_path.exists():
+                print(f"Results file {results_path} does not exist, skipping...")
+                continue
+                
+            if VERBOSE:
+                print(f"Processing results file: {results_path}")
+            
+            # Read the results file
+            try:
+                results_df = pl.read_excel(results_path)
+            except Exception as e:
+                print(f"Error reading results file {results_path}: {e}")
+                continue
+            
+            # Check if 'rerun' column exists
+            if 'rerun' not in results_df.columns:
+                if VERBOSE:
+                    print(f"No 'rerun' column found in {results_path}, skipping...")
+                continue
+            
+            # Filter rows where 'rerun' column is not empty/null
+            rerun_rows = results_df.filter(
+                pl.col('rerun').is_not_null() & 
+                pl.col('rerun').str.strip_chars().ne("")  # Not empty after stripping whitespace
+            )
+            
+            if rerun_rows.height == 0:
+                if VERBOSE:
+                    print(f"No rows marked for rerun in {results_path}, skipping...")
+                continue
+                
+            if VERBOSE:
+                print(f"Found {rerun_rows.height} rows marked for rerun")
+            
+            # Construct path to corresponding data file
+            # Remove "_results" from filename and change extension to .txt
+            data_filename = results_path.stem.replace("_results", "") + ".txt"
+            data_path = results_path.parent / data_filename
+            
+            if not data_path.exists():
+                print(f"Corresponding data file {data_path} does not exist, skipping...")
+                continue
+                
+            if VERBOSE:
+                print(f"Reading data from: {data_path}")
+            
+            # Read the original chromatogram data
+            try:
+                chromatogram = get_chromatogram(data_path)
+            except Exception as e:
+                print(f"Error reading chromatogram from {data_path}: {e}")
+                continue
+            
+            # Get Peak IDs that need to be rerun
+            peak_ids_to_rerun = rerun_rows.select('Peak ID').to_series()
+            
+            # Extract corresponding rows from chromatogram based on Peak ID
+            chromatogram_rerun = chromatogram.filter(
+                pl.col('Peak ID').is_in(peak_ids_to_rerun)
+            ).filter(
+                pl.col('msms_m/z').is_not_null()  # Only rows with MS/MS data
+            ).select([
+                'Peak ID',
+                'Precursor_mz_MSDIAL', 
+                'msms_intensity',
+                'msms_m/z'
+            ])
+            
+            if chromatogram_rerun.height == 0:
+                print(f"No MS/MS data found for rerun Peak IDs in {data_path}")
+                continue
+
+            if VERBOSE:
+                print(f"Sending {chromatogram_rerun.height} spectra to external NIST search...")
+            
+            # Send to external NIST search
+            try:
+                chromatogram_rerun = format_MSP(chromatogram_rerun)
+                send_frame_to_NIST(chromatogram_rerun)
+                _wait_for_NIST_ready()
+                
+                if VERBOSE:
+                    print(f"Rerun search completed for {data_path}")
+                    
+            except Exception as e:
+                print(f"Error during NIST search for {data_path}: {e}")
+                continue
+                
+        except Exception as e:
+            print(f"Error processing {results_path}: {e}")
+            if VERBOSE:
+                import traceback
+                print(traceback.format_exc())
+            continue
+    
+    if VERBOSE:
+        print("Rerun process completed")
 
 
 if __name__ == "__main__":

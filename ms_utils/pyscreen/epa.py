@@ -272,10 +272,10 @@ if __name__ == "__main__":
     ]
     suspect_list = construct_suspect_list_from_full_lists('/home/analytit_admin/Data/EPA/EPA_lists_full_format/', list_of_lists)
     print(suspect_list.head())
-    suspect_list.write_parquet('/home/analytit_admin/Data/EPA/suspect_list.parquet')
+    suspect_list.write_parquet(r'D:\Nir\EPA_DB\suspect_list.parquet')
     # Example usage
     config = suspect_list_config(
-        epa_db_path='/home/analytit_admin/Data/EPA/suspect_list.parquet'
+        epa_db_path=r'D:\Nir\EPA_DB\suspect_list.parquet'
     )
     EPA_df = get_EPA(config)
     print(EPA_df.head())

@@ -1,7 +1,7 @@
 import customtkinter as ctk
 import tkinter as tk
 from tkinter import filedialog, messagebox
-import json
+import yaml
 import threading
 import traceback
 import os
@@ -50,7 +50,7 @@ CONFIG_STRUCTURE = {
         "DotProd_threshold_haz1": ("DotProd Threshold Haz1", 700.0, 'float', False), # Default from factory: 1:700
         "DotProd_threshold_haz2": ("DotProd Threshold Haz2", 800.0, 'float', False), # Default from factory: 2:800
         "DotProd_threshold_haz3": ("DotProd Threshold Haz3", 900.0, 'float', False), # Default from factory: 3:900
-        "search_engine": ("Search Engine", (["nist", "custom", "entropy"], "entropy"), 'choice', False),
+        "search_engine": ("Search Engine", (["nist", "nir_cosine", "entropy"], "entropy"), 'choice', False),
         "noise_threshold": ("Search MS2 Noise Threshold (relative)", 0.005, 'float', False),
         "NIST_db_path": ("NIST DB Path (parquet)", "", 'path', False),
     },

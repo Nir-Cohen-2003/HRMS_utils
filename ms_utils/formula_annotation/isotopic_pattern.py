@@ -87,7 +87,7 @@ def fits_isotopic_pattern_batch(mzs_batch, intensities_batch, formulas, precurso
         for idx in range(batch_size):
             element_fits[idx, 1] = check_element_fit(
                 config, 1, mzs_batch[idx], intensities_batch[idx],
-                element_numbers_batch[idx, 1], precursor_mzs[idx, 0], precursor_intensities[idx]
+                element_numbers_batch[idx, 1], precursor_mzs[idx], precursor_intensities[idx]
             )
     else:
         # CN combined

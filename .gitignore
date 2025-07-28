@@ -17,3 +17,4 @@ pyscreen_errors_**.txt
 # pixi environments
 .pixi/*
 !.pixi/config.toml
+pyscreen_rerun_errors**.txt
