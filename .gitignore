@@ -18,3 +18,4 @@ pyscreen_errors_**.txt
 .pixi/*
 !.pixi/config.toml
 pyscreen_rerun_errors**.txt
+error_log.txt
