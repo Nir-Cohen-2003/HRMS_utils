@@ -7,7 +7,7 @@ import networkx as nx
 from contextlib import contextmanager
 import sys
 # Keep the memory cache configuration
-memory = Memory("./cachedir", verbose=0)
+memory = Memory(os.path.join(os.path.dirname(__file__), "__pycache__"), verbose=0)
 
 @contextmanager
 def suppress_output() -> Generator[None, None, None]:

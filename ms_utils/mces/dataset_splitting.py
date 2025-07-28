@@ -10,7 +10,7 @@ import random
 from pickle import dump, load
 
 def split_dataset(dataset: list[str], validation_fraction=0.1, test_fraction=0.1, 
-                  batch_size=100, checkpoint_path="data/split_checkpoint.pkl",distinction_threshold:int=10) -> Tuple[list[str], list[str], list[str]]:
+                  batch_size=100, checkpoint_path="data/split_checkpoint.pkl",distinction_threshold:int=10,use_solver:bool=True) -> Tuple[list[str], list[str], list[str]]:
     """Split the dataset into training, validation and testing datasets.
     Args:
         dataset (list[str]): List of SMILES strings.
@@ -18,6 +18,8 @@ def split_dataset(dataset: list[str], validation_fraction=0.1, test_fraction=0.1
         test_fraction (float): Fraction of data to use for testing.
         batch_size (int): Size of each batch for processing.
         checkpoint_path (str): Path to save the checkpoint.
+        distinction_threshold (int): Threshold for distinguishing molecules as distinct.
+        use_solver (bool): Whether to use the solver for MCES calculations, or stick to the lower bound of the mces and use that. usign the solver is more accurate, but slower.
     Returns:
         Tuple[list[str], list[str], list[str]]: Tuple of training, validation and testing datasets.
     """
@@ -36,7 +38,7 @@ def split_dataset(dataset: list[str], validation_fraction=0.1, test_fraction=0.1
     edge_count = 0
     rows = None
     cols = None
-    
+
     if os.path.exists(checkpoint_path):
         print(f"Found checkpoint at {checkpoint_path}, loading...")
         try:
@@ -46,12 +48,31 @@ def split_dataset(dataset: list[str], validation_fraction=0.1, test_fraction=0.1
             edge_count = checkpoint['edge_count']
             start_i = checkpoint['i']
             start_j = checkpoint['j']
-            print(f"Resuming from batch {start_i+1}, comparison {start_j+1}")
+            
+            # Validate checkpoint compatibility with current dataset
+            if edge_count > 0:
+                max_row_idx = rows[:edge_count].max() if edge_count > 0 else 0
+                max_col_idx = cols[:edge_count].max() if edge_count > 0 else 0
+                if max_row_idx >= n or max_col_idx >= n:
+                    print(f"Checkpoint incompatible: max indices ({max_row_idx}, {max_col_idx}) exceed dataset size {n}")
+                    print("Starting from scratch")
+                    start_i = 0
+                    start_j = 0
+                    rows = None
+                    cols = None
+                    edge_count = 0
+                else:
+                    print(f"Resuming from batch {start_i+1}, comparison {start_j+1}")
+            else:
+                print(f"Resuming from batch {start_i+1}, comparison {start_j+1}")
         except Exception as e:
             print(f"Error loading checkpoint: {e}")
             print("Starting from scratch")
             start_i = 0
             start_j = 0
+            rows = None
+            cols = None
+            edge_count = 0
     
     # Initialize arrays if not loaded from checkpoint
     if rows is None:
@@ -71,7 +92,7 @@ def split_dataset(dataset: list[str], validation_fraction=0.1, test_fraction=0.1
             print(f"Processing batch {i+1}/{num_batches} internally (size: {len(batch_i)})")
             
             with suppress_output():
-                same_batch_result = are_very_distinct(batch_i, symmetric=True,use_solver=False,distinction_threshold=distinction_threshold)
+                same_batch_result = are_very_distinct(batch_i, symmetric=True,use_solver=use_solver,distinction_threshold=distinction_threshold)
             
             local_indices = np.where(~same_batch_result)
             local_x, local_y = local_indices[0], local_indices[1]
@@ -183,30 +204,54 @@ def split_dataset(dataset: list[str], validation_fraction=0.1, test_fraction=0.1
     random.shuffle(cluster_list)
     
     # Calculate target sizes
-    validation_size = int(n * validation_fraction)
-    test_size = int(n * test_fraction)
-    
-    # Distribute clusters
     train_indices = []
     validation_indices = []
     test_indices = []
-    for cluster in cluster_list:
+
+    # Calculate target sizes
+    validation_size = int(n * validation_fraction)
+    test_size = int(n * test_fraction)
+
+    # Separate large clusters that should go to training
+    # Use a threshold based on target sizes to identify "large" clusters
+    large_cluster_threshold = max(validation_size, test_size) // 2
+    large_clusters = [cluster for cluster in cluster_list if len(cluster) > large_cluster_threshold]
+    small_clusters = [cluster for cluster in cluster_list if len(cluster) <= large_cluster_threshold]
+
+    # Put large clusters in training set
+    for cluster in large_clusters:
+        train_indices.extend(cluster)
+
+    # Round-robin distribution for smaller clusters
+    current_set = 0  # 0: test, 1: validation, 2: training
+    for cluster in small_clusters:
         cluster_size = len(cluster)
         
-        if len(test_indices) < test_size and (
-            len(test_indices) + cluster_size <= test_size or
-            abs(len(test_indices) + cluster_size - test_size) < 
-            abs(len(test_indices) - test_size)
-        ):
+        if current_set == 0 and len(test_indices) + cluster_size <= test_size * 1.1:  # Allow 10% overflow
             test_indices.extend(cluster)
-        elif len(validation_indices) < validation_size and (
-            len(validation_indices) + cluster_size <= validation_size or
-            abs(len(validation_indices) + cluster_size - validation_size) < 
-            abs(len(validation_indices) - validation_size)
-        ):
+            current_set = 1
+        elif current_set == 1 and len(validation_indices) + cluster_size <= validation_size * 1.1:  # Allow 10% overflow
             validation_indices.extend(cluster)
-        else:
+            current_set = 2
+        elif current_set == 2:
             train_indices.extend(cluster)
+            current_set = 0
+        else:
+            # If current set would overflow too much, try next set
+            if current_set == 0:
+                if len(validation_indices) + cluster_size <= validation_size * 1.1:
+                    validation_indices.extend(cluster)
+                    current_set = 2
+                else:
+                    train_indices.extend(cluster)
+                    current_set = 1
+            elif current_set == 1:
+                if len(test_indices) + cluster_size <= test_size * 1.1:
+                    test_indices.extend(cluster)
+                    current_set = 2
+                else:
+                    train_indices.extend(cluster)
+                    current_set = 0
     
     # Create the final datasets
     train_set = [dataset[i] for i in train_indices]
@@ -225,13 +270,18 @@ def split_dataset(dataset: list[str], validation_fraction=0.1, test_fraction=0.1
 
 
 if __name__ == "__main__":
-    nist_smiles: List[str] = pl.scan_parquet('/home/analytit_admin/dev/MS_encoder/data/NIST_prepared_labeled.parquet').select('CanonicalSMILES').unique(maintain_order=True).collect().slice(offset=10000, length=1024).to_series().to_list()
+    nist_smiles: List[str] = pl.scan_parquet('/home/analytit_admin/dev/MS_encoder/data/NIST_prepared_labeled.parquet').select('CanonicalSMILES').unique(maintain_order=True).collect().slice(offset=10000, length=2048).to_series().to_list()
     
     # Create data directory if it doesn't exist
-    os.makedirs('data', exist_ok=True)
+    os.makedirs(os.path.join(os.path.dirname(__file__), "__pycache__"), exist_ok=True)
     
     start = time()
-    train_set, validation_set, test_set = split_dataset(nist_smiles, batch_size=5000, checkpoint_path='data/split_checkpoint.pkl',distinction_threshold=10)
+    train_set, validation_set, test_set = split_dataset(
+        nist_smiles,
+        batch_size=5000,
+        checkpoint_path=os.path.join(os.path.dirname(__file__), "__pycache__", "split_checkpoint.pkl"),
+        distinction_threshold=10
+    )
     end = time()
 
     

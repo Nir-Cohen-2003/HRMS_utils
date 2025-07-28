@@ -4,20 +4,34 @@ Version: 0.1.0
 Summary: Add your description here
 Requires-Python: >=3.12
 Description-Content-Type: text/markdown
-Requires-Dist: aiohttp>=3.11.18
-Requires-Dist: customtkinter>=5.2.2
 Requires-Dist: cython>=3.1.2
-Requires-Dist: gurobipy>=12.0.1
 Requires-Dist: ipykernel>=6.29.5
-Requires-Dist: lightgbm>=4.6.0
-Requires-Dist: molmass[all]>=2025.4.14
 Requires-Dist: ms-entropy==1.3.4
-Requires-Dist: msbuddy>=0.3.12
-Requires-Dist: networkx>=3.4.2
-Requires-Dist: polars[all]>=1.31.0
-Requires-Dist: pulp>=3.2.1
+Requires-Dist: polars>=1.31.0
 Requires-Dist: pyyaml>=6.0.2
 Requires-Dist: rdkit>=2024.9.6
 Requires-Dist: requests>=2.32.3
 Requires-Dist: seaborn>=0.13.2
 Requires-Dist: torch>=2.7.0
+Requires-Dist: joblib<2,>=1.5.1
+Requires-Dist: scipy<2,>=1.16.1
+Provides-Extra: pyscreen
+Requires-Dist: customtkinter>=5.2.2; extra == "pyscreen"
+Provides-Extra: mces
+Requires-Dist: gurobipy>=12.0.1; extra == "mces"
+Requires-Dist: networkx>=3.4.2; extra == "mces"
+Requires-Dist: pulp>=3.2.1; extra == "mces"
+Requires-Dist: rustworkx<0.17,>=0.16.0; extra == "mces"
+Requires-Dist: msbuddy>=0.3.12; extra == "mces"
+Provides-Extra: formula-annotation
+Requires-Dist: lightgbm>=4.6.0; extra == "formula-annotation"
+Requires-Dist: molmass[all]>=2025.4.14; extra == "formula-annotation"
+Requires-Dist: ms-entropy==1.3.4; extra == "formula-annotation"
+Requires-Dist: aiohttp>=3.11.18; extra == "formula-annotation"
+Provides-Extra: cuopt
+Requires-Dist: cuopt-cu12==25.5.*; extra == "cuopt"
+Provides-Extra: all
+Requires-Dist: ms-utils[pyscreen]; extra == "all"
+Requires-Dist: ms-utils[mces]; extra == "all"
+Requires-Dist: ms-utils[formula_annotation]; extra == "all"
+Requires-Dist: ms-utils[cuopt]; extra == "all"
