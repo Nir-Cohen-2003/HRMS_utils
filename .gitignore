@@ -14,3 +14,6 @@ ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.cpp
 **.json
 **.ipynb
 pyscreen_errors_**.txt
+# pixi environments
+.pixi/*
+!.pixi/config.toml
