@@ -6,6 +6,7 @@ ms_utils.egg-info/dependency_links.txt
 ms_utils.egg-info/requires.txt
 ms_utils.egg-info/top_level.txt
 ms_utils/formats/epa_xlsx.py
+ms_utils/formats/mgf.py
 ms_utils/formats/nist_mspec.py
 ms_utils/formula_annotation/isotopic_pattern.py
 ms_utils/formula_annotation/ms_buddy.py
@@ -17,6 +18,7 @@ ms_utils/formula_annotation/mass_decomposition_impl/python_impl.py
 ms_utils/formula_annotation/mass_decomposition_impl/setup.py
 ms_utils/interfaces/msdial.py
 ms_utils/interfaces/pubchem.py
+ms_utils/mces/bounds.py
 ms_utils/mces/dataset_splitting.py
 ms_utils/mces/lib.py
 ms_utils/mces/mces.py
@@ -25,6 +27,7 @@ ms_utils/pyscreen/epa.py
 ms_utils/pyscreen/gui.py
 ms_utils/pyscreen/main.py
 ms_utils/pyscreen/pyscreen_config.py
+ms_utils/pyscreen/rerun_gui.py
 ms_utils/pyscreen/spectral_search.py
 ms_utils/rdkit/fingerprint.py
 ms_utils/rdkit/fragmentation.py

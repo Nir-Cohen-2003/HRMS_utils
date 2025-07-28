@@ -1,7 +1,7 @@
 import polars as pl
 import numpy as np
 from .mces import are_very_distinct, suppress_output
-from typing import Tuple
+from typing import Tuple, List
 from time import time
 import os
 from scipy.sparse.csgraph import connected_components
@@ -10,7 +10,7 @@ import random
 from pickle import dump, load
 
 def split_dataset(dataset: list[str], validation_fraction=0.1, test_fraction=0.1, 
-                  batch_size=100, checkpoint_path="data/split_checkpoint.pkl") -> Tuple[list[str], list[str], list[str]]:
+                  batch_size=100, checkpoint_path="data/split_checkpoint.pkl",distinction_threshold:int=10) -> Tuple[list[str], list[str], list[str]]:
     """Split the dataset into training, validation and testing datasets.
     Args:
         dataset (list[str]): List of SMILES strings.
@@ -71,7 +71,7 @@ def split_dataset(dataset: list[str], validation_fraction=0.1, test_fraction=0.1
             print(f"Processing batch {i+1}/{num_batches} internally (size: {len(batch_i)})")
             
             with suppress_output():
-                same_batch_result = are_very_distinct(batch_i, symmetric=True)
+                same_batch_result = are_very_distinct(batch_i, symmetric=True,use_solver=False,distinction_threshold=distinction_threshold)
             
             local_indices = np.where(~same_batch_result)
             local_x, local_y = local_indices[0], local_indices[1]
@@ -190,22 +190,21 @@ def split_dataset(dataset: list[str], validation_fraction=0.1, test_fraction=0.1
     train_indices = []
     validation_indices = []
     test_indices = []
-    
     for cluster in cluster_list:
         cluster_size = len(cluster)
         
-        if len(validation_indices) < validation_size and (
-            len(validation_indices) + cluster_size <= validation_size or
-            abs(len(validation_indices) + cluster_size - validation_size) < 
-            abs(len(validation_indices) - validation_size)
-        ):
-            validation_indices.extend(cluster)
-        elif len(test_indices) < test_size and (
+        if len(test_indices) < test_size and (
             len(test_indices) + cluster_size <= test_size or
             abs(len(test_indices) + cluster_size - test_size) < 
             abs(len(test_indices) - test_size)
         ):
             test_indices.extend(cluster)
+        elif len(validation_indices) < validation_size and (
+            len(validation_indices) + cluster_size <= validation_size or
+            abs(len(validation_indices) + cluster_size - validation_size) < 
+            abs(len(validation_indices) - validation_size)
+        ):
+            validation_indices.extend(cluster)
         else:
             train_indices.extend(cluster)
     
@@ -214,6 +213,10 @@ def split_dataset(dataset: list[str], validation_fraction=0.1, test_fraction=0.1
     validation_set = [dataset[i] for i in validation_indices]
     test_set = [dataset[i] for i in test_indices]
     
+    max_cluster_size = max(len(cluster) for cluster in cluster_list)
+    avg_cluster_size = n / len(cluster_list)
+    min_cluster_size = min(len(cluster) for cluster in cluster_list)
+    print(f"Max cluster size: {max_cluster_size}, Avg cluster size: {avg_cluster_size:.2f}, Min cluster size: {min_cluster_size}, num clusters: {len(cluster_list)}")
     # Remove checkpoint file if process completed successfully
     if os.path.exists(checkpoint_path):
         os.remove(checkpoint_path)
@@ -222,20 +225,18 @@ def split_dataset(dataset: list[str], validation_fraction=0.1, test_fraction=0.1
 
 
 if __name__ == "__main__":
-    dataset = pl.read_parquet('data/NIST_prepared.parquet').select('CanonicalSMILES').unique().to_series().to_list() #TODO: add sorting to ensure reproducibility
-    start = time()
+    nist_smiles: List[str] = pl.scan_parquet('/home/analytit_admin/dev/MS_encoder/data/NIST_prepared_labeled.parquet').select('CanonicalSMILES').unique(maintain_order=True).collect().slice(offset=10000, length=1024).to_series().to_list()
     
     # Create data directory if it doesn't exist
     os.makedirs('data', exist_ok=True)
     
-    train_set, validation_set, test_set = split_dataset(dataset, batch_size=5000, checkpoint_path='data/split_checkpoint.pkl')
-    
-    dump(train_set, open('data/train_set_smiles.pickle', 'wb'))
-    dump(validation_set, open('data/validation_set_smiles.pickle', 'wb'))
-    dump(test_set, open('data/test_set_smiles.pickle', 'wb'))
+    start = time()
+    train_set, validation_set, test_set = split_dataset(nist_smiles, batch_size=5000, checkpoint_path='data/split_checkpoint.pkl',distinction_threshold=10)
+    end = time()
+
     
     print(f"Training set size: {len(train_set)}")
     print(f"Validation set size: {len(validation_set)}")
     print(f"Test set size: {len(test_set)}")
-    print(f"Total size: {len(dataset)}")
-    print(f"Time taken: {time() - start:.2f} seconds")
+    print(f"Total size: {len(nist_smiles)}")
+    print(f"Time taken: {end - start:.2f} seconds")

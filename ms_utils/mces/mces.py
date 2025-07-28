@@ -271,11 +271,13 @@ def are_close_mols(smiles_list1: List[str], smiles_list2: Optional[List[str]] = 
     return result_matrix
 
 def are_very_distinct(smiles_list1: List[str], smiles_list2: Optional[List[str]] = None,
-                     n_jobs: int = -1, symmetric: bool = False, batch_size: int = 20, solver: str = "GUROBI") -> np.ndarray:
+                     n_jobs: int = -1, symmetric: bool = False, batch_size: int = 20, solver: str = "GUROBI", use_solver: bool = True, distinction_threshold: int = 10) -> np.ndarray:
     """
     Efficiently computes whether each pair of molecules has an MCES distance greater than 10.
     
     Parameters as in are_close_mols.
+    if we set use_solver=False, we will not use the solver to compute the distances, but rather use a fast filter2 bound
+     and return the results it gives, even if they are "worse", meaning 2 molecules that might be distinct (mces>10) will not be detected as such.
     """
     if PROFILE:
         total_start = time.perf_counter()
@@ -326,15 +328,20 @@ def are_very_distinct(smiles_list1: List[str], smiles_list2: Optional[List[str]]
         result_matrix = np.zeros((len(smiles_list1), len(smiles_list2)), dtype=bool)
         
         # Use NumPy vectorization:
-        indices = np.array([(i, j) for i, j, bound in bounds_results if bound > 10])
+        indices = np.array([(i, j) for i, j, bound in bounds_results if bound > distinction_threshold])
         if indices.size > 0:
             result_matrix[indices[:, 0], indices[:, 1]] = True
             if symmetric:
                 result_matrix[indices[:, 1], indices[:, 0]] = True
-        
+        if not use_solver: # then we don't do the exact mces calc
+            if PROFILE:
+                filter_time = time.perf_counter() - filter_start
+                print(f"Filtering time: {filter_time:.3f}s")
+                print(f"Pairs needing ILP: {len(bounds_results)} out of {len(all_pairs)}")
+            return result_matrix
         # Only perform expensive ILP computation on potential non-distinct pairs
         bounds_array = np.array(bounds_results)
-        mask = bounds_array[:, 2] <= 10
+        mask = bounds_array[:, 2] <= distinction_threshold
         pairs_needing_ilp = bounds_array[mask, :2].astype(int).tolist()
         
         if PROFILE:
