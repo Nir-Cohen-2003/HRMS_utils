@@ -95,6 +95,30 @@ def get_fp_polars(smiles: Iterable[str], fp_params: Union[FingerprintParams, Dic
 
     Returns:
         A Polars Series containing the generated fingerprints as numpy arrays.
+    
+    Examples:
+        >>> import polars as pl
+        >>> import numpy as np
+        
+        >>> # Create FingerprintParams object with Morgan fingerprints, radius=2
+        >>> fp_params = FingerprintParams(fp_type='morgan', radius=2, fpSize=2048)
+        >>> smiles_series = pl.Series(['CCO', 'CCN', 'CCC'],dtype=pl.String)
+        >>> result = get_fp_polars(smiles_series, fp_params)
+        >>> isinstance(result, pl.Series)
+        True
+        >>> len(result)
+        3
+        >>> result[0].shape
+        (2048,)
+        >>> # Usage with map_batches
+        >>> df = pl.DataFrame({'smiles': ['CCO', 'CCN', 'CCC']})
+        >>> df = df.with_columns(
+        ...     pl.col('smiles').map_batches(
+        ...         lambda batch: get_fp_polars(batch, {'fp_type': 'maccs'})
+        ...     ).alias('fingerprints')
+        ... )
+        >>> df['fingerprints'][0].shape
+        (167,)
     """
     fps = get_fp_list(smiles, fp_params, batch_size)
     # Ensure fps is a flat list of numpy arrays before creating Series
@@ -266,3 +290,9 @@ def _get_fp_batch(smiles: List[str], fp_params: FingerprintParams) -> List[np.nd
         fps.append(np_fp)
 
     return fps
+
+if __name__ == "__main__":
+    # test the doctest of get_fp_polars
+    import doctest
+    doctest.testmod(optionflags=doctest.ELLIPSIS | doctest.NORMALIZE_WHITESPACE)
+    # Example usage
