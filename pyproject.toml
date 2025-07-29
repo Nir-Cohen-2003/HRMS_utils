@@ -65,6 +65,6 @@ mces = {features = ["mces"], solve-group = "default"}
 [tool.pixi.feature.mces.tasks]
 mces_bounds_full = "python -m ms_utils.mces.bounds --bounds-test"
 mces_bounds = "python -m ms_utils.mces.bounds --bounds-test --no-mces"
-mces_graph_construction = "python -m ms_utils.mces.lib --graph-benchmark"
+mces_graph_construction = "python -m ms_utils.mces.graph_construction --graph-benchmark"
 mces_dataset_splitting = "python -m ms_utils.mces.dataset_splitting"
 mces_many = "python -m ms_utils.mces.mces"
