@@ -23,6 +23,8 @@ def construct_graph(smiles:str) -> nx.Graph:
     #read the smile
     m: Chem.Mol = Chem.MolFromSmiles(smiles) # type :ignore
     # convert the molecule into a graph
+    if m is None:
+        raise ValueError(f"Invalid SMILES string: {smiles}")
     # The bond and atom types are converted to node/edge attributes
     G: nx.Graph = nx.Graph()
     for atom in m.GetAtoms():

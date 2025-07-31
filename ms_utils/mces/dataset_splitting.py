@@ -41,7 +41,7 @@ def split_dataset_adaptive_threshold(
     print(f"Calculating lower bounds matrix for {n} molecules using C++ implementation...")
 
     # Use C++ implementation for batch processing - much faster
-    bounds_matrix = filter2_cpp(dataset)
+    bounds_matrix = filter2_cpp(dataset.copy())
     
     print("Lower bounds matrix calculated, starting adaptive threshold search...")
 
@@ -298,14 +298,25 @@ def try_split_with_threshold(
 
 if __name__ == "__main__":
     from time import perf_counter
-    nist_smiles: List[str] = pl.scan_parquet('/home/analytit_admin/dev/MS_encoder/data/NIST_prepared_labeled.parquet').select('CanonicalSMILES').unique(maintain_order=True).head(1000).collect().to_series().to_list()
-    
+    from ..rdkit.mol import sanitize_smiles_polars
+
+    nist_smiles: List[str] = pl.scan_parquet('/home/analytit_admin/dev/MS_encoder/data/NIST_prepared_labeled.parquet').select('CanonicalSMILES').unique(maintain_order=True).with_columns(
+            pl.col("CanonicalSMILES").map_batches(
+                function=sanitize_smiles_polars,
+                return_dtype=pl.String,
+            )
+        ).filter(
+            pl.col("CanonicalSMILES").is_not_null(),
+            pl.col("CanonicalSMILES").ne("")
+        ).head(1000).collect().to_series().to_list()
+    if any(smile=="=" for smile in nist_smiles):
+        raise ValueError("Invalid SMILES found in dataset. Please check the input data.")
     # Create data directory if it doesn't exist
     os.makedirs(os.path.join(os.path.dirname(__file__), "__pycache__"), exist_ok=True)
 
     start = perf_counter()
     train_set, validation_set, test_set, threshold = split_dataset_adaptive_threshold(
-        nist_smiles,
+        nist_smiles.copy(),
         validation_fraction=0.1,
         test_fraction=0.1,
         initial_distinction_threshold=10,
@@ -327,7 +338,7 @@ if __name__ == "__main__":
     # now use the selective exact calculation method
     start = perf_counter()
     train_set, validation_set, test_set, threshold = split_dataset_with_selective_exact_calculation(
-        nist_smiles,
+        nist_smiles.copy(),
         validation_fraction=0.1,
         test_fraction=0.1,
         initial_distinction_threshold=10,

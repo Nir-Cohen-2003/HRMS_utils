@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Iterable
 from itertools import batched, chain
 from concurrent.futures import ProcessPoolExecutor
 from rdkit import Chem
@@ -7,12 +7,12 @@ import polars as pl
 
 RDLogger.DisableLog('rdApp.*')
 
-def sanitize_smiles_polars(smiles: List[str], batch_size: int = 10000) -> pl.Series:
+def sanitize_smiles_polars(smiles: pl.Series, batch_size: int = 10000) -> pl.Series:
     sanitized = sanitize_smiles(smiles, batch_size)
     return pl.Series(sanitized,dtype=pl.String)
 
 
-def sanitize_smiles(smiles: List[str], batch_size: int = 10000) -> List[str]:
+def sanitize_smiles(smiles: Iterable[str], batch_size: int = 10000) -> List[str]:
     batches = list(batched(smiles, batch_size))
     with ProcessPoolExecutor() as executor:
         sanitized_batches = list(executor.map(_sanitize_smiles_batch, batches))
@@ -22,7 +22,7 @@ def sanitize_smiles(smiles: List[str], batch_size: int = 10000) -> List[str]:
 def _sanitize_smiles_batch(smiles: List[str]) -> List[str]:
     RDLogger.DisableLog('rdApp.*')
 
-    sanitized = []
+    sanitized: list[str] = []
     for s in smiles:
         try:
             mol = Chem.MolFromSmiles(s, sanitize=True)
