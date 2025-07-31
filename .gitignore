@@ -19,3 +19,10 @@ pyscreen_errors_**.txt
 !.pixi/config.toml
 pyscreen_rerun_errors**.txt
 error_log.txt
+**.csv
+ms_utils/mces/fast_mol_filter/fast_mol_filter/hungarian.cc
+ms_utils/mces/fast_mol_filter/fast_mol_filter/matrix.h
+ms_utils/mces/fast_mol_filter/fast_mol_filter/munkres.h
+ms_utils/mces/fast_mol_filter/fast_mol_filter/matrix.cpp
+ms_utils/mces/fast_mol_filter/fast_mol_filter/munkres.cpp
+ms_utils/mces/fast_mol_filter/fast_mol_filter/calculator.cpp

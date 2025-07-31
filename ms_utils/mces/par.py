@@ -1,6 +1,7 @@
 import os
 from joblib import Memory
-from .lib import construct_graph, MCES_ILP
+from .lib import MCES_ILP
+from .graph_construction import construct_graph
 from .bounds import filter2_batch, filter2
 from typing import List, Tuple, Any, Generator
 import networkx as nx
@@ -99,6 +100,7 @@ def _calculate_exact_batch(smiles_list1: List[str], smiles_list2: List[str], bat
                 distance = None
             results.append((i, j, distance))
     return results
+
 def _calculate_distinct_batch(
         smiles_list1: List[str],
         smiles_list2: List[str],

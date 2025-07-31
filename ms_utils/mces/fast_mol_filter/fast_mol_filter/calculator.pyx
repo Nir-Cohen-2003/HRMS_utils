@@ -1,0 +1,85 @@
+# cython: language_level=3, boundscheck=False, wraparound=False, cdivision=True
+
+import numpy as np
+cimport numpy as np
+from libcpp.vector cimport vector
+from libcpp.string cimport string
+
+cdef extern from "cpp_filter.hpp" nogil:
+    cdef cppclass PrecomputedMol:
+        pass # No need to define members, just need the type
+    
+    vector[double] calculate_symmetric_distance_matrix(const vector[string]& smiles_list)
+    double calculate_total_cost_symmetric(const vector[string]& smiles_list)
+
+def calculate_distances_symmetric(smiles_list):
+    """
+    Calculates a symmetric distance matrix for a list of SMILES strings.
+
+    This function passes the SMILES list to a C++ backend which handles
+    parallel pre-computation and pairwise distance calculation.
+
+    Args:
+        smiles_list (list or iterable of str): A list of SMILES strings.
+
+    Returns:
+        numpy.ndarray: A 2D numpy array representing the symmetric distance matrix.
+    """
+    cdef Py_ssize_t n = len(smiles_list)
+    if n == 0:
+        return np.array([])
+
+    # Convert Python strings to C++ strings
+    cdef vector[string] cpp_smiles
+    cpp_smiles.reserve(n)
+    for s in smiles_list:
+        cpp_smiles.push_back(s.encode('utf-8'))
+
+    cdef vector[double] cpp_results
+    # All parallel computation is inside the C++ layer.
+    # We release the GIL for the duration of the C++ call.
+    with nogil:
+        cpp_results = calculate_symmetric_distance_matrix(cpp_smiles)
+
+    # Convert result to NumPy array using a memoryview (zero-copy)
+    # Check for empty result to avoid accessing invalid memory
+    if cpp_results.empty():
+        return np.array([]).reshape((n,n))
+        
+    cdef double[::1] result_view = <double[:cpp_results.size()]>&cpp_results[0]
+    
+    # Reshape the flat array into a 2D matrix
+    py_results = np.asarray(result_view).reshape((n, n))
+    
+    return py_results
+
+def filter2(iterable_smiles):
+    """
+    Calculates the sum of pairwise distances for a list of SMILES strings.
+
+    This function passes the SMILES list to a C++ backend which handles
+    all molecular processing and calculations in parallel.
+
+    Args:
+        iterable_smiles (list or iterable of str): A list of SMILES strings.
+
+    Returns:
+        float: The total summed cost of all unique pairs.
+    """
+    cdef int n = len(iterable_smiles)
+    if n < 2:
+        return 0.0
+
+    # Convert Python strings to C++ strings
+    cdef vector[string] cpp_smiles
+    cpp_smiles.reserve(n)
+    for s in iterable_smiles:
+        cpp_smiles.push_back(s.encode('utf-8'))
+
+    cdef double total_cost = 0.0
+    # All computation is now inside the C++ layer.
+    # We release the GIL for the duration of the C++ call.
+    with nogil:
+        total_cost = calculate_total_cost_symmetric(cpp_smiles)
+
+    return total_cost

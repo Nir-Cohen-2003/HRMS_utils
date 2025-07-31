@@ -4,6 +4,7 @@ import networkx as nx
 import numpy as np
 from collections import defaultdict
 import rustworkx as rx
+
 def filter1(G1: nx.Graph, G2: nx.Graph) -> float:
     """
      Finds a lower bound for the distance based on degree
@@ -517,7 +518,6 @@ def filter2_batch(graphs_list1, graphs_list2=None):
             'atom_types': dict(atom_types),
             'neighbor_data': neighbor_data
         }
-    
     # Pre-compute all graphs
     for i, G in enumerate(graphs_list1):
         precompute_graph(G, f"1_{i}")
@@ -777,38 +777,29 @@ if __name__ == "__main__":
     import sys
     from time import perf_counter
     from typing import List
-    from .lib import construct_graph,construct_graph_rustworkx, MCES_ILP
+    # from .par import _calculate_exact_batch
+    from .lib import MCES_ILP
+    from .graph_construction import construct_graph, construct_graph_rustworkx
 
-    if '--bounds-test' in sys.argv:
+    if '--bounds-validity-test' in sys.argv:
         # Check if MCES calculation should be disabled
         skip_mces = '--no-mces' in sys.argv
-        
-        # compare the bounds we get from filter1, filter2, filter2_from_lib, filter2_v3_optimized, filter2_batch, filter2_batch_rustworkx, filter3, and filter4
-        smiles_examples: List[str] = [
-            # Small molecules
-            "C",                # Methane
-            "CC",               # Ethane
-            "CCO",              # Ethanol
-            "CC(=O)C",          # Acetone
-            "c1ccccc1",         # Benzene
-            "Cc1ccccc1",        # Toluene
-            "CC(=O)O",          # Acetic acid
-            "C1CCCCC1",         # Cyclohexane
-            "C(C1C(C(C(C(O1)O)O)O)O)O",  # Glucose
-
-            # Medications / larger molecules
-            "CC(=O)Oc1ccccc1C(=O)O",     # Aspirin
-            "Cn1cnc2c1c(=O)n(C)c(=O)n2C",# Caffeine
-            "CN1CCC[C@H]1c2cccnc2",      # Nicotine
-            "CC(C)CC1=CC=C(C=C1)C(C)C(=O)O", # Ibuprofen
-            "CC1=C(C(=O)NC(=O)N1)N",     # Paracetamol (acetaminophen)
-            "CC(C)NCC(O)COc1ccc2nc(S(N)(=O)=O)sc2c1", # Hydrochlorothiazide
-            "CC(C)C1=CC(=C(C=C1)O)C(C)C(=O)O", # Naproxen
-            "CCOC(=O)C1=CC=CC=C1N",      # Lidocaine
-            "CC(C)C1=CC=C(C=C1)C(C)C(=O)O", # Ibuprofen (repeat for clarity)
-            "CCN(CC)CCOC(=O)C1=CC=CC=C1", # Propranolol
-            "CC(C)C1=CC(=O)NC(=O)N1",    # Paracetamol (repeat for clarity)
-        ]*1
+        import polars as pl
+        import os
+        data_file_path = os.path.join(os.path.dirname(__file__), "dsstox_smiles_medium.csv")
+        # Get number of molecules from command line, default to 10 if not provided
+        if len(sys.argv) > sys.argv.index('--bounds-validity-test') + 1:
+            try:
+                number_of_mol:int = int(sys.argv[sys.argv.index('--bounds-validity-test') + 1])
+            except Exception:
+                try:
+                    number_of_mol:int = int(sys.argv[sys.argv.index('--bounds-validity-test') + 2])
+                except Exception:
+                    number_of_mol:int = 10
+        else:
+            number_of_mol:int = 10
+        print(f"Running bounds validity test on {number_of_mol} molecules, skip_mces={skip_mces}")
+        smiles_examples = pl.scan_csv(data_file_path).head(number_of_mol).collect().to_series().to_list()
         graphs = [construct_graph(smiles) for smiles in smiles_examples]
         
         # Convert to RustWorkX graphs for testing (only if RustWorkX is available)
@@ -989,6 +980,11 @@ if __name__ == "__main__":
             else:
                 print("\n⚠️  Filter variants produce inconsistent results!")
 
+            # Always print filter1 vs filter2 strength comparison
+            avg_diff_f2 = sum((filter2_v2_results[i] - filter1_results[i]) for i in range(len(filter1_results))) / len(filter1_results)
+            print("\nAverage improvement over filter1 (tightness):")
+            print(f"  Filter2 - Filter1: {avg_diff_f2:.4f}")
+
         print("\nTiming results:")
         print(f"Time for filter1: {time1:.2f} seconds")
         print(f"Time for filter2: {time2:.2f} seconds")
@@ -1001,3 +997,64 @@ if __name__ == "__main__":
             print(f"Time for MCES_ILP (true): {time_mces:.2f} seconds")
         else:
             print("MCES_ILP calculation skipped")
+
+
+    if '--bounds-strength-test' in sys.argv:
+        # then we read the SMILES from the file dsstox.csv which is right next to this file, using polars
+        import polars as pl
+        import os
+        from .mces import calculate_mces_distances, suppress_output
+        data_file_path = os.path.join(os.path.dirname(__file__), "dsstox_smiles_medium.csv")
+        number_of_mol:int = 10
+        smiles = pl.scan_csv(data_file_path).head(number_of_mol).collect().to_series().to_list()  # Read first 1000 rows for testing
+        # now run the filter2_batch and the MCES_ILP on this data
+        graphs = [construct_graph(smiles) for smiles in smiles]
+        # run the filter2_batch
+        start_time = perf_counter()
+        batch_matrix = filter2_batch(graphs)
+        # now take only upper triangle of the matrix
+        # to avoid duplicates, since the distance is symmetric
+        if batch_matrix.shape[0] != batch_matrix.shape[1]:
+            raise ValueError("The input graphs must be a square matrix (same number of graphs in both lists).")
+        upper_triangle_indices = np.triu_indices(batch_matrix.shape[0], k=1)
+        filter2_batch_results = batch_matrix[upper_triangle_indices].flatten()
+        time2_batch = perf_counter() - start_time
+        print(f"Time for filter2_batch on DSSTox dataset: {time2_batch:.2f} seconds")
+        # Compute true MCES distances
+        start_time = perf_counter()
+        mces_results = []
+        # here we use the MCES_ILP, with threshold of 10 
+        with suppress_output():
+            for i, G1 in enumerate(graphs):
+                for j, G2 in enumerate(graphs):
+                    if i == j:
+                        continue  # Distance to self is 0
+                    elif i < j:  # Only compute upper triangle to avoid duplicates
+                        try:
+                            distance, distance_type = MCES_ILP(G1, G2, threshold=10, no_ilp_threshold=True, solver="gurobi")
+                            mces_results.append(distance)
+                        except Exception as e:
+                            print(f"MCES_ILP failed for graphs {i}, {j}: {e}")
+                            mces_results.append(float('inf'))
+                    elif i > j:  # Use symmetry for lower triangle
+                        continue # Use previously computed value
+        time_mces = perf_counter() - start_time
+        print(f"Time for filter2_batch on DSSTox dataset: {time2_batch:.2f} seconds")
+        print(f"Time for MCES_ILP (true) on DSSTox dataset: {time_mces:.2f} seconds")
+
+        # Compare MCES and filter2_batch results: count cases where MCES > filter2_batch bound (i.e., true MCES is strictly greater than the bound)
+        count_mces_greater = 0
+        diffs = []
+        for mces, bound in zip(mces_results, filter2_batch_results):
+            if mces > bound:
+                count_mces_greater += 1
+                diffs.append(mces - bound)
+
+        print(f"Number of comparisons where MCES > filter2_batch bound: {count_mces_greater} out of {len(mces_results)} total comparisons")
+        if count_mces_greater > 0:
+            avg_diff = sum(diffs) / count_mces_greater
+            print(f"Average difference (MCES - bound) for those cases: {avg_diff:.4f}")
+        else:
+            print("No cases where MCES > filter2_batch bound.")
+
+        print(f"speedup in time: {time_mces / time2_batch:.2f}x")
