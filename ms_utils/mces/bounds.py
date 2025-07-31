@@ -4,6 +4,7 @@ import networkx as nx
 import numpy as np
 from collections import defaultdict
 import rustworkx as rx
+from ms_utils.mces.fast_mol_filter.fast_mol_filter.calculator import calculate_distances_symmetric
 
 def filter1(G1: nx.Graph, G2: nx.Graph) -> float:
     """
@@ -771,7 +772,22 @@ def filter2_batch_rustworkx(graphs_list1, graphs_list2=None):
     
     return results
 
-
+def filter2_cpp(smiles_list):
+    """
+    Wrapper for the fast C++ MCES bounds calculation using SMILES strings directly.
+    This uses the optimized C++ implementation with parallel processing.
+    
+    Parameters
+    ----------
+    smiles_list : list of str
+        List of SMILES strings representing molecules
+        
+    Returns
+    -------
+    numpy.ndarray
+        Symmetric distance matrix where result[i,j] is the distance between molecules i and j
+    """
+    return calculate_distances_symmetric(smiles_list)
 
 if __name__ == "__main__":
     import sys
@@ -810,6 +826,20 @@ if __name__ == "__main__":
             print("RustWorkX not available, skipping RustWorkX tests")
             rustworkx_available = False
             rustworkx_graphs = None
+
+        # Test C++ implementation if available
+        try:
+            start_time = perf_counter()
+            cpp_matrix = filter2_cpp(smiles_examples)
+            filter2_cpp_results = cpp_matrix.flatten()
+            time2_cpp = perf_counter() - start_time
+            cpp_available = True
+            print("C++ implementation available and tested")
+        except ImportError:
+            print("C++ implementation not available, skipping C++ tests")
+            cpp_available = False
+            filter2_cpp_results = None
+            time2_cpp = 0
 
         # time the filters
         start_time = perf_counter()
@@ -883,6 +913,10 @@ if __name__ == "__main__":
                 if rustworkx_available and filter2_batch_rustworkx_results is not None:
                     filters.append(("Filter2_batch_rustworkx", filter2_batch_rustworkx_results[i]))
                 
+                # Add C++ results if available
+                if cpp_available and filter2_cpp_results is not None:
+                    filters.append(("Filter2_cpp", filter2_cpp_results[i]))
+                
                 for filter_name, filter_result in filters:
                     if filter_result > mces + 1e-6:  # Small tolerance for numerical errors
                         print(f"INVALID BOUND ALERT! Test {i}: {filter_name} = {filter_result:.6f} > MCES = {mces:.6f}")
@@ -895,11 +929,14 @@ if __name__ == "__main__":
             
             mces = mces_results[i] if not skip_mces else "N/A"
             
-            # Check if RustWorkX results are available and add to comparison
+            # Check if additional results are available and add to comparison
             comparison_values = [f2, f2_lib, f2_v3, f2_batch]
             if rustworkx_available and filter2_batch_rustworkx_results is not None:
                 f2_rustworkx = filter2_batch_rustworkx_results[i]
                 comparison_values.append(f2_rustworkx)
+            if cpp_available and filter2_cpp_results is not None:
+                f2_cpp = filter2_cpp_results[i]
+                comparison_values.append(f2_cpp)
             
             # Check if all filter2 variants are close
             all_close = True
@@ -920,6 +957,8 @@ if __name__ == "__main__":
                 print(f"  Filter2 batch: {f2_batch:.6f}")
                 if rustworkx_available and filter2_batch_rustworkx_results is not None:
                     print(f"  Filter2 batch RustWorkX: {f2_rustworkx:.6f}")
+                if cpp_available and filter2_cpp_results is not None:
+                    print(f"  Filter2 C++: {f2_cpp:.6f}")
                 print(f"  MCES (true): {mces}")
                 print("  ALERT: Filter2 variants differ!")
 
@@ -930,17 +969,20 @@ if __name__ == "__main__":
             if valid_indices:
                 print(f"\nSummary for {len(valid_indices)} valid MCES computations:")
                 
-                # Check consistency including RustWorkX if available
+                # Check consistency including all available implementations
                 all_consistent = all(np.isclose(filter2_v2_results[i], filter2_from_lib_results[i]) and 
                                    np.isclose(filter2_v2_results[i], filter2_v3_results[i]) and 
                                    np.isclose(filter2_v2_results[i], filter2_batch_results[i]) and
-                                   (not rustworkx_available or filter2_batch_rustworkx_results is None or np.isclose(filter2_v2_results[i], filter2_batch_rustworkx_results[i]))
+                                   (not rustworkx_available or filter2_batch_rustworkx_results is None or np.isclose(filter2_v2_results[i], filter2_batch_rustworkx_results[i])) and
+                                   (not cpp_available or filter2_cpp_results is None or np.isclose(filter2_v2_results[i], filter2_cpp_results[i]))
                                    for i in valid_indices)
                 
                 if all_consistent:
                     filter_names = "filter2, filter2_from_lib, filter2_v3_optimized, and filter2_batch"
                     if rustworkx_available and filter2_batch_rustworkx_results is not None:
-                        filter_names += ", and filter2_batch_rustworkx"
+                        filter_names += ", filter2_batch_rustworkx"
+                    if cpp_available and filter2_cpp_results is not None:
+                        filter_names += ", and filter2_cpp"
                     print(f"All results of {filter_names} are consistent.")
                     
                     # Calculate average differences for valid results only
@@ -969,13 +1011,16 @@ if __name__ == "__main__":
             all_consistent = all(np.isclose(filter2_v2_results[i], filter2_from_lib_results[i]) and 
                                np.isclose(filter2_v2_results[i], filter2_v3_results[i]) and 
                                np.isclose(filter2_v2_results[i], filter2_batch_results[i]) and
-                               (not rustworkx_available or filter2_batch_rustworkx_results is None or np.isclose(filter2_v2_results[i], filter2_batch_rustworkx_results[i]))
+                               (not rustworkx_available or filter2_batch_rustworkx_results is None or np.isclose(filter2_v2_results[i], filter2_batch_rustworkx_results[i])) and
+                               (not cpp_available or filter2_cpp_results is None or np.isclose(filter2_v2_results[i], filter2_cpp_results[i]))
                                for i in range(len(filter2_v2_results)))
             
             if all_consistent:
                 filter_names = "filter2, filter2_from_lib, filter2_v3_optimized, and filter2_batch"
                 if rustworkx_available and filter2_batch_rustworkx_results is not None:
-                    filter_names += ", and filter2_batch_rustworkx"
+                    filter_names += ", filter2_batch_rustworkx"
+                if cpp_available and filter2_cpp_results is not None:
+                    filter_names += ", and filter2_cpp"
                 print(f"\nAll results of {filter_names} are consistent.")
             else:
                 print("\n⚠️  Filter variants produce inconsistent results!")
@@ -993,10 +1038,55 @@ if __name__ == "__main__":
         print(f"Time for filter2_batch: {time2_batch:.2f} seconds")
         if rustworkx_available:
             print(f"Time for filter2_batch_rustworkx: {time2_batch_rustworkx:.2f} seconds")
+        if cpp_available:
+            print(f"Time for filter2_cpp: {time2_cpp:.2f} seconds")
         if not skip_mces:
             print(f"Time for MCES_ILP (true): {time_mces:.2f} seconds")
         else:
             print("MCES_ILP calculation skipped")
+
+    if '--cpp-test' in sys.argv:
+        # then we read the SMILES from the file dsstox.csv which is right next to this file, using polars
+        print("Running C++ implementation test on SMILES data...")
+        import polars as pl
+        import os
+        data_file_path = os.path.join(os.path.dirname(__file__), "dsstox_smiles_medium.csv")
+        number_of_mol:int = 10
+        smiles = pl.scan_csv(data_file_path).head(number_of_mol).collect().to_series().to_list()  # Read first 1000 rows for testing
+        # now run the filter2_batch and the MCES_ILP on this data
+        start_time = perf_counter()
+        graphs = [construct_graph(smiles) for smiles in smiles]
+        batch_matrix = filter2_batch(
+            graphs
+        )
+        # now take only upper triangle of the matrix
+        # to avoid duplicates, since the distance is symmetric
+        if batch_matrix.shape[0] != batch_matrix.shape[1]:
+            raise ValueError("The input graphs must be a square matrix (same number of graphs in both lists).")
+        upper_triangle_indices = np.triu_indices(batch_matrix.shape[0], k=1)
+        filter2_batch_results = batch_matrix[upper_triangle_indices].flatten()
+        time2_batch = perf_counter() - start_time
+        print(f"Time for filter2_batch on DSSTox dataset: {time2_batch:.2f} seconds")
+        # now run the C++ implementation
+        start_time = perf_counter()
+        print("Running C++ implementation on SMILES data...")
+        cpp_results = filter2_cpp(smiles)
+        # take only upper triangle of the matrix
+        if cpp_results.shape[0] != cpp_results.shape[1]:
+            raise ValueError("The input graphs must be a square matrix (same number of graphs in both lists).")
+        upper_triangle_indices = np.triu_indices(cpp_results.shape[0], k=1)
+        filter2_cpp_results = cpp_results[upper_triangle_indices].flatten()
+        time2_cpp = perf_counter() - start_time
+        print(f"Time for filter2_cpp on DSSTox dataset: {time2_cpp:.2f} seconds")
+        # make sure the results are the same
+        if len(filter2_batch_results) != len(filter2_cpp_results):
+            raise ValueError("The number of results from filter2_batch and filter2_cpp must match.")
+        differences = np.abs(filter2_batch_results - filter2_cpp_results)
+        max_difference = np.max(differences)
+        if max_difference > 1e-6:
+            print(f"Results differ! Maximum difference: {max_difference:.6f}")
+        else:
+            print("Results are consistent between filter2_batch and filter2_cpp.")
 
 
     if '--bounds-strength-test' in sys.argv:

@@ -7,6 +7,11 @@ import sys
 # Get the absolute path of the directory containing this setup.py file
 SETUP_DIR = os.path.abspath(os.path.dirname(__file__))
 
+# Ensure the package directory exists so the compiled extension can be copied into it
+target_dir = os.path.join(SETUP_DIR, 'fast_mol_filter')
+os.makedirs(target_dir, exist_ok=True)
+print(f"Target directory for compiled extension: {target_dir}")
+
 # --- RDKit Configuration ---
 def find_rdkit_paths():
     """
@@ -73,11 +78,11 @@ except (ImportError, RuntimeError) as e:
 
 # List of RDKit libraries to link against.
 rdkit_libs = [
-    'GraphMol',
-    'SmilesParse',
-    'RDGeneral',
-    'DataStructs',
-    'RDGeometryLib',
+    'RDKitGraphMol',
+    'RDKitSmilesParse',
+    'RDKitRDGeneral',
+    'RDKitDataStructs',
+    'RDKitRDGeometryLib',
     'boost_serialization'
 ]
 
@@ -107,14 +112,11 @@ extensions = [
     )
 ]
 
+# The setup() function is not needed if you only want to build the extension in place.
+# You can run the build using: python setup.py build_ext --inplace
 setup(
-    name="fast_mol_filter",
-    version="0.1.0",
-    packages=["fast_mol_filter"],
     ext_modules=cythonize(extensions),
-    install_requires=[
-        "numpy",
-        "cython"
-    ],
     zip_safe=False,
+    script_name='setup.py',
+    script_args=['build_ext', '--inplace'] if len(sys.argv) == 1 else sys.argv[1:],
 )
