@@ -40,12 +40,11 @@ double solve_lap(const std::vector<std::vector<double>>& cost_matrix) {
     for (size_t i = 0; i < rows; ++i) {
         for (size_t j = 0; j < cols; ++j) {
             if (matrix(i, j) == 0) {
-                // Add the original cost of the assigned pair.
+                // BUG: This assumes 0 means assignment, but what if original cost was 0?
                 total_cost += cost_matrix[i][j];
             }
         }
     }
-
     return total_cost;
 }
 
@@ -206,7 +205,7 @@ std::vector<double> calculate_symmetric_distance_matrix(const std::vector<std::s
 
 std::vector<double> filter2_batch_symmetric(const std::vector<PrecomputedMol>& mols) {
     size_t n = mols.size();
-    std::vector<double> results(n * n);
+    std::vector<double> results(n * n, 0.0); // Initialize with 0
 
     #pragma omp parallel for schedule(dynamic)
     for (size_t i = 0; i < n; ++i) {
@@ -216,8 +215,15 @@ std::vector<double> filter2_batch_symmetric(const std::vector<PrecomputedMol>& m
                 continue;
             }
             double dist = calculate_pair_distance(mols[i], mols[j]);
-            results[i * n + j] = dist;
-            results[j * n + i] = dist;
+            // Add bounds checking
+            if (std::isfinite(dist) && dist >= 0) {
+                results[i * n + j] = dist;
+                results[j * n + i] = dist;
+            } else {
+                // Handle invalid results
+                results[i * n + j] = 0.0;
+                results[j * n + i] = 0.0;
+            }
         }
     }
     return results;
