@@ -794,14 +794,14 @@ if __name__ == "__main__":
     from time import perf_counter
     from typing import List
     # from .par import _calculate_exact_batch
-    from .lib import MCES_ILP
+    import polars as pl
+    import os
     from .graph_construction import construct_graph, construct_graph_rustworkx
 
     if '--bounds-validity-test' in sys.argv:
         # Check if MCES calculation should be disabled
         skip_mces = '--no-mces' in sys.argv
-        import polars as pl
-        import os
+        from .lib import MCES_ILP
         data_file_path = os.path.join(os.path.dirname(__file__), "dsstox_smiles_medium.csv")
         # Get number of molecules from command line, default to 10 if not provided
         if len(sys.argv) > sys.argv.index('--bounds-validity-test') + 1:
@@ -1047,15 +1047,14 @@ if __name__ == "__main__":
 
     if '--cpp-test' in sys.argv:
         # then we read the SMILES from the file dsstox.csv which is right next to this file, using polars
-        import polars as pl
-        import os
+
         data_file_path = os.path.join(os.path.dirname(__file__), "dsstox_smiles_medium.csv")
         number_of_mol:int = 200
         smiles = pl.scan_csv(data_file_path).head(number_of_mol).collect().to_series().to_list()  # Read first 1000 rows for testing
         # now run the filter2_batch and the MCES_ILP on this data
         start_time = perf_counter()
-        graphs = [construct_graph(smiles) for smiles in smiles]
-        batch_matrix = filter2_batch(
+        graphs = [construct_graph_rustworkx(smiles) for smiles in smiles]
+        batch_matrix = filter2_batch_rustworkx(
             graphs
         )
         # now take only upper triangle of the matrix
@@ -1087,11 +1086,38 @@ if __name__ == "__main__":
         else:
             print("Results are consistent between filter2_batch and filter2_cpp.")
 
+    if "--cpp-benchmark" in sys.argv:
+        from ..rdkit.mol import sanitize_smiles_polars
+        # than we run the C++ implementation on a large dataset
+        data_file_path = os.path.join(os.path.dirname(__file__), "dsstox_smiles_medium.csv")
+        number_of_mol:int = 2000
+        smiles = pl.scan_csv(data_file_path).with_columns(
+            pl.col("MS_READY_SMILES").map_batches(
+                function=sanitize_smiles_polars,
+                return_dtype=pl.String,
+            )
+        ).filter(pl.col("MS_READY_SMILES").is_not_null()).head(number_of_mol).collect().to_series().to_list()  # Read first 1000 rows for testing
+        # now run the C++ implementation
+        start_time = perf_counter()
+        print("Running C++ implementation on SMILES data...")
+        cpp_results = filter2_cpp(smiles)
+        # take only upper triangle of the matrix
+        if cpp_results.shape[0] != cpp_results.shape[1]:
+            raise ValueError("The input graphs must be a square matrix (same number of graphs in both lists).")
+        upper_triangle_indices = np.triu_indices(cpp_results.shape[0], k=1)
+        filter2_cpp_results = cpp_results[upper_triangle_indices].flatten()
+        time2_cpp = perf_counter() - start_time
+        print(f"Time for filter2_cpp on DSSTox dataset with {number_of_mol} molecules: {time2_cpp:.2f} seconds")
+        print(f"Number of comparisons: {len(filter2_cpp_results)}")
+        print(f"Average time per comparison: {time2_cpp / len(filter2_cpp_results):.6f} seconds")
+        print(f"Total number of molecules: {number_of_mol}")
+        print(f"Total number of comparisons: {number_of_mol * (number_of_mol - 1) // 2}")
+   
+
 
     if '--bounds-strength-test' in sys.argv:
         # then we read the SMILES from the file dsstox.csv which is right next to this file, using polars
-        import polars as pl
-        import os
+        from .lib import MCES_ILP
         from .mces import calculate_mces_distances, suppress_output
         data_file_path = os.path.join(os.path.dirname(__file__), "dsstox_smiles_medium.csv")
         number_of_mol:int = 10

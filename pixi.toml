@@ -51,6 +51,7 @@ mces_bounds_comparison_full = "python -m ms_utils.mces.bounds --bounds-validity-
 mces_bounds_comparison = "python -m ms_utils.mces.bounds --bounds-validity-test --no-mces"
 mces_bounds_strength_comparison = "python -m ms_utils.mces.bounds --bounds-strength-test"
 mces_bounds_cpp = "python -m ms_utils.mces.bounds --cpp-test"
+mces_cpp_benchmark = "python -m ms_utils.mces.bounds --cpp-benchmark"
 mces_graph_construction = "python -m ms_utils.mces.graph_construction --graph-benchmark"
 mces_dataset_splitting = "python -m ms_utils.mces.dataset_splitting"
 mces_many = "python -m ms_utils.mces.mces"
