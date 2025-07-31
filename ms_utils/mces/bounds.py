@@ -1047,11 +1047,10 @@ if __name__ == "__main__":
 
     if '--cpp-test' in sys.argv:
         # then we read the SMILES from the file dsstox.csv which is right next to this file, using polars
-        print("Running C++ implementation test on SMILES data...")
         import polars as pl
         import os
         data_file_path = os.path.join(os.path.dirname(__file__), "dsstox_smiles_medium.csv")
-        number_of_mol:int = 10
+        number_of_mol:int = 200
         smiles = pl.scan_csv(data_file_path).head(number_of_mol).collect().to_series().to_list()  # Read first 1000 rows for testing
         # now run the filter2_batch and the MCES_ILP on this data
         start_time = perf_counter()

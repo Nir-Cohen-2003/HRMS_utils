@@ -207,24 +207,33 @@ std::vector<double> filter2_batch_symmetric(const std::vector<PrecomputedMol>& m
     size_t n = mols.size();
     std::vector<double> results(n * n, 0.0); // Initialize with 0
 
-    #pragma omp parallel for schedule(dynamic)
-    for (size_t i = 0; i < n; ++i) {
-        for (size_t j = i; j < n; ++j) {
-            if (i == j) {
-                results[i * n + j] = 0.0;
-                continue;
-            }
-            double dist = calculate_pair_distance(mols[i], mols[j]);
-            // Add bounds checking
-            if (std::isfinite(dist) && dist >= 0) {
-                results[i * n + j] = dist;
-                results[j * n + i] = dist;
-            } else {
-                // Handle invalid results
-                results[i * n + j] = 0.0;
-                results[j * n + i] = 0.0;
+        int error_count = 0;
+
+        #pragma omp parallel for schedule(dynamic) reduction(+:error_count)
+        for (size_t i = 0; i < n; ++i) {
+            for (size_t j = i; j < n; ++j) {
+                if (i == j) {
+                    results[i * n + j] = 0.0;
+                    continue;
+                }
+                double dist = calculate_pair_distance(mols[i], mols[j]);
+                // Add bounds checking
+                if (std::isfinite(dist) && dist >= 0 && dist <= 10000.0) {
+                    results[i * n + j] = dist;
+                    results[j * n + i] = dist;
+                } else {
+                    // Handle invalid results or errors
+                    results[i * n + j] = 0.0;
+                    results[j * n + i] = 0.0;
+                    if (dist > 10000.0) {
+                        error_count++;
+                    }
+                }
             }
         }
-    }
+        if (error_count > 0) {
+            std::cerr << "Warning: " << error_count << " pairwise distances exceeded 10000." << std::endl;
+        }
+
     return results;
 }

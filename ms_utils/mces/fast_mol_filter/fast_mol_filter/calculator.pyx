@@ -41,17 +41,22 @@ def calculate_distances_symmetric(smiles_list):
     with nogil:
         cpp_results = calculate_symmetric_distance_matrix(cpp_smiles)
 
-    # Convert result to NumPy array using a memoryview (zero-copy)
     # Check for empty result to avoid accessing invalid memory
     if cpp_results.empty():
         return np.array([]).reshape((n,n))
-        
-    cdef double[::1] result_view = <double[:cpp_results.size()]>&cpp_results[0]
+    
+    # Copy the data to a NumPy array (not zero-copy, but safe)
+    cdef Py_ssize_t size = cpp_results.size()
+    py_results = np.empty(size, dtype=np.float64)
+    cdef double[::1] py_view = py_results
+    
+    # Copy data from C++ vector to NumPy array
+    cdef Py_ssize_t i
+    for i in range(size):
+        py_view[i] = cpp_results[i]
     
     # Reshape the flat array into a 2D matrix
-    py_results = np.asarray(result_view).reshape((n, n))
-    
-    return py_results
+    return py_results.reshape((n, n))
 
 def filter2(iterable_smiles):
     """
