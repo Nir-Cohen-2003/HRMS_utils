@@ -3,15 +3,19 @@ import polars as pl
 import os
 from multiprocessing import cpu_count
 from joblib import Parallel, delayed, parallel_backend
-from typing import List, Optional, Generator, Iterable
+from typing import List, Optional, Generator, Iterable, Tuple
 from itertools import batched, chain
 from contextlib import contextmanager
 import sys
 from .par import _calculate_bounds_batch, _calculate_exact_batch, _calculate_distinct_batch
 import time
+from concurrent.futures import ProcessPoolExecutor, as_completed
 
-PROFILE = True  # Set to True to enable profiling
-
+if __name__ == "__main__":
+    PROFILE = True
+else:
+    PROFILE = False
+    
 def calculate_mces_distances(
         smiles_list1: List[str], smiles_list2: Optional[List[str]] = None,
         n_jobs: int = -1, symmetric: bool = False, batch_size: int = 20, threshold: int = -1, solver: str = "GUROBI") -> np.typing.NDArray[np.int64]:
@@ -386,6 +390,90 @@ def are_very_distinct(smiles_list1: List[str], smiles_list2: Optional[List[str]]
     
     return result_matrix
 
+
+def exact_mces_for_list_of_pairs(
+    smiles_list1: List[str], 
+    smiles_list2: List[str], 
+    pairs: List[Tuple[int, int]], 
+    n_jobs: int = -1, 
+    batch_size: int = 20, 
+    threshold: int = -1, 
+    solver: str = "GUROBI"
+) -> List[Tuple[int, int, int]]:
+    """
+    Efficiently computes exact MCES distances for a specific list of molecule pairs.
+    
+    Parameters
+    ----------
+    smiles_list1 : List[str]
+        List of SMILES strings for the first set of molecules
+    smiles_list2 : List[str]
+        List of SMILES strings for the second set of molecules
+    pairs : List[Tuple[int, int]]
+        List of (i, j) index pairs to compute distances for
+    n_jobs : int
+        Number of parallel processes to run. -1 means use all available cores.
+    batch_size : int
+        Number of pairs to process in each batch to reduce overhead.
+    threshold : int
+        Distance threshold for early termination. -1 means no threshold.
+    solver : str
+        Solver to use for MCES calculation.
+        
+    Returns
+    -------
+    List[Tuple[int, int, int]]
+        List of (i, j, distance) tuples for each requested pair
+    """
+    if PROFILE:
+        total_start = time.perf_counter()
+        print(f"\n=== Profiling exact_mces_for_list_of_pairs ===")
+    
+    if n_jobs == -1:
+        n_jobs = cpu_count()
+    
+    if PROFILE:
+        setup_start = time.perf_counter()
+    
+    # Create batches of pairs to process together
+    batches = list(batched(pairs, batch_size))
+    
+    if PROFILE:
+        setup_time = time.perf_counter() - setup_start
+        print(f"Setup time: {setup_time:.3f}s")
+        print(f"Processing {len(pairs)} pairs in {len(batches)} batches")
+        exact_start = time.perf_counter()
+    
+    # Use ProcessPoolExecutor for parallel processing
+    all_results = []
+    
+    with ProcessPoolExecutor(max_workers=n_jobs) as executor:
+        # Submit all batch jobs
+        future_to_batch = {
+            executor.submit(_calculate_exact_batch, smiles_list1, smiles_list2, batch, threshold, solver): batch
+            for batch in batches
+        }
+        
+        # Collect results as they complete
+        for future in as_completed(future_to_batch):
+            try:
+                batch_results = future.result()
+                all_results.extend(batch_results)
+            except Exception as e:
+                batch = future_to_batch[future]
+                print(f"Error processing batch {batch}: {e}")
+                # Add None results for failed batch
+                for i, j in batch:
+                    all_results.append((i, j, None))
+    
+    if PROFILE:
+        exact_time = time.perf_counter() - exact_start
+        total_time = time.perf_counter() - total_start
+        print(f"Exact calculation time: {exact_time:.3f}s")
+        print(f"Total time: {total_time:.3f}s")
+        print("=" * 40)
+    
+    return all_results
 
 @contextmanager
 def suppress_output() -> Generator[None, None, None]:

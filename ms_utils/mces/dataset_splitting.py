@@ -9,7 +9,8 @@ import random
 # from pickle import dump, load
 # from .par import _calculate_bounds_batch
 from .bounds import filter2_cpp
-from .mces import calculate_mces_distances  # Assuming this function exists
+from .mces import calculate_mces_distances, exact_mces_for_list_of_pairs  # Assuming this function exists
+from multiprocessing import cpu_count
 
 ### logic for dataset splitting:
 # we take a list of smiles, and the requested fractions for validation and test sets.
@@ -31,6 +32,7 @@ def split_dataset_adaptive_threshold(
     min_distinction_threshold: int = 2,
     threshold_step: int = -1,
     min_ratio: float = 0.7,
+    mces_matrix_save_path: str | None = None
 ) -> Tuple[list[str], list[str], list[str], int]:
     """
     Split dataset using precomputed lower bounds, adaptively lowering the threshold if needed.
@@ -42,7 +44,12 @@ def split_dataset_adaptive_threshold(
 
     # Use C++ implementation for batch processing - much faster
     bounds_matrix = filter2_cpp(dataset.copy())
-    
+    if mces_matrix_save_path is not None:
+        np.save(mces_matrix_save_path, bounds_matrix)
+    if n < 20:
+        # then we print the matrix to see if it looks correct
+        print("Lower bounds matrix:")
+        print(bounds_matrix)
     print("Lower bounds matrix calculated, starting adaptive threshold search...")
 
     thresholds = list(range(initial_distinction_threshold, min_distinction_threshold - 1, threshold_step))
@@ -101,6 +108,7 @@ def split_dataset_adaptive_threshold(
             return train_set, validation_set, test_set, threshold
         else:
             print(f"Split failed: validation ({len(validation_set)}) or test ({len(test_set)}) too small")
+            print(f"10 largest cluster size: {sorted([len(c) for c in cluster_list], reverse=True)[:10]}")
     raise RuntimeError("Could not split dataset with given parameters and thresholds.")
 
 
@@ -142,20 +150,29 @@ def find_critical_pairs_for_threshold_optimization(
         cluster_indices = np.where(labels == cluster_id)[0]
         cluster_size = len(cluster_indices)
         
-        # Find pairs within this cluster where lower_bound < exact_distance might >= current_threshold
-        # Focus on pairs with lower bounds close to threshold (most likely to cross it)
+        # Focus on pairs most likely to exceed threshold when calculated exactly
+        # Prioritize pairs with bounds closer to threshold (more likely to cross)
+        cluster_pairs = []
         for i in range(len(cluster_indices)):
             for j in range(i + 1, len(cluster_indices)):
                 idx1, idx2 = cluster_indices[i], cluster_indices[j]
                 lower_bound = bounds_matrix[idx1, idx2]
                 
                 # Only consider pairs where exact distance might exceed threshold
-                if lower_bound < current_threshold and lower_bound >= current_threshold - 3:
-                    # Calculate potential impact: how much splitting this cluster could help
-                    impact_score = cluster_size * (current_threshold - lower_bound)
-                    critical_pairs.append((idx1, idx2, impact_score, cluster_size))
+                # Use tighter range - pairs too far from threshold are less likely to help
+                if current_threshold - 2 <= lower_bound < current_threshold:
+                    # Higher score for bounds closer to threshold
+                    proximity_to_threshold = current_threshold - lower_bound
+                    impact_score = cluster_size * (1.0 / (proximity_to_threshold + 0.1))
+                    cluster_pairs.append((idx1, idx2, impact_score, cluster_size))
+        
+        # Sort cluster pairs by impact and take top ones
+        cluster_pairs.sort(key=lambda x: x[2], reverse=True)
+        # Limit pairs per cluster to avoid spending all budget on one cluster
+        max_pairs_per_cluster = min(len(cluster_pairs), max_exact_calculations // len(problematic_clusters))
+        critical_pairs.extend(cluster_pairs[:max_pairs_per_cluster])
     
-    # Sort by impact score (higher is better)
+    # Sort all pairs by impact score (higher is better)
     critical_pairs.sort(key=lambda x: x[2], reverse=True)
     
     # Return top pairs, limited by max_exact_calculations
@@ -169,19 +186,25 @@ def split_dataset_with_selective_exact_calculation(
     min_distinction_threshold: int = 2,
     threshold_step: int = -1,
     min_ratio: float = 0.7,
-    max_exact_calculations: int = 1000
+    max_exact_calculations: int = 1000,
+    mces_matrix_save_path: str | None = None
 ) -> Tuple[list[str], list[str], list[str], int]:
     """
     Split dataset with strategic exact MCES calculations to enable higher thresholds.
+    Uses entire budget to achieve highest possible threshold.
     """
     
     n = len(dataset)
     print(f"Calculating lower bounds matrix for {n} molecules...")
     bounds_matrix = filter2_cpp(dataset)
+    if mces_matrix_save_path is not None:
+        np.save(mces_matrix_save_path, bounds_matrix)
+    thresholds = list(range(initial_distinction_threshold, min_distinction_threshold - 1, threshold_step))
+    remaining_calculations = max_exact_calculations
     
-    # Try to optimize by calculating strategic exact distances
-    for target_threshold in range(initial_distinction_threshold, min_distinction_threshold - 1, threshold_step):
-        print(f"Attempting threshold {target_threshold}")
+    # Try thresholds from highest to lowest
+    for threshold_idx, target_threshold in enumerate(thresholds):
+        print(f"Attempting threshold {target_threshold} (remaining budget: {remaining_calculations})")
         
         # First check if lower bounds alone work
         train_set, validation_set, test_set = try_split_with_threshold(
@@ -192,44 +215,67 @@ def split_dataset_with_selective_exact_calculation(
             print(f"Success with threshold {target_threshold} using only lower bounds")
             return train_set, validation_set, test_set, target_threshold
         
-        # If not, find critical pairs and calculate exact distances
-        critical_pairs = find_critical_pairs_for_threshold_optimization(
-            dataset, bounds_matrix, target_threshold, validation_fraction, 
-            test_fraction, min_ratio, max_exact_calculations
-        )
-        
-        if not critical_pairs:
-            continue
+        # If we have budget, try to improve with exact calculations
+        if remaining_calculations > 0:
+            # Allocate budget strategically - more for higher thresholds
+            if threshold_idx == 0:  # Highest threshold gets most budget
+                threshold_budget = min(remaining_calculations, max_exact_calculations // 2)
+            elif threshold_idx == 1:  # Second highest gets good budget
+                threshold_budget = min(remaining_calculations, max_exact_calculations // 3)
+            else:  # Lower thresholds get remaining budget divided by remaining thresholds
+                remaining_thresholds = len(thresholds) - threshold_idx
+                threshold_budget = min(remaining_calculations // remaining_thresholds, remaining_calculations)
             
-        print(f"Calculating exact MCES for {len(critical_pairs)} critical pairs...")
-        
-        # Create enhanced matrix with exact calculations
-        enhanced_matrix = bounds_matrix.copy()
-        exact_count = 0
-        
-        for idx1, idx2 in critical_pairs:
-            exact_distance = calculate_mces_distances(dataset[idx1], dataset[idx2])
-            enhanced_matrix[idx1, idx2] = exact_distance
-            enhanced_matrix[idx2, idx1] = exact_distance
-            exact_count += 1
+            # Find critical pairs and calculate exact distances
+            critical_pairs = find_critical_pairs_for_threshold_optimization(
+                dataset, bounds_matrix, target_threshold, validation_fraction, 
+                test_fraction, min_ratio, threshold_budget
+            )
             
-            # Early stopping: check if we've broken enough connections
-            if exact_count % 100 == 0:
+            if critical_pairs and threshold_budget > 0:
+                # Limit pairs to budget
+                limited_pairs = critical_pairs[:threshold_budget]
+                print(f"Calculating exact MCES for {len(limited_pairs)} critical pairs (budget: {threshold_budget})...")
+                
+                # Calculate batch size for the internal batching
+                batch_size = max(20, len(limited_pairs) // (3 * cpu_count()))
+                
+                # Let exact_mces_for_list_of_pairs handle all the batching
+                exact_results = exact_mces_for_list_of_pairs(
+                    dataset, dataset, limited_pairs,
+                    threshold=target_threshold, solver="GUROBI", batch_size=batch_size
+                )
+                
+                # Create enhanced matrix with exact calculations
+                enhanced_matrix = bounds_matrix.copy()
+                successful_calcs = 0
+                
+                # Update matrix with exact results
+                for idx1, idx2, exact_distance in exact_results:
+                    if exact_distance is not None:
+                        enhanced_matrix[idx1, idx2] = exact_distance
+                        enhanced_matrix[idx2, idx1] = exact_distance
+                        successful_calcs += 1
+                if mces_matrix_save_path is not None:
+                    np.save(mces_matrix_save_path, enhanced_matrix)
+                remaining_calculations -= len(limited_pairs)
+                print(f"Used {successful_calcs} exact calculations on threshold {target_threshold}")
+                
+                # Check if exact calculations enabled this threshold
                 train_set, validation_set, test_set = try_split_with_threshold(
                     dataset, enhanced_matrix, target_threshold, validation_fraction, test_fraction, min_ratio
                 )
+                
                 if train_set is not None:
-                    print(f"Success with threshold {target_threshold} after {exact_count} exact calculations")
+                    print(f"Success with threshold {target_threshold} after {successful_calcs} exact calculations")
                     return train_set, validation_set, test_set, target_threshold
-        
-        # Final attempt with all exact calculations
-        train_set, validation_set, test_set = try_split_with_threshold(
-            dataset, enhanced_matrix, target_threshold, validation_fraction, test_fraction, min_ratio
-        )
-        
-        if train_set is not None:
-            print(f"Success with threshold {target_threshold} after {len(critical_pairs)} exact calculations")
-            return train_set, validation_set, test_set, target_threshold
+                
+                # Update bounds_matrix for next iteration (carry forward the exact calculations)
+                bounds_matrix = enhanced_matrix
+            
+            print(f"Threshold {target_threshold} failed even with exact calculations")
+        else:
+            print(f"No budget remaining for threshold {target_threshold}")
     
     raise RuntimeError("Could not split dataset even with exact calculations")
 
@@ -308,7 +354,7 @@ if __name__ == "__main__":
         ).filter(
             pl.col("CanonicalSMILES").is_not_null(),
             pl.col("CanonicalSMILES").ne("")
-        ).head(1000).collect().to_series().to_list()
+        ).collect().to_series().to_list()
     if any(smile=="=" for smile in nist_smiles):
         raise ValueError("Invalid SMILES found in dataset. Please check the input data.")
     # Create data directory if it doesn't exist
@@ -320,41 +366,50 @@ if __name__ == "__main__":
         validation_fraction=0.1,
         test_fraction=0.1,
         initial_distinction_threshold=10,
-        min_distinction_threshold=2,
+        min_distinction_threshold=0,
         threshold_step=-1,
+        mces_matrix_save_path=os.path.join(os.path.dirname(__file__), "__pycache__", "mces_matrix.npy")
+        
     )  # type: Tuple[List[str], List[str], List[str], int]
     end = perf_counter()
     adaptive_time = end - start
-    # # now write the sets to files named train_set.parquet, validation_set.parquet, test_set.parquet
-    # pl.DataFrame({"CanonicalSMILES": train_set}).write_parquet(os.path.join(os.path.dirname(__file__), "__pycache__", "train_set.parquet"))
-    # pl.DataFrame({"CanonicalSMILES": validation_set}).write_parquet(os.path.join(os.path.dirname(__file__), "__pycache__", "validation_set.parquet"))
-    # pl.DataFrame({"CanonicalSMILES": test_set}).write_parquet(os.path.join(os.path.dirname(__file__), "__pycache__", "test_set.parquet"))
+    # now write the sets to files named train_set.parquet, validation_set.parquet, test_set.parquet
+    pl.DataFrame({"CanonicalSMILES": train_set}).write_parquet(os.path.join(os.path.dirname(__file__), "__pycache__", "train_set.parquet"))
+    pl.DataFrame({"CanonicalSMILES": validation_set}).write_parquet(os.path.join(os.path.dirname(__file__), "__pycache__", "validation_set.parquet"))
+    pl.DataFrame({"CanonicalSMILES": test_set}).write_parquet(os.path.join(os.path.dirname(__file__), "__pycache__", "test_set.parquet"))
     print(f"Training set size: {len(train_set)}")
     print(f"Validation set size: {len(validation_set)}")
     print(f"Test set size: {len(test_set)}")
     print(f"Total size: {len(nist_smiles)}")
     print(f"Time taken: {adaptive_time:.2f} seconds")
 
-    # now use the selective exact calculation method
-    start = perf_counter()
-    train_set, validation_set, test_set, threshold = split_dataset_with_selective_exact_calculation(
-        nist_smiles.copy(),
-        validation_fraction=0.1,
-        test_fraction=0.1,
-        initial_distinction_threshold=10,
-        min_distinction_threshold=2,
-        threshold_step=-1,
-        max_exact_calculations=1000,
-    )  # type: Tuple[List[str], List[str], List[str], int]
-    end = perf_counter()
-    selective_time = end - start
-    # # now write the sets to files named train_set.parquet, validation_set.parquet, test_set.parquet
-    # pl.DataFrame({"CanonicalSMILES": train_set}).write_parquet(os.path.join(os.path.dirname(__file__), "__pycache__", "train_set.parquet"))
-    # pl.DataFrame({"CanonicalSMILES": validation_set}).write_parquet(os.path.join      
-    # (os.path.dirname(__file__), "__pycache__", "validation_set.parquet"))
-    # pl.DataFrame({"CanonicalSMILES": test_set}).write_parquet(os.path.join(os.path.dirname(__file__), "__pycache__", "test_set.parquet"))
-    print(f"Training set size: {len(train_set)}")
-    print(f"Validation set size: {len(validation_set)}")
-    print(f"Test set size: {len(test_set)}")
-    print(f"Total size: {len(nist_smiles)}")
-    print(f"Time taken (selective): {selective_time:.2f} seconds")
+    # # now use the selective exact calculation method
+    # start = perf_counter()
+    # train_set, validation_set, test_set, threshold = split_dataset_with_selective_exact_calculation(
+    #     nist_smiles.copy(),
+    #     validation_fraction=0.1,
+    #     test_fraction=0.1,
+    #     initial_distinction_threshold=10,
+    #     min_distinction_threshold=0,
+    #     threshold_step=-1,
+    #     max_exact_calculations=1_000_000,
+    # )  # type: Tuple[List[str], List[str], List[str], int]
+    # end = perf_counter()
+    # selective_time = end - start
+
+    # # now write them to similar files, but add _with_exact to the names
+    # pl.DataFrame({"CanonicalSMILES": train_set}).write_parquet(os.path.join(os.path.dirname(__file__), "__pycache__", "train_set_with_exact.parquet"))
+    # pl.DataFrame({"CanonicalSMILES": validation_set}).write_parquet(os.path.join(os.path.dirname(__file__), "__pycache__", "validation_set_with_exact.parquet"))
+    # pl.DataFrame({"CanonicalSMILES": test_set}).write_parquet(os.path.join(os.path.dirname(__file__), "__pycache__", "test_set_with_exact.parquet"))
+
+    # print(f"Training set size: {len(train_set)}")
+    # print(f"Validation set size: {len(validation_set)}")
+    # print(f"Test set size: {len(test_set)}")
+    # print(f"Total size: {len(nist_smiles)}")
+    # print(f"Time taken (selective): {selective_time:.2f} seconds")
+    
+    # print(f"Adaptive threshold: {threshold}")
+    # print(f"Selective exact calculation threshold: {threshold}")
+    # print(f"Adaptive time: {adaptive_time:.2f} seconds")
+    # print(f"Selective exact calculation time: {selective_time:.2f} seconds")
+    # print(f"Speedup of forgoing exact calculations: {selective_time / adaptive_time:.2f}x")
