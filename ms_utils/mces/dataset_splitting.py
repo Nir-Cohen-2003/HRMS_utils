@@ -11,7 +11,8 @@ import random
 from .bounds import filter2_cpp
 from .mces import calculate_mces_distances, exact_mces_for_list_of_pairs  # Assuming this function exists
 from multiprocessing import cpu_count
-
+import networkx as nx
+from collections import defaultdict
 ### logic for dataset splitting:
 # we take a list of smiles, and the requested fractions for validation and test sets.
 # we calculate the mces (or approximate) between all pairs of molecules, and usign a threshold (distinction_threshold) we determine which molecules are distinct- below is non distinct, above is distinct.
@@ -123,6 +124,7 @@ def find_critical_pairs_for_threshold_optimization(
 ) -> list[tuple[int, int]]:
     """
     Find pairs where calculating exact MCES might enable using a higher threshold.
+    Uses graph-theoretic analysis to identify critical structural connections.
     Returns pairs sorted by potential impact.
     """
     n = len(dataset)
@@ -144,40 +146,147 @@ def find_critical_pairs_for_threshold_optimization(
     if len(problematic_clusters) == 0:
         return []  # Current threshold already works
     
-    critical_pairs = []
+    # Sort problematic clusters by size (largest first) - focus on biggest blockers
+    cluster_priorities = [(cluster_id, cluster_sizes[np.where(unique_labels == cluster_id)[0][0]]) 
+                         for cluster_id in problematic_clusters]
+    cluster_priorities.sort(key=lambda x: x[1], reverse=True)
     
-    for cluster_id in problematic_clusters:
+    all_critical_pairs = []
+    
+    for cluster_id, cluster_size in cluster_priorities:
         cluster_indices = np.where(labels == cluster_id)[0]
-        cluster_size = len(cluster_indices)
         
-        # Focus on pairs most likely to exceed threshold when calculated exactly
-        # Prioritize pairs with bounds closer to threshold (more likely to cross)
+        # Build subgraph for this cluster
+        cluster_graph = _build_cluster_subgraph(cluster_indices, bounds_matrix, current_threshold)
+        
+        # Find structurally critical edges using multiple strategies
+        critical_edges = _find_structural_bottlenecks(cluster_graph, cluster_indices, bounds_matrix, current_threshold)
+        
+        # Score each critical edge
         cluster_pairs = []
-        for i in range(len(cluster_indices)):
-            for j in range(i + 1, len(cluster_indices)):
-                idx1, idx2 = cluster_indices[i], cluster_indices[j]
-                lower_bound = bounds_matrix[idx1, idx2]
-                
-                # Only consider pairs where exact distance might exceed threshold
-                # Use tighter range - pairs too far from threshold are less likely to help
-                if current_threshold - 2 <= lower_bound < current_threshold:
-                    # Higher score for bounds closer to threshold
-                    proximity_to_threshold = current_threshold - lower_bound
-                    impact_score = cluster_size * (1.0 / (proximity_to_threshold + 0.1))
-                    cluster_pairs.append((idx1, idx2, impact_score, cluster_size))
+        for (idx1, idx2) in critical_edges:
+            lower_bound = bounds_matrix[idx1, idx2]
+            
+            # Only consider pairs where exact distance might exceed threshold
+            if current_threshold - 2 <= lower_bound < current_threshold:
+                proximity_to_threshold = current_threshold - lower_bound
+                # Higher weight for larger clusters and edges closer to threshold
+                impact_score = cluster_size * (1.0 / (proximity_to_threshold + 0.1))
+                cluster_pairs.append((idx1, idx2, impact_score, cluster_size))
         
-        # Sort cluster pairs by impact and take top ones
+        # For the largest cluster, allow using most of the budget
+        if cluster_id == cluster_priorities[0][0]:  # Largest cluster
+            max_pairs_this_cluster = min(len(cluster_pairs), max_exact_calculations // 2)
+        else:
+            # Distribute remaining budget among other clusters
+            remaining_clusters = len(cluster_priorities) - 1
+            max_pairs_this_cluster = min(len(cluster_pairs), 
+                                       max_exact_calculations // (2 * remaining_clusters) if remaining_clusters > 0 else 0)
+        
+        # Sort by impact score and take top pairs
         cluster_pairs.sort(key=lambda x: x[2], reverse=True)
-        # Limit pairs per cluster to avoid spending all budget on one cluster
-        max_pairs_per_cluster = min(len(cluster_pairs), max_exact_calculations // len(problematic_clusters))
-        critical_pairs.extend(cluster_pairs[:max_pairs_per_cluster])
+        all_critical_pairs.extend(cluster_pairs[:max_pairs_this_cluster])
     
     # Sort all pairs by impact score (higher is better)
-    critical_pairs.sort(key=lambda x: x[2], reverse=True)
+    all_critical_pairs.sort(key=lambda x: x[2], reverse=True)
     
     # Return top pairs, limited by max_exact_calculations
-    return [(pair[0], pair[1]) for pair in critical_pairs[:max_exact_calculations]]
+    return [(pair[0], pair[1]) for pair in all_critical_pairs[:max_exact_calculations]]
 
+
+def _build_cluster_subgraph(cluster_indices: np.ndarray, bounds_matrix: np.ndarray, threshold: int) -> nx.Graph:
+    """Build NetworkX graph for cluster analysis."""
+    G = nx.Graph()
+    G.add_nodes_from(cluster_indices)
+    
+    # Add edges for connections within the cluster (below threshold)
+    for i in range(len(cluster_indices)):
+        for j in range(i + 1, len(cluster_indices)):
+            idx1, idx2 = cluster_indices[i], cluster_indices[j]
+            if bounds_matrix[idx1, idx2] < threshold:
+                # Store the bound value as edge weight
+                G.add_edge(idx1, idx2, weight=bounds_matrix[idx1, idx2])
+    
+    return G
+
+
+def _find_structural_bottlenecks(graph: nx.Graph, cluster_indices: np.ndarray, 
+                                bounds_matrix: np.ndarray, threshold: int) -> set[tuple[int, int]]:
+    """
+    Identify structurally critical edges using multiple graph-theoretic approaches.
+    """
+    critical_edges = set()
+    
+    # Strategy 1: Bridge edges (articulation edges)
+    # These are edges whose removal would split the cluster
+    bridges = list(nx.bridges(graph))
+    for u, v in bridges:
+        critical_edges.add((min(u, v), max(u, v)))
+    
+    # Strategy 2: High betweenness centrality edges
+    # Edges that lie on many shortest paths between nodes
+    try:
+        edge_betweenness = nx.edge_betweenness_centrality(graph, k=min(50, len(cluster_indices)))
+        # Take top 20% of edges by betweenness centrality
+        sorted_edges = sorted(edge_betweenness.items(), key=lambda x: x[1], reverse=True)
+        top_count = max(1, len(sorted_edges) // 5)
+        for (u, v), _ in sorted_edges[:top_count]:
+            critical_edges.add((min(u, v), max(u, v)))
+    except:
+        # Fallback if betweenness calculation fails
+        pass
+    
+    # Strategy 3: Minimum cut edges (for very large clusters)
+    if len(cluster_indices) > 100:
+        try:
+            # Find edges in minimum cuts that would create balanced partitions
+            target_partition_size = len(cluster_indices) // 2
+            nodes = list(graph.nodes())
+            
+            # Try a few different source-sink pairs to find good cuts
+            for i in range(0, min(10, len(nodes)), max(1, len(nodes) // 10)):
+                for j in range(i + target_partition_size, min(i + target_partition_size + 10, len(nodes))):
+                    try:
+                        cut_value, (partition1, partition2) = nx.minimum_cut(graph, nodes[i], nodes[j])
+                        # If this creates reasonably balanced partitions
+                        if 0.3 <= len(partition1) / len(nodes) <= 0.7:
+                            # Find edges in the cut
+                            cut_edges = nx.edge_boundary(graph, partition1, partition2)
+                            for u, v in cut_edges:
+                                critical_edges.add((min(u, v), max(u, v)))
+                            break  # Found a good cut, stop searching
+                    except:
+                        continue
+        except:
+            pass
+    
+    # Strategy 4: Edges with highest weight (closest to threshold)
+    # These are most likely to cross the threshold when calculated exactly
+    cluster_edges = []
+    for i in range(len(cluster_indices)):
+        for j in range(i + 1, len(cluster_indices)):
+            idx1, idx2 = cluster_indices[i], cluster_indices[j]
+            if bounds_matrix[idx1, idx2] < threshold:
+                cluster_edges.append(((idx1, idx2), bounds_matrix[idx1, idx2]))
+    
+    # Sort by weight (higher = closer to threshold) and take top candidates
+    cluster_edges.sort(key=lambda x: x[1], reverse=True)
+    top_by_weight = min(len(cluster_edges) // 10, 50)  # Top 10% or 50, whichever is smaller
+    for (u, v), _ in cluster_edges[:top_by_weight]:
+        critical_edges.add((min(u, v), max(u, v)))
+    
+    # Strategy 5: High degree nodes' edges
+    # Nodes with many connections are often structural hubs
+    degrees = dict(graph.degree())
+    high_degree_nodes = sorted(degrees.items(), key=lambda x: x[1], reverse=True)
+    top_hubs = [node for node, degree in high_degree_nodes[:max(1, len(cluster_indices) // 10)]]
+    
+    for hub in top_hubs:
+        for neighbor in graph.neighbors(hub):
+            u, v = min(hub, neighbor), max(hub, neighbor)
+            critical_edges.add((u, v))
+    
+    return critical_edges
 def split_dataset_with_selective_exact_calculation(
     dataset: list[str],
     validation_fraction=0.1,
@@ -191,7 +300,7 @@ def split_dataset_with_selective_exact_calculation(
 ) -> Tuple[list[str], list[str], list[str], int]:
     """
     Split dataset with strategic exact MCES calculations to enable higher thresholds.
-    Uses entire budget to achieve highest possible threshold.
+    Uses entire budget and retests higher thresholds after each round of calculations.
     """
     
     n = len(dataset)
@@ -199,86 +308,149 @@ def split_dataset_with_selective_exact_calculation(
     bounds_matrix = filter2_cpp(dataset)
     if mces_matrix_save_path is not None:
         np.save(mces_matrix_save_path, bounds_matrix)
+    
     thresholds = list(range(initial_distinction_threshold, min_distinction_threshold - 1, threshold_step))
     remaining_calculations = max_exact_calculations
+    enhanced_matrix = bounds_matrix.copy()
     
-    # Try thresholds from highest to lowest
-    for threshold_idx, target_threshold in enumerate(thresholds):
-        print(f"Attempting threshold {target_threshold} (remaining budget: {remaining_calculations})")
-        
-        # First check if lower bounds alone work
+    # Keep track of calculations per round
+    calculation_rounds = []
+    
+    # First, find initial achievable threshold with bounds only
+    best_achievable_threshold = None
+    best_split = None
+    
+    for target_threshold in thresholds:
         train_set, validation_set, test_set = try_split_with_threshold(
-            dataset, bounds_matrix, target_threshold, validation_fraction, test_fraction, min_ratio
+            dataset, enhanced_matrix, target_threshold, validation_fraction, test_fraction, min_ratio
         )
         
         if train_set is not None:
-            print(f"Success with threshold {target_threshold} using only lower bounds")
-            return train_set, validation_set, test_set, target_threshold
+            best_achievable_threshold = target_threshold
+            best_split = (train_set, validation_set, test_set)
+            break
+    
+    if best_achievable_threshold is None:
+        raise RuntimeError("Could not split dataset even at lowest threshold")
+    
+    print(f"Initial achievable threshold with bounds only: {best_achievable_threshold}")
+    
+    while remaining_calculations > 0:
+        # If we're already at the highest threshold, we're done
+        if best_achievable_threshold == thresholds[0]:
+            print(f"Already achieved highest threshold {best_achievable_threshold}")
+            break
         
-        # If we have budget, try to improve with exact calculations
-        if remaining_calculations > 0:
-            # Allocate budget strategically - more for higher thresholds
-            if threshold_idx == 0:  # Highest threshold gets most budget
-                threshold_budget = min(remaining_calculations, max_exact_calculations // 2)
-            elif threshold_idx == 1:  # Second highest gets good budget
-                threshold_budget = min(remaining_calculations, max_exact_calculations // 3)
-            else:  # Lower thresholds get remaining budget divided by remaining thresholds
-                remaining_thresholds = len(thresholds) - threshold_idx
-                threshold_budget = min(remaining_calculations // remaining_thresholds, remaining_calculations)
-            
-            # Find critical pairs and calculate exact distances
-            critical_pairs = find_critical_pairs_for_threshold_optimization(
-                dataset, bounds_matrix, target_threshold, validation_fraction, 
-                test_fraction, min_ratio, threshold_budget
+        # Find the next higher threshold to target
+        target_threshold = None
+        for thresh in thresholds:
+            if thresh > best_achievable_threshold:
+                target_threshold = thresh
+                break
+        
+        if target_threshold is None:
+            print(f"No higher threshold to target from {best_achievable_threshold}")
+            break
+        
+        # Allocate budget for this round - be more aggressive with remaining budget
+        if remaining_calculations >= 1000:
+            round_budget = min(2000, remaining_calculations // 2)  # Use larger chunks
+        elif remaining_calculations >= 500:
+            round_budget = min(1000, remaining_calculations)
+        else:
+            round_budget = remaining_calculations  # Use all remaining budget
+        
+        print(f"Targeting threshold {target_threshold} (current best: {best_achievable_threshold}, budget: {round_budget})")
+        
+        # Find critical pairs for the target threshold
+        critical_pairs = find_critical_pairs_for_threshold_optimization(
+            dataset, enhanced_matrix, target_threshold, validation_fraction, 
+            test_fraction, min_ratio, round_budget
+        )
+        
+        if not critical_pairs:
+            print(f"No critical pairs found for threshold {target_threshold}")
+            break
+        
+        # Use the allocated budget
+        pairs_to_calculate = critical_pairs[:round_budget]
+        print(f"Calculating exact MCES for {len(pairs_to_calculate)} critical pairs...")
+        
+        # Calculate batch size for the internal batching
+        batch_size = max(20, len(pairs_to_calculate) // (3 * cpu_count()))
+        
+        # Calculate exact distances
+        exact_results = exact_mces_for_list_of_pairs(
+            dataset, dataset, pairs_to_calculate,
+            threshold=target_threshold, solver="GUROBI", batch_size=batch_size
+        )
+        
+        # Update matrix with exact results
+        successful_calcs = 0
+        for idx1, idx2, exact_distance in exact_results:
+            if exact_distance is not None:
+                original_bound = bounds_matrix[idx1, idx2]
+                
+                # CRITICAL CHECK: Lower bound must never exceed exact distance
+                if original_bound > exact_distance:
+                    raise RuntimeError(
+                        f"ALGORITHM ERROR: Lower bound ({original_bound}) exceeds exact distance ({exact_distance}) "
+                        f"for pair ({idx1}, {idx2}). This indicates a fundamental bug in the lower bound calculation algorithm. "
+                        f"Lower bounds must always be ≤ exact distances by definition."
+                    )
+                
+                # Update with exact distance (which should always be ≥ lower bound)
+                enhanced_matrix[idx1, idx2] = exact_distance
+                enhanced_matrix[idx2, idx1] = exact_distance
+                successful_calcs += 1
+        
+        remaining_calculations -= len(pairs_to_calculate)
+        calculation_rounds.append((target_threshold, len(pairs_to_calculate), successful_calcs))
+        
+        print(f"Used {successful_calcs}/{len(pairs_to_calculate)} exact calculations (remaining budget: {remaining_calculations})")
+        
+        # Recheck what threshold is now achievable
+        for target_threshold in thresholds:
+            train_set, validation_set, test_set = try_split_with_threshold(
+                dataset, enhanced_matrix, target_threshold, validation_fraction, test_fraction, min_ratio
             )
             
-            if critical_pairs and threshold_budget > 0:
-                # Limit pairs to budget
-                limited_pairs = critical_pairs[:threshold_budget]
-                print(f"Calculating exact MCES for {len(limited_pairs)} critical pairs (budget: {threshold_budget})...")
-                
-                # Calculate batch size for the internal batching
-                batch_size = max(20, len(limited_pairs) // (3 * cpu_count()))
-                
-                # Let exact_mces_for_list_of_pairs handle all the batching
-                exact_results = exact_mces_for_list_of_pairs(
-                    dataset, dataset, limited_pairs,
-                    threshold=target_threshold, solver="GUROBI", batch_size=batch_size
-                )
-                
-                # Create enhanced matrix with exact calculations
-                enhanced_matrix = bounds_matrix.copy()
-                successful_calcs = 0
-                
-                # Update matrix with exact results
-                for idx1, idx2, exact_distance in exact_results:
-                    if exact_distance is not None:
-                        enhanced_matrix[idx1, idx2] = exact_distance
-                        enhanced_matrix[idx2, idx1] = exact_distance
-                        successful_calcs += 1
-                if mces_matrix_save_path is not None:
-                    np.save(mces_matrix_save_path, enhanced_matrix)
-                remaining_calculations -= len(limited_pairs)
-                print(f"Used {successful_calcs} exact calculations on threshold {target_threshold}")
-                
-                # Check if exact calculations enabled this threshold
-                train_set, validation_set, test_set = try_split_with_threshold(
-                    dataset, enhanced_matrix, target_threshold, validation_fraction, test_fraction, min_ratio
-                )
-                
-                if train_set is not None:
-                    print(f"Success with threshold {target_threshold} after {successful_calcs} exact calculations")
-                    return train_set, validation_set, test_set, target_threshold
-                
-                # Update bounds_matrix for next iteration (carry forward the exact calculations)
-                bounds_matrix = enhanced_matrix
-            
-            print(f"Threshold {target_threshold} failed even with exact calculations")
-        else:
-            print(f"No budget remaining for threshold {target_threshold}")
+            if train_set is not None:
+                best_achievable_threshold = target_threshold
+                best_split = (train_set, validation_set, test_set)
+                break
+        
+        # Save enhanced matrix periodically
+        if mces_matrix_save_path is not None:
+            np.save(mces_matrix_save_path, enhanced_matrix)
     
-    raise RuntimeError("Could not split dataset even with exact calculations")
-
+    # Final check - find the highest achievable threshold
+    final_threshold = None
+    final_split = None
+    
+    for target_threshold in thresholds:
+        train_set, validation_set, test_set = try_split_with_threshold(
+            dataset, enhanced_matrix, target_threshold, validation_fraction, test_fraction, min_ratio
+        )
+        
+        if train_set is not None:
+            final_threshold = target_threshold
+            final_split = (train_set, validation_set, test_set)
+            break
+    
+    if final_split is None:
+        raise RuntimeError("Could not split dataset even after all exact calculations")
+    
+    # Print summary
+    total_used = max_exact_calculations - remaining_calculations
+    print(f"\nFinal results:")
+    print(f"Achieved threshold: {final_threshold}")
+    print(f"Total exact calculations used: {total_used}/{max_exact_calculations}")
+    print(f"Calculation rounds: {len(calculation_rounds)}")
+    for i, (thresh, attempted, successful) in enumerate(calculation_rounds):
+        print(f"  Round {i+1}: Targeting threshold {thresh}, {successful}/{attempted} successful calculations")
+    
+    return final_split[0], final_split[1], final_split[2], final_threshold
 def try_split_with_threshold(
     dataset: list[str], 
     distance_matrix: np.ndarray, 
@@ -319,7 +491,7 @@ def try_split_with_threshold(
         if current_set == 0 and len(test_indices) + cluster_size <= test_size * 1.1:
             test_indices.extend(cluster)
             current_set = 1
-        elif current_set == 1 and len(validation_indices) + cluster_size <= validation_size * 1.1:
+        elif current_set == 1 and len(validation_indices) + cluster_size <= validation_fraction * 1.1:
             validation_indices.extend(cluster)
             current_set = 2
         elif current_set == 2:
@@ -354,7 +526,7 @@ if __name__ == "__main__":
         ).filter(
             pl.col("CanonicalSMILES").is_not_null(),
             pl.col("CanonicalSMILES").ne("")
-        ).collect().to_series().to_list()
+        ).head(2000).collect().to_series().to_list()
     if any(smile=="=" for smile in nist_smiles):
         raise ValueError("Invalid SMILES found in dataset. Please check the input data.")
     # Create data directory if it doesn't exist
@@ -374,39 +546,39 @@ if __name__ == "__main__":
     end = perf_counter()
     adaptive_time = end - start
     # now write the sets to files named train_set.parquet, validation_set.parquet, test_set.parquet
-    pl.DataFrame({"CanonicalSMILES": train_set}).write_parquet(os.path.join(os.path.dirname(__file__), "__pycache__", "train_set.parquet"))
-    pl.DataFrame({"CanonicalSMILES": validation_set}).write_parquet(os.path.join(os.path.dirname(__file__), "__pycache__", "validation_set.parquet"))
-    pl.DataFrame({"CanonicalSMILES": test_set}).write_parquet(os.path.join(os.path.dirname(__file__), "__pycache__", "test_set.parquet"))
+    # pl.DataFrame({"CanonicalSMILES": train_set}).write_parquet(os.path.join(os.path.dirname(__file__), "__pycache__", "train_set.parquet"))
+    # pl.DataFrame({"CanonicalSMILES": validation_set}).write_parquet(os.path.join(os.path.dirname(__file__), "__pycache__", "validation_set.parquet"))
+    # pl.DataFrame({"CanonicalSMILES": test_set}).write_parquet(os.path.join(os.path.dirname(__file__), "__pycache__", "test_set.parquet"))
     print(f"Training set size: {len(train_set)}")
     print(f"Validation set size: {len(validation_set)}")
     print(f"Test set size: {len(test_set)}")
     print(f"Total size: {len(nist_smiles)}")
     print(f"Time taken: {adaptive_time:.2f} seconds")
 
-    # # now use the selective exact calculation method
-    # start = perf_counter()
-    # train_set, validation_set, test_set, threshold = split_dataset_with_selective_exact_calculation(
-    #     nist_smiles.copy(),
-    #     validation_fraction=0.1,
-    #     test_fraction=0.1,
-    #     initial_distinction_threshold=10,
-    #     min_distinction_threshold=0,
-    #     threshold_step=-1,
-    #     max_exact_calculations=1_000_000,
-    # )  # type: Tuple[List[str], List[str], List[str], int]
-    # end = perf_counter()
-    # selective_time = end - start
+    # now use the selective exact calculation method
+    start = perf_counter()
+    train_set, validation_set, test_set, threshold = split_dataset_with_selective_exact_calculation(
+        nist_smiles.copy(),
+        validation_fraction=0.1,
+        test_fraction=0.1,
+        initial_distinction_threshold=10,
+        min_distinction_threshold=0,
+        threshold_step=-1,
+        max_exact_calculations=10_000,
+    )  # type: Tuple[List[str], List[str], List[str], int]
+    end = perf_counter()
+    selective_time = end - start
 
     # # now write them to similar files, but add _with_exact to the names
     # pl.DataFrame({"CanonicalSMILES": train_set}).write_parquet(os.path.join(os.path.dirname(__file__), "__pycache__", "train_set_with_exact.parquet"))
     # pl.DataFrame({"CanonicalSMILES": validation_set}).write_parquet(os.path.join(os.path.dirname(__file__), "__pycache__", "validation_set_with_exact.parquet"))
     # pl.DataFrame({"CanonicalSMILES": test_set}).write_parquet(os.path.join(os.path.dirname(__file__), "__pycache__", "test_set_with_exact.parquet"))
 
-    # print(f"Training set size: {len(train_set)}")
-    # print(f"Validation set size: {len(validation_set)}")
-    # print(f"Test set size: {len(test_set)}")
-    # print(f"Total size: {len(nist_smiles)}")
-    # print(f"Time taken (selective): {selective_time:.2f} seconds")
+    print(f"Training set size: {len(train_set)}")
+    print(f"Validation set size: {len(validation_set)}")
+    print(f"Test set size: {len(test_set)}")
+    print(f"Total size: {len(nist_smiles)}")
+    print(f"Time taken (selective): {selective_time:.2f} seconds")
     
     # print(f"Adaptive threshold: {threshold}")
     # print(f"Selective exact calculation threshold: {threshold}")
