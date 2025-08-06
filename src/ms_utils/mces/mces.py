@@ -1,4 +1,5 @@
 import numpy as np
+from np.typing import NDArray
 import polars as pl
 import os
 from multiprocessing import cpu_count
@@ -18,7 +19,7 @@ else:
     
 def calculate_mces_distances(
         smiles_list1: List[str], smiles_list2: Optional[List[str]] = None,
-        n_jobs: int = -1, symmetric: bool = False, batch_size: int = 20, threshold: int = -1, solver: str = "GUROBI") -> np.typing.NDArray[np.int64]:
+        n_jobs: int = -1, symmetric: bool = False, batch_size: int = 20, threshold: int = -1, solver: str = "GUROBI") -> NDArray[np.int64]:
     """
     Efficiently computes exact MCES distances between all pairs of molecules.
     

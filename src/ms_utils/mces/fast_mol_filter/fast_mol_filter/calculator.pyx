@@ -57,34 +57,3 @@ def calculate_distances_symmetric(smiles_list):
     
     # Reshape the flat array into a 2D matrix
     return py_results.reshape((n, n))
-
-def filter2(iterable_smiles):
-    """
-    Calculates the sum of pairwise distances for a list of SMILES strings.
-
-    This function passes the SMILES list to a C++ backend which handles
-    all molecular processing and calculations in parallel.
-
-    Args:
-        iterable_smiles (list or iterable of str): A list of SMILES strings.
-
-    Returns:
-        float: The total summed cost of all unique pairs.
-    """
-    cdef int n = len(iterable_smiles)
-    if n < 2:
-        return 0.0
-
-    # Convert Python strings to C++ strings
-    cdef vector[string] cpp_smiles
-    cpp_smiles.reserve(n)
-    for s in iterable_smiles:
-        cpp_smiles.push_back(s.encode('utf-8'))
-
-    cdef double total_cost = 0.0
-    # All computation is now inside the C++ layer.
-    # We release the GIL for the duration of the C++ call.
-    with nogil:
-        total_cost = calculate_total_cost_symmetric(cpp_smiles)
-
-    return total_cost
