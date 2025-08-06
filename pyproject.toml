@@ -7,7 +7,7 @@ dependencies = [
     "rdkit>=2024.0.0"
 ]
 [build-system]
-build-backend = "hatchling.build"
-requires = ["hatchling"]
+requires = ["setuptools"]#, "setuptools-scm"
+build-backend = "setuptools.build_meta"
 
 

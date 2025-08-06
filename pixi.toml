@@ -9,8 +9,13 @@ preview = ["pixi-build"]
 [dependencies]
 python = "3.12.*"
 ms_utils = {path="."}
+[pypi-dependencies]
+build = "*"
 [tasks]
 start = "python -m ms_utils.__init__"
+build-wheel = "python -m build"
+build-all = "python -m build --wheel --sdist"
+
 
 [package]
 name = "ms_utils"
@@ -25,12 +30,13 @@ channels = [
 
 [package.build-dependencies]
 setuptools = ">=68.0.0"
-# pixi-build-api-version = ">=0.1.0"
 
 
 [package.host-dependencies] 
-hatchling = "==1.26.3"
+setuptools = ">=68.0.0"
 
-[package.run-dependencies]
-polars = ">=1.32.0,<2"
-rdkit = ">=2024.0.0"
+
+# [package.run-dependencies]
+# polars = ">=1.32.0,<2"
+# rdkit = ">=2024.0.0"
+

@@ -27,3 +27,4 @@ ms_utils/mces/fast_mol_filter/fast_mol_filter/matrix.cpp
 ms_utils/mces/fast_mol_filter/fast_mol_filter/munkres.cpp
 ms_utils/mces/fast_mol_filter/fast_mol_filter/calculator.cpp
 **.conda
+dist/

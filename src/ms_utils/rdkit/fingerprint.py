@@ -4,13 +4,14 @@ from typing import List, Literal, Dict, Any, Optional, Union, Iterable
 from itertools import chain
 from concurrent.futures import ProcessPoolExecutor  # Added ProcessPoolExecutor import
 import functools  # Added functools import
-from rdkit import DataStructs
+from rdkit import DataStructs, Chem
 from rdkit.Chem import AllChem, MACCSkeys, MolFromSmiles
 from rdkit import RDLogger
+from numpy.typing import NDArray
 import numpy as np
 import polars as pl
 
-RDLogger.DisableLog('rdApp.*')
+# RDLogger.DisableLog('rdApp.*')
 
 
 @dataclass
@@ -126,7 +127,7 @@ def get_fp_polars(smiles: Iterable[str], fp_params: Union[FingerprintParams, Dic
     return pl.Series(fps)
 
 
-def get_fp_list(smiles: Iterable[str], fp_params: Union[FingerprintParams, Dict[str, Any]] = FingerprintParams(), batch_size: int = 10000) -> List[np.ndarray]:
+def get_fp_list(smiles: Iterable[str], fp_params: Union[FingerprintParams, Dict[str, Any]] = FingerprintParams(), batch_size: int = 10000) -> List[NDArray]:
     """
     Generates fingerprints for a list of SMILES in parallel batches.
 
@@ -164,7 +165,7 @@ def get_fp_list(smiles: Iterable[str], fp_params: Union[FingerprintParams, Dict[
     return flat_fps
 
 
-def _get_fp_batch(smiles: List[str], fp_params: FingerprintParams) -> List[np.ndarray]:
+def _get_fp_batch(smiles: List[str], fp_params: FingerprintParams) -> List[NDArray]:
     '''
     Generates fingerprints for a batch of SMILES strings based on FingerprintParams.
 
@@ -173,9 +174,9 @@ def _get_fp_batch(smiles: List[str], fp_params: FingerprintParams) -> List[np.nd
         fp_params (FingerprintParams): Dataclass object with fingerprint parameters.
 
     Returns:
-        List[np.ndarray]: List of generated fingerprints as dense numpy arrays.
+        List[NDArray]: List of generated fingerprints as dense numpy arrays.
     '''
-    RDLogger.DisableLog('rdApp.*')
+    RDLogger.DisableLog('rdApp.*')  # type: ignore[call-arg]
 
     fpgen: Any = None
     method_kwargs = {}
@@ -192,7 +193,7 @@ def _get_fp_batch(smiles: List[str], fp_params: FingerprintParams) -> List[np.nd
                 'includeChirality': fp_params.includeChirality  # Morgan supports chirality too
             }
             morgan_args = {k: v for k, v in morgan_args.items() if v is not None}
-            fpgen = AllChem.GetMorganGenerator(**morgan_args)
+            fpgen = Chem.GetMorganGenerator(**morgan_args)
         case 'rdkit':
             rdkit_args = {
                 'minPath': fp_params.minPath,
@@ -202,7 +203,7 @@ def _get_fp_batch(smiles: List[str], fp_params: FingerprintParams) -> List[np.nd
                 # RDKit FP doesn't typically use includeChirality in generator
             }
             rdkit_args = {k: v for k, v in rdkit_args.items() if v is not None}
-            fpgen = AllChem.GetRDKitFPGenerator(**rdkit_args)
+            fpgen = Chem.GetRDKitFPGenerator(**rdkit_args)
         case 'atompair':
             atompair_args = {
                 'minDistance': fp_params.minDistance,
@@ -211,7 +212,7 @@ def _get_fp_batch(smiles: List[str], fp_params: FingerprintParams) -> List[np.nd
                 'use2D': fp_params.use2D,
             }
             atompair_args = {k: v for k, v in atompair_args.items() if v is not None}
-            fpgen = AllChem.GetAtomPairGenerator(**atompair_args)
+            fpgen = Chem.GetAtomPairGenerator(**atompair_args)
             if fp_params.fp_method == 'GetFingerprint':
                 method_kwargs['fpSize'] = fp_params.fpSize
                 method_kwargs['countSimulation'] = fp_params.countSimulation_AP
@@ -221,7 +222,7 @@ def _get_fp_batch(smiles: List[str], fp_params: FingerprintParams) -> List[np.nd
                 'includeChirality': fp_params.includeChirality,
             }
             torsion_args = {k: v for k, v in torsion_args.items() if v is not None}
-            fpgen = AllChem.GetTopologicalTorsionGenerator(**torsion_args)
+            fpgen = Chem.GetTopologicalTorsionGenerator(**torsion_args)
             if fp_params.fp_method == 'GetFingerprint':
                 method_kwargs['fpSize'] = fp_params.fpSize
                 method_kwargs['countSimulation'] = fp_params.countSimulation_TT
