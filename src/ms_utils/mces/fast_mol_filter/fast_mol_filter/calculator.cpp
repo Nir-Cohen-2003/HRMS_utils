@@ -4,12 +4,12 @@
 {
     "distutils": {
         "depends": [
-            "/home/analytit_admin/dev/MS_utils/.pixi/envs/mces/lib/python3.12/site-packages/numpy/_core/include/numpy/arrayobject.h",
-            "/home/analytit_admin/dev/MS_utils/.pixi/envs/mces/lib/python3.12/site-packages/numpy/_core/include/numpy/arrayscalars.h",
-            "/home/analytit_admin/dev/MS_utils/.pixi/envs/mces/lib/python3.12/site-packages/numpy/_core/include/numpy/ndarrayobject.h",
-            "/home/analytit_admin/dev/MS_utils/.pixi/envs/mces/lib/python3.12/site-packages/numpy/_core/include/numpy/ndarraytypes.h",
-            "/home/analytit_admin/dev/MS_utils/.pixi/envs/mces/lib/python3.12/site-packages/numpy/_core/include/numpy/ufuncobject.h",
-            "fast_mol_filter/cpp_filter.hpp"
+            "/home/analytit_admin/dev/MS_utils/.pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/_core/include/numpy/arrayobject.h",
+            "/home/analytit_admin/dev/MS_utils/.pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/_core/include/numpy/arrayscalars.h",
+            "/home/analytit_admin/dev/MS_utils/.pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/_core/include/numpy/ndarrayobject.h",
+            "/home/analytit_admin/dev/MS_utils/.pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/_core/include/numpy/ndarraytypes.h",
+            "/home/analytit_admin/dev/MS_utils/.pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/_core/include/numpy/ufuncobject.h",
+            "src/ms_utils/mces/fast_mol_filter/fast_mol_filter/cpp_filter.hpp"
         ],
         "extra_compile_args": [
             "-std=c++17",
@@ -20,11 +20,9 @@
             "-fopenmp"
         ],
         "include_dirs": [
-            "fast_mol_filter",
-            "/home/analytit_admin/dev/MS_utils/.pixi/envs/mces/lib/python3.12/site-packages/numpy/_core/include",
-            "/home/analytit_admin/dev/MS_utils/.pixi/envs/mces/include",
-            "/home/analytit_admin/dev/MS_utils/.pixi/envs/mces/include/rdkit",
-            "/home/analytit_admin/dev/MS_utils/ms_utils/mces/fast_mol_filter/fast_mol_filter"
+            "src/ms_utils/mces/fast_mol_filter/fast_mol_filter",
+            "/home/analytit_admin/dev/MS_utils/.pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/_core/include",
+            "/home/analytit_admin/dev/MS_utils/.pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/include"
         ],
         "language": "c++",
         "libraries": [
@@ -36,18 +34,15 @@
             "boost_serialization"
         ],
         "library_dirs": [
-            "/home/analytit_admin/dev/MS_utils/.pixi/envs/mces/lib"
+            "/home/analytit_admin/dev/MS_utils/.pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib"
         ],
-        "name": "fast_mol_filter.calculator",
-        "runtime_library_dirs": [
-            "/home/analytit_admin/dev/MS_utils/.pixi/envs/mces/lib"
-        ],
+        "name": "ms_utils.mces.fast_mol_filter.calculator",
         "sources": [
-            "/home/analytit_admin/dev/MS_utils/ms_utils/mces/fast_mol_filter/fast_mol_filter/calculator.pyx",
-            "/home/analytit_admin/dev/MS_utils/ms_utils/mces/fast_mol_filter/fast_mol_filter/cpp_filter.cpp"
+            "src/ms_utils/mces/fast_mol_filter/fast_mol_filter/calculator.pyx",
+            "src/ms_utils/mces/fast_mol_filter/fast_mol_filter/cpp_filter.cpp"
         ]
     },
-    "module_name": "fast_mol_filter.calculator"
+    "module_name": "ms_utils.mces.fast_mol_filter.calculator"
 }
 END: Cython Metadata */
 
@@ -1175,8 +1170,8 @@ static CYTHON_INLINE float __PYX_NAN() {
     #define __PYX_EXTERN_C extern "C++"
 #endif
 
-#define __PYX_HAVE__fast_mol_filter__calculator
-#define __PYX_HAVE_API__fast_mol_filter__calculator
+#define __PYX_HAVE__ms_utils__mces__fast_mol_filter__calculator
+#define __PYX_HAVE_API__ms_utils__mces__fast_mol_filter__calculator
 /* Early includes */
 #include <string.h>
 #include <stdio.h>
@@ -1427,10 +1422,10 @@ static const char *__pyx_filename;
 /* #### Code section: filename_table ### */
 
 static const char* const __pyx_f[] = {
-  "fast_mol_filter/calculator.pyx",
+  "src/ms_utils/mces/fast_mol_filter/fast_mol_filter/calculator.pyx",
   "<stringsource>",
-  "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd",
-  "cpython/type.pxd",
+  ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd",
+  ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/Cython/Includes/cpython/type.pxd",
 };
 /* #### Code section: utility_code_proto_before_types ### */
 /* Atomics.proto */
@@ -1652,7 +1647,7 @@ typedef struct {
 
 /* #### Code section: numeric_typedefs ### */
 
-/* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":743
+/* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":743
  * # in Cython to enable them only on the right systems.
  * 
  * ctypedef npy_int8       int8_t             # <<<<<<<<<<<<<<
@@ -1661,7 +1656,7 @@ typedef struct {
 */
 typedef npy_int8 __pyx_t_5numpy_int8_t;
 
-/* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":744
+/* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":744
  * 
  * ctypedef npy_int8       int8_t
  * ctypedef npy_int16      int16_t             # <<<<<<<<<<<<<<
@@ -1670,7 +1665,7 @@ typedef npy_int8 __pyx_t_5numpy_int8_t;
 */
 typedef npy_int16 __pyx_t_5numpy_int16_t;
 
-/* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":745
+/* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":745
  * ctypedef npy_int8       int8_t
  * ctypedef npy_int16      int16_t
  * ctypedef npy_int32      int32_t             # <<<<<<<<<<<<<<
@@ -1679,7 +1674,7 @@ typedef npy_int16 __pyx_t_5numpy_int16_t;
 */
 typedef npy_int32 __pyx_t_5numpy_int32_t;
 
-/* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":746
+/* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":746
  * ctypedef npy_int16      int16_t
  * ctypedef npy_int32      int32_t
  * ctypedef npy_int64      int64_t             # <<<<<<<<<<<<<<
@@ -1688,7 +1683,7 @@ typedef npy_int32 __pyx_t_5numpy_int32_t;
 */
 typedef npy_int64 __pyx_t_5numpy_int64_t;
 
-/* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":748
+/* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":748
  * ctypedef npy_int64      int64_t
  * 
  * ctypedef npy_uint8      uint8_t             # <<<<<<<<<<<<<<
@@ -1697,7 +1692,7 @@ typedef npy_int64 __pyx_t_5numpy_int64_t;
 */
 typedef npy_uint8 __pyx_t_5numpy_uint8_t;
 
-/* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":749
+/* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":749
  * 
  * ctypedef npy_uint8      uint8_t
  * ctypedef npy_uint16     uint16_t             # <<<<<<<<<<<<<<
@@ -1706,7 +1701,7 @@ typedef npy_uint8 __pyx_t_5numpy_uint8_t;
 */
 typedef npy_uint16 __pyx_t_5numpy_uint16_t;
 
-/* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":750
+/* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":750
  * ctypedef npy_uint8      uint8_t
  * ctypedef npy_uint16     uint16_t
  * ctypedef npy_uint32     uint32_t             # <<<<<<<<<<<<<<
@@ -1715,7 +1710,7 @@ typedef npy_uint16 __pyx_t_5numpy_uint16_t;
 */
 typedef npy_uint32 __pyx_t_5numpy_uint32_t;
 
-/* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":751
+/* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":751
  * ctypedef npy_uint16     uint16_t
  * ctypedef npy_uint32     uint32_t
  * ctypedef npy_uint64     uint64_t             # <<<<<<<<<<<<<<
@@ -1724,7 +1719,7 @@ typedef npy_uint32 __pyx_t_5numpy_uint32_t;
 */
 typedef npy_uint64 __pyx_t_5numpy_uint64_t;
 
-/* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":753
+/* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":753
  * ctypedef npy_uint64     uint64_t
  * 
  * ctypedef npy_float32    float32_t             # <<<<<<<<<<<<<<
@@ -1733,7 +1728,7 @@ typedef npy_uint64 __pyx_t_5numpy_uint64_t;
 */
 typedef npy_float32 __pyx_t_5numpy_float32_t;
 
-/* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":754
+/* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":754
  * 
  * ctypedef npy_float32    float32_t
  * ctypedef npy_float64    float64_t             # <<<<<<<<<<<<<<
@@ -1742,7 +1737,7 @@ typedef npy_float32 __pyx_t_5numpy_float32_t;
 */
 typedef npy_float64 __pyx_t_5numpy_float64_t;
 
-/* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":761
+/* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":761
  * ctypedef double complex complex128_t
  * 
  * ctypedef npy_longlong   longlong_t             # <<<<<<<<<<<<<<
@@ -1751,7 +1746,7 @@ typedef npy_float64 __pyx_t_5numpy_float64_t;
 */
 typedef npy_longlong __pyx_t_5numpy_longlong_t;
 
-/* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":762
+/* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":762
  * 
  * ctypedef npy_longlong   longlong_t
  * ctypedef npy_ulonglong  ulonglong_t             # <<<<<<<<<<<<<<
@@ -1760,7 +1755,7 @@ typedef npy_longlong __pyx_t_5numpy_longlong_t;
 */
 typedef npy_ulonglong __pyx_t_5numpy_ulonglong_t;
 
-/* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":764
+/* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":764
  * ctypedef npy_ulonglong  ulonglong_t
  * 
  * ctypedef npy_intp       intp_t             # <<<<<<<<<<<<<<
@@ -1769,7 +1764,7 @@ typedef npy_ulonglong __pyx_t_5numpy_ulonglong_t;
 */
 typedef npy_intp __pyx_t_5numpy_intp_t;
 
-/* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":765
+/* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":765
  * 
  * ctypedef npy_intp       intp_t
  * ctypedef npy_uintp      uintp_t             # <<<<<<<<<<<<<<
@@ -1778,7 +1773,7 @@ typedef npy_intp __pyx_t_5numpy_intp_t;
 */
 typedef npy_uintp __pyx_t_5numpy_uintp_t;
 
-/* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":767
+/* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":767
  * ctypedef npy_uintp      uintp_t
  * 
  * ctypedef npy_double     float_t             # <<<<<<<<<<<<<<
@@ -1787,7 +1782,7 @@ typedef npy_uintp __pyx_t_5numpy_uintp_t;
 */
 typedef npy_double __pyx_t_5numpy_float_t;
 
-/* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":768
+/* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":768
  * 
  * ctypedef npy_double     float_t
  * ctypedef npy_double     double_t             # <<<<<<<<<<<<<<
@@ -1796,7 +1791,7 @@ typedef npy_double __pyx_t_5numpy_float_t;
 */
 typedef npy_double __pyx_t_5numpy_double_t;
 
-/* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":769
+/* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":769
  * ctypedef npy_double     float_t
  * ctypedef npy_double     double_t
  * ctypedef npy_longdouble longdouble_t             # <<<<<<<<<<<<<<
@@ -3256,7 +3251,7 @@ static CYTHON_INLINE char *__pyx_f_5numpy_7ndarray_4data_data(PyArrayObject *__p
 
 /* Module declarations from "libcpp.string" */
 
-/* Module declarations from "fast_mol_filter.calculator" */
+/* Module declarations from "ms_utils.mces.fast_mol_filter.calculator" */
 static PyObject *__pyx_collections_abc_Sequence = 0;
 static PyObject *generic = 0;
 static PyObject *strided = 0;
@@ -3303,11 +3298,11 @@ static PyObject *__pyx_unpickle_Enum__set_state(struct __pyx_MemviewEnum_obj *, 
 /* #### Code section: typeinfo ### */
 static const __Pyx_TypeInfo __Pyx_TypeInfo_double = { "double", NULL, sizeof(double), { 0 }, 0, 'R', 0, 0 };
 /* #### Code section: before_global_var ### */
-#define __Pyx_MODULE_NAME "fast_mol_filter.calculator"
-extern int __pyx_module_is_main_fast_mol_filter__calculator;
-int __pyx_module_is_main_fast_mol_filter__calculator = 0;
+#define __Pyx_MODULE_NAME "ms_utils.mces.fast_mol_filter.calculator"
+extern int __pyx_module_is_main_ms_utils__mces__fast_mol_filter__calculator;
+int __pyx_module_is_main_ms_utils__mces__fast_mol_filter__calculator = 0;
 
-/* Implementation of "fast_mol_filter.calculator" */
+/* Implementation of "ms_utils.mces.fast_mol_filter.calculator" */
 /* #### Code section: global_var ### */
 static PyObject *__pyx_builtin_range;
 static PyObject *__pyx_builtin___import__;
@@ -3383,7 +3378,6 @@ static const char __pyx_k_struct[] = "struct";
 static const char __pyx_k_unpack[] = "unpack";
 static const char __pyx_k_update[] = "update";
 static const char __pyx_k_disable[] = "disable";
-static const char __pyx_k_filter2[] = "filter2";
 static const char __pyx_k_float64[] = "float64";
 static const char __pyx_k_fortran[] = "fortran";
 static const char __pyx_k_memview[] = "memview";
@@ -3409,7 +3403,6 @@ static const char __pyx_k_ValueError[] = "ValueError";
 static const char __pyx_k_cpp_smiles[] = "cpp_smiles";
 static const char __pyx_k_py_results[] = "py_results";
 static const char __pyx_k_pyx_vtable[] = "__pyx_vtable__";
-static const char __pyx_k_total_cost[] = "total_cost";
 static const char __pyx_k_ImportError[] = "ImportError";
 static const char __pyx_k_MemoryError[] = "MemoryError";
 static const char __pyx_k_PickleError[] = "PickleError";
@@ -3426,7 +3419,6 @@ static const char __pyx_k_View_MemoryView[] = "View.MemoryView";
 static const char __pyx_k_allocate_buffer[] = "allocate_buffer";
 static const char __pyx_k_collections_abc[] = "collections.abc";
 static const char __pyx_k_dtype_is_object[] = "dtype_is_object";
-static const char __pyx_k_iterable_smiles[] = "iterable_smiles";
 static const char __pyx_k_setstate_cython[] = "__setstate_cython__";
 static const char __pyx_k_pyx_unpickle_Enum[] = "__pyx_unpickle_Enum";
 static const char __pyx_k_asyncio_coroutines[] = "asyncio.coroutines";
@@ -3439,13 +3431,10 @@ static const char __pyx_k_Cannot_index_with_type[] = "Cannot index with type '";
 static const char __pyx_k_contiguous_and_indirect[] = "<contiguous and indirect>";
 static const char __pyx_k_Dimension_d_is_not_direct[] = "Dimension %d is not direct";
 static const char __pyx_k_Index_out_of_bounds_axis_d[] = "Index out of bounds (axis %d)";
-static const char __pyx_k_fast_mol_filter_calculator[] = "fast_mol_filter.calculator";
 static const char __pyx_k_Step_may_not_be_zero_axis_d[] = "Step may not be zero (axis %d)";
 static const char __pyx_k_itemsize_0_for_cython_array[] = "itemsize <= 0 for cython.array";
-static const char __pyx_k_AQ_r_1_q_haq_Q_AQgQa_Q_31A_1[] = "\200\001\360\032\000\005\022\220\023\220A\220Q\330\004\007\200r\210\022\2101\330\010\017\210q\360\010\000\005\017\210h\220a\220q\330\004\010\210\005\210Q\330\010\022\220*\230A\230Q\230g\240Q\240a\340\004\035\230Q\360\006\000\n\013\330\010\025\320\0253\2601\260A\340\004\013\2101";
 static const char __pyx_k_calculate_distances_symmetric[] = "calculate_distances_symmetric";
 static const char __pyx_k_unable_to_allocate_array_data[] = "unable to allocate array data.";
-static const char __pyx_k_fast_mol_filter_calculator_pyx[] = "fast_mol_filter/calculator.pyx";
 static const char __pyx_k_strided_and_direct_or_indirect[] = "<strided and direct or indirect>";
 static const char __pyx_k_1A_r_A_r_q_haq_Q_AQgQa_9_r_q_82[] = "\200\001\360\032\000\005\031\230\003\2301\230A\330\004\007\200r\210\023\210A\330\010\017\210r\220\026\220q\230\001\360\010\000\005\017\210h\220a\220q\330\004\010\210\005\210Q\330\010\022\220*\230A\230Q\230g\240Q\240a\360\n\000\n\013\330\010\026\320\0269\270\021\270!\360\006\000\005\010\200{\220&\230\001\330\010\017\210r\220\026\220q\230\003\2308\2402\240R\240q\360\006\000\005\034\230;\240e\2501\330\004\021\220\022\2206\230\021\230&\240\006\240b\250\001\330\004\037\230q\360\010\000\005\t\210\005\210U\220!\2201\330\010\017\210q\220\005\220[\240\001\240\021\360\006\000\005\014\210:\220X\230R\230s\240!";
 static const char __pyx_k_All_dimensions_preceding_dimensi[] = "All dimensions preceding dimension %d must be indexed and not sliced";
@@ -3462,9 +3451,11 @@ static const char __pyx_k_Note_that_Cython_is_deliberately[] = "Note that Cython
 static const char __pyx_k_Out_of_bounds_on_buffer_access_a[] = "Out of bounds on buffer access (axis ";
 static const char __pyx_k_Unable_to_convert_item_to_object[] = "Unable to convert item to object";
 static const char __pyx_k_got_differing_extents_in_dimensi[] = "got differing extents in dimension ";
+static const char __pyx_k_ms_utils_mces_fast_mol_filter_ca[] = "ms_utils.mces.fast_mol_filter.calculator";
 static const char __pyx_k_no_default___reduce___due_to_non[] = "no default __reduce__ due to non-trivial __cinit__";
 static const char __pyx_k_numpy__core_multiarray_failed_to[] = "numpy._core.multiarray failed to import";
 static const char __pyx_k_numpy__core_umath_failed_to_impo[] = "numpy._core.umath failed to import";
+static const char __pyx_k_src_ms_utils_mces_fast_mol_filte[] = "src/ms_utils/mces/fast_mol_filter/fast_mol_filter/calculator.pyx";
 static const char __pyx_k_unable_to_allocate_shape_and_str[] = "unable to allocate shape and strides.";
 /* #### Code section: decls ### */
 static int __pyx_array___pyx_pf_15View_dot_MemoryView_5array___cinit__(struct __pyx_array_obj *__pyx_v_self, PyObject *__pyx_v_shape, Py_ssize_t __pyx_v_itemsize, PyObject *__pyx_v_format, PyObject *__pyx_v_mode, int __pyx_v_allocate_buffer); /* proto */
@@ -3508,8 +3499,7 @@ static void __pyx_memoryviewslice___pyx_pf_15View_dot_MemoryView_16_memoryviewsl
 static PyObject *__pyx_pf___pyx_memoryviewslice___reduce_cython__(CYTHON_UNUSED struct __pyx_memoryviewslice_obj *__pyx_v_self); /* proto */
 static PyObject *__pyx_pf___pyx_memoryviewslice_2__setstate_cython__(CYTHON_UNUSED struct __pyx_memoryviewslice_obj *__pyx_v_self, CYTHON_UNUSED PyObject *__pyx_v___pyx_state); /* proto */
 static PyObject *__pyx_pf_15View_dot_MemoryView___pyx_unpickle_Enum(CYTHON_UNUSED PyObject *__pyx_self, PyObject *__pyx_v___pyx_type, long __pyx_v___pyx_checksum, PyObject *__pyx_v___pyx_state); /* proto */
-static PyObject *__pyx_pf_15fast_mol_filter_10calculator_calculate_distances_symmetric(CYTHON_UNUSED PyObject *__pyx_self, PyObject *__pyx_v_smiles_list); /* proto */
-static PyObject *__pyx_pf_15fast_mol_filter_10calculator_2filter2(CYTHON_UNUSED PyObject *__pyx_self, PyObject *__pyx_v_iterable_smiles); /* proto */
+static PyObject *__pyx_pf_8ms_utils_4mces_15fast_mol_filter_10calculator_calculate_distances_symmetric(CYTHON_UNUSED PyObject *__pyx_self, PyObject *__pyx_v_smiles_list); /* proto */
 static PyObject *__pyx_tp_new_array(PyTypeObject *t, PyObject *a, PyObject *k); /*proto*/
 static PyObject *__pyx_tp_new_Enum(PyTypeObject *t, PyObject *a, PyObject *k); /*proto*/
 static PyObject *__pyx_tp_new_memoryview(PyTypeObject *t, PyObject *a, PyObject *k); /*proto*/
@@ -3579,9 +3569,8 @@ typedef struct {
   __Pyx_CachedCFunction __pyx_umethod_PyDict_Type_pop;
   PyObject *__pyx_slice[1];
   PyObject *__pyx_tuple[2];
-  PyObject *__pyx_codeobj_tab[2];
-  PyObject *__pyx_string_tab[143];
-  PyObject *__pyx_float_0_0;
+  PyObject *__pyx_codeobj_tab[1];
+  PyObject *__pyx_string_tab[140];
   PyObject *__pyx_int_0;
   PyObject *__pyx_int_1;
   PyObject *__pyx_int_112105877;
@@ -3690,84 +3679,81 @@ static __pyx_mstatetype * const __pyx_mstate_global = &__pyx_mstate_global_stati
 #define __pyx_n_u_encode __pyx_string_tab[62]
 #define __pyx_n_u_enumerate __pyx_string_tab[63]
 #define __pyx_n_u_error __pyx_string_tab[64]
-#define __pyx_n_u_fast_mol_filter_calculator __pyx_string_tab[65]
-#define __pyx_kp_u_fast_mol_filter_calculator_pyx __pyx_string_tab[66]
-#define __pyx_n_u_filter2 __pyx_string_tab[67]
-#define __pyx_n_u_flags __pyx_string_tab[68]
-#define __pyx_n_u_float64 __pyx_string_tab[69]
-#define __pyx_n_u_format __pyx_string_tab[70]
-#define __pyx_n_u_fortran __pyx_string_tab[71]
-#define __pyx_n_u_func __pyx_string_tab[72]
-#define __pyx_kp_u_gc __pyx_string_tab[73]
-#define __pyx_n_u_getstate __pyx_string_tab[74]
-#define __pyx_kp_u_got __pyx_string_tab[75]
-#define __pyx_kp_u_got_differing_extents_in_dimensi __pyx_string_tab[76]
-#define __pyx_n_u_i __pyx_string_tab[77]
-#define __pyx_n_u_id __pyx_string_tab[78]
-#define __pyx_n_u_import __pyx_string_tab[79]
-#define __pyx_n_u_index __pyx_string_tab[80]
-#define __pyx_n_u_initializing __pyx_string_tab[81]
-#define __pyx_n_u_is_coroutine __pyx_string_tab[82]
-#define __pyx_kp_u_isenabled __pyx_string_tab[83]
-#define __pyx_n_u_itemsize __pyx_string_tab[84]
-#define __pyx_kp_u_itemsize_0_for_cython_array __pyx_string_tab[85]
-#define __pyx_n_u_iterable_smiles __pyx_string_tab[86]
-#define __pyx_n_u_main __pyx_string_tab[87]
-#define __pyx_n_u_memview __pyx_string_tab[88]
-#define __pyx_n_u_mode __pyx_string_tab[89]
-#define __pyx_n_u_module __pyx_string_tab[90]
-#define __pyx_n_u_n __pyx_string_tab[91]
-#define __pyx_n_u_name __pyx_string_tab[92]
-#define __pyx_n_u_name_2 __pyx_string_tab[93]
-#define __pyx_n_u_ndim __pyx_string_tab[94]
-#define __pyx_n_u_new __pyx_string_tab[95]
-#define __pyx_kp_u_no_default___reduce___due_to_non __pyx_string_tab[96]
-#define __pyx_n_u_np __pyx_string_tab[97]
-#define __pyx_n_u_numpy __pyx_string_tab[98]
-#define __pyx_kp_u_numpy__core_multiarray_failed_to __pyx_string_tab[99]
-#define __pyx_kp_u_numpy__core_umath_failed_to_impo __pyx_string_tab[100]
-#define __pyx_n_u_obj __pyx_string_tab[101]
-#define __pyx_kp_u_object __pyx_string_tab[102]
-#define __pyx_n_u_pack __pyx_string_tab[103]
-#define __pyx_n_u_pickle __pyx_string_tab[104]
-#define __pyx_n_u_pop __pyx_string_tab[105]
-#define __pyx_n_u_py_results __pyx_string_tab[106]
-#define __pyx_n_u_py_view __pyx_string_tab[107]
-#define __pyx_n_u_pyx_checksum __pyx_string_tab[108]
-#define __pyx_n_u_pyx_state __pyx_string_tab[109]
-#define __pyx_n_u_pyx_type __pyx_string_tab[110]
-#define __pyx_n_u_pyx_unpickle_Enum __pyx_string_tab[111]
-#define __pyx_n_u_pyx_vtable __pyx_string_tab[112]
-#define __pyx_n_u_qualname __pyx_string_tab[113]
-#define __pyx_n_u_range __pyx_string_tab[114]
-#define __pyx_n_u_reduce __pyx_string_tab[115]
-#define __pyx_n_u_reduce_cython __pyx_string_tab[116]
-#define __pyx_n_u_reduce_ex __pyx_string_tab[117]
-#define __pyx_n_u_register __pyx_string_tab[118]
-#define __pyx_n_u_reshape __pyx_string_tab[119]
-#define __pyx_n_u_s __pyx_string_tab[120]
-#define __pyx_n_u_set_name __pyx_string_tab[121]
-#define __pyx_n_u_setstate __pyx_string_tab[122]
-#define __pyx_n_u_setstate_cython __pyx_string_tab[123]
-#define __pyx_n_u_shape __pyx_string_tab[124]
-#define __pyx_n_u_size __pyx_string_tab[125]
-#define __pyx_n_u_smiles_list __pyx_string_tab[126]
-#define __pyx_n_u_spec __pyx_string_tab[127]
-#define __pyx_n_u_start __pyx_string_tab[128]
-#define __pyx_n_u_step __pyx_string_tab[129]
-#define __pyx_n_u_stop __pyx_string_tab[130]
-#define __pyx_kp_u_strided_and_direct __pyx_string_tab[131]
-#define __pyx_kp_u_strided_and_direct_or_indirect __pyx_string_tab[132]
-#define __pyx_kp_u_strided_and_indirect __pyx_string_tab[133]
-#define __pyx_n_u_struct __pyx_string_tab[134]
-#define __pyx_n_u_test __pyx_string_tab[135]
-#define __pyx_n_u_total_cost __pyx_string_tab[136]
-#define __pyx_kp_u_unable_to_allocate_array_data __pyx_string_tab[137]
-#define __pyx_kp_u_unable_to_allocate_shape_and_str __pyx_string_tab[138]
-#define __pyx_n_u_unpack __pyx_string_tab[139]
-#define __pyx_n_u_update __pyx_string_tab[140]
-#define __pyx_kp_u_utf_8 __pyx_string_tab[141]
-#define __pyx_n_u_x __pyx_string_tab[142]
+#define __pyx_n_u_flags __pyx_string_tab[65]
+#define __pyx_n_u_float64 __pyx_string_tab[66]
+#define __pyx_n_u_format __pyx_string_tab[67]
+#define __pyx_n_u_fortran __pyx_string_tab[68]
+#define __pyx_n_u_func __pyx_string_tab[69]
+#define __pyx_kp_u_gc __pyx_string_tab[70]
+#define __pyx_n_u_getstate __pyx_string_tab[71]
+#define __pyx_kp_u_got __pyx_string_tab[72]
+#define __pyx_kp_u_got_differing_extents_in_dimensi __pyx_string_tab[73]
+#define __pyx_n_u_i __pyx_string_tab[74]
+#define __pyx_n_u_id __pyx_string_tab[75]
+#define __pyx_n_u_import __pyx_string_tab[76]
+#define __pyx_n_u_index __pyx_string_tab[77]
+#define __pyx_n_u_initializing __pyx_string_tab[78]
+#define __pyx_n_u_is_coroutine __pyx_string_tab[79]
+#define __pyx_kp_u_isenabled __pyx_string_tab[80]
+#define __pyx_n_u_itemsize __pyx_string_tab[81]
+#define __pyx_kp_u_itemsize_0_for_cython_array __pyx_string_tab[82]
+#define __pyx_n_u_main __pyx_string_tab[83]
+#define __pyx_n_u_memview __pyx_string_tab[84]
+#define __pyx_n_u_mode __pyx_string_tab[85]
+#define __pyx_n_u_module __pyx_string_tab[86]
+#define __pyx_n_u_ms_utils_mces_fast_mol_filter_ca __pyx_string_tab[87]
+#define __pyx_n_u_n __pyx_string_tab[88]
+#define __pyx_n_u_name __pyx_string_tab[89]
+#define __pyx_n_u_name_2 __pyx_string_tab[90]
+#define __pyx_n_u_ndim __pyx_string_tab[91]
+#define __pyx_n_u_new __pyx_string_tab[92]
+#define __pyx_kp_u_no_default___reduce___due_to_non __pyx_string_tab[93]
+#define __pyx_n_u_np __pyx_string_tab[94]
+#define __pyx_n_u_numpy __pyx_string_tab[95]
+#define __pyx_kp_u_numpy__core_multiarray_failed_to __pyx_string_tab[96]
+#define __pyx_kp_u_numpy__core_umath_failed_to_impo __pyx_string_tab[97]
+#define __pyx_n_u_obj __pyx_string_tab[98]
+#define __pyx_kp_u_object __pyx_string_tab[99]
+#define __pyx_n_u_pack __pyx_string_tab[100]
+#define __pyx_n_u_pickle __pyx_string_tab[101]
+#define __pyx_n_u_pop __pyx_string_tab[102]
+#define __pyx_n_u_py_results __pyx_string_tab[103]
+#define __pyx_n_u_py_view __pyx_string_tab[104]
+#define __pyx_n_u_pyx_checksum __pyx_string_tab[105]
+#define __pyx_n_u_pyx_state __pyx_string_tab[106]
+#define __pyx_n_u_pyx_type __pyx_string_tab[107]
+#define __pyx_n_u_pyx_unpickle_Enum __pyx_string_tab[108]
+#define __pyx_n_u_pyx_vtable __pyx_string_tab[109]
+#define __pyx_n_u_qualname __pyx_string_tab[110]
+#define __pyx_n_u_range __pyx_string_tab[111]
+#define __pyx_n_u_reduce __pyx_string_tab[112]
+#define __pyx_n_u_reduce_cython __pyx_string_tab[113]
+#define __pyx_n_u_reduce_ex __pyx_string_tab[114]
+#define __pyx_n_u_register __pyx_string_tab[115]
+#define __pyx_n_u_reshape __pyx_string_tab[116]
+#define __pyx_n_u_s __pyx_string_tab[117]
+#define __pyx_n_u_set_name __pyx_string_tab[118]
+#define __pyx_n_u_setstate __pyx_string_tab[119]
+#define __pyx_n_u_setstate_cython __pyx_string_tab[120]
+#define __pyx_n_u_shape __pyx_string_tab[121]
+#define __pyx_n_u_size __pyx_string_tab[122]
+#define __pyx_n_u_smiles_list __pyx_string_tab[123]
+#define __pyx_n_u_spec __pyx_string_tab[124]
+#define __pyx_kp_u_src_ms_utils_mces_fast_mol_filte __pyx_string_tab[125]
+#define __pyx_n_u_start __pyx_string_tab[126]
+#define __pyx_n_u_step __pyx_string_tab[127]
+#define __pyx_n_u_stop __pyx_string_tab[128]
+#define __pyx_kp_u_strided_and_direct __pyx_string_tab[129]
+#define __pyx_kp_u_strided_and_direct_or_indirect __pyx_string_tab[130]
+#define __pyx_kp_u_strided_and_indirect __pyx_string_tab[131]
+#define __pyx_n_u_struct __pyx_string_tab[132]
+#define __pyx_n_u_test __pyx_string_tab[133]
+#define __pyx_kp_u_unable_to_allocate_array_data __pyx_string_tab[134]
+#define __pyx_kp_u_unable_to_allocate_shape_and_str __pyx_string_tab[135]
+#define __pyx_n_u_unpack __pyx_string_tab[136]
+#define __pyx_n_u_update __pyx_string_tab[137]
+#define __pyx_kp_u_utf_8 __pyx_string_tab[138]
+#define __pyx_n_u_x __pyx_string_tab[139]
 /* #### Code section: module_state_clear ### */
 #if CYTHON_USE_MODULE_STATE
 static CYTHON_SMALL_CODE int __pyx_m_clear(PyObject *m) {
@@ -3814,9 +3800,8 @@ static CYTHON_SMALL_CODE int __pyx_m_clear(PyObject *m) {
   Py_CLEAR(clear_module_state->__pyx_type___pyx_memoryviewslice);
   for (int i=0; i<1; ++i) { Py_CLEAR(clear_module_state->__pyx_slice[i]); }
   for (int i=0; i<2; ++i) { Py_CLEAR(clear_module_state->__pyx_tuple[i]); }
-  for (int i=0; i<2; ++i) { Py_CLEAR(clear_module_state->__pyx_codeobj_tab[i]); }
-  for (int i=0; i<143; ++i) { Py_CLEAR(clear_module_state->__pyx_string_tab[i]); }
-  Py_CLEAR(clear_module_state->__pyx_float_0_0);
+  for (int i=0; i<1; ++i) { Py_CLEAR(clear_module_state->__pyx_codeobj_tab[i]); }
+  for (int i=0; i<140; ++i) { Py_CLEAR(clear_module_state->__pyx_string_tab[i]); }
   Py_CLEAR(clear_module_state->__pyx_int_0);
   Py_CLEAR(clear_module_state->__pyx_int_1);
   Py_CLEAR(clear_module_state->__pyx_int_112105877);
@@ -3869,9 +3854,8 @@ static CYTHON_SMALL_CODE int __pyx_m_traverse(PyObject *m, visitproc visit, void
   Py_VISIT(traverse_module_state->__pyx_type___pyx_memoryviewslice);
   for (int i=0; i<1; ++i) { __Pyx_VISIT_CONST(traverse_module_state->__pyx_slice[i]); }
   for (int i=0; i<2; ++i) { __Pyx_VISIT_CONST(traverse_module_state->__pyx_tuple[i]); }
-  for (int i=0; i<2; ++i) { __Pyx_VISIT_CONST(traverse_module_state->__pyx_codeobj_tab[i]); }
-  for (int i=0; i<143; ++i) { __Pyx_VISIT_CONST(traverse_module_state->__pyx_string_tab[i]); }
-  __Pyx_VISIT_CONST(traverse_module_state->__pyx_float_0_0);
+  for (int i=0; i<1; ++i) { __Pyx_VISIT_CONST(traverse_module_state->__pyx_codeobj_tab[i]); }
+  for (int i=0; i<140; ++i) { __Pyx_VISIT_CONST(traverse_module_state->__pyx_string_tab[i]); }
   __Pyx_VISIT_CONST(traverse_module_state->__pyx_int_0);
   __Pyx_VISIT_CONST(traverse_module_state->__pyx_int_1);
   __Pyx_VISIT_CONST(traverse_module_state->__pyx_int_112105877);
@@ -17314,7 +17298,7 @@ static PyObject *__pyx_unpickle_Enum__set_state(struct __pyx_MemviewEnum_obj *__
   return __pyx_r;
 }
 
-/* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":242
+/* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":242
  *         cdef int type_num
  * 
  *         @property             # <<<<<<<<<<<<<<
@@ -17325,7 +17309,7 @@ static PyObject *__pyx_unpickle_Enum__set_state(struct __pyx_MemviewEnum_obj *__
 static CYTHON_INLINE npy_intp __pyx_f_5numpy_5dtype_8itemsize_itemsize(PyArray_Descr *__pyx_v_self) {
   npy_intp __pyx_r;
 
-  /* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":244
+  /* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":244
  *         @property
  *         cdef inline npy_intp itemsize(self) noexcept nogil:
  *             return PyDataType_ELSIZE(self)             # <<<<<<<<<<<<<<
@@ -17335,7 +17319,7 @@ static CYTHON_INLINE npy_intp __pyx_f_5numpy_5dtype_8itemsize_itemsize(PyArray_D
   __pyx_r = PyDataType_ELSIZE(__pyx_v_self);
   goto __pyx_L0;
 
-  /* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":242
+  /* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":242
  *         cdef int type_num
  * 
  *         @property             # <<<<<<<<<<<<<<
@@ -17348,7 +17332,7 @@ static CYTHON_INLINE npy_intp __pyx_f_5numpy_5dtype_8itemsize_itemsize(PyArray_D
   return __pyx_r;
 }
 
-/* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":246
+/* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":246
  *             return PyDataType_ELSIZE(self)
  * 
  *         @property             # <<<<<<<<<<<<<<
@@ -17359,7 +17343,7 @@ static CYTHON_INLINE npy_intp __pyx_f_5numpy_5dtype_8itemsize_itemsize(PyArray_D
 static CYTHON_INLINE npy_intp __pyx_f_5numpy_5dtype_9alignment_alignment(PyArray_Descr *__pyx_v_self) {
   npy_intp __pyx_r;
 
-  /* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":248
+  /* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":248
  *         @property
  *         cdef inline npy_intp alignment(self) noexcept nogil:
  *             return PyDataType_ALIGNMENT(self)             # <<<<<<<<<<<<<<
@@ -17369,7 +17353,7 @@ static CYTHON_INLINE npy_intp __pyx_f_5numpy_5dtype_9alignment_alignment(PyArray
   __pyx_r = PyDataType_ALIGNMENT(__pyx_v_self);
   goto __pyx_L0;
 
-  /* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":246
+  /* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":246
  *             return PyDataType_ELSIZE(self)
  * 
  *         @property             # <<<<<<<<<<<<<<
@@ -17382,7 +17366,7 @@ static CYTHON_INLINE npy_intp __pyx_f_5numpy_5dtype_9alignment_alignment(PyArray
   return __pyx_r;
 }
 
-/* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":252
+/* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":252
  *         # Use fields/names with care as they may be NULL.  You must check
  *         # for this using PyDataType_HASFIELDS.
  *         @property             # <<<<<<<<<<<<<<
@@ -17396,7 +17380,7 @@ static CYTHON_INLINE PyObject *__pyx_f_5numpy_5dtype_6fields_fields(PyArray_Desc
   PyObject *__pyx_t_1;
   __Pyx_RefNannySetupContext("fields", 0);
 
-  /* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":254
+  /* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":254
  *         @property
  *         cdef inline object fields(self):
  *             return <object>PyDataType_FIELDS(self)             # <<<<<<<<<<<<<<
@@ -17409,7 +17393,7 @@ static CYTHON_INLINE PyObject *__pyx_f_5numpy_5dtype_6fields_fields(PyArray_Desc
   __pyx_r = ((PyObject *)__pyx_t_1);
   goto __pyx_L0;
 
-  /* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":252
+  /* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":252
  *         # Use fields/names with care as they may be NULL.  You must check
  *         # for this using PyDataType_HASFIELDS.
  *         @property             # <<<<<<<<<<<<<<
@@ -17424,7 +17408,7 @@ static CYTHON_INLINE PyObject *__pyx_f_5numpy_5dtype_6fields_fields(PyArray_Desc
   return __pyx_r;
 }
 
-/* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":256
+/* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":256
  *             return <object>PyDataType_FIELDS(self)
  * 
  *         @property             # <<<<<<<<<<<<<<
@@ -17438,7 +17422,7 @@ static CYTHON_INLINE PyObject *__pyx_f_5numpy_5dtype_5names_names(PyArray_Descr 
   PyObject *__pyx_t_1;
   __Pyx_RefNannySetupContext("names", 0);
 
-  /* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":258
+  /* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":258
  *         @property
  *         cdef inline tuple names(self):
  *             return <tuple>PyDataType_NAMES(self)             # <<<<<<<<<<<<<<
@@ -17451,7 +17435,7 @@ static CYTHON_INLINE PyObject *__pyx_f_5numpy_5dtype_5names_names(PyArray_Descr 
   __pyx_r = ((PyObject*)__pyx_t_1);
   goto __pyx_L0;
 
-  /* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":256
+  /* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":256
  *             return <object>PyDataType_FIELDS(self)
  * 
  *         @property             # <<<<<<<<<<<<<<
@@ -17466,7 +17450,7 @@ static CYTHON_INLINE PyObject *__pyx_f_5numpy_5dtype_5names_names(PyArray_Descr 
   return __pyx_r;
 }
 
-/* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":263
+/* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":263
  *         # valid (the pointer can be NULL). Most users should access
  *         # this field via the inline helper method PyDataType_SHAPE.
  *         @property             # <<<<<<<<<<<<<<
@@ -17477,7 +17461,7 @@ static CYTHON_INLINE PyObject *__pyx_f_5numpy_5dtype_5names_names(PyArray_Descr 
 static CYTHON_INLINE PyArray_ArrayDescr *__pyx_f_5numpy_5dtype_8subarray_subarray(PyArray_Descr *__pyx_v_self) {
   PyArray_ArrayDescr *__pyx_r;
 
-  /* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":265
+  /* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":265
  *         @property
  *         cdef inline PyArray_ArrayDescr* subarray(self) noexcept nogil:
  *             return PyDataType_SUBARRAY(self)             # <<<<<<<<<<<<<<
@@ -17487,7 +17471,7 @@ static CYTHON_INLINE PyArray_ArrayDescr *__pyx_f_5numpy_5dtype_8subarray_subarra
   __pyx_r = PyDataType_SUBARRAY(__pyx_v_self);
   goto __pyx_L0;
 
-  /* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":263
+  /* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":263
  *         # valid (the pointer can be NULL). Most users should access
  *         # this field via the inline helper method PyDataType_SHAPE.
  *         @property             # <<<<<<<<<<<<<<
@@ -17500,7 +17484,7 @@ static CYTHON_INLINE PyArray_ArrayDescr *__pyx_f_5numpy_5dtype_8subarray_subarra
   return __pyx_r;
 }
 
-/* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":267
+/* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":267
  *             return PyDataType_SUBARRAY(self)
  * 
  *         @property             # <<<<<<<<<<<<<<
@@ -17511,7 +17495,7 @@ static CYTHON_INLINE PyArray_ArrayDescr *__pyx_f_5numpy_5dtype_8subarray_subarra
 static CYTHON_INLINE npy_uint64 __pyx_f_5numpy_5dtype_5flags_flags(PyArray_Descr *__pyx_v_self) {
   npy_uint64 __pyx_r;
 
-  /* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":270
+  /* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":270
  *         cdef inline npy_uint64 flags(self) noexcept nogil:
  *             """The data types flags."""
  *             return PyDataType_FLAGS(self)             # <<<<<<<<<<<<<<
@@ -17521,7 +17505,7 @@ static CYTHON_INLINE npy_uint64 __pyx_f_5numpy_5dtype_5flags_flags(PyArray_Descr
   __pyx_r = PyDataType_FLAGS(__pyx_v_self);
   goto __pyx_L0;
 
-  /* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":267
+  /* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":267
  *             return PyDataType_SUBARRAY(self)
  * 
  *         @property             # <<<<<<<<<<<<<<
@@ -17534,7 +17518,7 @@ static CYTHON_INLINE npy_uint64 __pyx_f_5numpy_5dtype_5flags_flags(PyArray_Descr
   return __pyx_r;
 }
 
-/* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":279
+/* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":279
  *     ctypedef class numpy.broadcast [object PyArrayMultiIterObject, check_size ignore]:
  * 
  *         @property             # <<<<<<<<<<<<<<
@@ -17545,7 +17529,7 @@ static CYTHON_INLINE npy_uint64 __pyx_f_5numpy_5dtype_5flags_flags(PyArray_Descr
 static CYTHON_INLINE int __pyx_f_5numpy_9broadcast_7numiter_numiter(PyArrayMultiIterObject *__pyx_v_self) {
   int __pyx_r;
 
-  /* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":282
+  /* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":282
  *         cdef inline int numiter(self) noexcept nogil:
  *             """The number of arrays that need to be broadcast to the same shape."""
  *             return PyArray_MultiIter_NUMITER(self)             # <<<<<<<<<<<<<<
@@ -17555,7 +17539,7 @@ static CYTHON_INLINE int __pyx_f_5numpy_9broadcast_7numiter_numiter(PyArrayMulti
   __pyx_r = PyArray_MultiIter_NUMITER(__pyx_v_self);
   goto __pyx_L0;
 
-  /* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":279
+  /* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":279
  *     ctypedef class numpy.broadcast [object PyArrayMultiIterObject, check_size ignore]:
  * 
  *         @property             # <<<<<<<<<<<<<<
@@ -17568,7 +17552,7 @@ static CYTHON_INLINE int __pyx_f_5numpy_9broadcast_7numiter_numiter(PyArrayMulti
   return __pyx_r;
 }
 
-/* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":284
+/* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":284
  *             return PyArray_MultiIter_NUMITER(self)
  * 
  *         @property             # <<<<<<<<<<<<<<
@@ -17579,7 +17563,7 @@ static CYTHON_INLINE int __pyx_f_5numpy_9broadcast_7numiter_numiter(PyArrayMulti
 static CYTHON_INLINE npy_intp __pyx_f_5numpy_9broadcast_4size_size(PyArrayMultiIterObject *__pyx_v_self) {
   npy_intp __pyx_r;
 
-  /* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":287
+  /* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":287
  *         cdef inline npy_intp size(self) noexcept nogil:
  *             """The total broadcasted size."""
  *             return PyArray_MultiIter_SIZE(self)             # <<<<<<<<<<<<<<
@@ -17589,7 +17573,7 @@ static CYTHON_INLINE npy_intp __pyx_f_5numpy_9broadcast_4size_size(PyArrayMultiI
   __pyx_r = PyArray_MultiIter_SIZE(__pyx_v_self);
   goto __pyx_L0;
 
-  /* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":284
+  /* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":284
  *             return PyArray_MultiIter_NUMITER(self)
  * 
  *         @property             # <<<<<<<<<<<<<<
@@ -17602,7 +17586,7 @@ static CYTHON_INLINE npy_intp __pyx_f_5numpy_9broadcast_4size_size(PyArrayMultiI
   return __pyx_r;
 }
 
-/* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":289
+/* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":289
  *             return PyArray_MultiIter_SIZE(self)
  * 
  *         @property             # <<<<<<<<<<<<<<
@@ -17613,7 +17597,7 @@ static CYTHON_INLINE npy_intp __pyx_f_5numpy_9broadcast_4size_size(PyArrayMultiI
 static CYTHON_INLINE npy_intp __pyx_f_5numpy_9broadcast_5index_index(PyArrayMultiIterObject *__pyx_v_self) {
   npy_intp __pyx_r;
 
-  /* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":292
+  /* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":292
  *         cdef inline npy_intp index(self) noexcept nogil:
  *             """The current (1-d) index into the broadcasted result."""
  *             return PyArray_MultiIter_INDEX(self)             # <<<<<<<<<<<<<<
@@ -17623,7 +17607,7 @@ static CYTHON_INLINE npy_intp __pyx_f_5numpy_9broadcast_5index_index(PyArrayMult
   __pyx_r = PyArray_MultiIter_INDEX(__pyx_v_self);
   goto __pyx_L0;
 
-  /* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":289
+  /* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":289
  *             return PyArray_MultiIter_SIZE(self)
  * 
  *         @property             # <<<<<<<<<<<<<<
@@ -17636,7 +17620,7 @@ static CYTHON_INLINE npy_intp __pyx_f_5numpy_9broadcast_5index_index(PyArrayMult
   return __pyx_r;
 }
 
-/* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":294
+/* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":294
  *             return PyArray_MultiIter_INDEX(self)
  * 
  *         @property             # <<<<<<<<<<<<<<
@@ -17647,7 +17631,7 @@ static CYTHON_INLINE npy_intp __pyx_f_5numpy_9broadcast_5index_index(PyArrayMult
 static CYTHON_INLINE int __pyx_f_5numpy_9broadcast_2nd_nd(PyArrayMultiIterObject *__pyx_v_self) {
   int __pyx_r;
 
-  /* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":297
+  /* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":297
  *         cdef inline int nd(self) noexcept nogil:
  *             """The number of dimensions in the broadcasted result."""
  *             return PyArray_MultiIter_NDIM(self)             # <<<<<<<<<<<<<<
@@ -17657,7 +17641,7 @@ static CYTHON_INLINE int __pyx_f_5numpy_9broadcast_2nd_nd(PyArrayMultiIterObject
   __pyx_r = PyArray_MultiIter_NDIM(__pyx_v_self);
   goto __pyx_L0;
 
-  /* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":294
+  /* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":294
  *             return PyArray_MultiIter_INDEX(self)
  * 
  *         @property             # <<<<<<<<<<<<<<
@@ -17670,7 +17654,7 @@ static CYTHON_INLINE int __pyx_f_5numpy_9broadcast_2nd_nd(PyArrayMultiIterObject
   return __pyx_r;
 }
 
-/* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":299
+/* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":299
  *             return PyArray_MultiIter_NDIM(self)
  * 
  *         @property             # <<<<<<<<<<<<<<
@@ -17681,7 +17665,7 @@ static CYTHON_INLINE int __pyx_f_5numpy_9broadcast_2nd_nd(PyArrayMultiIterObject
 static CYTHON_INLINE npy_intp *__pyx_f_5numpy_9broadcast_10dimensions_dimensions(PyArrayMultiIterObject *__pyx_v_self) {
   npy_intp *__pyx_r;
 
-  /* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":302
+  /* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":302
  *         cdef inline npy_intp* dimensions(self) noexcept nogil:
  *             """The shape of the broadcasted result."""
  *             return PyArray_MultiIter_DIMS(self)             # <<<<<<<<<<<<<<
@@ -17691,7 +17675,7 @@ static CYTHON_INLINE npy_intp *__pyx_f_5numpy_9broadcast_10dimensions_dimensions
   __pyx_r = PyArray_MultiIter_DIMS(__pyx_v_self);
   goto __pyx_L0;
 
-  /* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":299
+  /* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":299
  *             return PyArray_MultiIter_NDIM(self)
  * 
  *         @property             # <<<<<<<<<<<<<<
@@ -17704,7 +17688,7 @@ static CYTHON_INLINE npy_intp *__pyx_f_5numpy_9broadcast_10dimensions_dimensions
   return __pyx_r;
 }
 
-/* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":304
+/* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":304
  *             return PyArray_MultiIter_DIMS(self)
  * 
  *         @property             # <<<<<<<<<<<<<<
@@ -17715,7 +17699,7 @@ static CYTHON_INLINE npy_intp *__pyx_f_5numpy_9broadcast_10dimensions_dimensions
 static CYTHON_INLINE void **__pyx_f_5numpy_9broadcast_5iters_iters(PyArrayMultiIterObject *__pyx_v_self) {
   void **__pyx_r;
 
-  /* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":308
+  /* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":308
  *             """An array of iterator objects that holds the iterators for the arrays to be broadcast together.
  *             On return, the iterators are adjusted for broadcasting."""
  *             return PyArray_MultiIter_ITERS(self)             # <<<<<<<<<<<<<<
@@ -17725,7 +17709,7 @@ static CYTHON_INLINE void **__pyx_f_5numpy_9broadcast_5iters_iters(PyArrayMultiI
   __pyx_r = PyArray_MultiIter_ITERS(__pyx_v_self);
   goto __pyx_L0;
 
-  /* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":304
+  /* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":304
  *             return PyArray_MultiIter_DIMS(self)
  * 
  *         @property             # <<<<<<<<<<<<<<
@@ -17738,7 +17722,7 @@ static CYTHON_INLINE void **__pyx_f_5numpy_9broadcast_5iters_iters(PyArrayMultiI
   return __pyx_r;
 }
 
-/* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":322
+/* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":322
  *         # Instead, we use properties that map to the corresponding C-API functions.
  * 
  *         @property             # <<<<<<<<<<<<<<
@@ -17749,7 +17733,7 @@ static CYTHON_INLINE void **__pyx_f_5numpy_9broadcast_5iters_iters(PyArrayMultiI
 static CYTHON_INLINE PyObject *__pyx_f_5numpy_7ndarray_4base_base(PyArrayObject *__pyx_v_self) {
   PyObject *__pyx_r;
 
-  /* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":326
+  /* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":326
  *             """Returns a borrowed reference to the object owning the data/memory.
  *             """
  *             return PyArray_BASE(self)             # <<<<<<<<<<<<<<
@@ -17759,7 +17743,7 @@ static CYTHON_INLINE PyObject *__pyx_f_5numpy_7ndarray_4base_base(PyArrayObject 
   __pyx_r = PyArray_BASE(__pyx_v_self);
   goto __pyx_L0;
 
-  /* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":322
+  /* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":322
  *         # Instead, we use properties that map to the corresponding C-API functions.
  * 
  *         @property             # <<<<<<<<<<<<<<
@@ -17772,7 +17756,7 @@ static CYTHON_INLINE PyObject *__pyx_f_5numpy_7ndarray_4base_base(PyArrayObject 
   return __pyx_r;
 }
 
-/* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":328
+/* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":328
  *             return PyArray_BASE(self)
  * 
  *         @property             # <<<<<<<<<<<<<<
@@ -17786,7 +17770,7 @@ static CYTHON_INLINE PyArray_Descr *__pyx_f_5numpy_7ndarray_5descr_descr(PyArray
   PyArray_Descr *__pyx_t_1;
   __Pyx_RefNannySetupContext("descr", 0);
 
-  /* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":332
+  /* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":332
  *             """Returns an owned reference to the dtype of the array.
  *             """
  *             return <dtype>PyArray_DESCR(self)             # <<<<<<<<<<<<<<
@@ -17799,7 +17783,7 @@ static CYTHON_INLINE PyArray_Descr *__pyx_f_5numpy_7ndarray_5descr_descr(PyArray
   __pyx_r = ((PyArray_Descr *)__pyx_t_1);
   goto __pyx_L0;
 
-  /* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":328
+  /* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":328
  *             return PyArray_BASE(self)
  * 
  *         @property             # <<<<<<<<<<<<<<
@@ -17814,7 +17798,7 @@ static CYTHON_INLINE PyArray_Descr *__pyx_f_5numpy_7ndarray_5descr_descr(PyArray
   return __pyx_r;
 }
 
-/* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":334
+/* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":334
  *             return <dtype>PyArray_DESCR(self)
  * 
  *         @property             # <<<<<<<<<<<<<<
@@ -17825,7 +17809,7 @@ static CYTHON_INLINE PyArray_Descr *__pyx_f_5numpy_7ndarray_5descr_descr(PyArray
 static CYTHON_INLINE int __pyx_f_5numpy_7ndarray_4ndim_ndim(PyArrayObject *__pyx_v_self) {
   int __pyx_r;
 
-  /* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":338
+  /* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":338
  *             """Returns the number of dimensions in the array.
  *             """
  *             return PyArray_NDIM(self)             # <<<<<<<<<<<<<<
@@ -17835,7 +17819,7 @@ static CYTHON_INLINE int __pyx_f_5numpy_7ndarray_4ndim_ndim(PyArrayObject *__pyx
   __pyx_r = PyArray_NDIM(__pyx_v_self);
   goto __pyx_L0;
 
-  /* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":334
+  /* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":334
  *             return <dtype>PyArray_DESCR(self)
  * 
  *         @property             # <<<<<<<<<<<<<<
@@ -17848,7 +17832,7 @@ static CYTHON_INLINE int __pyx_f_5numpy_7ndarray_4ndim_ndim(PyArrayObject *__pyx
   return __pyx_r;
 }
 
-/* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":340
+/* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":340
  *             return PyArray_NDIM(self)
  * 
  *         @property             # <<<<<<<<<<<<<<
@@ -17859,7 +17843,7 @@ static CYTHON_INLINE int __pyx_f_5numpy_7ndarray_4ndim_ndim(PyArrayObject *__pyx
 static CYTHON_INLINE npy_intp *__pyx_f_5numpy_7ndarray_5shape_shape(PyArrayObject *__pyx_v_self) {
   npy_intp *__pyx_r;
 
-  /* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":346
+  /* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":346
  *             Can return NULL for 0-dimensional arrays.
  *             """
  *             return PyArray_DIMS(self)             # <<<<<<<<<<<<<<
@@ -17869,7 +17853,7 @@ static CYTHON_INLINE npy_intp *__pyx_f_5numpy_7ndarray_5shape_shape(PyArrayObjec
   __pyx_r = PyArray_DIMS(__pyx_v_self);
   goto __pyx_L0;
 
-  /* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":340
+  /* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":340
  *             return PyArray_NDIM(self)
  * 
  *         @property             # <<<<<<<<<<<<<<
@@ -17882,7 +17866,7 @@ static CYTHON_INLINE npy_intp *__pyx_f_5numpy_7ndarray_5shape_shape(PyArrayObjec
   return __pyx_r;
 }
 
-/* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":348
+/* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":348
  *             return PyArray_DIMS(self)
  * 
  *         @property             # <<<<<<<<<<<<<<
@@ -17893,7 +17877,7 @@ static CYTHON_INLINE npy_intp *__pyx_f_5numpy_7ndarray_5shape_shape(PyArrayObjec
 static CYTHON_INLINE npy_intp *__pyx_f_5numpy_7ndarray_7strides_strides(PyArrayObject *__pyx_v_self) {
   npy_intp *__pyx_r;
 
-  /* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":353
+  /* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":353
  *             The number of elements matches the number of dimensions of the array (ndim).
  *             """
  *             return PyArray_STRIDES(self)             # <<<<<<<<<<<<<<
@@ -17903,7 +17887,7 @@ static CYTHON_INLINE npy_intp *__pyx_f_5numpy_7ndarray_7strides_strides(PyArrayO
   __pyx_r = PyArray_STRIDES(__pyx_v_self);
   goto __pyx_L0;
 
-  /* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":348
+  /* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":348
  *             return PyArray_DIMS(self)
  * 
  *         @property             # <<<<<<<<<<<<<<
@@ -17916,7 +17900,7 @@ static CYTHON_INLINE npy_intp *__pyx_f_5numpy_7ndarray_7strides_strides(PyArrayO
   return __pyx_r;
 }
 
-/* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":355
+/* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":355
  *             return PyArray_STRIDES(self)
  * 
  *         @property             # <<<<<<<<<<<<<<
@@ -17927,7 +17911,7 @@ static CYTHON_INLINE npy_intp *__pyx_f_5numpy_7ndarray_7strides_strides(PyArrayO
 static CYTHON_INLINE npy_intp __pyx_f_5numpy_7ndarray_4size_size(PyArrayObject *__pyx_v_self) {
   npy_intp __pyx_r;
 
-  /* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":359
+  /* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":359
  *             """Returns the total size (in number of elements) of the array.
  *             """
  *             return PyArray_SIZE(self)             # <<<<<<<<<<<<<<
@@ -17937,7 +17921,7 @@ static CYTHON_INLINE npy_intp __pyx_f_5numpy_7ndarray_4size_size(PyArrayObject *
   __pyx_r = PyArray_SIZE(__pyx_v_self);
   goto __pyx_L0;
 
-  /* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":355
+  /* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":355
  *             return PyArray_STRIDES(self)
  * 
  *         @property             # <<<<<<<<<<<<<<
@@ -17950,7 +17934,7 @@ static CYTHON_INLINE npy_intp __pyx_f_5numpy_7ndarray_4size_size(PyArrayObject *
   return __pyx_r;
 }
 
-/* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":361
+/* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":361
  *             return PyArray_SIZE(self)
  * 
  *         @property             # <<<<<<<<<<<<<<
@@ -17961,7 +17945,7 @@ static CYTHON_INLINE npy_intp __pyx_f_5numpy_7ndarray_4size_size(PyArrayObject *
 static CYTHON_INLINE char *__pyx_f_5numpy_7ndarray_4data_data(PyArrayObject *__pyx_v_self) {
   char *__pyx_r;
 
-  /* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":368
+  /* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":368
  *             of `PyArray_DATA()` instead, which returns a 'void*'.
  *             """
  *             return PyArray_BYTES(self)             # <<<<<<<<<<<<<<
@@ -17971,7 +17955,7 @@ static CYTHON_INLINE char *__pyx_f_5numpy_7ndarray_4data_data(PyArrayObject *__p
   __pyx_r = PyArray_BYTES(__pyx_v_self);
   goto __pyx_L0;
 
-  /* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":361
+  /* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":361
  *             return PyArray_SIZE(self)
  * 
  *         @property             # <<<<<<<<<<<<<<
@@ -17984,7 +17968,7 @@ static CYTHON_INLINE char *__pyx_f_5numpy_7ndarray_4data_data(PyArrayObject *__p
   return __pyx_r;
 }
 
-/* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":776
+/* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":776
  * ctypedef long double complex clongdouble_t
  * 
  * cdef inline object PyArray_MultiIterNew1(a):             # <<<<<<<<<<<<<<
@@ -18001,7 +17985,7 @@ static CYTHON_INLINE PyObject *__pyx_f_5numpy_PyArray_MultiIterNew1(PyObject *__
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("PyArray_MultiIterNew1", 0);
 
-  /* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":777
+  /* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":777
  * 
  * cdef inline object PyArray_MultiIterNew1(a):
  *     return PyArray_MultiIterNew(1, <void*>a)             # <<<<<<<<<<<<<<
@@ -18015,7 +17999,7 @@ static CYTHON_INLINE PyObject *__pyx_f_5numpy_PyArray_MultiIterNew1(PyObject *__
   __pyx_t_1 = 0;
   goto __pyx_L0;
 
-  /* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":776
+  /* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":776
  * ctypedef long double complex clongdouble_t
  * 
  * cdef inline object PyArray_MultiIterNew1(a):             # <<<<<<<<<<<<<<
@@ -18034,7 +18018,7 @@ static CYTHON_INLINE PyObject *__pyx_f_5numpy_PyArray_MultiIterNew1(PyObject *__
   return __pyx_r;
 }
 
-/* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":779
+/* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":779
  *     return PyArray_MultiIterNew(1, <void*>a)
  * 
  * cdef inline object PyArray_MultiIterNew2(a, b):             # <<<<<<<<<<<<<<
@@ -18051,7 +18035,7 @@ static CYTHON_INLINE PyObject *__pyx_f_5numpy_PyArray_MultiIterNew2(PyObject *__
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("PyArray_MultiIterNew2", 0);
 
-  /* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":780
+  /* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":780
  * 
  * cdef inline object PyArray_MultiIterNew2(a, b):
  *     return PyArray_MultiIterNew(2, <void*>a, <void*>b)             # <<<<<<<<<<<<<<
@@ -18065,7 +18049,7 @@ static CYTHON_INLINE PyObject *__pyx_f_5numpy_PyArray_MultiIterNew2(PyObject *__
   __pyx_t_1 = 0;
   goto __pyx_L0;
 
-  /* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":779
+  /* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":779
  *     return PyArray_MultiIterNew(1, <void*>a)
  * 
  * cdef inline object PyArray_MultiIterNew2(a, b):             # <<<<<<<<<<<<<<
@@ -18084,7 +18068,7 @@ static CYTHON_INLINE PyObject *__pyx_f_5numpy_PyArray_MultiIterNew2(PyObject *__
   return __pyx_r;
 }
 
-/* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":782
+/* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":782
  *     return PyArray_MultiIterNew(2, <void*>a, <void*>b)
  * 
  * cdef inline object PyArray_MultiIterNew3(a, b, c):             # <<<<<<<<<<<<<<
@@ -18101,7 +18085,7 @@ static CYTHON_INLINE PyObject *__pyx_f_5numpy_PyArray_MultiIterNew3(PyObject *__
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("PyArray_MultiIterNew3", 0);
 
-  /* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":783
+  /* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":783
  * 
  * cdef inline object PyArray_MultiIterNew3(a, b, c):
  *     return PyArray_MultiIterNew(3, <void*>a, <void*>b, <void*> c)             # <<<<<<<<<<<<<<
@@ -18115,7 +18099,7 @@ static CYTHON_INLINE PyObject *__pyx_f_5numpy_PyArray_MultiIterNew3(PyObject *__
   __pyx_t_1 = 0;
   goto __pyx_L0;
 
-  /* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":782
+  /* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":782
  *     return PyArray_MultiIterNew(2, <void*>a, <void*>b)
  * 
  * cdef inline object PyArray_MultiIterNew3(a, b, c):             # <<<<<<<<<<<<<<
@@ -18134,7 +18118,7 @@ static CYTHON_INLINE PyObject *__pyx_f_5numpy_PyArray_MultiIterNew3(PyObject *__
   return __pyx_r;
 }
 
-/* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":785
+/* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":785
  *     return PyArray_MultiIterNew(3, <void*>a, <void*>b, <void*> c)
  * 
  * cdef inline object PyArray_MultiIterNew4(a, b, c, d):             # <<<<<<<<<<<<<<
@@ -18151,7 +18135,7 @@ static CYTHON_INLINE PyObject *__pyx_f_5numpy_PyArray_MultiIterNew4(PyObject *__
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("PyArray_MultiIterNew4", 0);
 
-  /* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":786
+  /* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":786
  * 
  * cdef inline object PyArray_MultiIterNew4(a, b, c, d):
  *     return PyArray_MultiIterNew(4, <void*>a, <void*>b, <void*>c, <void*> d)             # <<<<<<<<<<<<<<
@@ -18165,7 +18149,7 @@ static CYTHON_INLINE PyObject *__pyx_f_5numpy_PyArray_MultiIterNew4(PyObject *__
   __pyx_t_1 = 0;
   goto __pyx_L0;
 
-  /* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":785
+  /* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":785
  *     return PyArray_MultiIterNew(3, <void*>a, <void*>b, <void*> c)
  * 
  * cdef inline object PyArray_MultiIterNew4(a, b, c, d):             # <<<<<<<<<<<<<<
@@ -18184,7 +18168,7 @@ static CYTHON_INLINE PyObject *__pyx_f_5numpy_PyArray_MultiIterNew4(PyObject *__
   return __pyx_r;
 }
 
-/* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":788
+/* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":788
  *     return PyArray_MultiIterNew(4, <void*>a, <void*>b, <void*>c, <void*> d)
  * 
  * cdef inline object PyArray_MultiIterNew5(a, b, c, d, e):             # <<<<<<<<<<<<<<
@@ -18201,7 +18185,7 @@ static CYTHON_INLINE PyObject *__pyx_f_5numpy_PyArray_MultiIterNew5(PyObject *__
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("PyArray_MultiIterNew5", 0);
 
-  /* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":789
+  /* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":789
  * 
  * cdef inline object PyArray_MultiIterNew5(a, b, c, d, e):
  *     return PyArray_MultiIterNew(5, <void*>a, <void*>b, <void*>c, <void*> d, <void*> e)             # <<<<<<<<<<<<<<
@@ -18215,7 +18199,7 @@ static CYTHON_INLINE PyObject *__pyx_f_5numpy_PyArray_MultiIterNew5(PyObject *__
   __pyx_t_1 = 0;
   goto __pyx_L0;
 
-  /* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":788
+  /* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":788
  *     return PyArray_MultiIterNew(4, <void*>a, <void*>b, <void*>c, <void*> d)
  * 
  * cdef inline object PyArray_MultiIterNew5(a, b, c, d, e):             # <<<<<<<<<<<<<<
@@ -18234,7 +18218,7 @@ static CYTHON_INLINE PyObject *__pyx_f_5numpy_PyArray_MultiIterNew5(PyObject *__
   return __pyx_r;
 }
 
-/* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":791
+/* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":791
  *     return PyArray_MultiIterNew(5, <void*>a, <void*>b, <void*>c, <void*> d, <void*> e)
  * 
  * cdef inline tuple PyDataType_SHAPE(dtype d):             # <<<<<<<<<<<<<<
@@ -18249,7 +18233,7 @@ static CYTHON_INLINE PyObject *__pyx_f_5numpy_PyDataType_SHAPE(PyArray_Descr *__
   PyObject *__pyx_t_2;
   __Pyx_RefNannySetupContext("PyDataType_SHAPE", 0);
 
-  /* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":792
+  /* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":792
  * 
  * cdef inline tuple PyDataType_SHAPE(dtype d):
  *     if PyDataType_HASSUBARRAY(d):             # <<<<<<<<<<<<<<
@@ -18259,7 +18243,7 @@ static CYTHON_INLINE PyObject *__pyx_f_5numpy_PyDataType_SHAPE(PyArray_Descr *__
   __pyx_t_1 = PyDataType_HASSUBARRAY(__pyx_v_d);
   if (__pyx_t_1) {
 
-    /* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":793
+    /* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":793
  * cdef inline tuple PyDataType_SHAPE(dtype d):
  *     if PyDataType_HASSUBARRAY(d):
  *         return <tuple>d.subarray.shape             # <<<<<<<<<<<<<<
@@ -18272,7 +18256,7 @@ static CYTHON_INLINE PyObject *__pyx_f_5numpy_PyDataType_SHAPE(PyArray_Descr *__
     __pyx_r = ((PyObject*)__pyx_t_2);
     goto __pyx_L0;
 
-    /* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":792
+    /* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":792
  * 
  * cdef inline tuple PyDataType_SHAPE(dtype d):
  *     if PyDataType_HASSUBARRAY(d):             # <<<<<<<<<<<<<<
@@ -18281,7 +18265,7 @@ static CYTHON_INLINE PyObject *__pyx_f_5numpy_PyDataType_SHAPE(PyArray_Descr *__
 */
   }
 
-  /* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":795
+  /* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":795
  *         return <tuple>d.subarray.shape
  *     else:
  *         return ()             # <<<<<<<<<<<<<<
@@ -18295,7 +18279,7 @@ static CYTHON_INLINE PyObject *__pyx_f_5numpy_PyDataType_SHAPE(PyArray_Descr *__
     goto __pyx_L0;
   }
 
-  /* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":791
+  /* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":791
  *     return PyArray_MultiIterNew(5, <void*>a, <void*>b, <void*>c, <void*> d, <void*> e)
  * 
  * cdef inline tuple PyDataType_SHAPE(dtype d):             # <<<<<<<<<<<<<<
@@ -18310,7 +18294,7 @@ static CYTHON_INLINE PyObject *__pyx_f_5numpy_PyDataType_SHAPE(PyArray_Descr *__
   return __pyx_r;
 }
 
-/* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":994
+/* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":994
  *     int _import_umath() except -1
  * 
  * cdef inline void set_array_base(ndarray arr, object base) except *:             # <<<<<<<<<<<<<<
@@ -18324,7 +18308,7 @@ static CYTHON_INLINE void __pyx_f_5numpy_set_array_base(PyArrayObject *__pyx_v_a
   const char *__pyx_filename = NULL;
   int __pyx_clineno = 0;
 
-  /* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":995
+  /* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":995
  * 
  * cdef inline void set_array_base(ndarray arr, object base) except *:
  *     Py_INCREF(base) # important to do this before stealing the reference below!             # <<<<<<<<<<<<<<
@@ -18333,7 +18317,7 @@ static CYTHON_INLINE void __pyx_f_5numpy_set_array_base(PyArrayObject *__pyx_v_a
 */
   Py_INCREF(__pyx_v_base);
 
-  /* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":996
+  /* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":996
  * cdef inline void set_array_base(ndarray arr, object base) except *:
  *     Py_INCREF(base) # important to do this before stealing the reference below!
  *     PyArray_SetBaseObject(arr, base)             # <<<<<<<<<<<<<<
@@ -18342,7 +18326,7 @@ static CYTHON_INLINE void __pyx_f_5numpy_set_array_base(PyArrayObject *__pyx_v_a
 */
   __pyx_t_1 = PyArray_SetBaseObject(__pyx_v_arr, __pyx_v_base); if (unlikely(__pyx_t_1 == ((int)-1))) __PYX_ERR(2, 996, __pyx_L1_error)
 
-  /* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":994
+  /* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":994
  *     int _import_umath() except -1
  * 
  * cdef inline void set_array_base(ndarray arr, object base) except *:             # <<<<<<<<<<<<<<
@@ -18357,7 +18341,7 @@ static CYTHON_INLINE void __pyx_f_5numpy_set_array_base(PyArrayObject *__pyx_v_a
   __pyx_L0:;
 }
 
-/* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":998
+/* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":998
  *     PyArray_SetBaseObject(arr, base)
  * 
  * cdef inline object get_array_base(ndarray arr):             # <<<<<<<<<<<<<<
@@ -18372,7 +18356,7 @@ static CYTHON_INLINE PyObject *__pyx_f_5numpy_get_array_base(PyArrayObject *__py
   int __pyx_t_1;
   __Pyx_RefNannySetupContext("get_array_base", 0);
 
-  /* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":999
+  /* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":999
  * 
  * cdef inline object get_array_base(ndarray arr):
  *     base = PyArray_BASE(arr)             # <<<<<<<<<<<<<<
@@ -18381,7 +18365,7 @@ static CYTHON_INLINE PyObject *__pyx_f_5numpy_get_array_base(PyArrayObject *__py
 */
   __pyx_v_base = PyArray_BASE(__pyx_v_arr);
 
-  /* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1000
+  /* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1000
  * cdef inline object get_array_base(ndarray arr):
  *     base = PyArray_BASE(arr)
  *     if base is NULL:             # <<<<<<<<<<<<<<
@@ -18391,7 +18375,7 @@ static CYTHON_INLINE PyObject *__pyx_f_5numpy_get_array_base(PyArrayObject *__py
   __pyx_t_1 = (__pyx_v_base == NULL);
   if (__pyx_t_1) {
 
-    /* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1001
+    /* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1001
  *     base = PyArray_BASE(arr)
  *     if base is NULL:
  *         return None             # <<<<<<<<<<<<<<
@@ -18402,7 +18386,7 @@ static CYTHON_INLINE PyObject *__pyx_f_5numpy_get_array_base(PyArrayObject *__py
     __pyx_r = Py_None; __Pyx_INCREF(Py_None);
     goto __pyx_L0;
 
-    /* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1000
+    /* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1000
  * cdef inline object get_array_base(ndarray arr):
  *     base = PyArray_BASE(arr)
  *     if base is NULL:             # <<<<<<<<<<<<<<
@@ -18411,7 +18395,7 @@ static CYTHON_INLINE PyObject *__pyx_f_5numpy_get_array_base(PyArrayObject *__py
 */
   }
 
-  /* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1002
+  /* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1002
  *     if base is NULL:
  *         return None
  *     return <object>base             # <<<<<<<<<<<<<<
@@ -18423,7 +18407,7 @@ static CYTHON_INLINE PyObject *__pyx_f_5numpy_get_array_base(PyArrayObject *__py
   __pyx_r = ((PyObject *)__pyx_v_base);
   goto __pyx_L0;
 
-  /* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":998
+  /* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":998
  *     PyArray_SetBaseObject(arr, base)
  * 
  * cdef inline object get_array_base(ndarray arr):             # <<<<<<<<<<<<<<
@@ -18438,7 +18422,7 @@ static CYTHON_INLINE PyObject *__pyx_f_5numpy_get_array_base(PyArrayObject *__py
   return __pyx_r;
 }
 
-/* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1006
+/* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1006
  * # Versions of the import_* functions which are more suitable for
  * # Cython code.
  * cdef inline int import_array() except -1:             # <<<<<<<<<<<<<<
@@ -18465,7 +18449,7 @@ static CYTHON_INLINE int __pyx_f_5numpy_import_array(void) {
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("import_array", 0);
 
-  /* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1007
+  /* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1007
  * # Cython code.
  * cdef inline int import_array() except -1:
  *     try:             # <<<<<<<<<<<<<<
@@ -18481,7 +18465,7 @@ static CYTHON_INLINE int __pyx_f_5numpy_import_array(void) {
     __Pyx_XGOTREF(__pyx_t_3);
     /*try:*/ {
 
-      /* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1008
+      /* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1008
  * cdef inline int import_array() except -1:
  *     try:
  *         __pyx_import_array()             # <<<<<<<<<<<<<<
@@ -18490,7 +18474,7 @@ static CYTHON_INLINE int __pyx_f_5numpy_import_array(void) {
 */
       __pyx_t_4 = _import_array(); if (unlikely(__pyx_t_4 == ((int)-1))) __PYX_ERR(2, 1008, __pyx_L3_error)
 
-      /* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1007
+      /* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1007
  * # Cython code.
  * cdef inline int import_array() except -1:
  *     try:             # <<<<<<<<<<<<<<
@@ -18504,7 +18488,7 @@ static CYTHON_INLINE int __pyx_f_5numpy_import_array(void) {
     goto __pyx_L8_try_end;
     __pyx_L3_error:;
 
-    /* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1009
+    /* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1009
  *     try:
  *         __pyx_import_array()
  *     except Exception:             # <<<<<<<<<<<<<<
@@ -18519,7 +18503,7 @@ static CYTHON_INLINE int __pyx_f_5numpy_import_array(void) {
       __Pyx_XGOTREF(__pyx_t_6);
       __Pyx_XGOTREF(__pyx_t_7);
 
-      /* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1010
+      /* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1010
  *         __pyx_import_array()
  *     except Exception:
  *         raise ImportError("numpy._core.multiarray failed to import")             # <<<<<<<<<<<<<<
@@ -18544,7 +18528,7 @@ static CYTHON_INLINE int __pyx_f_5numpy_import_array(void) {
     }
     goto __pyx_L5_except_error;
 
-    /* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1007
+    /* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1007
  * # Cython code.
  * cdef inline int import_array() except -1:
  *     try:             # <<<<<<<<<<<<<<
@@ -18560,7 +18544,7 @@ static CYTHON_INLINE int __pyx_f_5numpy_import_array(void) {
     __pyx_L8_try_end:;
   }
 
-  /* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1006
+  /* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1006
  * # Versions of the import_* functions which are more suitable for
  * # Cython code.
  * cdef inline int import_array() except -1:             # <<<<<<<<<<<<<<
@@ -18585,7 +18569,7 @@ static CYTHON_INLINE int __pyx_f_5numpy_import_array(void) {
   return __pyx_r;
 }
 
-/* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1012
+/* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1012
  *         raise ImportError("numpy._core.multiarray failed to import")
  * 
  * cdef inline int import_umath() except -1:             # <<<<<<<<<<<<<<
@@ -18612,7 +18596,7 @@ static CYTHON_INLINE int __pyx_f_5numpy_import_umath(void) {
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("import_umath", 0);
 
-  /* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1013
+  /* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1013
  * 
  * cdef inline int import_umath() except -1:
  *     try:             # <<<<<<<<<<<<<<
@@ -18628,7 +18612,7 @@ static CYTHON_INLINE int __pyx_f_5numpy_import_umath(void) {
     __Pyx_XGOTREF(__pyx_t_3);
     /*try:*/ {
 
-      /* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1014
+      /* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1014
  * cdef inline int import_umath() except -1:
  *     try:
  *         _import_umath()             # <<<<<<<<<<<<<<
@@ -18637,7 +18621,7 @@ static CYTHON_INLINE int __pyx_f_5numpy_import_umath(void) {
 */
       __pyx_t_4 = _import_umath(); if (unlikely(__pyx_t_4 == ((int)-1))) __PYX_ERR(2, 1014, __pyx_L3_error)
 
-      /* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1013
+      /* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1013
  * 
  * cdef inline int import_umath() except -1:
  *     try:             # <<<<<<<<<<<<<<
@@ -18651,7 +18635,7 @@ static CYTHON_INLINE int __pyx_f_5numpy_import_umath(void) {
     goto __pyx_L8_try_end;
     __pyx_L3_error:;
 
-    /* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1015
+    /* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1015
  *     try:
  *         _import_umath()
  *     except Exception:             # <<<<<<<<<<<<<<
@@ -18666,7 +18650,7 @@ static CYTHON_INLINE int __pyx_f_5numpy_import_umath(void) {
       __Pyx_XGOTREF(__pyx_t_6);
       __Pyx_XGOTREF(__pyx_t_7);
 
-      /* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1016
+      /* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1016
  *         _import_umath()
  *     except Exception:
  *         raise ImportError("numpy._core.umath failed to import")             # <<<<<<<<<<<<<<
@@ -18691,7 +18675,7 @@ static CYTHON_INLINE int __pyx_f_5numpy_import_umath(void) {
     }
     goto __pyx_L5_except_error;
 
-    /* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1013
+    /* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1013
  * 
  * cdef inline int import_umath() except -1:
  *     try:             # <<<<<<<<<<<<<<
@@ -18707,7 +18691,7 @@ static CYTHON_INLINE int __pyx_f_5numpy_import_umath(void) {
     __pyx_L8_try_end:;
   }
 
-  /* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1012
+  /* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1012
  *         raise ImportError("numpy._core.multiarray failed to import")
  * 
  * cdef inline int import_umath() except -1:             # <<<<<<<<<<<<<<
@@ -18732,7 +18716,7 @@ static CYTHON_INLINE int __pyx_f_5numpy_import_umath(void) {
   return __pyx_r;
 }
 
-/* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1018
+/* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1018
  *         raise ImportError("numpy._core.umath failed to import")
  * 
  * cdef inline int import_ufunc() except -1:             # <<<<<<<<<<<<<<
@@ -18759,7 +18743,7 @@ static CYTHON_INLINE int __pyx_f_5numpy_import_ufunc(void) {
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("import_ufunc", 0);
 
-  /* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1019
+  /* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1019
  * 
  * cdef inline int import_ufunc() except -1:
  *     try:             # <<<<<<<<<<<<<<
@@ -18775,7 +18759,7 @@ static CYTHON_INLINE int __pyx_f_5numpy_import_ufunc(void) {
     __Pyx_XGOTREF(__pyx_t_3);
     /*try:*/ {
 
-      /* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1020
+      /* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1020
  * cdef inline int import_ufunc() except -1:
  *     try:
  *         _import_umath()             # <<<<<<<<<<<<<<
@@ -18784,7 +18768,7 @@ static CYTHON_INLINE int __pyx_f_5numpy_import_ufunc(void) {
 */
       __pyx_t_4 = _import_umath(); if (unlikely(__pyx_t_4 == ((int)-1))) __PYX_ERR(2, 1020, __pyx_L3_error)
 
-      /* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1019
+      /* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1019
  * 
  * cdef inline int import_ufunc() except -1:
  *     try:             # <<<<<<<<<<<<<<
@@ -18798,7 +18782,7 @@ static CYTHON_INLINE int __pyx_f_5numpy_import_ufunc(void) {
     goto __pyx_L8_try_end;
     __pyx_L3_error:;
 
-    /* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1021
+    /* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1021
  *     try:
  *         _import_umath()
  *     except Exception:             # <<<<<<<<<<<<<<
@@ -18813,7 +18797,7 @@ static CYTHON_INLINE int __pyx_f_5numpy_import_ufunc(void) {
       __Pyx_XGOTREF(__pyx_t_6);
       __Pyx_XGOTREF(__pyx_t_7);
 
-      /* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1022
+      /* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1022
  *         _import_umath()
  *     except Exception:
  *         raise ImportError("numpy._core.umath failed to import")             # <<<<<<<<<<<<<<
@@ -18838,7 +18822,7 @@ static CYTHON_INLINE int __pyx_f_5numpy_import_ufunc(void) {
     }
     goto __pyx_L5_except_error;
 
-    /* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1019
+    /* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1019
  * 
  * cdef inline int import_ufunc() except -1:
  *     try:             # <<<<<<<<<<<<<<
@@ -18854,7 +18838,7 @@ static CYTHON_INLINE int __pyx_f_5numpy_import_ufunc(void) {
     __pyx_L8_try_end:;
   }
 
-  /* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1018
+  /* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1018
  *         raise ImportError("numpy._core.umath failed to import")
  * 
  * cdef inline int import_ufunc() except -1:             # <<<<<<<<<<<<<<
@@ -18879,7 +18863,7 @@ static CYTHON_INLINE int __pyx_f_5numpy_import_ufunc(void) {
   return __pyx_r;
 }
 
-/* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1025
+/* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1025
  * 
  * 
  * cdef inline bint is_timedelta64_object(object obj) noexcept:             # <<<<<<<<<<<<<<
@@ -18890,7 +18874,7 @@ static CYTHON_INLINE int __pyx_f_5numpy_import_ufunc(void) {
 static CYTHON_INLINE int __pyx_f_5numpy_is_timedelta64_object(PyObject *__pyx_v_obj) {
   int __pyx_r;
 
-  /* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1037
+  /* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1037
  *     bool
  *     """
  *     return PyObject_TypeCheck(obj, &PyTimedeltaArrType_Type)             # <<<<<<<<<<<<<<
@@ -18900,7 +18884,7 @@ static CYTHON_INLINE int __pyx_f_5numpy_is_timedelta64_object(PyObject *__pyx_v_
   __pyx_r = PyObject_TypeCheck(__pyx_v_obj, (&PyTimedeltaArrType_Type));
   goto __pyx_L0;
 
-  /* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1025
+  /* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1025
  * 
  * 
  * cdef inline bint is_timedelta64_object(object obj) noexcept:             # <<<<<<<<<<<<<<
@@ -18913,7 +18897,7 @@ static CYTHON_INLINE int __pyx_f_5numpy_is_timedelta64_object(PyObject *__pyx_v_
   return __pyx_r;
 }
 
-/* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1040
+/* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1040
  * 
  * 
  * cdef inline bint is_datetime64_object(object obj) noexcept:             # <<<<<<<<<<<<<<
@@ -18924,7 +18908,7 @@ static CYTHON_INLINE int __pyx_f_5numpy_is_timedelta64_object(PyObject *__pyx_v_
 static CYTHON_INLINE int __pyx_f_5numpy_is_datetime64_object(PyObject *__pyx_v_obj) {
   int __pyx_r;
 
-  /* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1052
+  /* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1052
  *     bool
  *     """
  *     return PyObject_TypeCheck(obj, &PyDatetimeArrType_Type)             # <<<<<<<<<<<<<<
@@ -18934,7 +18918,7 @@ static CYTHON_INLINE int __pyx_f_5numpy_is_datetime64_object(PyObject *__pyx_v_o
   __pyx_r = PyObject_TypeCheck(__pyx_v_obj, (&PyDatetimeArrType_Type));
   goto __pyx_L0;
 
-  /* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1040
+  /* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1040
  * 
  * 
  * cdef inline bint is_datetime64_object(object obj) noexcept:             # <<<<<<<<<<<<<<
@@ -18947,7 +18931,7 @@ static CYTHON_INLINE int __pyx_f_5numpy_is_datetime64_object(PyObject *__pyx_v_o
   return __pyx_r;
 }
 
-/* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1055
+/* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1055
  * 
  * 
  * cdef inline npy_datetime get_datetime64_value(object obj) noexcept nogil:             # <<<<<<<<<<<<<<
@@ -18958,7 +18942,7 @@ static CYTHON_INLINE int __pyx_f_5numpy_is_datetime64_object(PyObject *__pyx_v_o
 static CYTHON_INLINE npy_datetime __pyx_f_5numpy_get_datetime64_value(PyObject *__pyx_v_obj) {
   npy_datetime __pyx_r;
 
-  /* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1062
+  /* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1062
  *     also needed.  That can be found using `get_datetime64_unit`.
  *     """
  *     return (<PyDatetimeScalarObject*>obj).obval             # <<<<<<<<<<<<<<
@@ -18968,7 +18952,7 @@ static CYTHON_INLINE npy_datetime __pyx_f_5numpy_get_datetime64_value(PyObject *
   __pyx_r = ((PyDatetimeScalarObject *)__pyx_v_obj)->obval;
   goto __pyx_L0;
 
-  /* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1055
+  /* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1055
  * 
  * 
  * cdef inline npy_datetime get_datetime64_value(object obj) noexcept nogil:             # <<<<<<<<<<<<<<
@@ -18981,7 +18965,7 @@ static CYTHON_INLINE npy_datetime __pyx_f_5numpy_get_datetime64_value(PyObject *
   return __pyx_r;
 }
 
-/* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1065
+/* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1065
  * 
  * 
  * cdef inline npy_timedelta get_timedelta64_value(object obj) noexcept nogil:             # <<<<<<<<<<<<<<
@@ -18992,7 +18976,7 @@ static CYTHON_INLINE npy_datetime __pyx_f_5numpy_get_datetime64_value(PyObject *
 static CYTHON_INLINE npy_timedelta __pyx_f_5numpy_get_timedelta64_value(PyObject *__pyx_v_obj) {
   npy_timedelta __pyx_r;
 
-  /* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1069
+  /* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1069
  *     returns the int64 value underlying scalar numpy timedelta64 object
  *     """
  *     return (<PyTimedeltaScalarObject*>obj).obval             # <<<<<<<<<<<<<<
@@ -19002,7 +18986,7 @@ static CYTHON_INLINE npy_timedelta __pyx_f_5numpy_get_timedelta64_value(PyObject
   __pyx_r = ((PyTimedeltaScalarObject *)__pyx_v_obj)->obval;
   goto __pyx_L0;
 
-  /* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1065
+  /* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1065
  * 
  * 
  * cdef inline npy_timedelta get_timedelta64_value(object obj) noexcept nogil:             # <<<<<<<<<<<<<<
@@ -19015,7 +18999,7 @@ static CYTHON_INLINE npy_timedelta __pyx_f_5numpy_get_timedelta64_value(PyObject
   return __pyx_r;
 }
 
-/* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1072
+/* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1072
  * 
  * 
  * cdef inline NPY_DATETIMEUNIT get_datetime64_unit(object obj) noexcept nogil:             # <<<<<<<<<<<<<<
@@ -19026,7 +19010,7 @@ static CYTHON_INLINE npy_timedelta __pyx_f_5numpy_get_timedelta64_value(PyObject
 static CYTHON_INLINE NPY_DATETIMEUNIT __pyx_f_5numpy_get_datetime64_unit(PyObject *__pyx_v_obj) {
   NPY_DATETIMEUNIT __pyx_r;
 
-  /* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1076
+  /* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1076
  *     returns the unit part of the dtype for a numpy datetime64 object.
  *     """
  *     return <NPY_DATETIMEUNIT>(<PyDatetimeScalarObject*>obj).obmeta.base             # <<<<<<<<<<<<<<
@@ -19036,7 +19020,7 @@ static CYTHON_INLINE NPY_DATETIMEUNIT __pyx_f_5numpy_get_datetime64_unit(PyObjec
   __pyx_r = ((NPY_DATETIMEUNIT)((PyDatetimeScalarObject *)__pyx_v_obj)->obmeta.base);
   goto __pyx_L0;
 
-  /* "../../../.pixi/envs/mces/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1072
+  /* ".pixi/build/work/ms_utils-UdWkRD18ix8/bld/rattler-build_ms_utils/host_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placeho/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1072
  * 
  * 
  * cdef inline NPY_DATETIMEUNIT get_datetime64_unit(object obj) noexcept nogil:             # <<<<<<<<<<<<<<
@@ -19049,7 +19033,7 @@ static CYTHON_INLINE NPY_DATETIMEUNIT __pyx_f_5numpy_get_datetime64_unit(PyObjec
   return __pyx_r;
 }
 
-/* "fast_mol_filter/calculator.pyx":15
+/* "src/ms_utils/mces/fast_mol_filter/fast_mol_filter/calculator.pyx":15
  *     double calculate_total_cost_symmetric(const vector[string]& smiles_list)
  * 
  * def calculate_distances_symmetric(smiles_list):             # <<<<<<<<<<<<<<
@@ -19058,16 +19042,16 @@ static CYTHON_INLINE NPY_DATETIMEUNIT __pyx_f_5numpy_get_datetime64_unit(PyObjec
 */
 
 /* Python wrapper */
-static PyObject *__pyx_pw_15fast_mol_filter_10calculator_1calculate_distances_symmetric(PyObject *__pyx_self, 
+static PyObject *__pyx_pw_8ms_utils_4mces_15fast_mol_filter_10calculator_1calculate_distances_symmetric(PyObject *__pyx_self, 
 #if CYTHON_METH_FASTCALL
 PyObject *const *__pyx_args, Py_ssize_t __pyx_nargs, PyObject *__pyx_kwds
 #else
 PyObject *__pyx_args, PyObject *__pyx_kwds
 #endif
 ); /*proto*/
-PyDoc_STRVAR(__pyx_doc_15fast_mol_filter_10calculator_calculate_distances_symmetric, "\n    Calculates a symmetric distance matrix for a list of SMILES strings.\n\n    This function passes the SMILES list to a C++ backend which handles\n    parallel pre-computation and pairwise distance calculation.\n\n    Args:\n        smiles_list (list or iterable of str): A list of SMILES strings.\n\n    Returns:\n        numpy.ndarray: A 2D numpy array representing the symmetric distance matrix.\n    ");
-static PyMethodDef __pyx_mdef_15fast_mol_filter_10calculator_1calculate_distances_symmetric = {"calculate_distances_symmetric", (PyCFunction)(void(*)(void))(__Pyx_PyCFunction_FastCallWithKeywords)__pyx_pw_15fast_mol_filter_10calculator_1calculate_distances_symmetric, __Pyx_METH_FASTCALL|METH_KEYWORDS, __pyx_doc_15fast_mol_filter_10calculator_calculate_distances_symmetric};
-static PyObject *__pyx_pw_15fast_mol_filter_10calculator_1calculate_distances_symmetric(PyObject *__pyx_self, 
+PyDoc_STRVAR(__pyx_doc_8ms_utils_4mces_15fast_mol_filter_10calculator_calculate_distances_symmetric, "\n    Calculates a symmetric distance matrix for a list of SMILES strings.\n\n    This function passes the SMILES list to a C++ backend which handles\n    parallel pre-computation and pairwise distance calculation.\n\n    Args:\n        smiles_list (list or iterable of str): A list of SMILES strings.\n\n    Returns:\n        numpy.ndarray: A 2D numpy array representing the symmetric distance matrix.\n    ");
+static PyMethodDef __pyx_mdef_8ms_utils_4mces_15fast_mol_filter_10calculator_1calculate_distances_symmetric = {"calculate_distances_symmetric", (PyCFunction)(void(*)(void))(__Pyx_PyCFunction_FastCallWithKeywords)__pyx_pw_8ms_utils_4mces_15fast_mol_filter_10calculator_1calculate_distances_symmetric, __Pyx_METH_FASTCALL|METH_KEYWORDS, __pyx_doc_8ms_utils_4mces_15fast_mol_filter_10calculator_calculate_distances_symmetric};
+static PyObject *__pyx_pw_8ms_utils_4mces_15fast_mol_filter_10calculator_1calculate_distances_symmetric(PyObject *__pyx_self, 
 #if CYTHON_METH_FASTCALL
 PyObject *const *__pyx_args, Py_ssize_t __pyx_nargs, PyObject *__pyx_kwds
 #else
@@ -19129,11 +19113,11 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
   for (Py_ssize_t __pyx_temp=0; __pyx_temp < (Py_ssize_t)(sizeof(values)/sizeof(values[0])); ++__pyx_temp) {
     Py_XDECREF(values[__pyx_temp]);
   }
-  __Pyx_AddTraceback("fast_mol_filter.calculator.calculate_distances_symmetric", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __Pyx_AddTraceback("ms_utils.mces.fast_mol_filter.calculator.calculate_distances_symmetric", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __Pyx_RefNannyFinishContext();
   return NULL;
   __pyx_L4_argument_unpacking_done:;
-  __pyx_r = __pyx_pf_15fast_mol_filter_10calculator_calculate_distances_symmetric(__pyx_self, __pyx_v_smiles_list);
+  __pyx_r = __pyx_pf_8ms_utils_4mces_15fast_mol_filter_10calculator_calculate_distances_symmetric(__pyx_self, __pyx_v_smiles_list);
 
   /* function exit code */
   for (Py_ssize_t __pyx_temp=0; __pyx_temp < (Py_ssize_t)(sizeof(values)/sizeof(values[0])); ++__pyx_temp) {
@@ -19143,7 +19127,7 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
   return __pyx_r;
 }
 
-static PyObject *__pyx_pf_15fast_mol_filter_10calculator_calculate_distances_symmetric(CYTHON_UNUSED PyObject *__pyx_self, PyObject *__pyx_v_smiles_list) {
+static PyObject *__pyx_pf_8ms_utils_4mces_15fast_mol_filter_10calculator_calculate_distances_symmetric(CYTHON_UNUSED PyObject *__pyx_self, PyObject *__pyx_v_smiles_list) {
   Py_ssize_t __pyx_v_n;
   std::vector<std::string>  __pyx_v_cpp_smiles;
   PyObject *__pyx_v_s = NULL;
@@ -19174,7 +19158,7 @@ static PyObject *__pyx_pf_15fast_mol_filter_10calculator_calculate_distances_sym
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("calculate_distances_symmetric", 0);
 
-  /* "fast_mol_filter/calculator.pyx":28
+  /* "src/ms_utils/mces/fast_mol_filter/fast_mol_filter/calculator.pyx":28
  *         numpy.ndarray: A 2D numpy array representing the symmetric distance matrix.
  *     """
  *     cdef Py_ssize_t n = len(smiles_list)             # <<<<<<<<<<<<<<
@@ -19184,7 +19168,7 @@ static PyObject *__pyx_pf_15fast_mol_filter_10calculator_calculate_distances_sym
   __pyx_t_1 = PyObject_Length(__pyx_v_smiles_list); if (unlikely(__pyx_t_1 == ((Py_ssize_t)-1))) __PYX_ERR(0, 28, __pyx_L1_error)
   __pyx_v_n = __pyx_t_1;
 
-  /* "fast_mol_filter/calculator.pyx":29
+  /* "src/ms_utils/mces/fast_mol_filter/fast_mol_filter/calculator.pyx":29
  *     """
  *     cdef Py_ssize_t n = len(smiles_list)
  *     if n == 0:             # <<<<<<<<<<<<<<
@@ -19194,7 +19178,7 @@ static PyObject *__pyx_pf_15fast_mol_filter_10calculator_calculate_distances_sym
   __pyx_t_2 = (__pyx_v_n == 0);
   if (__pyx_t_2) {
 
-    /* "fast_mol_filter/calculator.pyx":30
+    /* "src/ms_utils/mces/fast_mol_filter/fast_mol_filter/calculator.pyx":30
  *     cdef Py_ssize_t n = len(smiles_list)
  *     if n == 0:
  *         return np.array([])             # <<<<<<<<<<<<<<
@@ -19235,7 +19219,7 @@ static PyObject *__pyx_pf_15fast_mol_filter_10calculator_calculate_distances_sym
     __pyx_t_3 = 0;
     goto __pyx_L0;
 
-    /* "fast_mol_filter/calculator.pyx":29
+    /* "src/ms_utils/mces/fast_mol_filter/fast_mol_filter/calculator.pyx":29
  *     """
  *     cdef Py_ssize_t n = len(smiles_list)
  *     if n == 0:             # <<<<<<<<<<<<<<
@@ -19244,7 +19228,7 @@ static PyObject *__pyx_pf_15fast_mol_filter_10calculator_calculate_distances_sym
 */
   }
 
-  /* "fast_mol_filter/calculator.pyx":34
+  /* "src/ms_utils/mces/fast_mol_filter/fast_mol_filter/calculator.pyx":34
  *     # Convert Python strings to C++ strings
  *     cdef vector[string] cpp_smiles
  *     cpp_smiles.reserve(n)             # <<<<<<<<<<<<<<
@@ -19258,7 +19242,7 @@ static PyObject *__pyx_pf_15fast_mol_filter_10calculator_calculate_distances_sym
     __PYX_ERR(0, 34, __pyx_L1_error)
   }
 
-  /* "fast_mol_filter/calculator.pyx":35
+  /* "src/ms_utils/mces/fast_mol_filter/fast_mol_filter/calculator.pyx":35
  *     cdef vector[string] cpp_smiles
  *     cpp_smiles.reserve(n)
  *     for s in smiles_list:             # <<<<<<<<<<<<<<
@@ -19317,7 +19301,7 @@ static PyObject *__pyx_pf_15fast_mol_filter_10calculator_calculate_distances_sym
     __Pyx_XDECREF_SET(__pyx_v_s, __pyx_t_6);
     __pyx_t_6 = 0;
 
-    /* "fast_mol_filter/calculator.pyx":36
+    /* "src/ms_utils/mces/fast_mol_filter/fast_mol_filter/calculator.pyx":36
  *     cpp_smiles.reserve(n)
  *     for s in smiles_list:
  *         cpp_smiles.push_back(s.encode('utf-8'))             # <<<<<<<<<<<<<<
@@ -19343,7 +19327,7 @@ static PyObject *__pyx_pf_15fast_mol_filter_10calculator_calculate_distances_sym
       __PYX_ERR(0, 36, __pyx_L1_error)
     }
 
-    /* "fast_mol_filter/calculator.pyx":35
+    /* "src/ms_utils/mces/fast_mol_filter/fast_mol_filter/calculator.pyx":35
  *     cdef vector[string] cpp_smiles
  *     cpp_smiles.reserve(n)
  *     for s in smiles_list:             # <<<<<<<<<<<<<<
@@ -19353,7 +19337,7 @@ static PyObject *__pyx_pf_15fast_mol_filter_10calculator_calculate_distances_sym
   }
   __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
 
-  /* "fast_mol_filter/calculator.pyx":41
+  /* "src/ms_utils/mces/fast_mol_filter/fast_mol_filter/calculator.pyx":41
  *     # All parallel computation is inside the C++ layer.
  *     # We release the GIL for the duration of the C++ call.
  *     with nogil:             # <<<<<<<<<<<<<<
@@ -19367,7 +19351,7 @@ static PyObject *__pyx_pf_15fast_mol_filter_10calculator_calculate_distances_sym
       __Pyx_FastGIL_Remember();
       /*try:*/ {
 
-        /* "fast_mol_filter/calculator.pyx":42
+        /* "src/ms_utils/mces/fast_mol_filter/fast_mol_filter/calculator.pyx":42
  *     # We release the GIL for the duration of the C++ call.
  *     with nogil:
  *         cpp_results = calculate_symmetric_distance_matrix(cpp_smiles)             # <<<<<<<<<<<<<<
@@ -19377,7 +19361,7 @@ static PyObject *__pyx_pf_15fast_mol_filter_10calculator_calculate_distances_sym
         __pyx_v_cpp_results = calculate_symmetric_distance_matrix(__pyx_v_cpp_smiles);
       }
 
-      /* "fast_mol_filter/calculator.pyx":41
+      /* "src/ms_utils/mces/fast_mol_filter/fast_mol_filter/calculator.pyx":41
  *     # All parallel computation is inside the C++ layer.
  *     # We release the GIL for the duration of the C++ call.
  *     with nogil:             # <<<<<<<<<<<<<<
@@ -19394,7 +19378,7 @@ static PyObject *__pyx_pf_15fast_mol_filter_10calculator_calculate_distances_sym
       }
   }
 
-  /* "fast_mol_filter/calculator.pyx":45
+  /* "src/ms_utils/mces/fast_mol_filter/fast_mol_filter/calculator.pyx":45
  * 
  *     # Check for empty result to avoid accessing invalid memory
  *     if cpp_results.empty():             # <<<<<<<<<<<<<<
@@ -19404,7 +19388,7 @@ static PyObject *__pyx_pf_15fast_mol_filter_10calculator_calculate_distances_sym
   __pyx_t_2 = __pyx_v_cpp_results.empty();
   if (__pyx_t_2) {
 
-    /* "fast_mol_filter/calculator.pyx":46
+    /* "src/ms_utils/mces/fast_mol_filter/fast_mol_filter/calculator.pyx":46
  *     # Check for empty result to avoid accessing invalid memory
  *     if cpp_results.empty():
  *         return np.array([]).reshape((n,n))             # <<<<<<<<<<<<<<
@@ -19469,7 +19453,7 @@ static PyObject *__pyx_pf_15fast_mol_filter_10calculator_calculate_distances_sym
     __pyx_t_3 = 0;
     goto __pyx_L0;
 
-    /* "fast_mol_filter/calculator.pyx":45
+    /* "src/ms_utils/mces/fast_mol_filter/fast_mol_filter/calculator.pyx":45
  * 
  *     # Check for empty result to avoid accessing invalid memory
  *     if cpp_results.empty():             # <<<<<<<<<<<<<<
@@ -19478,7 +19462,7 @@ static PyObject *__pyx_pf_15fast_mol_filter_10calculator_calculate_distances_sym
 */
   }
 
-  /* "fast_mol_filter/calculator.pyx":49
+  /* "src/ms_utils/mces/fast_mol_filter/fast_mol_filter/calculator.pyx":49
  * 
  *     # Copy the data to a NumPy array (not zero-copy, but safe)
  *     cdef Py_ssize_t size = cpp_results.size()             # <<<<<<<<<<<<<<
@@ -19487,7 +19471,7 @@ static PyObject *__pyx_pf_15fast_mol_filter_10calculator_calculate_distances_sym
 */
   __pyx_v_size = __pyx_v_cpp_results.size();
 
-  /* "fast_mol_filter/calculator.pyx":50
+  /* "src/ms_utils/mces/fast_mol_filter/fast_mol_filter/calculator.pyx":50
  *     # Copy the data to a NumPy array (not zero-copy, but safe)
  *     cdef Py_ssize_t size = cpp_results.size()
  *     py_results = np.empty(size, dtype=np.float64)             # <<<<<<<<<<<<<<
@@ -19536,7 +19520,7 @@ static PyObject *__pyx_pf_15fast_mol_filter_10calculator_calculate_distances_sym
   __pyx_v_py_results = __pyx_t_3;
   __pyx_t_3 = 0;
 
-  /* "fast_mol_filter/calculator.pyx":51
+  /* "src/ms_utils/mces/fast_mol_filter/fast_mol_filter/calculator.pyx":51
  *     cdef Py_ssize_t size = cpp_results.size()
  *     py_results = np.empty(size, dtype=np.float64)
  *     cdef double[::1] py_view = py_results             # <<<<<<<<<<<<<<
@@ -19548,7 +19532,7 @@ static PyObject *__pyx_pf_15fast_mol_filter_10calculator_calculate_distances_sym
   __pyx_t_12.memview = NULL;
   __pyx_t_12.data = NULL;
 
-  /* "fast_mol_filter/calculator.pyx":55
+  /* "src/ms_utils/mces/fast_mol_filter/fast_mol_filter/calculator.pyx":55
  *     # Copy data from C++ vector to NumPy array
  *     cdef Py_ssize_t i
  *     for i in range(size):             # <<<<<<<<<<<<<<
@@ -19560,7 +19544,7 @@ static PyObject *__pyx_pf_15fast_mol_filter_10calculator_calculate_distances_sym
   for (__pyx_t_14 = 0; __pyx_t_14 < __pyx_t_13; __pyx_t_14+=1) {
     __pyx_v_i = __pyx_t_14;
 
-    /* "fast_mol_filter/calculator.pyx":56
+    /* "src/ms_utils/mces/fast_mol_filter/fast_mol_filter/calculator.pyx":56
  *     cdef Py_ssize_t i
  *     for i in range(size):
  *         py_view[i] = cpp_results[i]             # <<<<<<<<<<<<<<
@@ -19571,12 +19555,10 @@ static PyObject *__pyx_pf_15fast_mol_filter_10calculator_calculate_distances_sym
     *((double *) ( /* dim=0 */ ((char *) (((double *) __pyx_v_py_view.data) + __pyx_t_15)) )) = (__pyx_v_cpp_results[__pyx_v_i]);
   }
 
-  /* "fast_mol_filter/calculator.pyx":59
+  /* "src/ms_utils/mces/fast_mol_filter/fast_mol_filter/calculator.pyx":59
  * 
  *     # Reshape the flat array into a 2D matrix
  *     return py_results.reshape((n, n))             # <<<<<<<<<<<<<<
- * 
- * def filter2(iterable_smiles):
 */
   __Pyx_XDECREF(__pyx_r);
   __pyx_t_6 = __pyx_v_py_results;
@@ -19606,7 +19588,7 @@ static PyObject *__pyx_pf_15fast_mol_filter_10calculator_calculate_distances_sym
   __pyx_t_3 = 0;
   goto __pyx_L0;
 
-  /* "fast_mol_filter/calculator.pyx":15
+  /* "src/ms_utils/mces/fast_mol_filter/fast_mol_filter/calculator.pyx":15
  *     double calculate_total_cost_symmetric(const vector[string]& smiles_list)
  * 
  * def calculate_distances_symmetric(smiles_list):             # <<<<<<<<<<<<<<
@@ -19623,360 +19605,12 @@ static PyObject *__pyx_pf_15fast_mol_filter_10calculator_calculate_distances_sym
   __Pyx_XDECREF(__pyx_t_10);
   __Pyx_XDECREF(__pyx_t_11);
   __PYX_XCLEAR_MEMVIEW(&__pyx_t_12, 1);
-  __Pyx_AddTraceback("fast_mol_filter.calculator.calculate_distances_symmetric", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __Pyx_AddTraceback("ms_utils.mces.fast_mol_filter.calculator.calculate_distances_symmetric", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __pyx_r = NULL;
   __pyx_L0:;
   __Pyx_XDECREF(__pyx_v_s);
   __Pyx_XDECREF(__pyx_v_py_results);
   __PYX_XCLEAR_MEMVIEW(&__pyx_v_py_view, 1);
-  __Pyx_XGIVEREF(__pyx_r);
-  __Pyx_RefNannyFinishContext();
-  return __pyx_r;
-}
-
-/* "fast_mol_filter/calculator.pyx":61
- *     return py_results.reshape((n, n))
- * 
- * def filter2(iterable_smiles):             # <<<<<<<<<<<<<<
- *     """
- *     Calculates the sum of pairwise distances for a list of SMILES strings.
-*/
-
-/* Python wrapper */
-static PyObject *__pyx_pw_15fast_mol_filter_10calculator_3filter2(PyObject *__pyx_self, 
-#if CYTHON_METH_FASTCALL
-PyObject *const *__pyx_args, Py_ssize_t __pyx_nargs, PyObject *__pyx_kwds
-#else
-PyObject *__pyx_args, PyObject *__pyx_kwds
-#endif
-); /*proto*/
-PyDoc_STRVAR(__pyx_doc_15fast_mol_filter_10calculator_2filter2, "\n    Calculates the sum of pairwise distances for a list of SMILES strings.\n\n    This function passes the SMILES list to a C++ backend which handles\n    all molecular processing and calculations in parallel.\n\n    Args:\n        iterable_smiles (list or iterable of str): A list of SMILES strings.\n\n    Returns:\n        float: The total summed cost of all unique pairs.\n    ");
-static PyMethodDef __pyx_mdef_15fast_mol_filter_10calculator_3filter2 = {"filter2", (PyCFunction)(void(*)(void))(__Pyx_PyCFunction_FastCallWithKeywords)__pyx_pw_15fast_mol_filter_10calculator_3filter2, __Pyx_METH_FASTCALL|METH_KEYWORDS, __pyx_doc_15fast_mol_filter_10calculator_2filter2};
-static PyObject *__pyx_pw_15fast_mol_filter_10calculator_3filter2(PyObject *__pyx_self, 
-#if CYTHON_METH_FASTCALL
-PyObject *const *__pyx_args, Py_ssize_t __pyx_nargs, PyObject *__pyx_kwds
-#else
-PyObject *__pyx_args, PyObject *__pyx_kwds
-#endif
-) {
-  PyObject *__pyx_v_iterable_smiles = 0;
-  #if !CYTHON_METH_FASTCALL
-  CYTHON_UNUSED Py_ssize_t __pyx_nargs;
-  #endif
-  CYTHON_UNUSED PyObject *const *__pyx_kwvalues;
-  PyObject* values[1] = {0};
-  int __pyx_lineno = 0;
-  const char *__pyx_filename = NULL;
-  int __pyx_clineno = 0;
-  PyObject *__pyx_r = 0;
-  __Pyx_RefNannyDeclarations
-  __Pyx_RefNannySetupContext("filter2 (wrapper)", 0);
-  #if !CYTHON_METH_FASTCALL
-  #if CYTHON_ASSUME_SAFE_SIZE
-  __pyx_nargs = PyTuple_GET_SIZE(__pyx_args);
-  #else
-  __pyx_nargs = PyTuple_Size(__pyx_args); if (unlikely(__pyx_nargs < 0)) return NULL;
-  #endif
-  #endif
-  __pyx_kwvalues = __Pyx_KwValues_FASTCALL(__pyx_args, __pyx_nargs);
-  {
-    PyObject ** const __pyx_pyargnames[] = {&__pyx_mstate_global->__pyx_n_u_iterable_smiles,0};
-    const Py_ssize_t __pyx_kwds_len = (__pyx_kwds) ? __Pyx_NumKwargs_FASTCALL(__pyx_kwds) : 0;
-    if (unlikely(__pyx_kwds_len) < 0) __PYX_ERR(0, 61, __pyx_L3_error)
-    if (__pyx_kwds_len > 0) {
-      switch (__pyx_nargs) {
-        case  1:
-        values[0] = __Pyx_ArgRef_FASTCALL(__pyx_args, 0);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[0])) __PYX_ERR(0, 61, __pyx_L3_error)
-        CYTHON_FALLTHROUGH;
-        case  0: break;
-        default: goto __pyx_L5_argtuple_error;
-      }
-      const Py_ssize_t kwd_pos_args = __pyx_nargs;
-      if (__Pyx_ParseKeywords(__pyx_kwds, __pyx_kwvalues, __pyx_pyargnames, 0, values, kwd_pos_args, __pyx_kwds_len, "filter2", 0) < 0) __PYX_ERR(0, 61, __pyx_L3_error)
-      for (Py_ssize_t i = __pyx_nargs; i < 1; i++) {
-        if (unlikely(!values[i])) { __Pyx_RaiseArgtupleInvalid("filter2", 1, 1, 1, i); __PYX_ERR(0, 61, __pyx_L3_error) }
-      }
-    } else if (unlikely(__pyx_nargs != 1)) {
-      goto __pyx_L5_argtuple_error;
-    } else {
-      values[0] = __Pyx_ArgRef_FASTCALL(__pyx_args, 0);
-      if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[0])) __PYX_ERR(0, 61, __pyx_L3_error)
-    }
-    __pyx_v_iterable_smiles = values[0];
-  }
-  goto __pyx_L6_skip;
-  __pyx_L5_argtuple_error:;
-  __Pyx_RaiseArgtupleInvalid("filter2", 1, 1, 1, __pyx_nargs); __PYX_ERR(0, 61, __pyx_L3_error)
-  __pyx_L6_skip:;
-  goto __pyx_L4_argument_unpacking_done;
-  __pyx_L3_error:;
-  for (Py_ssize_t __pyx_temp=0; __pyx_temp < (Py_ssize_t)(sizeof(values)/sizeof(values[0])); ++__pyx_temp) {
-    Py_XDECREF(values[__pyx_temp]);
-  }
-  __Pyx_AddTraceback("fast_mol_filter.calculator.filter2", __pyx_clineno, __pyx_lineno, __pyx_filename);
-  __Pyx_RefNannyFinishContext();
-  return NULL;
-  __pyx_L4_argument_unpacking_done:;
-  __pyx_r = __pyx_pf_15fast_mol_filter_10calculator_2filter2(__pyx_self, __pyx_v_iterable_smiles);
-
-  /* function exit code */
-  for (Py_ssize_t __pyx_temp=0; __pyx_temp < (Py_ssize_t)(sizeof(values)/sizeof(values[0])); ++__pyx_temp) {
-    Py_XDECREF(values[__pyx_temp]);
-  }
-  __Pyx_RefNannyFinishContext();
-  return __pyx_r;
-}
-
-static PyObject *__pyx_pf_15fast_mol_filter_10calculator_2filter2(CYTHON_UNUSED PyObject *__pyx_self, PyObject *__pyx_v_iterable_smiles) {
-  int __pyx_v_n;
-  std::vector<std::string>  __pyx_v_cpp_smiles;
-  PyObject *__pyx_v_s = NULL;
-  double __pyx_v_total_cost;
-  PyObject *__pyx_r = NULL;
-  __Pyx_RefNannyDeclarations
-  Py_ssize_t __pyx_t_1;
-  int __pyx_t_2;
-  PyObject *__pyx_t_3 = NULL;
-  PyObject *(*__pyx_t_4)(PyObject *);
-  PyObject *__pyx_t_5 = NULL;
-  PyObject *__pyx_t_6 = NULL;
-  size_t __pyx_t_7;
-  std::string __pyx_t_8;
-  int __pyx_lineno = 0;
-  const char *__pyx_filename = NULL;
-  int __pyx_clineno = 0;
-  __Pyx_RefNannySetupContext("filter2", 0);
-
-  /* "fast_mol_filter/calculator.pyx":74
- *         float: The total summed cost of all unique pairs.
- *     """
- *     cdef int n = len(iterable_smiles)             # <<<<<<<<<<<<<<
- *     if n < 2:
- *         return 0.0
-*/
-  __pyx_t_1 = PyObject_Length(__pyx_v_iterable_smiles); if (unlikely(__pyx_t_1 == ((Py_ssize_t)-1))) __PYX_ERR(0, 74, __pyx_L1_error)
-  __pyx_v_n = __pyx_t_1;
-
-  /* "fast_mol_filter/calculator.pyx":75
- *     """
- *     cdef int n = len(iterable_smiles)
- *     if n < 2:             # <<<<<<<<<<<<<<
- *         return 0.0
- * 
-*/
-  __pyx_t_2 = (__pyx_v_n < 2);
-  if (__pyx_t_2) {
-
-    /* "fast_mol_filter/calculator.pyx":76
- *     cdef int n = len(iterable_smiles)
- *     if n < 2:
- *         return 0.0             # <<<<<<<<<<<<<<
- * 
- *     # Convert Python strings to C++ strings
-*/
-    __Pyx_XDECREF(__pyx_r);
-    __Pyx_INCREF(__pyx_mstate_global->__pyx_float_0_0);
-    __pyx_r = __pyx_mstate_global->__pyx_float_0_0;
-    goto __pyx_L0;
-
-    /* "fast_mol_filter/calculator.pyx":75
- *     """
- *     cdef int n = len(iterable_smiles)
- *     if n < 2:             # <<<<<<<<<<<<<<
- *         return 0.0
- * 
-*/
-  }
-
-  /* "fast_mol_filter/calculator.pyx":80
- *     # Convert Python strings to C++ strings
- *     cdef vector[string] cpp_smiles
- *     cpp_smiles.reserve(n)             # <<<<<<<<<<<<<<
- *     for s in iterable_smiles:
- *         cpp_smiles.push_back(s.encode('utf-8'))
-*/
-  try {
-    __pyx_v_cpp_smiles.reserve(__pyx_v_n);
-  } catch(...) {
-    __Pyx_CppExn2PyErr();
-    __PYX_ERR(0, 80, __pyx_L1_error)
-  }
-
-  /* "fast_mol_filter/calculator.pyx":81
- *     cdef vector[string] cpp_smiles
- *     cpp_smiles.reserve(n)
- *     for s in iterable_smiles:             # <<<<<<<<<<<<<<
- *         cpp_smiles.push_back(s.encode('utf-8'))
- * 
-*/
-  if (likely(PyList_CheckExact(__pyx_v_iterable_smiles)) || PyTuple_CheckExact(__pyx_v_iterable_smiles)) {
-    __pyx_t_3 = __pyx_v_iterable_smiles; __Pyx_INCREF(__pyx_t_3);
-    __pyx_t_1 = 0;
-    __pyx_t_4 = NULL;
-  } else {
-    __pyx_t_1 = -1; __pyx_t_3 = PyObject_GetIter(__pyx_v_iterable_smiles); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 81, __pyx_L1_error)
-    __Pyx_GOTREF(__pyx_t_3);
-    __pyx_t_4 = (CYTHON_COMPILING_IN_LIMITED_API) ? PyIter_Next : __Pyx_PyObject_GetIterNextFunc(__pyx_t_3); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 81, __pyx_L1_error)
-  }
-  for (;;) {
-    if (likely(!__pyx_t_4)) {
-      if (likely(PyList_CheckExact(__pyx_t_3))) {
-        {
-          Py_ssize_t __pyx_temp = __Pyx_PyList_GET_SIZE(__pyx_t_3);
-          #if !CYTHON_ASSUME_SAFE_SIZE
-          if (unlikely((__pyx_temp < 0))) __PYX_ERR(0, 81, __pyx_L1_error)
-          #endif
-          if (__pyx_t_1 >= __pyx_temp) break;
-        }
-        __pyx_t_5 = __Pyx_PyList_GetItemRef(__pyx_t_3, __pyx_t_1);
-        ++__pyx_t_1;
-      } else {
-        {
-          Py_ssize_t __pyx_temp = __Pyx_PyTuple_GET_SIZE(__pyx_t_3);
-          #if !CYTHON_ASSUME_SAFE_SIZE
-          if (unlikely((__pyx_temp < 0))) __PYX_ERR(0, 81, __pyx_L1_error)
-          #endif
-          if (__pyx_t_1 >= __pyx_temp) break;
-        }
-        #if CYTHON_ASSUME_SAFE_MACROS && !CYTHON_AVOID_BORROWED_REFS
-        __pyx_t_5 = __Pyx_NewRef(PyTuple_GET_ITEM(__pyx_t_3, __pyx_t_1));
-        #else
-        __pyx_t_5 = __Pyx_PySequence_ITEM(__pyx_t_3, __pyx_t_1);
-        #endif
-        ++__pyx_t_1;
-      }
-      if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 81, __pyx_L1_error)
-    } else {
-      __pyx_t_5 = __pyx_t_4(__pyx_t_3);
-      if (unlikely(!__pyx_t_5)) {
-        PyObject* exc_type = PyErr_Occurred();
-        if (exc_type) {
-          if (unlikely(!__Pyx_PyErr_GivenExceptionMatches(exc_type, PyExc_StopIteration))) __PYX_ERR(0, 81, __pyx_L1_error)
-          PyErr_Clear();
-        }
-        break;
-      }
-    }
-    __Pyx_GOTREF(__pyx_t_5);
-    __Pyx_XDECREF_SET(__pyx_v_s, __pyx_t_5);
-    __pyx_t_5 = 0;
-
-    /* "fast_mol_filter/calculator.pyx":82
- *     cpp_smiles.reserve(n)
- *     for s in iterable_smiles:
- *         cpp_smiles.push_back(s.encode('utf-8'))             # <<<<<<<<<<<<<<
- * 
- *     cdef double total_cost = 0.0
-*/
-    __pyx_t_6 = __pyx_v_s;
-    __Pyx_INCREF(__pyx_t_6);
-    __pyx_t_7 = 0;
-    {
-      PyObject *__pyx_callargs[2] = {__pyx_t_6, __pyx_mstate_global->__pyx_kp_u_utf_8};
-      __pyx_t_5 = __Pyx_PyObject_FastCallMethod(__pyx_mstate_global->__pyx_n_u_encode, __pyx_callargs+__pyx_t_7, (2-__pyx_t_7) | (1*__Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET));
-      __Pyx_XDECREF(__pyx_t_6); __pyx_t_6 = 0;
-      if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 82, __pyx_L1_error)
-      __Pyx_GOTREF(__pyx_t_5);
-    }
-    __pyx_t_8 = __pyx_convert_string_from_py_6libcpp_6string_std__in_string(__pyx_t_5); if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 82, __pyx_L1_error)
-    __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
-    try {
-      __pyx_v_cpp_smiles.push_back(__pyx_t_8);
-    } catch(...) {
-      __Pyx_CppExn2PyErr();
-      __PYX_ERR(0, 82, __pyx_L1_error)
-    }
-
-    /* "fast_mol_filter/calculator.pyx":81
- *     cdef vector[string] cpp_smiles
- *     cpp_smiles.reserve(n)
- *     for s in iterable_smiles:             # <<<<<<<<<<<<<<
- *         cpp_smiles.push_back(s.encode('utf-8'))
- * 
-*/
-  }
-  __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
-
-  /* "fast_mol_filter/calculator.pyx":84
- *         cpp_smiles.push_back(s.encode('utf-8'))
- * 
- *     cdef double total_cost = 0.0             # <<<<<<<<<<<<<<
- *     # All computation is now inside the C++ layer.
- *     # We release the GIL for the duration of the C++ call.
-*/
-  __pyx_v_total_cost = 0.0;
-
-  /* "fast_mol_filter/calculator.pyx":87
- *     # All computation is now inside the C++ layer.
- *     # We release the GIL for the duration of the C++ call.
- *     with nogil:             # <<<<<<<<<<<<<<
- *         total_cost = calculate_total_cost_symmetric(cpp_smiles)
- * 
-*/
-  {
-      PyThreadState *_save;
-      _save = NULL;
-      Py_UNBLOCK_THREADS
-      __Pyx_FastGIL_Remember();
-      /*try:*/ {
-
-        /* "fast_mol_filter/calculator.pyx":88
- *     # We release the GIL for the duration of the C++ call.
- *     with nogil:
- *         total_cost = calculate_total_cost_symmetric(cpp_smiles)             # <<<<<<<<<<<<<<
- * 
- *     return total_cost
-*/
-        __pyx_v_total_cost = calculate_total_cost_symmetric(__pyx_v_cpp_smiles);
-      }
-
-      /* "fast_mol_filter/calculator.pyx":87
- *     # All computation is now inside the C++ layer.
- *     # We release the GIL for the duration of the C++ call.
- *     with nogil:             # <<<<<<<<<<<<<<
- *         total_cost = calculate_total_cost_symmetric(cpp_smiles)
- * 
-*/
-      /*finally:*/ {
-        /*normal exit:*/{
-          __Pyx_FastGIL_Forget();
-          Py_BLOCK_THREADS
-          goto __pyx_L9;
-        }
-        __pyx_L9:;
-      }
-  }
-
-  /* "fast_mol_filter/calculator.pyx":90
- *         total_cost = calculate_total_cost_symmetric(cpp_smiles)
- * 
- *     return total_cost             # <<<<<<<<<<<<<<
-*/
-  __Pyx_XDECREF(__pyx_r);
-  __pyx_t_3 = PyFloat_FromDouble(__pyx_v_total_cost); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 90, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_t_3);
-  __pyx_r = __pyx_t_3;
-  __pyx_t_3 = 0;
-  goto __pyx_L0;
-
-  /* "fast_mol_filter/calculator.pyx":61
- *     return py_results.reshape((n, n))
- * 
- * def filter2(iterable_smiles):             # <<<<<<<<<<<<<<
- *     """
- *     Calculates the sum of pairwise distances for a list of SMILES strings.
-*/
-
-  /* function exit code */
-  __pyx_L1_error:;
-  __Pyx_XDECREF(__pyx_t_3);
-  __Pyx_XDECREF(__pyx_t_5);
-  __Pyx_XDECREF(__pyx_t_6);
-  __Pyx_AddTraceback("fast_mol_filter.calculator.filter2", __pyx_clineno, __pyx_lineno, __pyx_filename);
-  __pyx_r = NULL;
-  __pyx_L0:;
-  __Pyx_XDECREF(__pyx_v_s);
   __Pyx_XGIVEREF(__pyx_r);
   __Pyx_RefNannyFinishContext();
   return __pyx_r;
@@ -20113,7 +19747,7 @@ static PyType_Slot __pyx_type___pyx_array_slots[] = {
   {0, 0},
 };
 static PyType_Spec __pyx_type___pyx_array_spec = {
-  "fast_mol_filter.calculator.array",
+  "ms_utils.mces.fast_mol_filter.calculator.array",
   sizeof(struct __pyx_array_obj),
   0,
   Py_TPFLAGS_DEFAULT|Py_TPFLAGS_HAVE_VERSION_TAG|Py_TPFLAGS_CHECKTYPES|Py_TPFLAGS_HAVE_NEWBUFFER|Py_TPFLAGS_BASETYPE|Py_TPFLAGS_SEQUENCE,
@@ -20147,7 +19781,7 @@ static PyBufferProcs __pyx_tp_as_buffer_array = {
 
 static PyTypeObject __pyx_type___pyx_array = {
   PyVarObject_HEAD_INIT(0, 0)
-  "fast_mol_filter.calculator.""array", /*tp_name*/
+  "ms_utils.mces.fast_mol_filter.calculator.""array", /*tp_name*/
   sizeof(struct __pyx_array_obj), /*tp_basicsize*/
   0, /*tp_itemsize*/
   __pyx_tp_dealloc_array, /*tp_dealloc*/
@@ -20302,7 +19936,7 @@ static PyType_Slot __pyx_type___pyx_MemviewEnum_slots[] = {
   {0, 0},
 };
 static PyType_Spec __pyx_type___pyx_MemviewEnum_spec = {
-  "fast_mol_filter.calculator.Enum",
+  "ms_utils.mces.fast_mol_filter.calculator.Enum",
   sizeof(struct __pyx_MemviewEnum_obj),
   0,
   Py_TPFLAGS_DEFAULT|Py_TPFLAGS_HAVE_VERSION_TAG|Py_TPFLAGS_CHECKTYPES|Py_TPFLAGS_HAVE_NEWBUFFER|Py_TPFLAGS_BASETYPE|Py_TPFLAGS_HAVE_GC,
@@ -20312,7 +19946,7 @@ static PyType_Spec __pyx_type___pyx_MemviewEnum_spec = {
 
 static PyTypeObject __pyx_type___pyx_MemviewEnum = {
   PyVarObject_HEAD_INIT(0, 0)
-  "fast_mol_filter.calculator.""Enum", /*tp_name*/
+  "ms_utils.mces.fast_mol_filter.calculator.""Enum", /*tp_name*/
   sizeof(struct __pyx_MemviewEnum_obj), /*tp_basicsize*/
   0, /*tp_itemsize*/
   __pyx_tp_dealloc_Enum, /*tp_dealloc*/
@@ -20597,7 +20231,7 @@ static PyType_Slot __pyx_type___pyx_memoryview_slots[] = {
   {0, 0},
 };
 static PyType_Spec __pyx_type___pyx_memoryview_spec = {
-  "fast_mol_filter.calculator.memoryview",
+  "ms_utils.mces.fast_mol_filter.calculator.memoryview",
   sizeof(struct __pyx_memoryview_obj),
   0,
   Py_TPFLAGS_DEFAULT|Py_TPFLAGS_HAVE_VERSION_TAG|Py_TPFLAGS_CHECKTYPES|Py_TPFLAGS_HAVE_NEWBUFFER|Py_TPFLAGS_BASETYPE|Py_TPFLAGS_HAVE_GC,
@@ -20631,7 +20265,7 @@ static PyBufferProcs __pyx_tp_as_buffer_memoryview = {
 
 static PyTypeObject __pyx_type___pyx_memoryview = {
   PyVarObject_HEAD_INIT(0, 0)
-  "fast_mol_filter.calculator.""memoryview", /*tp_name*/
+  "ms_utils.mces.fast_mol_filter.calculator.""memoryview", /*tp_name*/
   sizeof(struct __pyx_memoryview_obj), /*tp_basicsize*/
   0, /*tp_itemsize*/
   __pyx_tp_dealloc_memoryview, /*tp_dealloc*/
@@ -20781,7 +20415,7 @@ static PyType_Slot __pyx_type___pyx_memoryviewslice_slots[] = {
   {0, 0},
 };
 static PyType_Spec __pyx_type___pyx_memoryviewslice_spec = {
-  "fast_mol_filter.calculator._memoryviewslice",
+  "ms_utils.mces.fast_mol_filter.calculator._memoryviewslice",
   sizeof(struct __pyx_memoryviewslice_obj),
   0,
   Py_TPFLAGS_DEFAULT|Py_TPFLAGS_HAVE_VERSION_TAG|Py_TPFLAGS_CHECKTYPES|Py_TPFLAGS_HAVE_NEWBUFFER|Py_TPFLAGS_BASETYPE|Py_TPFLAGS_HAVE_GC|Py_TPFLAGS_SEQUENCE,
@@ -20791,7 +20425,7 @@ static PyType_Spec __pyx_type___pyx_memoryviewslice_spec = {
 
 static PyTypeObject __pyx_type___pyx_memoryviewslice = {
   PyVarObject_HEAD_INIT(0, 0)
-  "fast_mol_filter.calculator.""_memoryviewslice", /*tp_name*/
+  "ms_utils.mces.fast_mol_filter.calculator.""_memoryviewslice", /*tp_name*/
   sizeof(struct __pyx_memoryviewslice_obj), /*tp_basicsize*/
   0, /*tp_itemsize*/
   __pyx_tp_dealloc__memoryviewslice, /*tp_dealloc*/
@@ -21507,13 +21141,13 @@ __Pyx_RefNannySetupContext("PyInit_calculator", 0);
   if (__pyx_AsyncGen_init(__pyx_m) < 0) __PYX_ERR(0, 1, __pyx_L1_error)
   #endif
   /*--- Library function declarations ---*/
-  if (__pyx_module_is_main_fast_mol_filter__calculator) {
+  if (__pyx_module_is_main_ms_utils__mces__fast_mol_filter__calculator) {
     if (PyObject_SetAttr(__pyx_m, __pyx_mstate_global->__pyx_n_u_name_2, __pyx_mstate_global->__pyx_n_u_main) < 0) __PYX_ERR(0, 1, __pyx_L1_error)
   }
   {
     PyObject *modules = PyImport_GetModuleDict(); if (unlikely(!modules)) __PYX_ERR(0, 1, __pyx_L1_error)
-    if (!PyDict_GetItemString(modules, "fast_mol_filter.calculator")) {
-      if (unlikely((PyDict_SetItemString(modules, "fast_mol_filter.calculator", __pyx_m) < 0))) __PYX_ERR(0, 1, __pyx_L1_error)
+    if (!PyDict_GetItemString(modules, "ms_utils.mces.fast_mol_filter.calculator")) {
+      if (unlikely((PyDict_SetItemString(modules, "ms_utils.mces.fast_mol_filter.calculator", __pyx_m) < 0))) __PYX_ERR(0, 1, __pyx_L1_error)
     }
   }
   /*--- Builtin init code ---*/
@@ -22063,7 +21697,7 @@ __Pyx_RefNannySetupContext("PyInit_calculator", 0);
   if (PyDict_SetItem(__pyx_mstate_global->__pyx_d, __pyx_mstate_global->__pyx_n_u_pyx_unpickle_Enum, __pyx_t_5) < 0) __PYX_ERR(1, 1, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
 
-  /* "fast_mol_filter/calculator.pyx":3
+  /* "src/ms_utils/mces/fast_mol_filter/fast_mol_filter/calculator.pyx":3
  * # cython: language_level=3, boundscheck=False, wraparound=False, cdivision=True
  * 
  * import numpy as np             # <<<<<<<<<<<<<<
@@ -22075,31 +21709,19 @@ __Pyx_RefNannySetupContext("PyInit_calculator", 0);
   if (PyDict_SetItem(__pyx_mstate_global->__pyx_d, __pyx_mstate_global->__pyx_n_u_np, __pyx_t_5) < 0) __PYX_ERR(0, 3, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
 
-  /* "fast_mol_filter/calculator.pyx":15
+  /* "src/ms_utils/mces/fast_mol_filter/fast_mol_filter/calculator.pyx":15
  *     double calculate_total_cost_symmetric(const vector[string]& smiles_list)
  * 
  * def calculate_distances_symmetric(smiles_list):             # <<<<<<<<<<<<<<
  *     """
  *     Calculates a symmetric distance matrix for a list of SMILES strings.
 */
-  __pyx_t_5 = __Pyx_CyFunction_New(&__pyx_mdef_15fast_mol_filter_10calculator_1calculate_distances_symmetric, 0, __pyx_mstate_global->__pyx_n_u_calculate_distances_symmetric, NULL, __pyx_mstate_global->__pyx_n_u_fast_mol_filter_calculator, __pyx_mstate_global->__pyx_d, ((PyObject *)__pyx_mstate_global->__pyx_codeobj_tab[0])); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 15, __pyx_L1_error)
+  __pyx_t_5 = __Pyx_CyFunction_New(&__pyx_mdef_8ms_utils_4mces_15fast_mol_filter_10calculator_1calculate_distances_symmetric, 0, __pyx_mstate_global->__pyx_n_u_calculate_distances_symmetric, NULL, __pyx_mstate_global->__pyx_n_u_ms_utils_mces_fast_mol_filter_ca, __pyx_mstate_global->__pyx_d, ((PyObject *)__pyx_mstate_global->__pyx_codeobj_tab[0])); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 15, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_5);
   if (PyDict_SetItem(__pyx_mstate_global->__pyx_d, __pyx_mstate_global->__pyx_n_u_calculate_distances_symmetric, __pyx_t_5) < 0) __PYX_ERR(0, 15, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
 
-  /* "fast_mol_filter/calculator.pyx":61
- *     return py_results.reshape((n, n))
- * 
- * def filter2(iterable_smiles):             # <<<<<<<<<<<<<<
- *     """
- *     Calculates the sum of pairwise distances for a list of SMILES strings.
-*/
-  __pyx_t_5 = __Pyx_CyFunction_New(&__pyx_mdef_15fast_mol_filter_10calculator_3filter2, 0, __pyx_mstate_global->__pyx_n_u_filter2, NULL, __pyx_mstate_global->__pyx_n_u_fast_mol_filter_calculator, __pyx_mstate_global->__pyx_d, ((PyObject *)__pyx_mstate_global->__pyx_codeobj_tab[1])); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 61, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_t_5);
-  if (PyDict_SetItem(__pyx_mstate_global->__pyx_d, __pyx_mstate_global->__pyx_n_u_filter2, __pyx_t_5) < 0) __PYX_ERR(0, 61, __pyx_L1_error)
-  __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
-
-  /* "fast_mol_filter/calculator.pyx":1
+  /* "src/ms_utils/mces/fast_mol_filter/fast_mol_filter/calculator.pyx":1
  * # cython: language_level=3, boundscheck=False, wraparound=False, cdivision=True             # <<<<<<<<<<<<<<
  * 
  * import numpy as np
@@ -22118,7 +21740,7 @@ __Pyx_RefNannySetupContext("PyInit_calculator", 0);
   __Pyx_XDECREF(__pyx_t_6);
   if (__pyx_m) {
     if (__pyx_mstate->__pyx_d && stringtab_initialized) {
-      __Pyx_AddTraceback("init fast_mol_filter.calculator", __pyx_clineno, __pyx_lineno, __pyx_filename);
+      __Pyx_AddTraceback("init ms_utils.mces.fast_mol_filter.calculator", __pyx_clineno, __pyx_lineno, __pyx_filename);
     }
     #if !CYTHON_USE_MODULE_STATE
     Py_CLEAR(__pyx_m);
@@ -22132,7 +21754,7 @@ __Pyx_RefNannySetupContext("PyInit_calculator", 0);
     }
     #endif
   } else if (!PyErr_Occurred()) {
-    PyErr_SetString(PyExc_ImportError, "init fast_mol_filter.calculator");
+    PyErr_SetString(PyExc_ImportError, "init ms_utils.mces.fast_mol_filter.calculator");
   }
   __pyx_L0:;
   __Pyx_RefNannyFinishContext();
@@ -22234,9 +21856,6 @@ static const __Pyx_StringTabEntry __pyx_string_tab[] = {
   {__pyx_k_encode, sizeof(__pyx_k_encode), 0, 1, 1}, /* PyObject cname: __pyx_n_u_encode */
   {__pyx_k_enumerate, sizeof(__pyx_k_enumerate), 0, 1, 1}, /* PyObject cname: __pyx_n_u_enumerate */
   {__pyx_k_error, sizeof(__pyx_k_error), 0, 1, 1}, /* PyObject cname: __pyx_n_u_error */
-  {__pyx_k_fast_mol_filter_calculator, sizeof(__pyx_k_fast_mol_filter_calculator), 0, 1, 1}, /* PyObject cname: __pyx_n_u_fast_mol_filter_calculator */
-  {__pyx_k_fast_mol_filter_calculator_pyx, sizeof(__pyx_k_fast_mol_filter_calculator_pyx), 0, 1, 0}, /* PyObject cname: __pyx_kp_u_fast_mol_filter_calculator_pyx */
-  {__pyx_k_filter2, sizeof(__pyx_k_filter2), 0, 1, 1}, /* PyObject cname: __pyx_n_u_filter2 */
   {__pyx_k_flags, sizeof(__pyx_k_flags), 0, 1, 1}, /* PyObject cname: __pyx_n_u_flags */
   {__pyx_k_float64, sizeof(__pyx_k_float64), 0, 1, 1}, /* PyObject cname: __pyx_n_u_float64 */
   {__pyx_k_format, sizeof(__pyx_k_format), 0, 1, 1}, /* PyObject cname: __pyx_n_u_format */
@@ -22255,11 +21874,11 @@ static const __Pyx_StringTabEntry __pyx_string_tab[] = {
   {__pyx_k_isenabled, sizeof(__pyx_k_isenabled), 0, 1, 0}, /* PyObject cname: __pyx_kp_u_isenabled */
   {__pyx_k_itemsize, sizeof(__pyx_k_itemsize), 0, 1, 1}, /* PyObject cname: __pyx_n_u_itemsize */
   {__pyx_k_itemsize_0_for_cython_array, sizeof(__pyx_k_itemsize_0_for_cython_array), 0, 1, 0}, /* PyObject cname: __pyx_kp_u_itemsize_0_for_cython_array */
-  {__pyx_k_iterable_smiles, sizeof(__pyx_k_iterable_smiles), 0, 1, 1}, /* PyObject cname: __pyx_n_u_iterable_smiles */
   {__pyx_k_main, sizeof(__pyx_k_main), 0, 1, 1}, /* PyObject cname: __pyx_n_u_main */
   {__pyx_k_memview, sizeof(__pyx_k_memview), 0, 1, 1}, /* PyObject cname: __pyx_n_u_memview */
   {__pyx_k_mode, sizeof(__pyx_k_mode), 0, 1, 1}, /* PyObject cname: __pyx_n_u_mode */
   {__pyx_k_module, sizeof(__pyx_k_module), 0, 1, 1}, /* PyObject cname: __pyx_n_u_module */
+  {__pyx_k_ms_utils_mces_fast_mol_filter_ca, sizeof(__pyx_k_ms_utils_mces_fast_mol_filter_ca), 0, 1, 1}, /* PyObject cname: __pyx_n_u_ms_utils_mces_fast_mol_filter_ca */
   {__pyx_k_n, sizeof(__pyx_k_n), 0, 1, 1}, /* PyObject cname: __pyx_n_u_n */
   {__pyx_k_name, sizeof(__pyx_k_name), 0, 1, 1}, /* PyObject cname: __pyx_n_u_name */
   {__pyx_k_name_2, sizeof(__pyx_k_name_2), 0, 1, 1}, /* PyObject cname: __pyx_n_u_name_2 */
@@ -22297,6 +21916,7 @@ static const __Pyx_StringTabEntry __pyx_string_tab[] = {
   {__pyx_k_size, sizeof(__pyx_k_size), 0, 1, 1}, /* PyObject cname: __pyx_n_u_size */
   {__pyx_k_smiles_list, sizeof(__pyx_k_smiles_list), 0, 1, 1}, /* PyObject cname: __pyx_n_u_smiles_list */
   {__pyx_k_spec, sizeof(__pyx_k_spec), 0, 1, 1}, /* PyObject cname: __pyx_n_u_spec */
+  {__pyx_k_src_ms_utils_mces_fast_mol_filte, sizeof(__pyx_k_src_ms_utils_mces_fast_mol_filte), 0, 1, 0}, /* PyObject cname: __pyx_kp_u_src_ms_utils_mces_fast_mol_filte */
   {__pyx_k_start, sizeof(__pyx_k_start), 0, 1, 1}, /* PyObject cname: __pyx_n_u_start */
   {__pyx_k_step, sizeof(__pyx_k_step), 0, 1, 1}, /* PyObject cname: __pyx_n_u_step */
   {__pyx_k_stop, sizeof(__pyx_k_stop), 0, 1, 1}, /* PyObject cname: __pyx_n_u_stop */
@@ -22305,7 +21925,6 @@ static const __Pyx_StringTabEntry __pyx_string_tab[] = {
   {__pyx_k_strided_and_indirect, sizeof(__pyx_k_strided_and_indirect), 0, 1, 0}, /* PyObject cname: __pyx_kp_u_strided_and_indirect */
   {__pyx_k_struct, sizeof(__pyx_k_struct), 0, 1, 1}, /* PyObject cname: __pyx_n_u_struct */
   {__pyx_k_test, sizeof(__pyx_k_test), 0, 1, 1}, /* PyObject cname: __pyx_n_u_test */
-  {__pyx_k_total_cost, sizeof(__pyx_k_total_cost), 0, 1, 1}, /* PyObject cname: __pyx_n_u_total_cost */
   {__pyx_k_unable_to_allocate_array_data, sizeof(__pyx_k_unable_to_allocate_array_data), 0, 1, 0}, /* PyObject cname: __pyx_kp_u_unable_to_allocate_array_data */
   {__pyx_k_unable_to_allocate_shape_and_str, sizeof(__pyx_k_unable_to_allocate_shape_and_str), 0, 1, 0}, /* PyObject cname: __pyx_kp_u_unable_to_allocate_shape_and_str */
   {__pyx_k_unpack, sizeof(__pyx_k_unpack), 0, 1, 1}, /* PyObject cname: __pyx_n_u_unpack */
@@ -22391,7 +22010,6 @@ static int __Pyx_InitConstants(__pyx_mstatetype *__pyx_mstate) {
   __pyx_mstate->__pyx_umethod_PyDict_Type_pop.type = (PyObject*)&PyDict_Type;
   __pyx_mstate->__pyx_umethod_PyDict_Type_pop.method_name = &__pyx_mstate->__pyx_n_u_pop;
   if (__Pyx_InitStrings(__pyx_string_tab, __pyx_mstate->__pyx_string_tab, __pyx_string_tab_encodings) < 0) __PYX_ERR(0, 1, __pyx_L1_error);
-  __pyx_mstate->__pyx_float_0_0 = PyFloat_FromDouble(0.0); if (unlikely(!__pyx_mstate->__pyx_float_0_0)) __PYX_ERR(0, 1, __pyx_L1_error)
   __pyx_mstate->__pyx_int_0 = PyLong_FromLong(0); if (unlikely(!__pyx_mstate->__pyx_int_0)) __PYX_ERR(0, 1, __pyx_L1_error)
   __pyx_mstate->__pyx_int_1 = PyLong_FromLong(1); if (unlikely(!__pyx_mstate->__pyx_int_1)) __PYX_ERR(0, 1, __pyx_L1_error)
   __pyx_mstate->__pyx_int_112105877 = PyLong_FromLong(112105877L); if (unlikely(!__pyx_mstate->__pyx_int_112105877)) __PYX_ERR(0, 1, __pyx_L1_error)
@@ -22410,7 +22028,7 @@ static int __Pyx_InitConstants(__pyx_mstatetype *__pyx_mstate) {
             unsigned int num_kwonly_args : 1;
             unsigned int nlocals : 4;
             unsigned int flags : 10;
-            unsigned int first_line : 6;
+            unsigned int first_line : 4;
             unsigned int line_table_length : 12;
         } __Pyx_PyCode_New_function_description;
 /* NewCodeObj.proto */
@@ -22430,12 +22048,7 @@ static int __Pyx_CreateCodeObjects(__pyx_mstatetype *__pyx_mstate) {
   {
     const __Pyx_PyCode_New_function_description descr = {1, 0, 0, 9, (unsigned int)(CO_OPTIMIZED|CO_NEWLOCALS), 15, 185};
     PyObject* const varnames[] = {__pyx_mstate->__pyx_n_u_smiles_list, __pyx_mstate->__pyx_n_u_n, __pyx_mstate->__pyx_n_u_cpp_smiles, __pyx_mstate->__pyx_n_u_s, __pyx_mstate->__pyx_n_u_cpp_results, __pyx_mstate->__pyx_n_u_size, __pyx_mstate->__pyx_n_u_py_results, __pyx_mstate->__pyx_n_u_py_view, __pyx_mstate->__pyx_n_u_i};
-    __pyx_mstate_global->__pyx_codeobj_tab[0] = __Pyx_PyCode_New(descr, varnames, __pyx_mstate->__pyx_kp_u_fast_mol_filter_calculator_pyx, __pyx_mstate->__pyx_n_u_calculate_distances_symmetric, __pyx_k_1A_r_A_r_q_haq_Q_AQgQa_9_r_q_82, tuple_dedup_map); if (unlikely(!__pyx_mstate_global->__pyx_codeobj_tab[0])) goto bad;
-  }
-  {
-    const __Pyx_PyCode_New_function_description descr = {1, 0, 0, 5, (unsigned int)(CO_OPTIMIZED|CO_NEWLOCALS), 61, 85};
-    PyObject* const varnames[] = {__pyx_mstate->__pyx_n_u_iterable_smiles, __pyx_mstate->__pyx_n_u_n, __pyx_mstate->__pyx_n_u_cpp_smiles, __pyx_mstate->__pyx_n_u_s, __pyx_mstate->__pyx_n_u_total_cost};
-    __pyx_mstate_global->__pyx_codeobj_tab[1] = __Pyx_PyCode_New(descr, varnames, __pyx_mstate->__pyx_kp_u_fast_mol_filter_calculator_pyx, __pyx_mstate->__pyx_n_u_filter2, __pyx_k_AQ_r_1_q_haq_Q_AQgQa_Q_31A_1, tuple_dedup_map); if (unlikely(!__pyx_mstate_global->__pyx_codeobj_tab[1])) goto bad;
+    __pyx_mstate_global->__pyx_codeobj_tab[0] = __Pyx_PyCode_New(descr, varnames, __pyx_mstate->__pyx_kp_u_src_ms_utils_mces_fast_mol_filte, __pyx_mstate->__pyx_n_u_calculate_distances_symmetric, __pyx_k_1A_r_A_r_q_haq_Q_AQgQa_9_r_q_82, tuple_dedup_map); if (unlikely(!__pyx_mstate_global->__pyx_codeobj_tab[0])) goto bad;
   }
   Py_DECREF(tuple_dedup_map);
   return 0;
