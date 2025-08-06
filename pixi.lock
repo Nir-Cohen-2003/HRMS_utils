@@ -944,11 +944,11 @@ packages:
   build: pyhbf21a9e_0
   subdir: noarch
   depends:
-  - polars >=1.31.0,<2
+  - polars >=1.32.0,<2
   - rdkit >=2024.0.0
   - python
   input:
-    hash: 5d92fc717166c5e4c913f6a4c617508ef91bf8d5e09fb2f98551043f498657df
+    hash: fe2044d5898760817bc20e2c80d5f465653cc22bbdb5d1878b458ead81e13a0e
     globs: []
 - conda: https://prefix.dev/conda-forge/noarch/munkres-1.1.4-pyhd8ed1ab_1.conda
   sha256: d09c47c2cf456de5c09fa66d2c3c5035aa1fa228a1983a433c47b876aa16ce90

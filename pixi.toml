@@ -28,12 +28,9 @@ setuptools = ">=68.0.0"
 # pixi-build-api-version = ">=0.1.0"
 
 
-[package.host-dependencies]
-setuptools = ">=68.0.0"
-python = "3.12.*"
+[package.host-dependencies] 
 hatchling = "==1.26.3"
 
-
 [package.run-dependencies]
-polars = ">=1.31.0,<2"
+polars = ">=1.32.0,<2"
 rdkit = ">=2024.0.0"
