@@ -28,3 +28,4 @@ ms_utils/mces/fast_mol_filter/fast_mol_filter/munkres.cpp
 ms_utils/mces/fast_mol_filter/fast_mol_filter/calculator.cpp
 **.conda
 dist/
+src/ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.cpp
