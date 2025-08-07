@@ -1,0 +1,3 @@
+include src/ms_utils/formula_annotation/mass_decomposition_impl/*.pyx
+include src/ms_utils/formula_annotation/mass_decomposition_impl/*.cpp
+include src/ms_utils/formula_annotation/mass_decomposition_impl/*.hpp

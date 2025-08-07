@@ -1,3 +1,4 @@
+MANIFEST.in
 README.md
 pyproject.toml
 setup.py
@@ -8,6 +9,7 @@ src/ms_utils.egg-info/dependency_links.txt
 src/ms_utils.egg-info/not-zip-safe
 src/ms_utils.egg-info/requires.txt
 src/ms_utils.egg-info/top_level.txt
+src/ms_utils/formats/__init__.py
 src/ms_utils/formats/epa_xlsx.py
 src/ms_utils/formats/mgf.py
 src/ms_utils/formats/nist_mspec.py
@@ -22,6 +24,7 @@ src/ms_utils/formula_annotation/mass_decomposition_impl/benchmark.py
 src/ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_common.cpp
 src/ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_common.hpp
 src/ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.cpp
+src/ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx
 src/ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_money_changing.cpp
 src/ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_parallel.cpp
 src/ms_utils/formula_annotation/mass_decomposition_impl/python_impl.py
