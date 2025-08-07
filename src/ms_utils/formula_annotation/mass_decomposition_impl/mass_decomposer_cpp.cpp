@@ -4,12 +4,12 @@
 {
     "distutils": {
         "depends": [
-            "/home/analytit_admin/dev/MS_utils/.venv/lib/python3.12/site-packages/numpy/_core/include/numpy/arrayobject.h",
-            "/home/analytit_admin/dev/MS_utils/.venv/lib/python3.12/site-packages/numpy/_core/include/numpy/arrayscalars.h",
-            "/home/analytit_admin/dev/MS_utils/.venv/lib/python3.12/site-packages/numpy/_core/include/numpy/ndarrayobject.h",
-            "/home/analytit_admin/dev/MS_utils/.venv/lib/python3.12/site-packages/numpy/_core/include/numpy/ndarraytypes.h",
-            "/home/analytit_admin/dev/MS_utils/.venv/lib/python3.12/site-packages/numpy/_core/include/numpy/ufuncobject.h",
-            "mass_decomposer_common.hpp"
+            "/tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/_core/include/numpy/arrayobject.h",
+            "/tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/_core/include/numpy/arrayscalars.h",
+            "/tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/_core/include/numpy/ndarrayobject.h",
+            "/tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/_core/include/numpy/ndarraytypes.h",
+            "/tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/_core/include/numpy/ufuncobject.h",
+            "src/ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_common.hpp"
         ],
         "extra_compile_args": [
             "-std=c++11",
@@ -23,19 +23,19 @@
             "-fopenmp"
         ],
         "include_dirs": [
-            "/home/analytit_admin/dev/MS_utils/.venv/lib/python3.12/site-packages/numpy/_core/include",
-            "."
+            "src/ms_utils/formula_annotation/mass_decomposition_impl",
+            "/tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/_core/include"
         ],
         "language": "c++",
-        "name": "mass_decomposer_cpp",
+        "name": "ms_utils.formula_annotation.mass_decomposition_impl.mass_decomposer_cpp",
         "sources": [
-            "mass_decomposer_cpp.pyx",
-            "mass_decomposer_common.cpp",
-            "mass_decomposer_money_changing.cpp",
-            "mass_decomposer_parallel.cpp"
+            "src/ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx",
+            "src/ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_common.cpp",
+            "src/ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_money_changing.cpp",
+            "src/ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_parallel.cpp"
         ]
     },
-    "module_name": "mass_decomposer_cpp"
+    "module_name": "ms_utils.formula_annotation.mass_decomposition_impl.mass_decomposer_cpp"
 }
 END: Cython Metadata */
 
@@ -1163,8 +1163,8 @@ static CYTHON_INLINE float __PYX_NAN() {
     #define __PYX_EXTERN_C extern "C++"
 #endif
 
-#define __PYX_HAVE__mass_decomposer_cpp
-#define __PYX_HAVE_API__mass_decomposer_cpp
+#define __PYX_HAVE__ms_utils__formula_annotation__mass_decomposition_impl__mass_decomposer_cpp
+#define __PYX_HAVE_API__ms_utils__formula_annotation__mass_decomposition_impl__mass_decomposer_cpp
 /* Early includes */
 #include "ios"
 #include "new"
@@ -1428,9 +1428,9 @@ static const char *__pyx_filename;
 /* #### Code section: filename_table ### */
 
 static const char* const __pyx_f[] = {
-  "mass_decomposer_cpp.pyx",
+  "src/ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx",
   "<stringsource>",
-  "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd",
+  "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd",
   "cpython/type.pxd",
 };
 /* #### Code section: utility_code_proto_before_types ### */
@@ -1653,7 +1653,7 @@ typedef struct {
 
 /* #### Code section: numeric_typedefs ### */
 
-/* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":787
+/* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":743
  * # in Cython to enable them only on the right systems.
  * 
  * ctypedef npy_int8       int8_t             # <<<<<<<<<<<<<<
@@ -1662,7 +1662,7 @@ typedef struct {
 */
 typedef npy_int8 __pyx_t_5numpy_int8_t;
 
-/* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":788
+/* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":744
  * 
  * ctypedef npy_int8       int8_t
  * ctypedef npy_int16      int16_t             # <<<<<<<<<<<<<<
@@ -1671,26 +1671,26 @@ typedef npy_int8 __pyx_t_5numpy_int8_t;
 */
 typedef npy_int16 __pyx_t_5numpy_int16_t;
 
-/* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":789
+/* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":745
  * ctypedef npy_int8       int8_t
  * ctypedef npy_int16      int16_t
  * ctypedef npy_int32      int32_t             # <<<<<<<<<<<<<<
  * ctypedef npy_int64      int64_t
- * #ctypedef npy_int96      int96_t
+ * 
 */
 typedef npy_int32 __pyx_t_5numpy_int32_t;
 
-/* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":790
+/* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":746
  * ctypedef npy_int16      int16_t
  * ctypedef npy_int32      int32_t
  * ctypedef npy_int64      int64_t             # <<<<<<<<<<<<<<
- * #ctypedef npy_int96      int96_t
- * #ctypedef npy_int128     int128_t
+ * 
+ * ctypedef npy_uint8      uint8_t
 */
 typedef npy_int64 __pyx_t_5numpy_int64_t;
 
-/* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":794
- * #ctypedef npy_int128     int128_t
+/* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":748
+ * ctypedef npy_int64      int64_t
  * 
  * ctypedef npy_uint8      uint8_t             # <<<<<<<<<<<<<<
  * ctypedef npy_uint16     uint16_t
@@ -1698,7 +1698,7 @@ typedef npy_int64 __pyx_t_5numpy_int64_t;
 */
 typedef npy_uint8 __pyx_t_5numpy_uint8_t;
 
-/* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":795
+/* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":749
  * 
  * ctypedef npy_uint8      uint8_t
  * ctypedef npy_uint16     uint16_t             # <<<<<<<<<<<<<<
@@ -1707,26 +1707,26 @@ typedef npy_uint8 __pyx_t_5numpy_uint8_t;
 */
 typedef npy_uint16 __pyx_t_5numpy_uint16_t;
 
-/* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":796
+/* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":750
  * ctypedef npy_uint8      uint8_t
  * ctypedef npy_uint16     uint16_t
  * ctypedef npy_uint32     uint32_t             # <<<<<<<<<<<<<<
  * ctypedef npy_uint64     uint64_t
- * #ctypedef npy_uint96     uint96_t
+ * 
 */
 typedef npy_uint32 __pyx_t_5numpy_uint32_t;
 
-/* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":797
+/* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":751
  * ctypedef npy_uint16     uint16_t
  * ctypedef npy_uint32     uint32_t
  * ctypedef npy_uint64     uint64_t             # <<<<<<<<<<<<<<
- * #ctypedef npy_uint96     uint96_t
- * #ctypedef npy_uint128    uint128_t
+ * 
+ * ctypedef npy_float32    float32_t
 */
 typedef npy_uint64 __pyx_t_5numpy_uint64_t;
 
-/* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":801
- * #ctypedef npy_uint128    uint128_t
+/* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":753
+ * ctypedef npy_uint64     uint64_t
  * 
  * ctypedef npy_float32    float32_t             # <<<<<<<<<<<<<<
  * ctypedef npy_float64    float64_t
@@ -1734,7 +1734,7 @@ typedef npy_uint64 __pyx_t_5numpy_uint64_t;
 */
 typedef npy_float32 __pyx_t_5numpy_float32_t;
 
-/* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":802
+/* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":754
  * 
  * ctypedef npy_float32    float32_t
  * ctypedef npy_float64    float64_t             # <<<<<<<<<<<<<<
@@ -1743,7 +1743,7 @@ typedef npy_float32 __pyx_t_5numpy_float32_t;
 */
 typedef npy_float64 __pyx_t_5numpy_float64_t;
 
-/* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":809
+/* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":761
  * ctypedef double complex complex128_t
  * 
  * ctypedef npy_longlong   longlong_t             # <<<<<<<<<<<<<<
@@ -1752,7 +1752,7 @@ typedef npy_float64 __pyx_t_5numpy_float64_t;
 */
 typedef npy_longlong __pyx_t_5numpy_longlong_t;
 
-/* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":810
+/* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":762
  * 
  * ctypedef npy_longlong   longlong_t
  * ctypedef npy_ulonglong  ulonglong_t             # <<<<<<<<<<<<<<
@@ -1761,7 +1761,7 @@ typedef npy_longlong __pyx_t_5numpy_longlong_t;
 */
 typedef npy_ulonglong __pyx_t_5numpy_ulonglong_t;
 
-/* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":812
+/* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":764
  * ctypedef npy_ulonglong  ulonglong_t
  * 
  * ctypedef npy_intp       intp_t             # <<<<<<<<<<<<<<
@@ -1770,7 +1770,7 @@ typedef npy_ulonglong __pyx_t_5numpy_ulonglong_t;
 */
 typedef npy_intp __pyx_t_5numpy_intp_t;
 
-/* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":813
+/* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":765
  * 
  * ctypedef npy_intp       intp_t
  * ctypedef npy_uintp      uintp_t             # <<<<<<<<<<<<<<
@@ -1779,7 +1779,7 @@ typedef npy_intp __pyx_t_5numpy_intp_t;
 */
 typedef npy_uintp __pyx_t_5numpy_uintp_t;
 
-/* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":815
+/* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":767
  * ctypedef npy_uintp      uintp_t
  * 
  * ctypedef npy_double     float_t             # <<<<<<<<<<<<<<
@@ -1788,7 +1788,7 @@ typedef npy_uintp __pyx_t_5numpy_uintp_t;
 */
 typedef npy_double __pyx_t_5numpy_float_t;
 
-/* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":816
+/* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":768
  * 
  * ctypedef npy_double     float_t
  * ctypedef npy_double     double_t             # <<<<<<<<<<<<<<
@@ -1797,7 +1797,7 @@ typedef npy_double __pyx_t_5numpy_float_t;
 */
 typedef npy_double __pyx_t_5numpy_double_t;
 
-/* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":817
+/* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":769
  * ctypedef npy_double     float_t
  * ctypedef npy_double     double_t
  * ctypedef npy_longdouble longdouble_t             # <<<<<<<<<<<<<<
@@ -1806,14 +1806,14 @@ typedef npy_double __pyx_t_5numpy_double_t;
 */
 typedef npy_longdouble __pyx_t_5numpy_longdouble_t;
 
-/* "mass_decomposer_cpp.pyx":87
+/* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":87
  * 
  * # Typedef for numpy arrays
  * ctypedef np.int32_t F_DTYPE_t             # <<<<<<<<<<<<<<
  * 
  * def get_num_elements():
 */
-typedef __pyx_t_5numpy_int32_t __pyx_t_19mass_decomposer_cpp_F_DTYPE_t;
+typedef __pyx_t_5numpy_int32_t __pyx_t_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp_F_DTYPE_t;
 /* #### Code section: complex_type_declarations ### */
 /* Declarations.proto */
 #if CYTHON_CCOMPLEX && (1) && (!0 || __cplusplus)
@@ -3390,7 +3390,7 @@ static CYTHON_INLINE char *__pyx_f_5numpy_7ndarray_4data_data(PyArrayObject *__p
 
 /* Module declarations from "numpy" */
 
-/* Module declarations from "mass_decomposer_cpp" */
+/* Module declarations from "ms_utils.formula_annotation.mass_decomposition_impl.mass_decomposer_cpp" */
 static PyObject *__pyx_collections_abc_Sequence = 0;
 static PyObject *generic = 0;
 static PyObject *strided = 0;
@@ -3399,10 +3399,10 @@ static PyObject *contiguous = 0;
 static PyObject *indirect_contiguous = 0;
 static int __pyx_memoryview_thread_locks_used;
 static PyThread_type_lock __pyx_memoryview_thread_locks[8];
-static Formula __pyx_f_19mass_decomposer_cpp__convert_numpy_to_formula(PyArrayObject *); /*proto*/
-static PyArrayObject *__pyx_f_19mass_decomposer_cpp__convert_formula_to_array(Formula const &); /*proto*/
-static void __pyx_f_19mass_decomposer_cpp__validate_bounds_array(PyArrayObject *, PyObject *); /*proto*/
-static struct DecompositionParams __pyx_f_19mass_decomposer_cpp__convert_params(double, double, double, int, PyArrayObject *, PyArrayObject *); /*proto*/
+static Formula __pyx_f_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp__convert_numpy_to_formula(PyArrayObject *); /*proto*/
+static PyArrayObject *__pyx_f_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp__convert_formula_to_array(Formula const &); /*proto*/
+static void __pyx_f_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp__validate_bounds_array(PyArrayObject *, PyObject *); /*proto*/
+static struct DecompositionParams __pyx_f_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp__convert_params(double, double, double, int, PyArrayObject *, PyArrayObject *); /*proto*/
 static PyObject *__pyx_convert_vector_to_py_double(std::vector<double>  const &); /*proto*/
 static int __pyx_array_allocate_buffer(struct __pyx_array_obj *); /*proto*/
 static struct __pyx_array_obj *__pyx_array_new(PyObject *, Py_ssize_t, char *, char const *, char *); /*proto*/
@@ -3444,11 +3444,11 @@ static const __Pyx_TypeInfo __Pyx_TypeInfo_double = { "double", NULL, sizeof(dou
 static const __Pyx_TypeInfo __Pyx_TypeInfo_nn___pyx_t_5numpy_int32_t = { "int32_t", NULL, sizeof(__pyx_t_5numpy_int32_t), { 0 }, 0, __PYX_IS_UNSIGNED(__pyx_t_5numpy_int32_t) ? 'U' : 'I', __PYX_IS_UNSIGNED(__pyx_t_5numpy_int32_t), 0 };
 static const __Pyx_TypeInfo __Pyx_TypeInfo_int = { "int", NULL, sizeof(int), { 0 }, 0, __PYX_IS_UNSIGNED(int) ? 'U' : 'I', __PYX_IS_UNSIGNED(int), 0 };
 /* #### Code section: before_global_var ### */
-#define __Pyx_MODULE_NAME "mass_decomposer_cpp"
-extern int __pyx_module_is_main_mass_decomposer_cpp;
-int __pyx_module_is_main_mass_decomposer_cpp = 0;
+#define __Pyx_MODULE_NAME "ms_utils.formula_annotation.mass_decomposition_impl.mass_decomposer_cpp"
+extern int __pyx_module_is_main_ms_utils__formula_annotation__mass_decomposition_impl__mass_decomposer_cpp;
+int __pyx_module_is_main_ms_utils__formula_annotation__mass_decomposition_impl__mass_decomposer_cpp = 0;
 
-/* Implementation of "mass_decomposer_cpp" */
+/* Implementation of "ms_utils.formula_annotation.mass_decomposition_impl.mass_decomposer_cpp" */
 /* #### Code section: global_var ### */
 static PyObject *__pyx_builtin_range;
 static PyObject *__pyx_builtin_TypeError;
@@ -3673,7 +3673,6 @@ static const char __pyx_k_must_be_a_1D_array[] = " must be a 1D array";
 static const char __pyx_k_strided_and_direct[] = "<strided and direct>";
 static const char __pyx_k_flat_formulas_array[] = "flat_formulas_array";
 static const char __pyx_k_fragment_errors_ppm[] = "fragment_errors_ppm";
-static const char __pyx_k_mass_decomposer_cpp[] = "mass_decomposer_cpp";
 static const char __pyx_k_max_bounds_per_mass[] = "max_bounds_per_mass";
 static const char __pyx_k_min_bounds_per_mass[] = "min_bounds_per_mass";
 static const char __pyx_k_precursor_error_ppm[] = "precursor_error_ppm";
@@ -3685,7 +3684,6 @@ static const char __pyx_k_precursor_formula_arr[] = "precursor_formula_arr";
 static const char __pyx_k_Cannot_index_with_type[] = "Cannot index with type '";
 static const char __pyx_k_contiguous_and_indirect[] = "<contiguous and indirect>";
 static const char __pyx_k_decompose_mass_parallel[] = "decompose_mass_parallel";
-static const char __pyx_k_mass_decomposer_cpp_pyx[] = "mass_decomposer_cpp.pyx";
 static const char __pyx_k_Dimension_d_is_not_direct[] = "Dimension %d is not direct";
 static const char __pyx_k_Index_out_of_bounds_axis_d[] = "Index out of bounds (axis %d)";
 static const char __pyx_k_decompose_spectra_parallel[] = "decompose_spectra_parallel";
@@ -3703,6 +3701,7 @@ static const char __pyx_k_1_Q_Q_a_M_b_RRSSbbhhjjk_a_AQ_aq[] = "\200\001\330\023\
 static const char __pyx_k_1_Q_Q_a_oQoYa565A_8_FRS_Ja_A_31[] = "\200\001\330\021\022\330\020\021\330\020\021\330\004\023\2201\330\004\r\210Q\330\004\r\210Q\330\004\026\220a\330\004\021\220\021\330\005\006\330\004&\240o\260Q\260o\300Y\310a\34056\3305A\300\021\330\004&\320&8\270\001\270\026\270}\310F\320RS\360\006\000\005\006\330\010\022\220*\230J\240a\240}\260A\330\010\031\230\021\320\0323\2601\260E\270\024\270W\300A\330\010\017\210q\340\010\014\210A";
 static const char __pyx_k_1_a_oQoS_hhi_aq_6aq_8_q_O_a_q_3[] = "\200\001\330\027\030\330\025\026\330\020\021\330\020\021\330\004\023\2201\330\004\021\220\021\330\005\006\330\004\032\230!\320\033.\250a\330\004&\240o\260Q\260o\300S\310\007\310}\320\\h\320hi\340\004%\320%>\270a\270q\330\004\035\320\0356\260a\260q\340\004*\250!\330\004&\320&8\270\001\270\027\300\001\360\006\000\005\006\330\010\022\220*\320\034?\270q\300\017\320O`\320`a\330\010\017\210q\220\001\320\021*\250!\2503\250d\260%\260u\270D\300\007\300q\340\010\014\210A";
 static const char __pyx_k_Cython_wrapper_for_the_C_mass_d[] = "\nCython wrapper for the C++ mass decomposition implementation with OpenMP\nparallelization.\n";
+static const char __pyx_k_src_ms_utils_formula_annotation[] = "src/ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx";
 static const char __pyx_k_All_dimensions_preceding_dimensi[] = "All dimensions preceding dimension %d must be indexed and not sliced";
 static const char __pyx_k_Buffer_view_does_not_expose_stri[] = "Buffer view does not expose strides";
 static const char __pyx_k_Can_only_create_a_buffer_that_is[] = "Can only create a buffer that is contiguous in memory.";
@@ -3723,6 +3722,7 @@ static const char __pyx_k_decompose_spectra_known_precurso[] = "decompose_spectr
 static const char __pyx_k_decompose_spectra_parallel_per_b[] = "decompose_spectra_parallel_per_bounds";
 static const char __pyx_k_decompose_spectrum_known_precurs[] = "decompose_spectrum_known_precursor";
 static const char __pyx_k_got_differing_extents_in_dimensi[] = "got differing extents in dimension ";
+static const char __pyx_k_ms_utils_formula_annotation_mass[] = "ms_utils.formula_annotation.mass_decomposition_impl.mass_decomposer_cpp";
 static const char __pyx_k_no_default___reduce___due_to_non[] = "no default __reduce__ due to non-trivial __cinit__";
 static const char __pyx_k_numpy__core_multiarray_failed_to[] = "numpy._core.multiarray failed to import";
 static const char __pyx_k_numpy__core_umath_failed_to_impo[] = "numpy._core.umath failed to import";
@@ -3770,16 +3770,16 @@ static void __pyx_memoryviewslice___pyx_pf_15View_dot_MemoryView_16_memoryviewsl
 static PyObject *__pyx_pf___pyx_memoryviewslice___reduce_cython__(CYTHON_UNUSED struct __pyx_memoryviewslice_obj *__pyx_v_self); /* proto */
 static PyObject *__pyx_pf___pyx_memoryviewslice_2__setstate_cython__(CYTHON_UNUSED struct __pyx_memoryviewslice_obj *__pyx_v_self, CYTHON_UNUSED PyObject *__pyx_v___pyx_state); /* proto */
 static PyObject *__pyx_pf_15View_dot_MemoryView___pyx_unpickle_Enum(CYTHON_UNUSED PyObject *__pyx_self, PyObject *__pyx_v___pyx_type, long __pyx_v___pyx_checksum, PyObject *__pyx_v___pyx_state); /* proto */
-static PyObject *__pyx_pf_19mass_decomposer_cpp_get_num_elements(CYTHON_UNUSED PyObject *__pyx_self); /* proto */
-static PyObject *__pyx_pf_19mass_decomposer_cpp_2get_element_info(CYTHON_UNUSED PyObject *__pyx_self); /* proto */
-static PyObject *__pyx_pf_19mass_decomposer_cpp_4decompose_mass(CYTHON_UNUSED PyObject *__pyx_self, double __pyx_v_target_mass, PyArrayObject *__pyx_v_min_bounds, PyArrayObject *__pyx_v_max_bounds, double __pyx_v_tolerance_ppm, double __pyx_v_min_dbe, double __pyx_v_max_dbe, CYTHON_UNUSED double __pyx_v_max_hetero_ratio, PyObject *__pyx_v_max_results); /* proto */
-static PyObject *__pyx_pf_19mass_decomposer_cpp_6decompose_mass_parallel(CYTHON_UNUSED PyObject *__pyx_self, PyObject *__pyx_v_target_masses, PyArrayObject *__pyx_v_min_bounds, PyArrayObject *__pyx_v_max_bounds, double __pyx_v_tolerance_ppm, double __pyx_v_min_dbe, double __pyx_v_max_dbe, CYTHON_UNUSED double __pyx_v_max_hetero_ratio, PyObject *__pyx_v_max_results); /* proto */
-static PyObject *__pyx_pf_19mass_decomposer_cpp_8decompose_mass_parallel_per_bounds(CYTHON_UNUSED PyObject *__pyx_self, PyObject *__pyx_v_target_masses, PyObject *__pyx_v_min_bounds_per_mass, PyObject *__pyx_v_max_bounds_per_mass, double __pyx_v_tolerance_ppm, double __pyx_v_min_dbe, double __pyx_v_max_dbe, CYTHON_UNUSED double __pyx_v_max_hetero_ratio, PyObject *__pyx_v_max_results); /* proto */
-static PyObject *__pyx_pf_19mass_decomposer_cpp_10decompose_spectrum(CYTHON_UNUSED PyObject *__pyx_self, double __pyx_v_precursor_mass, PyObject *__pyx_v_fragment_masses, PyArrayObject *__pyx_v_min_bounds, PyArrayObject *__pyx_v_max_bounds, double __pyx_v_tolerance_ppm, double __pyx_v_min_dbe, double __pyx_v_max_dbe, CYTHON_UNUSED double __pyx_v_max_hetero_ratio, PyObject *__pyx_v_max_results); /* proto */
-static PyObject *__pyx_pf_19mass_decomposer_cpp_12decompose_spectra_parallel(CYTHON_UNUSED PyObject *__pyx_self, PyObject *__pyx_v_spectra_data, PyArrayObject *__pyx_v_min_bounds, PyArrayObject *__pyx_v_max_bounds, double __pyx_v_tolerance_ppm, double __pyx_v_min_dbe, double __pyx_v_max_dbe, CYTHON_UNUSED double __pyx_v_max_hetero_ratio, PyObject *__pyx_v_max_results); /* proto */
-static PyObject *__pyx_pf_19mass_decomposer_cpp_14decompose_spectra_parallel_per_bounds(CYTHON_UNUSED PyObject *__pyx_self, PyObject *__pyx_v_spectra_data, double __pyx_v_tolerance_ppm, double __pyx_v_min_dbe, double __pyx_v_max_dbe, CYTHON_UNUSED double __pyx_v_max_hetero_ratio, PyObject *__pyx_v_max_results); /* proto */
-static PyObject *__pyx_pf_19mass_decomposer_cpp_16decompose_spectrum_known_precursor(CYTHON_UNUSED PyObject *__pyx_self, PyArrayObject *__pyx_v_precursor_formula, PyObject *__pyx_v_fragment_masses, PyArrayObject *__pyx_v_min_bounds, PyArrayObject *__pyx_v_max_bounds, double __pyx_v_tolerance_ppm, PyObject *__pyx_v_max_results); /* proto */
-static PyObject *__pyx_pf_19mass_decomposer_cpp_18decompose_spectra_known_precursor_parallel(CYTHON_UNUSED PyObject *__pyx_self, PyObject *__pyx_v_spectra_data, PyArrayObject *__pyx_v_min_bounds, PyArrayObject *__pyx_v_max_bounds, double __pyx_v_tolerance_ppm, PyObject *__pyx_v_max_results); /* proto */
+static PyObject *__pyx_pf_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp_get_num_elements(CYTHON_UNUSED PyObject *__pyx_self); /* proto */
+static PyObject *__pyx_pf_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp_2get_element_info(CYTHON_UNUSED PyObject *__pyx_self); /* proto */
+static PyObject *__pyx_pf_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp_4decompose_mass(CYTHON_UNUSED PyObject *__pyx_self, double __pyx_v_target_mass, PyArrayObject *__pyx_v_min_bounds, PyArrayObject *__pyx_v_max_bounds, double __pyx_v_tolerance_ppm, double __pyx_v_min_dbe, double __pyx_v_max_dbe, CYTHON_UNUSED double __pyx_v_max_hetero_ratio, PyObject *__pyx_v_max_results); /* proto */
+static PyObject *__pyx_pf_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp_6decompose_mass_parallel(CYTHON_UNUSED PyObject *__pyx_self, PyObject *__pyx_v_target_masses, PyArrayObject *__pyx_v_min_bounds, PyArrayObject *__pyx_v_max_bounds, double __pyx_v_tolerance_ppm, double __pyx_v_min_dbe, double __pyx_v_max_dbe, CYTHON_UNUSED double __pyx_v_max_hetero_ratio, PyObject *__pyx_v_max_results); /* proto */
+static PyObject *__pyx_pf_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp_8decompose_mass_parallel_per_bounds(CYTHON_UNUSED PyObject *__pyx_self, PyObject *__pyx_v_target_masses, PyObject *__pyx_v_min_bounds_per_mass, PyObject *__pyx_v_max_bounds_per_mass, double __pyx_v_tolerance_ppm, double __pyx_v_min_dbe, double __pyx_v_max_dbe, CYTHON_UNUSED double __pyx_v_max_hetero_ratio, PyObject *__pyx_v_max_results); /* proto */
+static PyObject *__pyx_pf_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp_10decompose_spectrum(CYTHON_UNUSED PyObject *__pyx_self, double __pyx_v_precursor_mass, PyObject *__pyx_v_fragment_masses, PyArrayObject *__pyx_v_min_bounds, PyArrayObject *__pyx_v_max_bounds, double __pyx_v_tolerance_ppm, double __pyx_v_min_dbe, double __pyx_v_max_dbe, CYTHON_UNUSED double __pyx_v_max_hetero_ratio, PyObject *__pyx_v_max_results); /* proto */
+static PyObject *__pyx_pf_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp_12decompose_spectra_parallel(CYTHON_UNUSED PyObject *__pyx_self, PyObject *__pyx_v_spectra_data, PyArrayObject *__pyx_v_min_bounds, PyArrayObject *__pyx_v_max_bounds, double __pyx_v_tolerance_ppm, double __pyx_v_min_dbe, double __pyx_v_max_dbe, CYTHON_UNUSED double __pyx_v_max_hetero_ratio, PyObject *__pyx_v_max_results); /* proto */
+static PyObject *__pyx_pf_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp_14decompose_spectra_parallel_per_bounds(CYTHON_UNUSED PyObject *__pyx_self, PyObject *__pyx_v_spectra_data, double __pyx_v_tolerance_ppm, double __pyx_v_min_dbe, double __pyx_v_max_dbe, CYTHON_UNUSED double __pyx_v_max_hetero_ratio, PyObject *__pyx_v_max_results); /* proto */
+static PyObject *__pyx_pf_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp_16decompose_spectrum_known_precursor(CYTHON_UNUSED PyObject *__pyx_self, PyArrayObject *__pyx_v_precursor_formula, PyObject *__pyx_v_fragment_masses, PyArrayObject *__pyx_v_min_bounds, PyArrayObject *__pyx_v_max_bounds, double __pyx_v_tolerance_ppm, PyObject *__pyx_v_max_results); /* proto */
+static PyObject *__pyx_pf_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp_18decompose_spectra_known_precursor_parallel(CYTHON_UNUSED PyObject *__pyx_self, PyObject *__pyx_v_spectra_data, PyArrayObject *__pyx_v_min_bounds, PyArrayObject *__pyx_v_max_bounds, double __pyx_v_tolerance_ppm, PyObject *__pyx_v_max_results); /* proto */
 static PyObject *__pyx_tp_new_array(PyTypeObject *t, PyObject *a, PyObject *k); /*proto*/
 static PyObject *__pyx_tp_new_Enum(PyTypeObject *t, PyObject *a, PyObject *k); /*proto*/
 static PyObject *__pyx_tp_new_memoryview(PyTypeObject *t, PyObject *a, PyObject *k); /*proto*/
@@ -4039,95 +4039,95 @@ static __pyx_mstatetype * const __pyx_mstate_global = &__pyx_mstate_global_stati
 #define __pyx_n_u_list __pyx_string_tab[141]
 #define __pyx_kp_u_list_np_ndarray __pyx_string_tab[142]
 #define __pyx_n_u_main __pyx_string_tab[143]
-#define __pyx_n_u_mass_decomposer_cpp __pyx_string_tab[144]
-#define __pyx_kp_u_mass_decomposer_cpp_pyx __pyx_string_tab[145]
-#define __pyx_n_u_masses __pyx_string_tab[146]
-#define __pyx_n_u_masses_ptr __pyx_string_tab[147]
-#define __pyx_n_u_masses_vec __pyx_string_tab[148]
-#define __pyx_n_u_max_bounds __pyx_string_tab[149]
-#define __pyx_kp_u_max_bounds_in_list __pyx_string_tab[150]
-#define __pyx_n_u_max_bounds_per_mass __pyx_string_tab[151]
-#define __pyx_n_u_max_bounds_ptr __pyx_string_tab[152]
-#define __pyx_n_u_max_dbe __pyx_string_tab[153]
-#define __pyx_n_u_max_f __pyx_string_tab[154]
-#define __pyx_n_u_max_hetero_ratio __pyx_string_tab[155]
-#define __pyx_n_u_max_results __pyx_string_tab[156]
-#define __pyx_n_u_memview __pyx_string_tab[157]
-#define __pyx_n_u_min_b __pyx_string_tab[158]
-#define __pyx_n_u_min_bounds __pyx_string_tab[159]
-#define __pyx_kp_u_min_bounds_in_list __pyx_string_tab[160]
-#define __pyx_n_u_min_bounds_per_mass __pyx_string_tab[161]
-#define __pyx_n_u_min_bounds_ptr __pyx_string_tab[162]
-#define __pyx_n_u_min_dbe __pyx_string_tab[163]
-#define __pyx_n_u_min_f __pyx_string_tab[164]
-#define __pyx_n_u_mode __pyx_string_tab[165]
-#define __pyx_n_u_module __pyx_string_tab[166]
-#define __pyx_kp_u_must_be_a_1D_array __pyx_string_tab[167]
-#define __pyx_kp_u_must_be_of_type_numpy_int32 __pyx_string_tab[168]
-#define __pyx_kp_u_must_have_length __pyx_string_tab[169]
-#define __pyx_n_u_n_masses __pyx_string_tab[170]
-#define __pyx_n_u_name __pyx_string_tab[171]
-#define __pyx_n_u_name_2 __pyx_string_tab[172]
-#define __pyx_n_u_ndim __pyx_string_tab[173]
-#define __pyx_n_u_new __pyx_string_tab[174]
-#define __pyx_kp_u_no_default___reduce___due_to_non __pyx_string_tab[175]
-#define __pyx_n_u_np __pyx_string_tab[176]
-#define __pyx_kp_u_np_ndarray __pyx_string_tab[177]
-#define __pyx_n_u_num_formulas_for_mass __pyx_string_tab[178]
-#define __pyx_n_u_num_masses __pyx_string_tab[179]
-#define __pyx_n_u_numpy __pyx_string_tab[180]
-#define __pyx_kp_u_numpy__core_multiarray_failed_to __pyx_string_tab[181]
-#define __pyx_kp_u_numpy__core_umath_failed_to_impo __pyx_string_tab[182]
-#define __pyx_n_u_obj __pyx_string_tab[183]
-#define __pyx_kp_u_object __pyx_string_tab[184]
-#define __pyx_n_u_offset_array __pyx_string_tab[185]
-#define __pyx_n_u_offsets_array __pyx_string_tab[186]
-#define __pyx_n_u_offsets_view __pyx_string_tab[187]
-#define __pyx_n_u_order __pyx_string_tab[188]
-#define __pyx_n_u_pa __pyx_string_tab[189]
-#define __pyx_n_u_pack __pyx_string_tab[190]
-#define __pyx_n_u_params __pyx_string_tab[191]
-#define __pyx_n_u_pickle __pyx_string_tab[192]
-#define __pyx_n_u_pl __pyx_string_tab[193]
-#define __pyx_kp_u_pl_Series __pyx_string_tab[194]
-#define __pyx_n_u_polars __pyx_string_tab[195]
-#define __pyx_n_u_pop __pyx_string_tab[196]
-#define __pyx_n_u_precursor __pyx_string_tab[197]
-#define __pyx_n_u_precursor_error_ppm __pyx_string_tab[198]
-#define __pyx_n_u_precursor_formula __pyx_string_tab[199]
-#define __pyx_n_u_precursor_formula_arr __pyx_string_tab[200]
-#define __pyx_kp_u_precursor_formula_in_spectra_dat __pyx_string_tab[201]
-#define __pyx_n_u_precursor_mass __pyx_string_tab[202]
-#define __pyx_n_u_py_decomp __pyx_string_tab[203]
-#define __pyx_n_u_pyarrow __pyx_string_tab[204]
-#define __pyx_n_u_python_results __pyx_string_tab[205]
-#define __pyx_n_u_pyx_checksum __pyx_string_tab[206]
-#define __pyx_n_u_pyx_state __pyx_string_tab[207]
-#define __pyx_n_u_pyx_type __pyx_string_tab[208]
-#define __pyx_n_u_pyx_unpickle_Enum __pyx_string_tab[209]
-#define __pyx_n_u_pyx_vtable __pyx_string_tab[210]
-#define __pyx_n_u_qualname __pyx_string_tab[211]
-#define __pyx_n_u_range __pyx_string_tab[212]
-#define __pyx_n_u_reduce __pyx_string_tab[213]
-#define __pyx_n_u_reduce_cython __pyx_string_tab[214]
-#define __pyx_n_u_reduce_ex __pyx_string_tab[215]
-#define __pyx_n_u_register __pyx_string_tab[216]
-#define __pyx_n_u_res __pyx_string_tab[217]
-#define __pyx_n_u_results __pyx_string_tab[218]
-#define __pyx_n_u_return __pyx_string_tab[219]
-#define __pyx_n_u_s __pyx_string_tab[220]
-#define __pyx_n_u_schema __pyx_string_tab[221]
-#define __pyx_n_u_set_name __pyx_string_tab[222]
-#define __pyx_n_u_setstate __pyx_string_tab[223]
-#define __pyx_n_u_setstate_cython __pyx_string_tab[224]
-#define __pyx_n_u_shape __pyx_string_tab[225]
-#define __pyx_n_u_size __pyx_string_tab[226]
-#define __pyx_n_u_spec __pyx_string_tab[227]
-#define __pyx_n_u_spec_data __pyx_string_tab[228]
-#define __pyx_n_u_spec_res __pyx_string_tab[229]
-#define __pyx_n_u_spectra_data __pyx_string_tab[230]
-#define __pyx_n_u_spectra_data_list __pyx_string_tab[231]
-#define __pyx_n_u_spectra_vec __pyx_string_tab[232]
+#define __pyx_n_u_masses __pyx_string_tab[144]
+#define __pyx_n_u_masses_ptr __pyx_string_tab[145]
+#define __pyx_n_u_masses_vec __pyx_string_tab[146]
+#define __pyx_n_u_max_bounds __pyx_string_tab[147]
+#define __pyx_kp_u_max_bounds_in_list __pyx_string_tab[148]
+#define __pyx_n_u_max_bounds_per_mass __pyx_string_tab[149]
+#define __pyx_n_u_max_bounds_ptr __pyx_string_tab[150]
+#define __pyx_n_u_max_dbe __pyx_string_tab[151]
+#define __pyx_n_u_max_f __pyx_string_tab[152]
+#define __pyx_n_u_max_hetero_ratio __pyx_string_tab[153]
+#define __pyx_n_u_max_results __pyx_string_tab[154]
+#define __pyx_n_u_memview __pyx_string_tab[155]
+#define __pyx_n_u_min_b __pyx_string_tab[156]
+#define __pyx_n_u_min_bounds __pyx_string_tab[157]
+#define __pyx_kp_u_min_bounds_in_list __pyx_string_tab[158]
+#define __pyx_n_u_min_bounds_per_mass __pyx_string_tab[159]
+#define __pyx_n_u_min_bounds_ptr __pyx_string_tab[160]
+#define __pyx_n_u_min_dbe __pyx_string_tab[161]
+#define __pyx_n_u_min_f __pyx_string_tab[162]
+#define __pyx_n_u_mode __pyx_string_tab[163]
+#define __pyx_n_u_module __pyx_string_tab[164]
+#define __pyx_n_u_ms_utils_formula_annotation_mass __pyx_string_tab[165]
+#define __pyx_kp_u_must_be_a_1D_array __pyx_string_tab[166]
+#define __pyx_kp_u_must_be_of_type_numpy_int32 __pyx_string_tab[167]
+#define __pyx_kp_u_must_have_length __pyx_string_tab[168]
+#define __pyx_n_u_n_masses __pyx_string_tab[169]
+#define __pyx_n_u_name __pyx_string_tab[170]
+#define __pyx_n_u_name_2 __pyx_string_tab[171]
+#define __pyx_n_u_ndim __pyx_string_tab[172]
+#define __pyx_n_u_new __pyx_string_tab[173]
+#define __pyx_kp_u_no_default___reduce___due_to_non __pyx_string_tab[174]
+#define __pyx_n_u_np __pyx_string_tab[175]
+#define __pyx_kp_u_np_ndarray __pyx_string_tab[176]
+#define __pyx_n_u_num_formulas_for_mass __pyx_string_tab[177]
+#define __pyx_n_u_num_masses __pyx_string_tab[178]
+#define __pyx_n_u_numpy __pyx_string_tab[179]
+#define __pyx_kp_u_numpy__core_multiarray_failed_to __pyx_string_tab[180]
+#define __pyx_kp_u_numpy__core_umath_failed_to_impo __pyx_string_tab[181]
+#define __pyx_n_u_obj __pyx_string_tab[182]
+#define __pyx_kp_u_object __pyx_string_tab[183]
+#define __pyx_n_u_offset_array __pyx_string_tab[184]
+#define __pyx_n_u_offsets_array __pyx_string_tab[185]
+#define __pyx_n_u_offsets_view __pyx_string_tab[186]
+#define __pyx_n_u_order __pyx_string_tab[187]
+#define __pyx_n_u_pa __pyx_string_tab[188]
+#define __pyx_n_u_pack __pyx_string_tab[189]
+#define __pyx_n_u_params __pyx_string_tab[190]
+#define __pyx_n_u_pickle __pyx_string_tab[191]
+#define __pyx_n_u_pl __pyx_string_tab[192]
+#define __pyx_kp_u_pl_Series __pyx_string_tab[193]
+#define __pyx_n_u_polars __pyx_string_tab[194]
+#define __pyx_n_u_pop __pyx_string_tab[195]
+#define __pyx_n_u_precursor __pyx_string_tab[196]
+#define __pyx_n_u_precursor_error_ppm __pyx_string_tab[197]
+#define __pyx_n_u_precursor_formula __pyx_string_tab[198]
+#define __pyx_n_u_precursor_formula_arr __pyx_string_tab[199]
+#define __pyx_kp_u_precursor_formula_in_spectra_dat __pyx_string_tab[200]
+#define __pyx_n_u_precursor_mass __pyx_string_tab[201]
+#define __pyx_n_u_py_decomp __pyx_string_tab[202]
+#define __pyx_n_u_pyarrow __pyx_string_tab[203]
+#define __pyx_n_u_python_results __pyx_string_tab[204]
+#define __pyx_n_u_pyx_checksum __pyx_string_tab[205]
+#define __pyx_n_u_pyx_state __pyx_string_tab[206]
+#define __pyx_n_u_pyx_type __pyx_string_tab[207]
+#define __pyx_n_u_pyx_unpickle_Enum __pyx_string_tab[208]
+#define __pyx_n_u_pyx_vtable __pyx_string_tab[209]
+#define __pyx_n_u_qualname __pyx_string_tab[210]
+#define __pyx_n_u_range __pyx_string_tab[211]
+#define __pyx_n_u_reduce __pyx_string_tab[212]
+#define __pyx_n_u_reduce_cython __pyx_string_tab[213]
+#define __pyx_n_u_reduce_ex __pyx_string_tab[214]
+#define __pyx_n_u_register __pyx_string_tab[215]
+#define __pyx_n_u_res __pyx_string_tab[216]
+#define __pyx_n_u_results __pyx_string_tab[217]
+#define __pyx_n_u_return __pyx_string_tab[218]
+#define __pyx_n_u_s __pyx_string_tab[219]
+#define __pyx_n_u_schema __pyx_string_tab[220]
+#define __pyx_n_u_set_name __pyx_string_tab[221]
+#define __pyx_n_u_setstate __pyx_string_tab[222]
+#define __pyx_n_u_setstate_cython __pyx_string_tab[223]
+#define __pyx_n_u_shape __pyx_string_tab[224]
+#define __pyx_n_u_size __pyx_string_tab[225]
+#define __pyx_n_u_spec __pyx_string_tab[226]
+#define __pyx_n_u_spec_data __pyx_string_tab[227]
+#define __pyx_n_u_spec_res __pyx_string_tab[228]
+#define __pyx_n_u_spectra_data __pyx_string_tab[229]
+#define __pyx_n_u_spectra_data_list __pyx_string_tab[230]
+#define __pyx_n_u_spectra_vec __pyx_string_tab[231]
+#define __pyx_kp_u_src_ms_utils_formula_annotation __pyx_string_tab[232]
 #define __pyx_n_u_start __pyx_string_tab[233]
 #define __pyx_n_u_step __pyx_string_tab[234]
 #define __pyx_n_u_stop __pyx_string_tab[235]
@@ -17959,7 +17959,7 @@ static std::vector<double>  __pyx_convert_vector_from_py_double(PyObject *__pyx_
   return __pyx_r;
 }
 
-/* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":286
+/* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":242
  *         cdef int type_num
  * 
  *         @property             # <<<<<<<<<<<<<<
@@ -17970,7 +17970,7 @@ static std::vector<double>  __pyx_convert_vector_from_py_double(PyObject *__pyx_
 static CYTHON_INLINE npy_intp __pyx_f_5numpy_5dtype_8itemsize_itemsize(PyArray_Descr *__pyx_v_self) {
   npy_intp __pyx_r;
 
-  /* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":288
+  /* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":244
  *         @property
  *         cdef inline npy_intp itemsize(self) noexcept nogil:
  *             return PyDataType_ELSIZE(self)             # <<<<<<<<<<<<<<
@@ -17980,7 +17980,7 @@ static CYTHON_INLINE npy_intp __pyx_f_5numpy_5dtype_8itemsize_itemsize(PyArray_D
   __pyx_r = PyDataType_ELSIZE(__pyx_v_self);
   goto __pyx_L0;
 
-  /* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":286
+  /* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":242
  *         cdef int type_num
  * 
  *         @property             # <<<<<<<<<<<<<<
@@ -17993,7 +17993,7 @@ static CYTHON_INLINE npy_intp __pyx_f_5numpy_5dtype_8itemsize_itemsize(PyArray_D
   return __pyx_r;
 }
 
-/* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":290
+/* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":246
  *             return PyDataType_ELSIZE(self)
  * 
  *         @property             # <<<<<<<<<<<<<<
@@ -18004,7 +18004,7 @@ static CYTHON_INLINE npy_intp __pyx_f_5numpy_5dtype_8itemsize_itemsize(PyArray_D
 static CYTHON_INLINE npy_intp __pyx_f_5numpy_5dtype_9alignment_alignment(PyArray_Descr *__pyx_v_self) {
   npy_intp __pyx_r;
 
-  /* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":292
+  /* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":248
  *         @property
  *         cdef inline npy_intp alignment(self) noexcept nogil:
  *             return PyDataType_ALIGNMENT(self)             # <<<<<<<<<<<<<<
@@ -18014,7 +18014,7 @@ static CYTHON_INLINE npy_intp __pyx_f_5numpy_5dtype_9alignment_alignment(PyArray
   __pyx_r = PyDataType_ALIGNMENT(__pyx_v_self);
   goto __pyx_L0;
 
-  /* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":290
+  /* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":246
  *             return PyDataType_ELSIZE(self)
  * 
  *         @property             # <<<<<<<<<<<<<<
@@ -18027,7 +18027,7 @@ static CYTHON_INLINE npy_intp __pyx_f_5numpy_5dtype_9alignment_alignment(PyArray
   return __pyx_r;
 }
 
-/* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":296
+/* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":252
  *         # Use fields/names with care as they may be NULL.  You must check
  *         # for this using PyDataType_HASFIELDS.
  *         @property             # <<<<<<<<<<<<<<
@@ -18041,7 +18041,7 @@ static CYTHON_INLINE PyObject *__pyx_f_5numpy_5dtype_6fields_fields(PyArray_Desc
   PyObject *__pyx_t_1;
   __Pyx_RefNannySetupContext("fields", 0);
 
-  /* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":298
+  /* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":254
  *         @property
  *         cdef inline object fields(self):
  *             return <object>PyDataType_FIELDS(self)             # <<<<<<<<<<<<<<
@@ -18054,7 +18054,7 @@ static CYTHON_INLINE PyObject *__pyx_f_5numpy_5dtype_6fields_fields(PyArray_Desc
   __pyx_r = ((PyObject *)__pyx_t_1);
   goto __pyx_L0;
 
-  /* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":296
+  /* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":252
  *         # Use fields/names with care as they may be NULL.  You must check
  *         # for this using PyDataType_HASFIELDS.
  *         @property             # <<<<<<<<<<<<<<
@@ -18069,7 +18069,7 @@ static CYTHON_INLINE PyObject *__pyx_f_5numpy_5dtype_6fields_fields(PyArray_Desc
   return __pyx_r;
 }
 
-/* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":300
+/* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":256
  *             return <object>PyDataType_FIELDS(self)
  * 
  *         @property             # <<<<<<<<<<<<<<
@@ -18083,7 +18083,7 @@ static CYTHON_INLINE PyObject *__pyx_f_5numpy_5dtype_5names_names(PyArray_Descr 
   PyObject *__pyx_t_1;
   __Pyx_RefNannySetupContext("names", 0);
 
-  /* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":302
+  /* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":258
  *         @property
  *         cdef inline tuple names(self):
  *             return <tuple>PyDataType_NAMES(self)             # <<<<<<<<<<<<<<
@@ -18096,7 +18096,7 @@ static CYTHON_INLINE PyObject *__pyx_f_5numpy_5dtype_5names_names(PyArray_Descr 
   __pyx_r = ((PyObject*)__pyx_t_1);
   goto __pyx_L0;
 
-  /* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":300
+  /* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":256
  *             return <object>PyDataType_FIELDS(self)
  * 
  *         @property             # <<<<<<<<<<<<<<
@@ -18111,7 +18111,7 @@ static CYTHON_INLINE PyObject *__pyx_f_5numpy_5dtype_5names_names(PyArray_Descr 
   return __pyx_r;
 }
 
-/* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":307
+/* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":263
  *         # valid (the pointer can be NULL). Most users should access
  *         # this field via the inline helper method PyDataType_SHAPE.
  *         @property             # <<<<<<<<<<<<<<
@@ -18122,7 +18122,7 @@ static CYTHON_INLINE PyObject *__pyx_f_5numpy_5dtype_5names_names(PyArray_Descr 
 static CYTHON_INLINE PyArray_ArrayDescr *__pyx_f_5numpy_5dtype_8subarray_subarray(PyArray_Descr *__pyx_v_self) {
   PyArray_ArrayDescr *__pyx_r;
 
-  /* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":309
+  /* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":265
  *         @property
  *         cdef inline PyArray_ArrayDescr* subarray(self) noexcept nogil:
  *             return PyDataType_SUBARRAY(self)             # <<<<<<<<<<<<<<
@@ -18132,7 +18132,7 @@ static CYTHON_INLINE PyArray_ArrayDescr *__pyx_f_5numpy_5dtype_8subarray_subarra
   __pyx_r = PyDataType_SUBARRAY(__pyx_v_self);
   goto __pyx_L0;
 
-  /* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":307
+  /* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":263
  *         # valid (the pointer can be NULL). Most users should access
  *         # this field via the inline helper method PyDataType_SHAPE.
  *         @property             # <<<<<<<<<<<<<<
@@ -18145,7 +18145,7 @@ static CYTHON_INLINE PyArray_ArrayDescr *__pyx_f_5numpy_5dtype_8subarray_subarra
   return __pyx_r;
 }
 
-/* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":311
+/* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":267
  *             return PyDataType_SUBARRAY(self)
  * 
  *         @property             # <<<<<<<<<<<<<<
@@ -18156,7 +18156,7 @@ static CYTHON_INLINE PyArray_ArrayDescr *__pyx_f_5numpy_5dtype_8subarray_subarra
 static CYTHON_INLINE npy_uint64 __pyx_f_5numpy_5dtype_5flags_flags(PyArray_Descr *__pyx_v_self) {
   npy_uint64 __pyx_r;
 
-  /* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":314
+  /* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":270
  *         cdef inline npy_uint64 flags(self) noexcept nogil:
  *             """The data types flags."""
  *             return PyDataType_FLAGS(self)             # <<<<<<<<<<<<<<
@@ -18166,7 +18166,7 @@ static CYTHON_INLINE npy_uint64 __pyx_f_5numpy_5dtype_5flags_flags(PyArray_Descr
   __pyx_r = PyDataType_FLAGS(__pyx_v_self);
   goto __pyx_L0;
 
-  /* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":311
+  /* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":267
  *             return PyDataType_SUBARRAY(self)
  * 
  *         @property             # <<<<<<<<<<<<<<
@@ -18179,7 +18179,7 @@ static CYTHON_INLINE npy_uint64 __pyx_f_5numpy_5dtype_5flags_flags(PyArray_Descr
   return __pyx_r;
 }
 
-/* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":323
+/* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":279
  *     ctypedef class numpy.broadcast [object PyArrayMultiIterObject, check_size ignore]:
  * 
  *         @property             # <<<<<<<<<<<<<<
@@ -18190,7 +18190,7 @@ static CYTHON_INLINE npy_uint64 __pyx_f_5numpy_5dtype_5flags_flags(PyArray_Descr
 static CYTHON_INLINE int __pyx_f_5numpy_9broadcast_7numiter_numiter(PyArrayMultiIterObject *__pyx_v_self) {
   int __pyx_r;
 
-  /* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":326
+  /* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":282
  *         cdef inline int numiter(self) noexcept nogil:
  *             """The number of arrays that need to be broadcast to the same shape."""
  *             return PyArray_MultiIter_NUMITER(self)             # <<<<<<<<<<<<<<
@@ -18200,7 +18200,7 @@ static CYTHON_INLINE int __pyx_f_5numpy_9broadcast_7numiter_numiter(PyArrayMulti
   __pyx_r = PyArray_MultiIter_NUMITER(__pyx_v_self);
   goto __pyx_L0;
 
-  /* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":323
+  /* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":279
  *     ctypedef class numpy.broadcast [object PyArrayMultiIterObject, check_size ignore]:
  * 
  *         @property             # <<<<<<<<<<<<<<
@@ -18213,7 +18213,7 @@ static CYTHON_INLINE int __pyx_f_5numpy_9broadcast_7numiter_numiter(PyArrayMulti
   return __pyx_r;
 }
 
-/* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":328
+/* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":284
  *             return PyArray_MultiIter_NUMITER(self)
  * 
  *         @property             # <<<<<<<<<<<<<<
@@ -18224,7 +18224,7 @@ static CYTHON_INLINE int __pyx_f_5numpy_9broadcast_7numiter_numiter(PyArrayMulti
 static CYTHON_INLINE npy_intp __pyx_f_5numpy_9broadcast_4size_size(PyArrayMultiIterObject *__pyx_v_self) {
   npy_intp __pyx_r;
 
-  /* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":331
+  /* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":287
  *         cdef inline npy_intp size(self) noexcept nogil:
  *             """The total broadcasted size."""
  *             return PyArray_MultiIter_SIZE(self)             # <<<<<<<<<<<<<<
@@ -18234,7 +18234,7 @@ static CYTHON_INLINE npy_intp __pyx_f_5numpy_9broadcast_4size_size(PyArrayMultiI
   __pyx_r = PyArray_MultiIter_SIZE(__pyx_v_self);
   goto __pyx_L0;
 
-  /* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":328
+  /* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":284
  *             return PyArray_MultiIter_NUMITER(self)
  * 
  *         @property             # <<<<<<<<<<<<<<
@@ -18247,7 +18247,7 @@ static CYTHON_INLINE npy_intp __pyx_f_5numpy_9broadcast_4size_size(PyArrayMultiI
   return __pyx_r;
 }
 
-/* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":333
+/* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":289
  *             return PyArray_MultiIter_SIZE(self)
  * 
  *         @property             # <<<<<<<<<<<<<<
@@ -18258,7 +18258,7 @@ static CYTHON_INLINE npy_intp __pyx_f_5numpy_9broadcast_4size_size(PyArrayMultiI
 static CYTHON_INLINE npy_intp __pyx_f_5numpy_9broadcast_5index_index(PyArrayMultiIterObject *__pyx_v_self) {
   npy_intp __pyx_r;
 
-  /* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":336
+  /* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":292
  *         cdef inline npy_intp index(self) noexcept nogil:
  *             """The current (1-d) index into the broadcasted result."""
  *             return PyArray_MultiIter_INDEX(self)             # <<<<<<<<<<<<<<
@@ -18268,7 +18268,7 @@ static CYTHON_INLINE npy_intp __pyx_f_5numpy_9broadcast_5index_index(PyArrayMult
   __pyx_r = PyArray_MultiIter_INDEX(__pyx_v_self);
   goto __pyx_L0;
 
-  /* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":333
+  /* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":289
  *             return PyArray_MultiIter_SIZE(self)
  * 
  *         @property             # <<<<<<<<<<<<<<
@@ -18281,7 +18281,7 @@ static CYTHON_INLINE npy_intp __pyx_f_5numpy_9broadcast_5index_index(PyArrayMult
   return __pyx_r;
 }
 
-/* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":338
+/* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":294
  *             return PyArray_MultiIter_INDEX(self)
  * 
  *         @property             # <<<<<<<<<<<<<<
@@ -18292,7 +18292,7 @@ static CYTHON_INLINE npy_intp __pyx_f_5numpy_9broadcast_5index_index(PyArrayMult
 static CYTHON_INLINE int __pyx_f_5numpy_9broadcast_2nd_nd(PyArrayMultiIterObject *__pyx_v_self) {
   int __pyx_r;
 
-  /* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":341
+  /* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":297
  *         cdef inline int nd(self) noexcept nogil:
  *             """The number of dimensions in the broadcasted result."""
  *             return PyArray_MultiIter_NDIM(self)             # <<<<<<<<<<<<<<
@@ -18302,7 +18302,7 @@ static CYTHON_INLINE int __pyx_f_5numpy_9broadcast_2nd_nd(PyArrayMultiIterObject
   __pyx_r = PyArray_MultiIter_NDIM(__pyx_v_self);
   goto __pyx_L0;
 
-  /* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":338
+  /* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":294
  *             return PyArray_MultiIter_INDEX(self)
  * 
  *         @property             # <<<<<<<<<<<<<<
@@ -18315,7 +18315,7 @@ static CYTHON_INLINE int __pyx_f_5numpy_9broadcast_2nd_nd(PyArrayMultiIterObject
   return __pyx_r;
 }
 
-/* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":343
+/* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":299
  *             return PyArray_MultiIter_NDIM(self)
  * 
  *         @property             # <<<<<<<<<<<<<<
@@ -18326,7 +18326,7 @@ static CYTHON_INLINE int __pyx_f_5numpy_9broadcast_2nd_nd(PyArrayMultiIterObject
 static CYTHON_INLINE npy_intp *__pyx_f_5numpy_9broadcast_10dimensions_dimensions(PyArrayMultiIterObject *__pyx_v_self) {
   npy_intp *__pyx_r;
 
-  /* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":346
+  /* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":302
  *         cdef inline npy_intp* dimensions(self) noexcept nogil:
  *             """The shape of the broadcasted result."""
  *             return PyArray_MultiIter_DIMS(self)             # <<<<<<<<<<<<<<
@@ -18336,7 +18336,7 @@ static CYTHON_INLINE npy_intp *__pyx_f_5numpy_9broadcast_10dimensions_dimensions
   __pyx_r = PyArray_MultiIter_DIMS(__pyx_v_self);
   goto __pyx_L0;
 
-  /* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":343
+  /* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":299
  *             return PyArray_MultiIter_NDIM(self)
  * 
  *         @property             # <<<<<<<<<<<<<<
@@ -18349,7 +18349,7 @@ static CYTHON_INLINE npy_intp *__pyx_f_5numpy_9broadcast_10dimensions_dimensions
   return __pyx_r;
 }
 
-/* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":348
+/* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":304
  *             return PyArray_MultiIter_DIMS(self)
  * 
  *         @property             # <<<<<<<<<<<<<<
@@ -18360,7 +18360,7 @@ static CYTHON_INLINE npy_intp *__pyx_f_5numpy_9broadcast_10dimensions_dimensions
 static CYTHON_INLINE void **__pyx_f_5numpy_9broadcast_5iters_iters(PyArrayMultiIterObject *__pyx_v_self) {
   void **__pyx_r;
 
-  /* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":352
+  /* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":308
  *             """An array of iterator objects that holds the iterators for the arrays to be broadcast together.
  *             On return, the iterators are adjusted for broadcasting."""
  *             return PyArray_MultiIter_ITERS(self)             # <<<<<<<<<<<<<<
@@ -18370,7 +18370,7 @@ static CYTHON_INLINE void **__pyx_f_5numpy_9broadcast_5iters_iters(PyArrayMultiI
   __pyx_r = PyArray_MultiIter_ITERS(__pyx_v_self);
   goto __pyx_L0;
 
-  /* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":348
+  /* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":304
  *             return PyArray_MultiIter_DIMS(self)
  * 
  *         @property             # <<<<<<<<<<<<<<
@@ -18383,7 +18383,7 @@ static CYTHON_INLINE void **__pyx_f_5numpy_9broadcast_5iters_iters(PyArrayMultiI
   return __pyx_r;
 }
 
-/* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":366
+/* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":322
  *         # Instead, we use properties that map to the corresponding C-API functions.
  * 
  *         @property             # <<<<<<<<<<<<<<
@@ -18394,7 +18394,7 @@ static CYTHON_INLINE void **__pyx_f_5numpy_9broadcast_5iters_iters(PyArrayMultiI
 static CYTHON_INLINE PyObject *__pyx_f_5numpy_7ndarray_4base_base(PyArrayObject *__pyx_v_self) {
   PyObject *__pyx_r;
 
-  /* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":370
+  /* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":326
  *             """Returns a borrowed reference to the object owning the data/memory.
  *             """
  *             return PyArray_BASE(self)             # <<<<<<<<<<<<<<
@@ -18404,7 +18404,7 @@ static CYTHON_INLINE PyObject *__pyx_f_5numpy_7ndarray_4base_base(PyArrayObject 
   __pyx_r = PyArray_BASE(__pyx_v_self);
   goto __pyx_L0;
 
-  /* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":366
+  /* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":322
  *         # Instead, we use properties that map to the corresponding C-API functions.
  * 
  *         @property             # <<<<<<<<<<<<<<
@@ -18417,7 +18417,7 @@ static CYTHON_INLINE PyObject *__pyx_f_5numpy_7ndarray_4base_base(PyArrayObject 
   return __pyx_r;
 }
 
-/* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":372
+/* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":328
  *             return PyArray_BASE(self)
  * 
  *         @property             # <<<<<<<<<<<<<<
@@ -18431,7 +18431,7 @@ static CYTHON_INLINE PyArray_Descr *__pyx_f_5numpy_7ndarray_5descr_descr(PyArray
   PyArray_Descr *__pyx_t_1;
   __Pyx_RefNannySetupContext("descr", 0);
 
-  /* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":376
+  /* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":332
  *             """Returns an owned reference to the dtype of the array.
  *             """
  *             return <dtype>PyArray_DESCR(self)             # <<<<<<<<<<<<<<
@@ -18444,7 +18444,7 @@ static CYTHON_INLINE PyArray_Descr *__pyx_f_5numpy_7ndarray_5descr_descr(PyArray
   __pyx_r = ((PyArray_Descr *)__pyx_t_1);
   goto __pyx_L0;
 
-  /* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":372
+  /* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":328
  *             return PyArray_BASE(self)
  * 
  *         @property             # <<<<<<<<<<<<<<
@@ -18459,7 +18459,7 @@ static CYTHON_INLINE PyArray_Descr *__pyx_f_5numpy_7ndarray_5descr_descr(PyArray
   return __pyx_r;
 }
 
-/* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":378
+/* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":334
  *             return <dtype>PyArray_DESCR(self)
  * 
  *         @property             # <<<<<<<<<<<<<<
@@ -18470,7 +18470,7 @@ static CYTHON_INLINE PyArray_Descr *__pyx_f_5numpy_7ndarray_5descr_descr(PyArray
 static CYTHON_INLINE int __pyx_f_5numpy_7ndarray_4ndim_ndim(PyArrayObject *__pyx_v_self) {
   int __pyx_r;
 
-  /* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":382
+  /* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":338
  *             """Returns the number of dimensions in the array.
  *             """
  *             return PyArray_NDIM(self)             # <<<<<<<<<<<<<<
@@ -18480,7 +18480,7 @@ static CYTHON_INLINE int __pyx_f_5numpy_7ndarray_4ndim_ndim(PyArrayObject *__pyx
   __pyx_r = PyArray_NDIM(__pyx_v_self);
   goto __pyx_L0;
 
-  /* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":378
+  /* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":334
  *             return <dtype>PyArray_DESCR(self)
  * 
  *         @property             # <<<<<<<<<<<<<<
@@ -18493,7 +18493,7 @@ static CYTHON_INLINE int __pyx_f_5numpy_7ndarray_4ndim_ndim(PyArrayObject *__pyx
   return __pyx_r;
 }
 
-/* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":384
+/* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":340
  *             return PyArray_NDIM(self)
  * 
  *         @property             # <<<<<<<<<<<<<<
@@ -18504,7 +18504,7 @@ static CYTHON_INLINE int __pyx_f_5numpy_7ndarray_4ndim_ndim(PyArrayObject *__pyx
 static CYTHON_INLINE npy_intp *__pyx_f_5numpy_7ndarray_5shape_shape(PyArrayObject *__pyx_v_self) {
   npy_intp *__pyx_r;
 
-  /* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":390
+  /* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":346
  *             Can return NULL for 0-dimensional arrays.
  *             """
  *             return PyArray_DIMS(self)             # <<<<<<<<<<<<<<
@@ -18514,7 +18514,7 @@ static CYTHON_INLINE npy_intp *__pyx_f_5numpy_7ndarray_5shape_shape(PyArrayObjec
   __pyx_r = PyArray_DIMS(__pyx_v_self);
   goto __pyx_L0;
 
-  /* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":384
+  /* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":340
  *             return PyArray_NDIM(self)
  * 
  *         @property             # <<<<<<<<<<<<<<
@@ -18527,7 +18527,7 @@ static CYTHON_INLINE npy_intp *__pyx_f_5numpy_7ndarray_5shape_shape(PyArrayObjec
   return __pyx_r;
 }
 
-/* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":392
+/* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":348
  *             return PyArray_DIMS(self)
  * 
  *         @property             # <<<<<<<<<<<<<<
@@ -18538,7 +18538,7 @@ static CYTHON_INLINE npy_intp *__pyx_f_5numpy_7ndarray_5shape_shape(PyArrayObjec
 static CYTHON_INLINE npy_intp *__pyx_f_5numpy_7ndarray_7strides_strides(PyArrayObject *__pyx_v_self) {
   npy_intp *__pyx_r;
 
-  /* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":397
+  /* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":353
  *             The number of elements matches the number of dimensions of the array (ndim).
  *             """
  *             return PyArray_STRIDES(self)             # <<<<<<<<<<<<<<
@@ -18548,7 +18548,7 @@ static CYTHON_INLINE npy_intp *__pyx_f_5numpy_7ndarray_7strides_strides(PyArrayO
   __pyx_r = PyArray_STRIDES(__pyx_v_self);
   goto __pyx_L0;
 
-  /* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":392
+  /* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":348
  *             return PyArray_DIMS(self)
  * 
  *         @property             # <<<<<<<<<<<<<<
@@ -18561,7 +18561,7 @@ static CYTHON_INLINE npy_intp *__pyx_f_5numpy_7ndarray_7strides_strides(PyArrayO
   return __pyx_r;
 }
 
-/* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":399
+/* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":355
  *             return PyArray_STRIDES(self)
  * 
  *         @property             # <<<<<<<<<<<<<<
@@ -18572,7 +18572,7 @@ static CYTHON_INLINE npy_intp *__pyx_f_5numpy_7ndarray_7strides_strides(PyArrayO
 static CYTHON_INLINE npy_intp __pyx_f_5numpy_7ndarray_4size_size(PyArrayObject *__pyx_v_self) {
   npy_intp __pyx_r;
 
-  /* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":403
+  /* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":359
  *             """Returns the total size (in number of elements) of the array.
  *             """
  *             return PyArray_SIZE(self)             # <<<<<<<<<<<<<<
@@ -18582,7 +18582,7 @@ static CYTHON_INLINE npy_intp __pyx_f_5numpy_7ndarray_4size_size(PyArrayObject *
   __pyx_r = PyArray_SIZE(__pyx_v_self);
   goto __pyx_L0;
 
-  /* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":399
+  /* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":355
  *             return PyArray_STRIDES(self)
  * 
  *         @property             # <<<<<<<<<<<<<<
@@ -18595,7 +18595,7 @@ static CYTHON_INLINE npy_intp __pyx_f_5numpy_7ndarray_4size_size(PyArrayObject *
   return __pyx_r;
 }
 
-/* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":405
+/* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":361
  *             return PyArray_SIZE(self)
  * 
  *         @property             # <<<<<<<<<<<<<<
@@ -18606,7 +18606,7 @@ static CYTHON_INLINE npy_intp __pyx_f_5numpy_7ndarray_4size_size(PyArrayObject *
 static CYTHON_INLINE char *__pyx_f_5numpy_7ndarray_4data_data(PyArrayObject *__pyx_v_self) {
   char *__pyx_r;
 
-  /* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":412
+  /* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":368
  *             of `PyArray_DATA()` instead, which returns a 'void*'.
  *             """
  *             return PyArray_BYTES(self)             # <<<<<<<<<<<<<<
@@ -18616,7 +18616,7 @@ static CYTHON_INLINE char *__pyx_f_5numpy_7ndarray_4data_data(PyArrayObject *__p
   __pyx_r = PyArray_BYTES(__pyx_v_self);
   goto __pyx_L0;
 
-  /* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":405
+  /* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":361
  *             return PyArray_SIZE(self)
  * 
  *         @property             # <<<<<<<<<<<<<<
@@ -18629,7 +18629,7 @@ static CYTHON_INLINE char *__pyx_f_5numpy_7ndarray_4data_data(PyArrayObject *__p
   return __pyx_r;
 }
 
-/* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":824
+/* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":776
  * ctypedef long double complex clongdouble_t
  * 
  * cdef inline object PyArray_MultiIterNew1(a):             # <<<<<<<<<<<<<<
@@ -18646,7 +18646,7 @@ static CYTHON_INLINE PyObject *__pyx_f_5numpy_PyArray_MultiIterNew1(PyObject *__
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("PyArray_MultiIterNew1", 0);
 
-  /* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":825
+  /* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":777
  * 
  * cdef inline object PyArray_MultiIterNew1(a):
  *     return PyArray_MultiIterNew(1, <void*>a)             # <<<<<<<<<<<<<<
@@ -18654,13 +18654,13 @@ static CYTHON_INLINE PyObject *__pyx_f_5numpy_PyArray_MultiIterNew1(PyObject *__
  * cdef inline object PyArray_MultiIterNew2(a, b):
 */
   __Pyx_XDECREF(__pyx_r);
-  __pyx_t_1 = PyArray_MultiIterNew(1, ((void *)__pyx_v_a)); if (unlikely(!__pyx_t_1)) __PYX_ERR(2, 825, __pyx_L1_error)
+  __pyx_t_1 = PyArray_MultiIterNew(1, ((void *)__pyx_v_a)); if (unlikely(!__pyx_t_1)) __PYX_ERR(2, 777, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_r = __pyx_t_1;
   __pyx_t_1 = 0;
   goto __pyx_L0;
 
-  /* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":824
+  /* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":776
  * ctypedef long double complex clongdouble_t
  * 
  * cdef inline object PyArray_MultiIterNew1(a):             # <<<<<<<<<<<<<<
@@ -18679,7 +18679,7 @@ static CYTHON_INLINE PyObject *__pyx_f_5numpy_PyArray_MultiIterNew1(PyObject *__
   return __pyx_r;
 }
 
-/* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":827
+/* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":779
  *     return PyArray_MultiIterNew(1, <void*>a)
  * 
  * cdef inline object PyArray_MultiIterNew2(a, b):             # <<<<<<<<<<<<<<
@@ -18696,7 +18696,7 @@ static CYTHON_INLINE PyObject *__pyx_f_5numpy_PyArray_MultiIterNew2(PyObject *__
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("PyArray_MultiIterNew2", 0);
 
-  /* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":828
+  /* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":780
  * 
  * cdef inline object PyArray_MultiIterNew2(a, b):
  *     return PyArray_MultiIterNew(2, <void*>a, <void*>b)             # <<<<<<<<<<<<<<
@@ -18704,13 +18704,13 @@ static CYTHON_INLINE PyObject *__pyx_f_5numpy_PyArray_MultiIterNew2(PyObject *__
  * cdef inline object PyArray_MultiIterNew3(a, b, c):
 */
   __Pyx_XDECREF(__pyx_r);
-  __pyx_t_1 = PyArray_MultiIterNew(2, ((void *)__pyx_v_a), ((void *)__pyx_v_b)); if (unlikely(!__pyx_t_1)) __PYX_ERR(2, 828, __pyx_L1_error)
+  __pyx_t_1 = PyArray_MultiIterNew(2, ((void *)__pyx_v_a), ((void *)__pyx_v_b)); if (unlikely(!__pyx_t_1)) __PYX_ERR(2, 780, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_r = __pyx_t_1;
   __pyx_t_1 = 0;
   goto __pyx_L0;
 
-  /* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":827
+  /* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":779
  *     return PyArray_MultiIterNew(1, <void*>a)
  * 
  * cdef inline object PyArray_MultiIterNew2(a, b):             # <<<<<<<<<<<<<<
@@ -18729,7 +18729,7 @@ static CYTHON_INLINE PyObject *__pyx_f_5numpy_PyArray_MultiIterNew2(PyObject *__
   return __pyx_r;
 }
 
-/* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":830
+/* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":782
  *     return PyArray_MultiIterNew(2, <void*>a, <void*>b)
  * 
  * cdef inline object PyArray_MultiIterNew3(a, b, c):             # <<<<<<<<<<<<<<
@@ -18746,7 +18746,7 @@ static CYTHON_INLINE PyObject *__pyx_f_5numpy_PyArray_MultiIterNew3(PyObject *__
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("PyArray_MultiIterNew3", 0);
 
-  /* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":831
+  /* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":783
  * 
  * cdef inline object PyArray_MultiIterNew3(a, b, c):
  *     return PyArray_MultiIterNew(3, <void*>a, <void*>b, <void*> c)             # <<<<<<<<<<<<<<
@@ -18754,13 +18754,13 @@ static CYTHON_INLINE PyObject *__pyx_f_5numpy_PyArray_MultiIterNew3(PyObject *__
  * cdef inline object PyArray_MultiIterNew4(a, b, c, d):
 */
   __Pyx_XDECREF(__pyx_r);
-  __pyx_t_1 = PyArray_MultiIterNew(3, ((void *)__pyx_v_a), ((void *)__pyx_v_b), ((void *)__pyx_v_c)); if (unlikely(!__pyx_t_1)) __PYX_ERR(2, 831, __pyx_L1_error)
+  __pyx_t_1 = PyArray_MultiIterNew(3, ((void *)__pyx_v_a), ((void *)__pyx_v_b), ((void *)__pyx_v_c)); if (unlikely(!__pyx_t_1)) __PYX_ERR(2, 783, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_r = __pyx_t_1;
   __pyx_t_1 = 0;
   goto __pyx_L0;
 
-  /* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":830
+  /* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":782
  *     return PyArray_MultiIterNew(2, <void*>a, <void*>b)
  * 
  * cdef inline object PyArray_MultiIterNew3(a, b, c):             # <<<<<<<<<<<<<<
@@ -18779,7 +18779,7 @@ static CYTHON_INLINE PyObject *__pyx_f_5numpy_PyArray_MultiIterNew3(PyObject *__
   return __pyx_r;
 }
 
-/* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":833
+/* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":785
  *     return PyArray_MultiIterNew(3, <void*>a, <void*>b, <void*> c)
  * 
  * cdef inline object PyArray_MultiIterNew4(a, b, c, d):             # <<<<<<<<<<<<<<
@@ -18796,7 +18796,7 @@ static CYTHON_INLINE PyObject *__pyx_f_5numpy_PyArray_MultiIterNew4(PyObject *__
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("PyArray_MultiIterNew4", 0);
 
-  /* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":834
+  /* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":786
  * 
  * cdef inline object PyArray_MultiIterNew4(a, b, c, d):
  *     return PyArray_MultiIterNew(4, <void*>a, <void*>b, <void*>c, <void*> d)             # <<<<<<<<<<<<<<
@@ -18804,13 +18804,13 @@ static CYTHON_INLINE PyObject *__pyx_f_5numpy_PyArray_MultiIterNew4(PyObject *__
  * cdef inline object PyArray_MultiIterNew5(a, b, c, d, e):
 */
   __Pyx_XDECREF(__pyx_r);
-  __pyx_t_1 = PyArray_MultiIterNew(4, ((void *)__pyx_v_a), ((void *)__pyx_v_b), ((void *)__pyx_v_c), ((void *)__pyx_v_d)); if (unlikely(!__pyx_t_1)) __PYX_ERR(2, 834, __pyx_L1_error)
+  __pyx_t_1 = PyArray_MultiIterNew(4, ((void *)__pyx_v_a), ((void *)__pyx_v_b), ((void *)__pyx_v_c), ((void *)__pyx_v_d)); if (unlikely(!__pyx_t_1)) __PYX_ERR(2, 786, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_r = __pyx_t_1;
   __pyx_t_1 = 0;
   goto __pyx_L0;
 
-  /* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":833
+  /* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":785
  *     return PyArray_MultiIterNew(3, <void*>a, <void*>b, <void*> c)
  * 
  * cdef inline object PyArray_MultiIterNew4(a, b, c, d):             # <<<<<<<<<<<<<<
@@ -18829,7 +18829,7 @@ static CYTHON_INLINE PyObject *__pyx_f_5numpy_PyArray_MultiIterNew4(PyObject *__
   return __pyx_r;
 }
 
-/* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":836
+/* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":788
  *     return PyArray_MultiIterNew(4, <void*>a, <void*>b, <void*>c, <void*> d)
  * 
  * cdef inline object PyArray_MultiIterNew5(a, b, c, d, e):             # <<<<<<<<<<<<<<
@@ -18846,7 +18846,7 @@ static CYTHON_INLINE PyObject *__pyx_f_5numpy_PyArray_MultiIterNew5(PyObject *__
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("PyArray_MultiIterNew5", 0);
 
-  /* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":837
+  /* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":789
  * 
  * cdef inline object PyArray_MultiIterNew5(a, b, c, d, e):
  *     return PyArray_MultiIterNew(5, <void*>a, <void*>b, <void*>c, <void*> d, <void*> e)             # <<<<<<<<<<<<<<
@@ -18854,13 +18854,13 @@ static CYTHON_INLINE PyObject *__pyx_f_5numpy_PyArray_MultiIterNew5(PyObject *__
  * cdef inline tuple PyDataType_SHAPE(dtype d):
 */
   __Pyx_XDECREF(__pyx_r);
-  __pyx_t_1 = PyArray_MultiIterNew(5, ((void *)__pyx_v_a), ((void *)__pyx_v_b), ((void *)__pyx_v_c), ((void *)__pyx_v_d), ((void *)__pyx_v_e)); if (unlikely(!__pyx_t_1)) __PYX_ERR(2, 837, __pyx_L1_error)
+  __pyx_t_1 = PyArray_MultiIterNew(5, ((void *)__pyx_v_a), ((void *)__pyx_v_b), ((void *)__pyx_v_c), ((void *)__pyx_v_d), ((void *)__pyx_v_e)); if (unlikely(!__pyx_t_1)) __PYX_ERR(2, 789, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_r = __pyx_t_1;
   __pyx_t_1 = 0;
   goto __pyx_L0;
 
-  /* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":836
+  /* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":788
  *     return PyArray_MultiIterNew(4, <void*>a, <void*>b, <void*>c, <void*> d)
  * 
  * cdef inline object PyArray_MultiIterNew5(a, b, c, d, e):             # <<<<<<<<<<<<<<
@@ -18879,7 +18879,7 @@ static CYTHON_INLINE PyObject *__pyx_f_5numpy_PyArray_MultiIterNew5(PyObject *__
   return __pyx_r;
 }
 
-/* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":839
+/* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":791
  *     return PyArray_MultiIterNew(5, <void*>a, <void*>b, <void*>c, <void*> d, <void*> e)
  * 
  * cdef inline tuple PyDataType_SHAPE(dtype d):             # <<<<<<<<<<<<<<
@@ -18894,7 +18894,7 @@ static CYTHON_INLINE PyObject *__pyx_f_5numpy_PyDataType_SHAPE(PyArray_Descr *__
   PyObject *__pyx_t_2;
   __Pyx_RefNannySetupContext("PyDataType_SHAPE", 0);
 
-  /* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":840
+  /* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":792
  * 
  * cdef inline tuple PyDataType_SHAPE(dtype d):
  *     if PyDataType_HASSUBARRAY(d):             # <<<<<<<<<<<<<<
@@ -18904,7 +18904,7 @@ static CYTHON_INLINE PyObject *__pyx_f_5numpy_PyDataType_SHAPE(PyArray_Descr *__
   __pyx_t_1 = PyDataType_HASSUBARRAY(__pyx_v_d);
   if (__pyx_t_1) {
 
-    /* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":841
+    /* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":793
  * cdef inline tuple PyDataType_SHAPE(dtype d):
  *     if PyDataType_HASSUBARRAY(d):
  *         return <tuple>d.subarray.shape             # <<<<<<<<<<<<<<
@@ -18917,7 +18917,7 @@ static CYTHON_INLINE PyObject *__pyx_f_5numpy_PyDataType_SHAPE(PyArray_Descr *__
     __pyx_r = ((PyObject*)__pyx_t_2);
     goto __pyx_L0;
 
-    /* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":840
+    /* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":792
  * 
  * cdef inline tuple PyDataType_SHAPE(dtype d):
  *     if PyDataType_HASSUBARRAY(d):             # <<<<<<<<<<<<<<
@@ -18926,7 +18926,7 @@ static CYTHON_INLINE PyObject *__pyx_f_5numpy_PyDataType_SHAPE(PyArray_Descr *__
 */
   }
 
-  /* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":843
+  /* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":795
  *         return <tuple>d.subarray.shape
  *     else:
  *         return ()             # <<<<<<<<<<<<<<
@@ -18940,7 +18940,7 @@ static CYTHON_INLINE PyObject *__pyx_f_5numpy_PyDataType_SHAPE(PyArray_Descr *__
     goto __pyx_L0;
   }
 
-  /* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":839
+  /* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":791
  *     return PyArray_MultiIterNew(5, <void*>a, <void*>b, <void*>c, <void*> d, <void*> e)
  * 
  * cdef inline tuple PyDataType_SHAPE(dtype d):             # <<<<<<<<<<<<<<
@@ -18955,7 +18955,7 @@ static CYTHON_INLINE PyObject *__pyx_f_5numpy_PyDataType_SHAPE(PyArray_Descr *__
   return __pyx_r;
 }
 
-/* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1035
+/* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":994
  *     int _import_umath() except -1
  * 
  * cdef inline void set_array_base(ndarray arr, object base) except *:             # <<<<<<<<<<<<<<
@@ -18969,7 +18969,7 @@ static CYTHON_INLINE void __pyx_f_5numpy_set_array_base(PyArrayObject *__pyx_v_a
   const char *__pyx_filename = NULL;
   int __pyx_clineno = 0;
 
-  /* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1036
+  /* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":995
  * 
  * cdef inline void set_array_base(ndarray arr, object base) except *:
  *     Py_INCREF(base) # important to do this before stealing the reference below!             # <<<<<<<<<<<<<<
@@ -18978,16 +18978,16 @@ static CYTHON_INLINE void __pyx_f_5numpy_set_array_base(PyArrayObject *__pyx_v_a
 */
   Py_INCREF(__pyx_v_base);
 
-  /* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1037
+  /* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":996
  * cdef inline void set_array_base(ndarray arr, object base) except *:
  *     Py_INCREF(base) # important to do this before stealing the reference below!
  *     PyArray_SetBaseObject(arr, base)             # <<<<<<<<<<<<<<
  * 
  * cdef inline object get_array_base(ndarray arr):
 */
-  __pyx_t_1 = PyArray_SetBaseObject(__pyx_v_arr, __pyx_v_base); if (unlikely(__pyx_t_1 == ((int)-1))) __PYX_ERR(2, 1037, __pyx_L1_error)
+  __pyx_t_1 = PyArray_SetBaseObject(__pyx_v_arr, __pyx_v_base); if (unlikely(__pyx_t_1 == ((int)-1))) __PYX_ERR(2, 996, __pyx_L1_error)
 
-  /* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1035
+  /* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":994
  *     int _import_umath() except -1
  * 
  * cdef inline void set_array_base(ndarray arr, object base) except *:             # <<<<<<<<<<<<<<
@@ -19002,7 +19002,7 @@ static CYTHON_INLINE void __pyx_f_5numpy_set_array_base(PyArrayObject *__pyx_v_a
   __pyx_L0:;
 }
 
-/* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1039
+/* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":998
  *     PyArray_SetBaseObject(arr, base)
  * 
  * cdef inline object get_array_base(ndarray arr):             # <<<<<<<<<<<<<<
@@ -19017,7 +19017,7 @@ static CYTHON_INLINE PyObject *__pyx_f_5numpy_get_array_base(PyArrayObject *__py
   int __pyx_t_1;
   __Pyx_RefNannySetupContext("get_array_base", 0);
 
-  /* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1040
+  /* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":999
  * 
  * cdef inline object get_array_base(ndarray arr):
  *     base = PyArray_BASE(arr)             # <<<<<<<<<<<<<<
@@ -19026,7 +19026,7 @@ static CYTHON_INLINE PyObject *__pyx_f_5numpy_get_array_base(PyArrayObject *__py
 */
   __pyx_v_base = PyArray_BASE(__pyx_v_arr);
 
-  /* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1041
+  /* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1000
  * cdef inline object get_array_base(ndarray arr):
  *     base = PyArray_BASE(arr)
  *     if base is NULL:             # <<<<<<<<<<<<<<
@@ -19036,7 +19036,7 @@ static CYTHON_INLINE PyObject *__pyx_f_5numpy_get_array_base(PyArrayObject *__py
   __pyx_t_1 = (__pyx_v_base == NULL);
   if (__pyx_t_1) {
 
-    /* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1042
+    /* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1001
  *     base = PyArray_BASE(arr)
  *     if base is NULL:
  *         return None             # <<<<<<<<<<<<<<
@@ -19047,7 +19047,7 @@ static CYTHON_INLINE PyObject *__pyx_f_5numpy_get_array_base(PyArrayObject *__py
     __pyx_r = Py_None; __Pyx_INCREF(Py_None);
     goto __pyx_L0;
 
-    /* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1041
+    /* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1000
  * cdef inline object get_array_base(ndarray arr):
  *     base = PyArray_BASE(arr)
  *     if base is NULL:             # <<<<<<<<<<<<<<
@@ -19056,7 +19056,7 @@ static CYTHON_INLINE PyObject *__pyx_f_5numpy_get_array_base(PyArrayObject *__py
 */
   }
 
-  /* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1043
+  /* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1002
  *     if base is NULL:
  *         return None
  *     return <object>base             # <<<<<<<<<<<<<<
@@ -19068,7 +19068,7 @@ static CYTHON_INLINE PyObject *__pyx_f_5numpy_get_array_base(PyArrayObject *__py
   __pyx_r = ((PyObject *)__pyx_v_base);
   goto __pyx_L0;
 
-  /* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1039
+  /* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":998
  *     PyArray_SetBaseObject(arr, base)
  * 
  * cdef inline object get_array_base(ndarray arr):             # <<<<<<<<<<<<<<
@@ -19083,7 +19083,7 @@ static CYTHON_INLINE PyObject *__pyx_f_5numpy_get_array_base(PyArrayObject *__py
   return __pyx_r;
 }
 
-/* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1047
+/* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1006
  * # Versions of the import_* functions which are more suitable for
  * # Cython code.
  * cdef inline int import_array() except -1:             # <<<<<<<<<<<<<<
@@ -19110,7 +19110,7 @@ static CYTHON_INLINE int __pyx_f_5numpy_import_array(void) {
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("import_array", 0);
 
-  /* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1048
+  /* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1007
  * # Cython code.
  * cdef inline int import_array() except -1:
  *     try:             # <<<<<<<<<<<<<<
@@ -19126,16 +19126,16 @@ static CYTHON_INLINE int __pyx_f_5numpy_import_array(void) {
     __Pyx_XGOTREF(__pyx_t_3);
     /*try:*/ {
 
-      /* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1049
+      /* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1008
  * cdef inline int import_array() except -1:
  *     try:
  *         __pyx_import_array()             # <<<<<<<<<<<<<<
  *     except Exception:
  *         raise ImportError("numpy._core.multiarray failed to import")
 */
-      __pyx_t_4 = _import_array(); if (unlikely(__pyx_t_4 == ((int)-1))) __PYX_ERR(2, 1049, __pyx_L3_error)
+      __pyx_t_4 = _import_array(); if (unlikely(__pyx_t_4 == ((int)-1))) __PYX_ERR(2, 1008, __pyx_L3_error)
 
-      /* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1048
+      /* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1007
  * # Cython code.
  * cdef inline int import_array() except -1:
  *     try:             # <<<<<<<<<<<<<<
@@ -19149,7 +19149,7 @@ static CYTHON_INLINE int __pyx_f_5numpy_import_array(void) {
     goto __pyx_L8_try_end;
     __pyx_L3_error:;
 
-    /* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1050
+    /* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1009
  *     try:
  *         __pyx_import_array()
  *     except Exception:             # <<<<<<<<<<<<<<
@@ -19159,12 +19159,12 @@ static CYTHON_INLINE int __pyx_f_5numpy_import_array(void) {
     __pyx_t_4 = __Pyx_PyErr_ExceptionMatches(((PyObject *)(((PyTypeObject*)PyExc_Exception))));
     if (__pyx_t_4) {
       __Pyx_AddTraceback("numpy.import_array", __pyx_clineno, __pyx_lineno, __pyx_filename);
-      if (__Pyx_GetException(&__pyx_t_5, &__pyx_t_6, &__pyx_t_7) < 0) __PYX_ERR(2, 1050, __pyx_L5_except_error)
+      if (__Pyx_GetException(&__pyx_t_5, &__pyx_t_6, &__pyx_t_7) < 0) __PYX_ERR(2, 1009, __pyx_L5_except_error)
       __Pyx_XGOTREF(__pyx_t_5);
       __Pyx_XGOTREF(__pyx_t_6);
       __Pyx_XGOTREF(__pyx_t_7);
 
-      /* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1051
+      /* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1010
  *         __pyx_import_array()
  *     except Exception:
  *         raise ImportError("numpy._core.multiarray failed to import")             # <<<<<<<<<<<<<<
@@ -19180,16 +19180,16 @@ static CYTHON_INLINE int __pyx_f_5numpy_import_array(void) {
         __pyx_t_8 = __Pyx_PyObject_FastCall(__pyx_t_10, __pyx_callargs+__pyx_t_11, (2-__pyx_t_11) | (__pyx_t_11*__Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET));
         __Pyx_XDECREF(__pyx_t_9); __pyx_t_9 = 0;
         __Pyx_DECREF(__pyx_t_10); __pyx_t_10 = 0;
-        if (unlikely(!__pyx_t_8)) __PYX_ERR(2, 1051, __pyx_L5_except_error)
+        if (unlikely(!__pyx_t_8)) __PYX_ERR(2, 1010, __pyx_L5_except_error)
         __Pyx_GOTREF(__pyx_t_8);
       }
       __Pyx_Raise(__pyx_t_8, 0, 0, 0);
       __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
-      __PYX_ERR(2, 1051, __pyx_L5_except_error)
+      __PYX_ERR(2, 1010, __pyx_L5_except_error)
     }
     goto __pyx_L5_except_error;
 
-    /* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1048
+    /* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1007
  * # Cython code.
  * cdef inline int import_array() except -1:
  *     try:             # <<<<<<<<<<<<<<
@@ -19205,7 +19205,7 @@ static CYTHON_INLINE int __pyx_f_5numpy_import_array(void) {
     __pyx_L8_try_end:;
   }
 
-  /* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1047
+  /* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1006
  * # Versions of the import_* functions which are more suitable for
  * # Cython code.
  * cdef inline int import_array() except -1:             # <<<<<<<<<<<<<<
@@ -19230,7 +19230,7 @@ static CYTHON_INLINE int __pyx_f_5numpy_import_array(void) {
   return __pyx_r;
 }
 
-/* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1053
+/* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1012
  *         raise ImportError("numpy._core.multiarray failed to import")
  * 
  * cdef inline int import_umath() except -1:             # <<<<<<<<<<<<<<
@@ -19257,7 +19257,7 @@ static CYTHON_INLINE int __pyx_f_5numpy_import_umath(void) {
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("import_umath", 0);
 
-  /* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1054
+  /* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1013
  * 
  * cdef inline int import_umath() except -1:
  *     try:             # <<<<<<<<<<<<<<
@@ -19273,16 +19273,16 @@ static CYTHON_INLINE int __pyx_f_5numpy_import_umath(void) {
     __Pyx_XGOTREF(__pyx_t_3);
     /*try:*/ {
 
-      /* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1055
+      /* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1014
  * cdef inline int import_umath() except -1:
  *     try:
  *         _import_umath()             # <<<<<<<<<<<<<<
  *     except Exception:
  *         raise ImportError("numpy._core.umath failed to import")
 */
-      __pyx_t_4 = _import_umath(); if (unlikely(__pyx_t_4 == ((int)-1))) __PYX_ERR(2, 1055, __pyx_L3_error)
+      __pyx_t_4 = _import_umath(); if (unlikely(__pyx_t_4 == ((int)-1))) __PYX_ERR(2, 1014, __pyx_L3_error)
 
-      /* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1054
+      /* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1013
  * 
  * cdef inline int import_umath() except -1:
  *     try:             # <<<<<<<<<<<<<<
@@ -19296,7 +19296,7 @@ static CYTHON_INLINE int __pyx_f_5numpy_import_umath(void) {
     goto __pyx_L8_try_end;
     __pyx_L3_error:;
 
-    /* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1056
+    /* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1015
  *     try:
  *         _import_umath()
  *     except Exception:             # <<<<<<<<<<<<<<
@@ -19306,12 +19306,12 @@ static CYTHON_INLINE int __pyx_f_5numpy_import_umath(void) {
     __pyx_t_4 = __Pyx_PyErr_ExceptionMatches(((PyObject *)(((PyTypeObject*)PyExc_Exception))));
     if (__pyx_t_4) {
       __Pyx_AddTraceback("numpy.import_umath", __pyx_clineno, __pyx_lineno, __pyx_filename);
-      if (__Pyx_GetException(&__pyx_t_5, &__pyx_t_6, &__pyx_t_7) < 0) __PYX_ERR(2, 1056, __pyx_L5_except_error)
+      if (__Pyx_GetException(&__pyx_t_5, &__pyx_t_6, &__pyx_t_7) < 0) __PYX_ERR(2, 1015, __pyx_L5_except_error)
       __Pyx_XGOTREF(__pyx_t_5);
       __Pyx_XGOTREF(__pyx_t_6);
       __Pyx_XGOTREF(__pyx_t_7);
 
-      /* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1057
+      /* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1016
  *         _import_umath()
  *     except Exception:
  *         raise ImportError("numpy._core.umath failed to import")             # <<<<<<<<<<<<<<
@@ -19327,16 +19327,16 @@ static CYTHON_INLINE int __pyx_f_5numpy_import_umath(void) {
         __pyx_t_8 = __Pyx_PyObject_FastCall(__pyx_t_10, __pyx_callargs+__pyx_t_11, (2-__pyx_t_11) | (__pyx_t_11*__Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET));
         __Pyx_XDECREF(__pyx_t_9); __pyx_t_9 = 0;
         __Pyx_DECREF(__pyx_t_10); __pyx_t_10 = 0;
-        if (unlikely(!__pyx_t_8)) __PYX_ERR(2, 1057, __pyx_L5_except_error)
+        if (unlikely(!__pyx_t_8)) __PYX_ERR(2, 1016, __pyx_L5_except_error)
         __Pyx_GOTREF(__pyx_t_8);
       }
       __Pyx_Raise(__pyx_t_8, 0, 0, 0);
       __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
-      __PYX_ERR(2, 1057, __pyx_L5_except_error)
+      __PYX_ERR(2, 1016, __pyx_L5_except_error)
     }
     goto __pyx_L5_except_error;
 
-    /* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1054
+    /* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1013
  * 
  * cdef inline int import_umath() except -1:
  *     try:             # <<<<<<<<<<<<<<
@@ -19352,7 +19352,7 @@ static CYTHON_INLINE int __pyx_f_5numpy_import_umath(void) {
     __pyx_L8_try_end:;
   }
 
-  /* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1053
+  /* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1012
  *         raise ImportError("numpy._core.multiarray failed to import")
  * 
  * cdef inline int import_umath() except -1:             # <<<<<<<<<<<<<<
@@ -19377,7 +19377,7 @@ static CYTHON_INLINE int __pyx_f_5numpy_import_umath(void) {
   return __pyx_r;
 }
 
-/* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1059
+/* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1018
  *         raise ImportError("numpy._core.umath failed to import")
  * 
  * cdef inline int import_ufunc() except -1:             # <<<<<<<<<<<<<<
@@ -19404,7 +19404,7 @@ static CYTHON_INLINE int __pyx_f_5numpy_import_ufunc(void) {
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("import_ufunc", 0);
 
-  /* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1060
+  /* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1019
  * 
  * cdef inline int import_ufunc() except -1:
  *     try:             # <<<<<<<<<<<<<<
@@ -19420,16 +19420,16 @@ static CYTHON_INLINE int __pyx_f_5numpy_import_ufunc(void) {
     __Pyx_XGOTREF(__pyx_t_3);
     /*try:*/ {
 
-      /* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1061
+      /* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1020
  * cdef inline int import_ufunc() except -1:
  *     try:
  *         _import_umath()             # <<<<<<<<<<<<<<
  *     except Exception:
  *         raise ImportError("numpy._core.umath failed to import")
 */
-      __pyx_t_4 = _import_umath(); if (unlikely(__pyx_t_4 == ((int)-1))) __PYX_ERR(2, 1061, __pyx_L3_error)
+      __pyx_t_4 = _import_umath(); if (unlikely(__pyx_t_4 == ((int)-1))) __PYX_ERR(2, 1020, __pyx_L3_error)
 
-      /* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1060
+      /* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1019
  * 
  * cdef inline int import_ufunc() except -1:
  *     try:             # <<<<<<<<<<<<<<
@@ -19443,7 +19443,7 @@ static CYTHON_INLINE int __pyx_f_5numpy_import_ufunc(void) {
     goto __pyx_L8_try_end;
     __pyx_L3_error:;
 
-    /* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1062
+    /* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1021
  *     try:
  *         _import_umath()
  *     except Exception:             # <<<<<<<<<<<<<<
@@ -19453,12 +19453,12 @@ static CYTHON_INLINE int __pyx_f_5numpy_import_ufunc(void) {
     __pyx_t_4 = __Pyx_PyErr_ExceptionMatches(((PyObject *)(((PyTypeObject*)PyExc_Exception))));
     if (__pyx_t_4) {
       __Pyx_AddTraceback("numpy.import_ufunc", __pyx_clineno, __pyx_lineno, __pyx_filename);
-      if (__Pyx_GetException(&__pyx_t_5, &__pyx_t_6, &__pyx_t_7) < 0) __PYX_ERR(2, 1062, __pyx_L5_except_error)
+      if (__Pyx_GetException(&__pyx_t_5, &__pyx_t_6, &__pyx_t_7) < 0) __PYX_ERR(2, 1021, __pyx_L5_except_error)
       __Pyx_XGOTREF(__pyx_t_5);
       __Pyx_XGOTREF(__pyx_t_6);
       __Pyx_XGOTREF(__pyx_t_7);
 
-      /* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1063
+      /* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1022
  *         _import_umath()
  *     except Exception:
  *         raise ImportError("numpy._core.umath failed to import")             # <<<<<<<<<<<<<<
@@ -19474,16 +19474,16 @@ static CYTHON_INLINE int __pyx_f_5numpy_import_ufunc(void) {
         __pyx_t_8 = __Pyx_PyObject_FastCall(__pyx_t_10, __pyx_callargs+__pyx_t_11, (2-__pyx_t_11) | (__pyx_t_11*__Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET));
         __Pyx_XDECREF(__pyx_t_9); __pyx_t_9 = 0;
         __Pyx_DECREF(__pyx_t_10); __pyx_t_10 = 0;
-        if (unlikely(!__pyx_t_8)) __PYX_ERR(2, 1063, __pyx_L5_except_error)
+        if (unlikely(!__pyx_t_8)) __PYX_ERR(2, 1022, __pyx_L5_except_error)
         __Pyx_GOTREF(__pyx_t_8);
       }
       __Pyx_Raise(__pyx_t_8, 0, 0, 0);
       __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
-      __PYX_ERR(2, 1063, __pyx_L5_except_error)
+      __PYX_ERR(2, 1022, __pyx_L5_except_error)
     }
     goto __pyx_L5_except_error;
 
-    /* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1060
+    /* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1019
  * 
  * cdef inline int import_ufunc() except -1:
  *     try:             # <<<<<<<<<<<<<<
@@ -19499,7 +19499,7 @@ static CYTHON_INLINE int __pyx_f_5numpy_import_ufunc(void) {
     __pyx_L8_try_end:;
   }
 
-  /* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1059
+  /* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1018
  *         raise ImportError("numpy._core.umath failed to import")
  * 
  * cdef inline int import_ufunc() except -1:             # <<<<<<<<<<<<<<
@@ -19524,7 +19524,7 @@ static CYTHON_INLINE int __pyx_f_5numpy_import_ufunc(void) {
   return __pyx_r;
 }
 
-/* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1066
+/* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1025
  * 
  * 
  * cdef inline bint is_timedelta64_object(object obj) noexcept:             # <<<<<<<<<<<<<<
@@ -19535,7 +19535,7 @@ static CYTHON_INLINE int __pyx_f_5numpy_import_ufunc(void) {
 static CYTHON_INLINE int __pyx_f_5numpy_is_timedelta64_object(PyObject *__pyx_v_obj) {
   int __pyx_r;
 
-  /* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1078
+  /* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1037
  *     bool
  *     """
  *     return PyObject_TypeCheck(obj, &PyTimedeltaArrType_Type)             # <<<<<<<<<<<<<<
@@ -19545,7 +19545,7 @@ static CYTHON_INLINE int __pyx_f_5numpy_is_timedelta64_object(PyObject *__pyx_v_
   __pyx_r = PyObject_TypeCheck(__pyx_v_obj, (&PyTimedeltaArrType_Type));
   goto __pyx_L0;
 
-  /* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1066
+  /* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1025
  * 
  * 
  * cdef inline bint is_timedelta64_object(object obj) noexcept:             # <<<<<<<<<<<<<<
@@ -19558,7 +19558,7 @@ static CYTHON_INLINE int __pyx_f_5numpy_is_timedelta64_object(PyObject *__pyx_v_
   return __pyx_r;
 }
 
-/* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1081
+/* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1040
  * 
  * 
  * cdef inline bint is_datetime64_object(object obj) noexcept:             # <<<<<<<<<<<<<<
@@ -19569,7 +19569,7 @@ static CYTHON_INLINE int __pyx_f_5numpy_is_timedelta64_object(PyObject *__pyx_v_
 static CYTHON_INLINE int __pyx_f_5numpy_is_datetime64_object(PyObject *__pyx_v_obj) {
   int __pyx_r;
 
-  /* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1093
+  /* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1052
  *     bool
  *     """
  *     return PyObject_TypeCheck(obj, &PyDatetimeArrType_Type)             # <<<<<<<<<<<<<<
@@ -19579,7 +19579,7 @@ static CYTHON_INLINE int __pyx_f_5numpy_is_datetime64_object(PyObject *__pyx_v_o
   __pyx_r = PyObject_TypeCheck(__pyx_v_obj, (&PyDatetimeArrType_Type));
   goto __pyx_L0;
 
-  /* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1081
+  /* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1040
  * 
  * 
  * cdef inline bint is_datetime64_object(object obj) noexcept:             # <<<<<<<<<<<<<<
@@ -19592,7 +19592,7 @@ static CYTHON_INLINE int __pyx_f_5numpy_is_datetime64_object(PyObject *__pyx_v_o
   return __pyx_r;
 }
 
-/* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1096
+/* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1055
  * 
  * 
  * cdef inline npy_datetime get_datetime64_value(object obj) noexcept nogil:             # <<<<<<<<<<<<<<
@@ -19603,7 +19603,7 @@ static CYTHON_INLINE int __pyx_f_5numpy_is_datetime64_object(PyObject *__pyx_v_o
 static CYTHON_INLINE npy_datetime __pyx_f_5numpy_get_datetime64_value(PyObject *__pyx_v_obj) {
   npy_datetime __pyx_r;
 
-  /* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1103
+  /* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1062
  *     also needed.  That can be found using `get_datetime64_unit`.
  *     """
  *     return (<PyDatetimeScalarObject*>obj).obval             # <<<<<<<<<<<<<<
@@ -19613,7 +19613,7 @@ static CYTHON_INLINE npy_datetime __pyx_f_5numpy_get_datetime64_value(PyObject *
   __pyx_r = ((PyDatetimeScalarObject *)__pyx_v_obj)->obval;
   goto __pyx_L0;
 
-  /* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1096
+  /* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1055
  * 
  * 
  * cdef inline npy_datetime get_datetime64_value(object obj) noexcept nogil:             # <<<<<<<<<<<<<<
@@ -19626,7 +19626,7 @@ static CYTHON_INLINE npy_datetime __pyx_f_5numpy_get_datetime64_value(PyObject *
   return __pyx_r;
 }
 
-/* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1106
+/* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1065
  * 
  * 
  * cdef inline npy_timedelta get_timedelta64_value(object obj) noexcept nogil:             # <<<<<<<<<<<<<<
@@ -19637,7 +19637,7 @@ static CYTHON_INLINE npy_datetime __pyx_f_5numpy_get_datetime64_value(PyObject *
 static CYTHON_INLINE npy_timedelta __pyx_f_5numpy_get_timedelta64_value(PyObject *__pyx_v_obj) {
   npy_timedelta __pyx_r;
 
-  /* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1110
+  /* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1069
  *     returns the int64 value underlying scalar numpy timedelta64 object
  *     """
  *     return (<PyTimedeltaScalarObject*>obj).obval             # <<<<<<<<<<<<<<
@@ -19647,7 +19647,7 @@ static CYTHON_INLINE npy_timedelta __pyx_f_5numpy_get_timedelta64_value(PyObject
   __pyx_r = ((PyTimedeltaScalarObject *)__pyx_v_obj)->obval;
   goto __pyx_L0;
 
-  /* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1106
+  /* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1065
  * 
  * 
  * cdef inline npy_timedelta get_timedelta64_value(object obj) noexcept nogil:             # <<<<<<<<<<<<<<
@@ -19660,7 +19660,7 @@ static CYTHON_INLINE npy_timedelta __pyx_f_5numpy_get_timedelta64_value(PyObject
   return __pyx_r;
 }
 
-/* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1113
+/* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1072
  * 
  * 
  * cdef inline NPY_DATETIMEUNIT get_datetime64_unit(object obj) noexcept nogil:             # <<<<<<<<<<<<<<
@@ -19671,7 +19671,7 @@ static CYTHON_INLINE npy_timedelta __pyx_f_5numpy_get_timedelta64_value(PyObject
 static CYTHON_INLINE NPY_DATETIMEUNIT __pyx_f_5numpy_get_datetime64_unit(PyObject *__pyx_v_obj) {
   NPY_DATETIMEUNIT __pyx_r;
 
-  /* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1117
+  /* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1076
  *     returns the unit part of the dtype for a numpy datetime64 object.
  *     """
  *     return <NPY_DATETIMEUNIT>(<PyDatetimeScalarObject*>obj).obmeta.base             # <<<<<<<<<<<<<<
@@ -19681,7 +19681,7 @@ static CYTHON_INLINE NPY_DATETIMEUNIT __pyx_f_5numpy_get_datetime64_unit(PyObjec
   __pyx_r = ((NPY_DATETIMEUNIT)((PyDatetimeScalarObject *)__pyx_v_obj)->obmeta.base);
   goto __pyx_L0;
 
-  /* "../../../.venv/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1113
+  /* "../../../../tmp/build-env-9q9dvugi/lib/python3.12/site-packages/numpy/__init__.cython-30.pxd":1072
  * 
  * 
  * cdef inline NPY_DATETIMEUNIT get_datetime64_unit(object obj) noexcept nogil:             # <<<<<<<<<<<<<<
@@ -19694,7 +19694,7 @@ static CYTHON_INLINE NPY_DATETIMEUNIT __pyx_f_5numpy_get_datetime64_unit(PyObjec
   return __pyx_r;
 }
 
-/* "mass_decomposer_cpp.pyx":89
+/* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":89
  * ctypedef np.int32_t F_DTYPE_t
  * 
  * def get_num_elements():             # <<<<<<<<<<<<<<
@@ -19703,23 +19703,23 @@ static CYTHON_INLINE NPY_DATETIMEUNIT __pyx_f_5numpy_get_datetime64_unit(PyObjec
 */
 
 /* Python wrapper */
-static PyObject *__pyx_pw_19mass_decomposer_cpp_1get_num_elements(PyObject *__pyx_self, CYTHON_UNUSED PyObject *unused); /*proto*/
-PyDoc_STRVAR(__pyx_doc_19mass_decomposer_cpp_get_num_elements, "get_num_elements()");
-static PyMethodDef __pyx_mdef_19mass_decomposer_cpp_1get_num_elements = {"get_num_elements", (PyCFunction)__pyx_pw_19mass_decomposer_cpp_1get_num_elements, METH_NOARGS, __pyx_doc_19mass_decomposer_cpp_get_num_elements};
-static PyObject *__pyx_pw_19mass_decomposer_cpp_1get_num_elements(PyObject *__pyx_self, CYTHON_UNUSED PyObject *unused) {
+static PyObject *__pyx_pw_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp_1get_num_elements(PyObject *__pyx_self, CYTHON_UNUSED PyObject *unused); /*proto*/
+PyDoc_STRVAR(__pyx_doc_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp_get_num_elements, "get_num_elements()");
+static PyMethodDef __pyx_mdef_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp_1get_num_elements = {"get_num_elements", (PyCFunction)__pyx_pw_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp_1get_num_elements, METH_NOARGS, __pyx_doc_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp_get_num_elements};
+static PyObject *__pyx_pw_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp_1get_num_elements(PyObject *__pyx_self, CYTHON_UNUSED PyObject *unused) {
   CYTHON_UNUSED PyObject *const *__pyx_kwvalues;
   PyObject *__pyx_r = 0;
   __Pyx_RefNannyDeclarations
   __Pyx_RefNannySetupContext("get_num_elements (wrapper)", 0);
   __pyx_kwvalues = __Pyx_KwValues_VARARGS(__pyx_args, __pyx_nargs);
-  __pyx_r = __pyx_pf_19mass_decomposer_cpp_get_num_elements(__pyx_self);
+  __pyx_r = __pyx_pf_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp_get_num_elements(__pyx_self);
 
   /* function exit code */
   __Pyx_RefNannyFinishContext();
   return __pyx_r;
 }
 
-static PyObject *__pyx_pf_19mass_decomposer_cpp_get_num_elements(CYTHON_UNUSED PyObject *__pyx_self) {
+static PyObject *__pyx_pf_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp_get_num_elements(CYTHON_UNUSED PyObject *__pyx_self) {
   PyObject *__pyx_r = NULL;
   __Pyx_RefNannyDeclarations
   PyObject *__pyx_t_1 = NULL;
@@ -19728,7 +19728,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_get_num_elements(CYTHON_UNUSED P
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("get_num_elements", 0);
 
-  /* "mass_decomposer_cpp.pyx":90
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":90
  * 
  * def get_num_elements():
  *     return NUM_ELEMENTS             # <<<<<<<<<<<<<<
@@ -19742,7 +19742,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_get_num_elements(CYTHON_UNUSED P
   __pyx_t_1 = 0;
   goto __pyx_L0;
 
-  /* "mass_decomposer_cpp.pyx":89
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":89
  * ctypedef np.int32_t F_DTYPE_t
  * 
  * def get_num_elements():             # <<<<<<<<<<<<<<
@@ -19753,7 +19753,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_get_num_elements(CYTHON_UNUSED P
   /* function exit code */
   __pyx_L1_error:;
   __Pyx_XDECREF(__pyx_t_1);
-  __Pyx_AddTraceback("mass_decomposer_cpp.get_num_elements", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __Pyx_AddTraceback("ms_utils.formula_annotation.mass_decomposition_impl.mass_decomposer_cpp.get_num_elements", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __pyx_r = NULL;
   __pyx_L0:;
   __Pyx_XGIVEREF(__pyx_r);
@@ -19761,7 +19761,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_get_num_elements(CYTHON_UNUSED P
   return __pyx_r;
 }
 
-/* "mass_decomposer_cpp.pyx":94
+/* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":94
  * # Helper functions for converting Python objects to C++ and vice-versa
  * 
  * cdef Formula_cpp _convert_numpy_to_formula(np.ndarray arr):             # <<<<<<<<<<<<<<
@@ -19769,7 +19769,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_get_num_elements(CYTHON_UNUSED P
  *     cdef Formula_cpp formula
 */
 
-static Formula __pyx_f_19mass_decomposer_cpp__convert_numpy_to_formula(PyArrayObject *__pyx_v_arr) {
+static Formula __pyx_f_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp__convert_numpy_to_formula(PyArrayObject *__pyx_v_arr) {
   Formula __pyx_v_formula;
   int *__pyx_v_arr_ptr;
   int __pyx_v_i;
@@ -19778,7 +19778,7 @@ static Formula __pyx_f_19mass_decomposer_cpp__convert_numpy_to_formula(PyArrayOb
   int __pyx_t_2;
   int __pyx_t_3;
 
-  /* "mass_decomposer_cpp.pyx":97
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":97
  *     """Convert a NumPy array to a C++ Formula."""
  *     cdef Formula_cpp formula
  *     cdef int* arr_ptr = <int*>np.PyArray_DATA(arr)             # <<<<<<<<<<<<<<
@@ -19787,7 +19787,7 @@ static Formula __pyx_f_19mass_decomposer_cpp__convert_numpy_to_formula(PyArrayOb
 */
   __pyx_v_arr_ptr = ((int *)PyArray_DATA(__pyx_v_arr));
 
-  /* "mass_decomposer_cpp.pyx":98
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":98
  *     cdef Formula_cpp formula
  *     cdef int* arr_ptr = <int*>np.PyArray_DATA(arr)
  *     for i in range(NUM_ELEMENTS):             # <<<<<<<<<<<<<<
@@ -19799,7 +19799,7 @@ static Formula __pyx_f_19mass_decomposer_cpp__convert_numpy_to_formula(PyArrayOb
   for (__pyx_t_3 = 0; __pyx_t_3 < __pyx_t_2; __pyx_t_3+=1) {
     __pyx_v_i = __pyx_t_3;
 
-    /* "mass_decomposer_cpp.pyx":99
+    /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":99
  *     cdef int* arr_ptr = <int*>np.PyArray_DATA(arr)
  *     for i in range(NUM_ELEMENTS):
  *         formula[i] = arr_ptr[i]             # <<<<<<<<<<<<<<
@@ -19809,7 +19809,7 @@ static Formula __pyx_f_19mass_decomposer_cpp__convert_numpy_to_formula(PyArrayOb
     (__pyx_v_formula[__pyx_v_i]) = (__pyx_v_arr_ptr[__pyx_v_i]);
   }
 
-  /* "mass_decomposer_cpp.pyx":100
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":100
  *     for i in range(NUM_ELEMENTS):
  *         formula[i] = arr_ptr[i]
  *     return formula             # <<<<<<<<<<<<<<
@@ -19819,7 +19819,7 @@ static Formula __pyx_f_19mass_decomposer_cpp__convert_numpy_to_formula(PyArrayOb
   __pyx_r = __pyx_v_formula;
   goto __pyx_L0;
 
-  /* "mass_decomposer_cpp.pyx":94
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":94
  * # Helper functions for converting Python objects to C++ and vice-versa
  * 
  * cdef Formula_cpp _convert_numpy_to_formula(np.ndarray arr):             # <<<<<<<<<<<<<<
@@ -19832,7 +19832,7 @@ static Formula __pyx_f_19mass_decomposer_cpp__convert_numpy_to_formula(PyArrayOb
   return __pyx_r;
 }
 
-/* "mass_decomposer_cpp.pyx":102
+/* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":102
  *     return formula
  * 
  * cdef np.ndarray _convert_formula_to_array(const Formula_cpp& cpp_formula):             # <<<<<<<<<<<<<<
@@ -19840,7 +19840,7 @@ static Formula __pyx_f_19mass_decomposer_cpp__convert_numpy_to_formula(PyArrayOb
  *     cdef np.ndarray arr = np.empty(NUM_ELEMENTS, dtype=np.int32)
 */
 
-static PyArrayObject *__pyx_f_19mass_decomposer_cpp__convert_formula_to_array(Formula const &__pyx_v_cpp_formula) {
+static PyArrayObject *__pyx_f_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp__convert_formula_to_array(Formula const &__pyx_v_cpp_formula) {
   PyArrayObject *__pyx_v_arr = 0;
   int *__pyx_v_arr_ptr;
   int __pyx_v_i;
@@ -19861,7 +19861,7 @@ static PyArrayObject *__pyx_f_19mass_decomposer_cpp__convert_formula_to_array(Fo
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("_convert_formula_to_array", 0);
 
-  /* "mass_decomposer_cpp.pyx":104
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":104
  * cdef np.ndarray _convert_formula_to_array(const Formula_cpp& cpp_formula):
  *     """Convert C++ Formula to a NumPy array."""
  *     cdef np.ndarray arr = np.empty(NUM_ELEMENTS, dtype=np.int32)             # <<<<<<<<<<<<<<
@@ -19911,7 +19911,7 @@ static PyArrayObject *__pyx_f_19mass_decomposer_cpp__convert_formula_to_array(Fo
   __pyx_v_arr = ((PyArrayObject *)__pyx_t_1);
   __pyx_t_1 = 0;
 
-  /* "mass_decomposer_cpp.pyx":105
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":105
  *     """Convert C++ Formula to a NumPy array."""
  *     cdef np.ndarray arr = np.empty(NUM_ELEMENTS, dtype=np.int32)
  *     cdef int* arr_ptr = <int*>np.PyArray_DATA(arr)             # <<<<<<<<<<<<<<
@@ -19920,7 +19920,7 @@ static PyArrayObject *__pyx_f_19mass_decomposer_cpp__convert_formula_to_array(Fo
 */
   __pyx_v_arr_ptr = ((int *)PyArray_DATA(__pyx_v_arr));
 
-  /* "mass_decomposer_cpp.pyx":106
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":106
  *     cdef np.ndarray arr = np.empty(NUM_ELEMENTS, dtype=np.int32)
  *     cdef int* arr_ptr = <int*>np.PyArray_DATA(arr)
  *     for i in range(NUM_ELEMENTS):             # <<<<<<<<<<<<<<
@@ -19932,7 +19932,7 @@ static PyArrayObject *__pyx_f_19mass_decomposer_cpp__convert_formula_to_array(Fo
   for (__pyx_t_10 = 0; __pyx_t_10 < __pyx_t_9; __pyx_t_10+=1) {
     __pyx_v_i = __pyx_t_10;
 
-    /* "mass_decomposer_cpp.pyx":107
+    /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":107
  *     cdef int* arr_ptr = <int*>np.PyArray_DATA(arr)
  *     for i in range(NUM_ELEMENTS):
  *         arr_ptr[i] = cpp_formula[i]             # <<<<<<<<<<<<<<
@@ -19942,7 +19942,7 @@ static PyArrayObject *__pyx_f_19mass_decomposer_cpp__convert_formula_to_array(Fo
     (__pyx_v_arr_ptr[__pyx_v_i]) = (__pyx_v_cpp_formula[__pyx_v_i]);
   }
 
-  /* "mass_decomposer_cpp.pyx":108
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":108
  *     for i in range(NUM_ELEMENTS):
  *         arr_ptr[i] = cpp_formula[i]
  *     return arr             # <<<<<<<<<<<<<<
@@ -19954,7 +19954,7 @@ static PyArrayObject *__pyx_f_19mass_decomposer_cpp__convert_formula_to_array(Fo
   __pyx_r = __pyx_v_arr;
   goto __pyx_L0;
 
-  /* "mass_decomposer_cpp.pyx":102
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":102
  *     return formula
  * 
  * cdef np.ndarray _convert_formula_to_array(const Formula_cpp& cpp_formula):             # <<<<<<<<<<<<<<
@@ -19970,7 +19970,7 @@ static PyArrayObject *__pyx_f_19mass_decomposer_cpp__convert_formula_to_array(Fo
   __Pyx_XDECREF(__pyx_t_4);
   __Pyx_XDECREF(__pyx_t_5);
   __Pyx_XDECREF(__pyx_t_6);
-  __Pyx_AddTraceback("mass_decomposer_cpp._convert_formula_to_array", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __Pyx_AddTraceback("ms_utils.formula_annotation.mass_decomposition_impl.mass_decomposer_cpp._convert_formula_to_array", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __pyx_r = 0;
   __pyx_L0:;
   __Pyx_XDECREF((PyObject *)__pyx_v_arr);
@@ -19979,7 +19979,7 @@ static PyArrayObject *__pyx_f_19mass_decomposer_cpp__convert_formula_to_array(Fo
   return __pyx_r;
 }
 
-/* "mass_decomposer_cpp.pyx":121
+/* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":121
  * #     return cpp_formula
  * 
  * cdef void _validate_bounds_array(np.ndarray arr, str name):             # <<<<<<<<<<<<<<
@@ -19987,7 +19987,7 @@ static PyArrayObject *__pyx_f_19mass_decomposer_cpp__convert_formula_to_array(Fo
  *         raise TypeError(f"{name} must be a 1D array")
 */
 
-static void __pyx_f_19mass_decomposer_cpp__validate_bounds_array(PyArrayObject *__pyx_v_arr, PyObject *__pyx_v_name) {
+static void __pyx_f_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp__validate_bounds_array(PyArrayObject *__pyx_v_arr, PyObject *__pyx_v_name) {
   __Pyx_RefNannyDeclarations
   int __pyx_t_1;
   PyObject *__pyx_t_2 = NULL;
@@ -20003,7 +20003,7 @@ static void __pyx_f_19mass_decomposer_cpp__validate_bounds_array(PyArrayObject *
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("_validate_bounds_array", 0);
 
-  /* "mass_decomposer_cpp.pyx":122
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":122
  * 
  * cdef void _validate_bounds_array(np.ndarray arr, str name):
  *     if arr.ndim != 1:             # <<<<<<<<<<<<<<
@@ -20013,7 +20013,7 @@ static void __pyx_f_19mass_decomposer_cpp__validate_bounds_array(PyArrayObject *
   __pyx_t_1 = (__pyx_f_5numpy_7ndarray_4ndim_ndim(__pyx_v_arr) != 1);
   if (unlikely(__pyx_t_1)) {
 
-    /* "mass_decomposer_cpp.pyx":123
+    /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":123
  * cdef void _validate_bounds_array(np.ndarray arr, str name):
  *     if arr.ndim != 1:
  *         raise TypeError(f"{name} must be a 1D array")             # <<<<<<<<<<<<<<
@@ -20042,7 +20042,7 @@ static void __pyx_f_19mass_decomposer_cpp__validate_bounds_array(PyArrayObject *
     __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
     __PYX_ERR(0, 123, __pyx_L1_error)
 
-    /* "mass_decomposer_cpp.pyx":122
+    /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":122
  * 
  * cdef void _validate_bounds_array(np.ndarray arr, str name):
  *     if arr.ndim != 1:             # <<<<<<<<<<<<<<
@@ -20051,7 +20051,7 @@ static void __pyx_f_19mass_decomposer_cpp__validate_bounds_array(PyArrayObject *
 */
   }
 
-  /* "mass_decomposer_cpp.pyx":124
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":124
  *     if arr.ndim != 1:
  *         raise TypeError(f"{name} must be a 1D array")
  *     if arr.shape[0] != NUM_ELEMENTS:             # <<<<<<<<<<<<<<
@@ -20061,7 +20061,7 @@ static void __pyx_f_19mass_decomposer_cpp__validate_bounds_array(PyArrayObject *
   __pyx_t_1 = ((__pyx_f_5numpy_7ndarray_5shape_shape(__pyx_v_arr)[0]) != FormulaAnnotation::NUM_ELEMENTS);
   if (unlikely(__pyx_t_1)) {
 
-    /* "mass_decomposer_cpp.pyx":125
+    /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":125
  *         raise TypeError(f"{name} must be a 1D array")
  *     if arr.shape[0] != NUM_ELEMENTS:
  *         raise ValueError(f"{name} must have length {NUM_ELEMENTS}")             # <<<<<<<<<<<<<<
@@ -20097,7 +20097,7 @@ static void __pyx_f_19mass_decomposer_cpp__validate_bounds_array(PyArrayObject *
     __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
     __PYX_ERR(0, 125, __pyx_L1_error)
 
-    /* "mass_decomposer_cpp.pyx":124
+    /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":124
  *     if arr.ndim != 1:
  *         raise TypeError(f"{name} must be a 1D array")
  *     if arr.shape[0] != NUM_ELEMENTS:             # <<<<<<<<<<<<<<
@@ -20106,7 +20106,7 @@ static void __pyx_f_19mass_decomposer_cpp__validate_bounds_array(PyArrayObject *
 */
   }
 
-  /* "mass_decomposer_cpp.pyx":126
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":126
  *     if arr.shape[0] != NUM_ELEMENTS:
  *         raise ValueError(f"{name} must have length {NUM_ELEMENTS}")
  *     if arr.dtype != np.int32:             # <<<<<<<<<<<<<<
@@ -20127,7 +20127,7 @@ static void __pyx_f_19mass_decomposer_cpp__validate_bounds_array(PyArrayObject *
   __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
   if (unlikely(__pyx_t_1)) {
 
-    /* "mass_decomposer_cpp.pyx":127
+    /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":127
  *         raise ValueError(f"{name} must have length {NUM_ELEMENTS}")
  *     if arr.dtype != np.int32:
  *         raise TypeError(f"{name} must be of type numpy.int32")             # <<<<<<<<<<<<<<
@@ -20156,7 +20156,7 @@ static void __pyx_f_19mass_decomposer_cpp__validate_bounds_array(PyArrayObject *
     __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
     __PYX_ERR(0, 127, __pyx_L1_error)
 
-    /* "mass_decomposer_cpp.pyx":126
+    /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":126
  *     if arr.shape[0] != NUM_ELEMENTS:
  *         raise ValueError(f"{name} must have length {NUM_ELEMENTS}")
  *     if arr.dtype != np.int32:             # <<<<<<<<<<<<<<
@@ -20165,7 +20165,7 @@ static void __pyx_f_19mass_decomposer_cpp__validate_bounds_array(PyArrayObject *
 */
   }
 
-  /* "mass_decomposer_cpp.pyx":121
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":121
  * #     return cpp_formula
  * 
  * cdef void _validate_bounds_array(np.ndarray arr, str name):             # <<<<<<<<<<<<<<
@@ -20182,12 +20182,12 @@ static void __pyx_f_19mass_decomposer_cpp__validate_bounds_array(PyArrayObject *
   __Pyx_XDECREF(__pyx_t_5);
   __Pyx_XDECREF(__pyx_t_6);
   __Pyx_XDECREF(__pyx_t_9);
-  __Pyx_AddTraceback("mass_decomposer_cpp._validate_bounds_array", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __Pyx_AddTraceback("ms_utils.formula_annotation.mass_decomposition_impl.mass_decomposer_cpp._validate_bounds_array", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __pyx_L0:;
   __Pyx_RefNannyFinishContext();
 }
 
-/* "mass_decomposer_cpp.pyx":129
+/* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":129
  *         raise TypeError(f"{name} must be of type numpy.int32")
  * 
  * cdef DecompositionParams _convert_params(             # <<<<<<<<<<<<<<
@@ -20195,7 +20195,7 @@ static void __pyx_f_19mass_decomposer_cpp__validate_bounds_array(PyArrayObject *
  *     # double max_hetero_ratio,
 */
 
-static struct DecompositionParams __pyx_f_19mass_decomposer_cpp__convert_params(double __pyx_v_tolerance_ppm, double __pyx_v_min_dbe, double __pyx_v_max_dbe, int __pyx_v_max_results, PyArrayObject *__pyx_v_min_bounds, PyArrayObject *__pyx_v_max_bounds) {
+static struct DecompositionParams __pyx_f_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp__convert_params(double __pyx_v_tolerance_ppm, double __pyx_v_min_dbe, double __pyx_v_max_dbe, int __pyx_v_max_results, PyArrayObject *__pyx_v_min_bounds, PyArrayObject *__pyx_v_max_bounds) {
   struct DecompositionParams __pyx_v_params;
   struct DecompositionParams __pyx_r;
   Formula __pyx_t_1;
@@ -20203,25 +20203,25 @@ static struct DecompositionParams __pyx_f_19mass_decomposer_cpp__convert_params(
   const char *__pyx_filename = NULL;
   int __pyx_clineno = 0;
 
-  /* "mass_decomposer_cpp.pyx":135
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":135
  *     np.ndarray min_bounds, np.ndarray max_bounds):
  *     """Convert Python parameters to C++ DecompositionParams."""
  *     _validate_bounds_array(min_bounds, "min_bounds")             # <<<<<<<<<<<<<<
  *     _validate_bounds_array(max_bounds, "max_bounds")
  * 
 */
-  __pyx_f_19mass_decomposer_cpp__validate_bounds_array(__pyx_v_min_bounds, __pyx_mstate_global->__pyx_n_u_min_bounds); if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 135, __pyx_L1_error)
+  __pyx_f_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp__validate_bounds_array(__pyx_v_min_bounds, __pyx_mstate_global->__pyx_n_u_min_bounds); if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 135, __pyx_L1_error)
 
-  /* "mass_decomposer_cpp.pyx":136
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":136
  *     """Convert Python parameters to C++ DecompositionParams."""
  *     _validate_bounds_array(min_bounds, "min_bounds")
  *     _validate_bounds_array(max_bounds, "max_bounds")             # <<<<<<<<<<<<<<
  * 
  *     cdef DecompositionParams params
 */
-  __pyx_f_19mass_decomposer_cpp__validate_bounds_array(__pyx_v_max_bounds, __pyx_mstate_global->__pyx_n_u_max_bounds); if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 136, __pyx_L1_error)
+  __pyx_f_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp__validate_bounds_array(__pyx_v_max_bounds, __pyx_mstate_global->__pyx_n_u_max_bounds); if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 136, __pyx_L1_error)
 
-  /* "mass_decomposer_cpp.pyx":139
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":139
  * 
  *     cdef DecompositionParams params
  *     params.tolerance_ppm = tolerance_ppm             # <<<<<<<<<<<<<<
@@ -20230,7 +20230,7 @@ static struct DecompositionParams __pyx_f_19mass_decomposer_cpp__convert_params(
 */
   __pyx_v_params.tolerance_ppm = __pyx_v_tolerance_ppm;
 
-  /* "mass_decomposer_cpp.pyx":140
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":140
  *     cdef DecompositionParams params
  *     params.tolerance_ppm = tolerance_ppm
  *     params.min_dbe = min_dbe             # <<<<<<<<<<<<<<
@@ -20239,7 +20239,7 @@ static struct DecompositionParams __pyx_f_19mass_decomposer_cpp__convert_params(
 */
   __pyx_v_params.min_dbe = __pyx_v_min_dbe;
 
-  /* "mass_decomposer_cpp.pyx":141
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":141
  *     params.tolerance_ppm = tolerance_ppm
  *     params.min_dbe = min_dbe
  *     params.max_dbe = max_dbe             # <<<<<<<<<<<<<<
@@ -20248,7 +20248,7 @@ static struct DecompositionParams __pyx_f_19mass_decomposer_cpp__convert_params(
 */
   __pyx_v_params.max_dbe = __pyx_v_max_dbe;
 
-  /* "mass_decomposer_cpp.pyx":143
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":143
  *     params.max_dbe = max_dbe
  *     # params.max_hetero_ratio = max_hetero_ratio
  *     params.max_results = max_results             # <<<<<<<<<<<<<<
@@ -20257,27 +20257,27 @@ static struct DecompositionParams __pyx_f_19mass_decomposer_cpp__convert_params(
 */
   __pyx_v_params.max_results = __pyx_v_max_results;
 
-  /* "mass_decomposer_cpp.pyx":144
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":144
  *     # params.max_hetero_ratio = max_hetero_ratio
  *     params.max_results = max_results
  *     params.min_bounds = _convert_numpy_to_formula(min_bounds)             # <<<<<<<<<<<<<<
  *     params.max_bounds = _convert_numpy_to_formula(max_bounds)
  *     return params
 */
-  __pyx_t_1 = __pyx_f_19mass_decomposer_cpp__convert_numpy_to_formula(__pyx_v_min_bounds); if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 144, __pyx_L1_error)
+  __pyx_t_1 = __pyx_f_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp__convert_numpy_to_formula(__pyx_v_min_bounds); if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 144, __pyx_L1_error)
   __pyx_v_params.min_bounds = __PYX_STD_MOVE_IF_SUPPORTED(__pyx_t_1);
 
-  /* "mass_decomposer_cpp.pyx":145
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":145
  *     params.max_results = max_results
  *     params.min_bounds = _convert_numpy_to_formula(min_bounds)
  *     params.max_bounds = _convert_numpy_to_formula(max_bounds)             # <<<<<<<<<<<<<<
  *     return params
  * 
 */
-  __pyx_t_1 = __pyx_f_19mass_decomposer_cpp__convert_numpy_to_formula(__pyx_v_max_bounds); if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 145, __pyx_L1_error)
+  __pyx_t_1 = __pyx_f_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp__convert_numpy_to_formula(__pyx_v_max_bounds); if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 145, __pyx_L1_error)
   __pyx_v_params.max_bounds = __PYX_STD_MOVE_IF_SUPPORTED(__pyx_t_1);
 
-  /* "mass_decomposer_cpp.pyx":146
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":146
  *     params.min_bounds = _convert_numpy_to_formula(min_bounds)
  *     params.max_bounds = _convert_numpy_to_formula(max_bounds)
  *     return params             # <<<<<<<<<<<<<<
@@ -20287,7 +20287,7 @@ static struct DecompositionParams __pyx_f_19mass_decomposer_cpp__convert_params(
   __pyx_r = __pyx_v_params;
   goto __pyx_L0;
 
-  /* "mass_decomposer_cpp.pyx":129
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":129
  *         raise TypeError(f"{name} must be of type numpy.int32")
  * 
  * cdef DecompositionParams _convert_params(             # <<<<<<<<<<<<<<
@@ -20297,13 +20297,13 @@ static struct DecompositionParams __pyx_f_19mass_decomposer_cpp__convert_params(
 
   /* function exit code */
   __pyx_L1_error:;
-  __Pyx_AddTraceback("mass_decomposer_cpp._convert_params", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __Pyx_AddTraceback("ms_utils.formula_annotation.mass_decomposition_impl.mass_decomposer_cpp._convert_params", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __Pyx_pretend_to_initialize(&__pyx_r);
   __pyx_L0:;
   return __pyx_r;
 }
 
-/* "mass_decomposer_cpp.pyx":150
+/* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":150
  * # Public Python functions
  * 
  * def get_element_info() -> dict:             # <<<<<<<<<<<<<<
@@ -20312,23 +20312,23 @@ static struct DecompositionParams __pyx_f_19mass_decomposer_cpp__convert_params(
 */
 
 /* Python wrapper */
-static PyObject *__pyx_pw_19mass_decomposer_cpp_3get_element_info(PyObject *__pyx_self, CYTHON_UNUSED PyObject *unused); /*proto*/
-PyDoc_STRVAR(__pyx_doc_19mass_decomposer_cpp_2get_element_info, "get_element_info() -> dict\n\nReturns a dictionary with element information.");
-static PyMethodDef __pyx_mdef_19mass_decomposer_cpp_3get_element_info = {"get_element_info", (PyCFunction)__pyx_pw_19mass_decomposer_cpp_3get_element_info, METH_NOARGS, __pyx_doc_19mass_decomposer_cpp_2get_element_info};
-static PyObject *__pyx_pw_19mass_decomposer_cpp_3get_element_info(PyObject *__pyx_self, CYTHON_UNUSED PyObject *unused) {
+static PyObject *__pyx_pw_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp_3get_element_info(PyObject *__pyx_self, CYTHON_UNUSED PyObject *unused); /*proto*/
+PyDoc_STRVAR(__pyx_doc_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp_2get_element_info, "get_element_info() -> dict\n\nReturns a dictionary with element information.");
+static PyMethodDef __pyx_mdef_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp_3get_element_info = {"get_element_info", (PyCFunction)__pyx_pw_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp_3get_element_info, METH_NOARGS, __pyx_doc_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp_2get_element_info};
+static PyObject *__pyx_pw_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp_3get_element_info(PyObject *__pyx_self, CYTHON_UNUSED PyObject *unused) {
   CYTHON_UNUSED PyObject *const *__pyx_kwvalues;
   PyObject *__pyx_r = 0;
   __Pyx_RefNannyDeclarations
   __Pyx_RefNannySetupContext("get_element_info (wrapper)", 0);
   __pyx_kwvalues = __Pyx_KwValues_VARARGS(__pyx_args, __pyx_nargs);
-  __pyx_r = __pyx_pf_19mass_decomposer_cpp_2get_element_info(__pyx_self);
+  __pyx_r = __pyx_pf_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp_2get_element_info(__pyx_self);
 
   /* function exit code */
   __Pyx_RefNannyFinishContext();
   return __pyx_r;
 }
 
-static PyObject *__pyx_pf_19mass_decomposer_cpp_2get_element_info(CYTHON_UNUSED PyObject *__pyx_self) {
+static PyObject *__pyx_pf_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp_2get_element_info(CYTHON_UNUSED PyObject *__pyx_self) {
   int __pyx_7genexpr__pyx_v_i;
   int __pyx_8genexpr1__pyx_v_i;
   PyObject *__pyx_r = NULL;
@@ -20346,7 +20346,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_2get_element_info(CYTHON_UNUSED 
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("get_element_info", 0);
 
-  /* "mass_decomposer_cpp.pyx":152
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":152
  * def get_element_info() -> dict:
  *     """Returns a dictionary with element information."""
  *     return {             # <<<<<<<<<<<<<<
@@ -20355,7 +20355,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_2get_element_info(CYTHON_UNUSED 
 */
   __Pyx_XDECREF(__pyx_r);
 
-  /* "mass_decomposer_cpp.pyx":154
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":154
  *     return {
  *         # Iterate C arrays by index
  *         'order': [ELEMENT_SYMBOLS[i].decode('utf-8') for i in range(NUM_ELEMENTS)],             # <<<<<<<<<<<<<<
@@ -20383,7 +20383,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_2get_element_info(CYTHON_UNUSED 
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
   { /* enter inner scope */
 
-    /* "mass_decomposer_cpp.pyx":155
+    /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":155
  *         # Iterate C arrays by index
  *         'order': [ELEMENT_SYMBOLS[i].decode('utf-8') for i in range(NUM_ELEMENTS)],
  *         'masses': [ATOMIC_MASSES[i] for i in range(NUM_ELEMENTS)],             # <<<<<<<<<<<<<<
@@ -20405,7 +20405,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_2get_element_info(CYTHON_UNUSED 
   if (PyDict_SetItem(__pyx_t_1, __pyx_mstate_global->__pyx_n_u_masses, __pyx_t_2) < 0) __PYX_ERR(0, 154, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
 
-  /* "mass_decomposer_cpp.pyx":156
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":156
  *         'order': [ELEMENT_SYMBOLS[i].decode('utf-8') for i in range(NUM_ELEMENTS)],
  *         'masses': [ATOMIC_MASSES[i] for i in range(NUM_ELEMENTS)],
  *         'count': NUM_ELEMENTS             # <<<<<<<<<<<<<<
@@ -20420,7 +20420,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_2get_element_info(CYTHON_UNUSED 
   __pyx_t_1 = 0;
   goto __pyx_L0;
 
-  /* "mass_decomposer_cpp.pyx":150
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":150
  * # Public Python functions
  * 
  * def get_element_info() -> dict:             # <<<<<<<<<<<<<<
@@ -20433,7 +20433,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_2get_element_info(CYTHON_UNUSED 
   __Pyx_XDECREF(__pyx_t_1);
   __Pyx_XDECREF(__pyx_t_2);
   __Pyx_XDECREF(__pyx_t_8);
-  __Pyx_AddTraceback("mass_decomposer_cpp.get_element_info", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __Pyx_AddTraceback("ms_utils.formula_annotation.mass_decomposition_impl.mass_decomposer_cpp.get_element_info", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __pyx_r = NULL;
   __pyx_L0:;
   __Pyx_XGIVEREF(__pyx_r);
@@ -20441,7 +20441,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_2get_element_info(CYTHON_UNUSED 
   return __pyx_r;
 }
 
-/* "mass_decomposer_cpp.pyx":159
+/* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":159
  *     }
  * 
  * def decompose_mass(             # <<<<<<<<<<<<<<
@@ -20450,16 +20450,16 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_2get_element_info(CYTHON_UNUSED 
 */
 
 /* Python wrapper */
-static PyObject *__pyx_pw_19mass_decomposer_cpp_5decompose_mass(PyObject *__pyx_self, 
+static PyObject *__pyx_pw_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp_5decompose_mass(PyObject *__pyx_self, 
 #if CYTHON_METH_FASTCALL
 PyObject *const *__pyx_args, Py_ssize_t __pyx_nargs, PyObject *__pyx_kwds
 #else
 PyObject *__pyx_args, PyObject *__pyx_kwds
 #endif
 ); /*proto*/
-PyDoc_STRVAR(__pyx_doc_19mass_decomposer_cpp_4decompose_mass, "decompose_mass(double target_mass: float, ndarray min_bounds: np.ndarray, ndarray max_bounds: np.ndarray, double tolerance_ppm: float = 5.0, double min_dbe: float = 0.0, double max_dbe: float = 40.0, double max_hetero_ratio: float = 100.0, int max_results: int = 100000) -> list[np.ndarray]");
-static PyMethodDef __pyx_mdef_19mass_decomposer_cpp_5decompose_mass = {"decompose_mass", (PyCFunction)(void(*)(void))(__Pyx_PyCFunction_FastCallWithKeywords)__pyx_pw_19mass_decomposer_cpp_5decompose_mass, __Pyx_METH_FASTCALL|METH_KEYWORDS, __pyx_doc_19mass_decomposer_cpp_4decompose_mass};
-static PyObject *__pyx_pw_19mass_decomposer_cpp_5decompose_mass(PyObject *__pyx_self, 
+PyDoc_STRVAR(__pyx_doc_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp_4decompose_mass, "decompose_mass(double target_mass: float, ndarray min_bounds: np.ndarray, ndarray max_bounds: np.ndarray, double tolerance_ppm: float = 5.0, double min_dbe: float = 0.0, double max_dbe: float = 40.0, double max_hetero_ratio: float = 100.0, int max_results: int = 100000) -> list[np.ndarray]");
+static PyMethodDef __pyx_mdef_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp_5decompose_mass = {"decompose_mass", (PyCFunction)(void(*)(void))(__Pyx_PyCFunction_FastCallWithKeywords)__pyx_pw_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp_5decompose_mass, __Pyx_METH_FASTCALL|METH_KEYWORDS, __pyx_doc_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp_4decompose_mass};
+static PyObject *__pyx_pw_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp_5decompose_mass(PyObject *__pyx_self, 
 #if CYTHON_METH_FASTCALL
 PyObject *const *__pyx_args, Py_ssize_t __pyx_nargs, PyObject *__pyx_kwds
 #else
@@ -20608,14 +20608,14 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
   for (Py_ssize_t __pyx_temp=0; __pyx_temp < (Py_ssize_t)(sizeof(values)/sizeof(values[0])); ++__pyx_temp) {
     Py_XDECREF(values[__pyx_temp]);
   }
-  __Pyx_AddTraceback("mass_decomposer_cpp.decompose_mass", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __Pyx_AddTraceback("ms_utils.formula_annotation.mass_decomposition_impl.mass_decomposer_cpp.decompose_mass", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __Pyx_RefNannyFinishContext();
   return NULL;
   __pyx_L4_argument_unpacking_done:;
   if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_min_bounds), __pyx_mstate_global->__pyx_ptype_5numpy_ndarray, 0, "min_bounds", 0))) __PYX_ERR(0, 161, __pyx_L1_error)
   if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_max_bounds), __pyx_mstate_global->__pyx_ptype_5numpy_ndarray, 0, "max_bounds", 0))) __PYX_ERR(0, 162, __pyx_L1_error)
   if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_max_results), (&PyLong_Type), 0, "max_results", 2))) __PYX_ERR(0, 167, __pyx_L1_error)
-  __pyx_r = __pyx_pf_19mass_decomposer_cpp_4decompose_mass(__pyx_self, __pyx_v_target_mass, __pyx_v_min_bounds, __pyx_v_max_bounds, __pyx_v_tolerance_ppm, __pyx_v_min_dbe, __pyx_v_max_dbe, __pyx_v_max_hetero_ratio, __pyx_v_max_results);
+  __pyx_r = __pyx_pf_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp_4decompose_mass(__pyx_self, __pyx_v_target_mass, __pyx_v_min_bounds, __pyx_v_max_bounds, __pyx_v_tolerance_ppm, __pyx_v_min_dbe, __pyx_v_max_dbe, __pyx_v_max_hetero_ratio, __pyx_v_max_results);
 
   /* function exit code */
   goto __pyx_L0;
@@ -20634,7 +20634,7 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
   return __pyx_r;
 }
 
-static PyObject *__pyx_pf_19mass_decomposer_cpp_4decompose_mass(CYTHON_UNUSED PyObject *__pyx_self, double __pyx_v_target_mass, PyArrayObject *__pyx_v_min_bounds, PyArrayObject *__pyx_v_max_bounds, double __pyx_v_tolerance_ppm, double __pyx_v_min_dbe, double __pyx_v_max_dbe, CYTHON_UNUSED double __pyx_v_max_hetero_ratio, PyObject *__pyx_v_max_results) {
+static PyObject *__pyx_pf_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp_4decompose_mass(CYTHON_UNUSED PyObject *__pyx_self, double __pyx_v_target_mass, PyArrayObject *__pyx_v_min_bounds, PyArrayObject *__pyx_v_max_bounds, double __pyx_v_tolerance_ppm, double __pyx_v_min_dbe, double __pyx_v_max_dbe, CYTHON_UNUSED double __pyx_v_max_hetero_ratio, PyObject *__pyx_v_max_results) {
   struct DecompositionParams __pyx_v_params;
   MassDecomposer *__pyx_v_decomposer;
   std::vector<Formula>  __pyx_v_results;
@@ -20662,7 +20662,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_4decompose_mass(CYTHON_UNUSED Py
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("decompose_mass", 0);
 
-  /* "mass_decomposer_cpp.pyx":171
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":171
  *     cdef DecompositionParams params = _convert_params(tolerance_ppm, min_dbe, max_dbe,
  *                                                     #  max_hetero_ratio,
  *                                                      max_results,             # <<<<<<<<<<<<<<
@@ -20671,17 +20671,17 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_4decompose_mass(CYTHON_UNUSED Py
 */
   __pyx_t_1 = __Pyx_PyLong_As_int(__pyx_v_max_results); if (unlikely((__pyx_t_1 == (int)-1) && PyErr_Occurred())) __PYX_ERR(0, 171, __pyx_L1_error)
 
-  /* "mass_decomposer_cpp.pyx":169
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":169
  *     max_results: int = 100000
  * ) -> list[np.ndarray]:
  *     cdef DecompositionParams params = _convert_params(tolerance_ppm, min_dbe, max_dbe,             # <<<<<<<<<<<<<<
  *                                                     #  max_hetero_ratio,
  *                                                      max_results,
 */
-  __pyx_t_2 = __pyx_f_19mass_decomposer_cpp__convert_params(__pyx_v_tolerance_ppm, __pyx_v_min_dbe, __pyx_v_max_dbe, __pyx_t_1, __pyx_v_min_bounds, __pyx_v_max_bounds); if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 169, __pyx_L1_error)
+  __pyx_t_2 = __pyx_f_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp__convert_params(__pyx_v_tolerance_ppm, __pyx_v_min_dbe, __pyx_v_max_dbe, __pyx_t_1, __pyx_v_min_bounds, __pyx_v_max_bounds); if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 169, __pyx_L1_error)
   __pyx_v_params = __pyx_t_2;
 
-  /* "mass_decomposer_cpp.pyx":173
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":173
  *                                                      max_results,
  *                                                      min_bounds, max_bounds)
  *     cdef MassDecomposer* decomposer = new MassDecomposer(params.min_bounds, params.max_bounds)             # <<<<<<<<<<<<<<
@@ -20690,7 +20690,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_4decompose_mass(CYTHON_UNUSED Py
 */
   __pyx_v_decomposer = new MassDecomposer(__pyx_v_params.min_bounds, __pyx_v_params.max_bounds);
 
-  /* "mass_decomposer_cpp.pyx":176
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":176
  *     cdef vector[Formula_cpp] results
  * 
  *     try:             # <<<<<<<<<<<<<<
@@ -20699,7 +20699,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_4decompose_mass(CYTHON_UNUSED Py
 */
   /*try:*/ {
 
-    /* "mass_decomposer_cpp.pyx":177
+    /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":177
  * 
  *     try:
  *         results = decomposer.decompose(target_mass, params)             # <<<<<<<<<<<<<<
@@ -20708,7 +20708,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_4decompose_mass(CYTHON_UNUSED Py
 */
     __pyx_v_results = __pyx_v_decomposer->decompose(__pyx_v_target_mass, __pyx_v_params);
 
-    /* "mass_decomposer_cpp.pyx":178
+    /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":178
  *     try:
  *         results = decomposer.decompose(target_mass, params)
  *         python_results = [_convert_formula_to_array(res) for res in results]             # <<<<<<<<<<<<<<
@@ -20722,7 +20722,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_4decompose_mass(CYTHON_UNUSED Py
       for (; __pyx_t_4 != __pyx_v_results.end(); ++__pyx_t_4) {
         __pyx_t_5 = *__pyx_t_4;
         __pyx_8genexpr2__pyx_v_res = __PYX_STD_MOVE_IF_SUPPORTED(__pyx_t_5);
-        __pyx_t_6 = ((PyObject *)__pyx_f_19mass_decomposer_cpp__convert_formula_to_array(__pyx_8genexpr2__pyx_v_res)); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 178, __pyx_L4_error)
+        __pyx_t_6 = ((PyObject *)__pyx_f_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp__convert_formula_to_array(__pyx_8genexpr2__pyx_v_res)); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 178, __pyx_L4_error)
         __Pyx_GOTREF(__pyx_t_6);
         if (unlikely(__Pyx_ListComp_Append(__pyx_t_3, (PyObject*)__pyx_t_6))) __PYX_ERR(0, 178, __pyx_L4_error)
         __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
@@ -20731,7 +20731,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_4decompose_mass(CYTHON_UNUSED Py
     __pyx_v_python_results = ((PyObject*)__pyx_t_3);
     __pyx_t_3 = 0;
 
-    /* "mass_decomposer_cpp.pyx":179
+    /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":179
  *         results = decomposer.decompose(target_mass, params)
  *         python_results = [_convert_formula_to_array(res) for res in results]
  *         return python_results             # <<<<<<<<<<<<<<
@@ -20744,7 +20744,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_4decompose_mass(CYTHON_UNUSED Py
     goto __pyx_L3_return;
   }
 
-  /* "mass_decomposer_cpp.pyx":181
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":181
  *         return python_results
  *     finally:
  *         del decomposer             # <<<<<<<<<<<<<<
@@ -20793,7 +20793,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_4decompose_mass(CYTHON_UNUSED Py
     }
   }
 
-  /* "mass_decomposer_cpp.pyx":159
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":159
  *     }
  * 
  * def decompose_mass(             # <<<<<<<<<<<<<<
@@ -20805,7 +20805,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_4decompose_mass(CYTHON_UNUSED Py
   __pyx_L1_error:;
   __Pyx_XDECREF(__pyx_t_3);
   __Pyx_XDECREF(__pyx_t_6);
-  __Pyx_AddTraceback("mass_decomposer_cpp.decompose_mass", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __Pyx_AddTraceback("ms_utils.formula_annotation.mass_decomposition_impl.mass_decomposer_cpp.decompose_mass", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __pyx_r = NULL;
   __pyx_L0:;
   __Pyx_XDECREF(__pyx_v_python_results);
@@ -20814,7 +20814,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_4decompose_mass(CYTHON_UNUSED Py
   return __pyx_r;
 }
 
-/* "mass_decomposer_cpp.pyx":183
+/* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":183
  *         del decomposer
  * 
  * def decompose_mass_parallel(             # <<<<<<<<<<<<<<
@@ -20823,16 +20823,16 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_4decompose_mass(CYTHON_UNUSED Py
 */
 
 /* Python wrapper */
-static PyObject *__pyx_pw_19mass_decomposer_cpp_7decompose_mass_parallel(PyObject *__pyx_self, 
+static PyObject *__pyx_pw_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp_7decompose_mass_parallel(PyObject *__pyx_self, 
 #if CYTHON_METH_FASTCALL
 PyObject *const *__pyx_args, Py_ssize_t __pyx_nargs, PyObject *__pyx_kwds
 #else
 PyObject *__pyx_args, PyObject *__pyx_kwds
 #endif
 ); /*proto*/
-PyDoc_STRVAR(__pyx_doc_19mass_decomposer_cpp_6decompose_mass_parallel, "decompose_mass_parallel(target_masses: pl.Series, ndarray min_bounds: np.ndarray, ndarray max_bounds: np.ndarray, double tolerance_ppm: float = 5.0, double min_dbe: float = 0.0, double max_dbe: float = 40.0, double max_hetero_ratio: float = 100.0, int max_results: int = 100000) -> pl.Series");
-static PyMethodDef __pyx_mdef_19mass_decomposer_cpp_7decompose_mass_parallel = {"decompose_mass_parallel", (PyCFunction)(void(*)(void))(__Pyx_PyCFunction_FastCallWithKeywords)__pyx_pw_19mass_decomposer_cpp_7decompose_mass_parallel, __Pyx_METH_FASTCALL|METH_KEYWORDS, __pyx_doc_19mass_decomposer_cpp_6decompose_mass_parallel};
-static PyObject *__pyx_pw_19mass_decomposer_cpp_7decompose_mass_parallel(PyObject *__pyx_self, 
+PyDoc_STRVAR(__pyx_doc_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp_6decompose_mass_parallel, "decompose_mass_parallel(target_masses: pl.Series, ndarray min_bounds: np.ndarray, ndarray max_bounds: np.ndarray, double tolerance_ppm: float = 5.0, double min_dbe: float = 0.0, double max_dbe: float = 40.0, double max_hetero_ratio: float = 100.0, int max_results: int = 100000) -> pl.Series");
+static PyMethodDef __pyx_mdef_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp_7decompose_mass_parallel = {"decompose_mass_parallel", (PyCFunction)(void(*)(void))(__Pyx_PyCFunction_FastCallWithKeywords)__pyx_pw_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp_7decompose_mass_parallel, __Pyx_METH_FASTCALL|METH_KEYWORDS, __pyx_doc_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp_6decompose_mass_parallel};
+static PyObject *__pyx_pw_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp_7decompose_mass_parallel(PyObject *__pyx_self, 
 #if CYTHON_METH_FASTCALL
 PyObject *const *__pyx_args, Py_ssize_t __pyx_nargs, PyObject *__pyx_kwds
 #else
@@ -20981,14 +20981,14 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
   for (Py_ssize_t __pyx_temp=0; __pyx_temp < (Py_ssize_t)(sizeof(values)/sizeof(values[0])); ++__pyx_temp) {
     Py_XDECREF(values[__pyx_temp]);
   }
-  __Pyx_AddTraceback("mass_decomposer_cpp.decompose_mass_parallel", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __Pyx_AddTraceback("ms_utils.formula_annotation.mass_decomposition_impl.mass_decomposer_cpp.decompose_mass_parallel", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __Pyx_RefNannyFinishContext();
   return NULL;
   __pyx_L4_argument_unpacking_done:;
   if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_min_bounds), __pyx_mstate_global->__pyx_ptype_5numpy_ndarray, 0, "min_bounds", 0))) __PYX_ERR(0, 185, __pyx_L1_error)
   if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_max_bounds), __pyx_mstate_global->__pyx_ptype_5numpy_ndarray, 0, "max_bounds", 0))) __PYX_ERR(0, 186, __pyx_L1_error)
   if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_max_results), (&PyLong_Type), 0, "max_results", 2))) __PYX_ERR(0, 191, __pyx_L1_error)
-  __pyx_r = __pyx_pf_19mass_decomposer_cpp_6decompose_mass_parallel(__pyx_self, __pyx_v_target_masses, __pyx_v_min_bounds, __pyx_v_max_bounds, __pyx_v_tolerance_ppm, __pyx_v_min_dbe, __pyx_v_max_dbe, __pyx_v_max_hetero_ratio, __pyx_v_max_results);
+  __pyx_r = __pyx_pf_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp_6decompose_mass_parallel(__pyx_self, __pyx_v_target_masses, __pyx_v_min_bounds, __pyx_v_max_bounds, __pyx_v_tolerance_ppm, __pyx_v_min_dbe, __pyx_v_max_dbe, __pyx_v_max_hetero_ratio, __pyx_v_max_results);
 
   /* function exit code */
   goto __pyx_L0;
@@ -21007,7 +21007,7 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
   return __pyx_r;
 }
 
-static PyObject *__pyx_pf_19mass_decomposer_cpp_6decompose_mass_parallel(CYTHON_UNUSED PyObject *__pyx_self, PyObject *__pyx_v_target_masses, PyArrayObject *__pyx_v_min_bounds, PyArrayObject *__pyx_v_max_bounds, double __pyx_v_tolerance_ppm, double __pyx_v_min_dbe, double __pyx_v_max_dbe, CYTHON_UNUSED double __pyx_v_max_hetero_ratio, PyObject *__pyx_v_max_results) {
+static PyObject *__pyx_pf_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp_6decompose_mass_parallel(CYTHON_UNUSED PyObject *__pyx_self, PyObject *__pyx_v_target_masses, PyArrayObject *__pyx_v_min_bounds, PyArrayObject *__pyx_v_max_bounds, double __pyx_v_tolerance_ppm, double __pyx_v_min_dbe, double __pyx_v_max_dbe, CYTHON_UNUSED double __pyx_v_max_hetero_ratio, PyObject *__pyx_v_max_results) {
   PyArrayObject *__pyx_v_contig_masses = 0;
   double *__pyx_v_masses_ptr;
   size_t __pyx_v_n_masses;
@@ -21069,7 +21069,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_6decompose_mass_parallel(CYTHON_
   __pyx_pybuffernd_contig_masses.data = NULL;
   __pyx_pybuffernd_contig_masses.rcbuffer = &__pyx_pybuffer_contig_masses;
 
-  /* "mass_decomposer_cpp.pyx":193
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":193
  *     max_results: int = 100000
  * ) -> pl.Series:
  *     target_masses = target_masses.to_numpy()             # <<<<<<<<<<<<<<
@@ -21089,7 +21089,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_6decompose_mass_parallel(CYTHON_
   __Pyx_DECREF_SET(__pyx_v_target_masses, __pyx_t_1);
   __pyx_t_1 = 0;
 
-  /* "mass_decomposer_cpp.pyx":195
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":195
  *     target_masses = target_masses.to_numpy()
  * 
  *     cdef np.ndarray[double, ndim=1, mode="c"] contig_masses = np.ascontiguousarray(target_masses, dtype=np.float64)             # <<<<<<<<<<<<<<
@@ -21144,7 +21144,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_6decompose_mass_parallel(CYTHON_
   __pyx_v_contig_masses = ((PyArrayObject *)__pyx_t_1);
   __pyx_t_1 = 0;
 
-  /* "mass_decomposer_cpp.pyx":196
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":196
  * 
  *     cdef np.ndarray[double, ndim=1, mode="c"] contig_masses = np.ascontiguousarray(target_masses, dtype=np.float64)
  *     cdef double* masses_ptr = &contig_masses[0]             # <<<<<<<<<<<<<<
@@ -21154,7 +21154,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_6decompose_mass_parallel(CYTHON_
   __pyx_t_7 = 0;
   __pyx_v_masses_ptr = (&(*__Pyx_BufPtrCContig1d(double *, __pyx_pybuffernd_contig_masses.rcbuffer->pybuffer.buf, __pyx_t_7, __pyx_pybuffernd_contig_masses.diminfo[0].strides)));
 
-  /* "mass_decomposer_cpp.pyx":197
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":197
  *     cdef np.ndarray[double, ndim=1, mode="c"] contig_masses = np.ascontiguousarray(target_masses, dtype=np.float64)
  *     cdef double* masses_ptr = &contig_masses[0]
  *     cdef size_t n_masses = contig_masses.shape[0]             # <<<<<<<<<<<<<<
@@ -21163,7 +21163,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_6decompose_mass_parallel(CYTHON_
 */
   __pyx_v_n_masses = (__pyx_f_5numpy_7ndarray_5shape_shape(((PyArrayObject *)__pyx_v_contig_masses))[0]);
 
-  /* "mass_decomposer_cpp.pyx":200
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":200
  * 
  *     cdef vector[double] masses_vec
  *     masses_vec.assign(masses_ptr, masses_ptr + n_masses)             # <<<<<<<<<<<<<<
@@ -21177,7 +21177,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_6decompose_mass_parallel(CYTHON_
     __PYX_ERR(0, 200, __pyx_L1_error)
   }
 
-  /* "mass_decomposer_cpp.pyx":202
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":202
  *     masses_vec.assign(masses_ptr, masses_ptr + n_masses)
  * 
  *     cdef DecompositionParams params = _convert_params(tolerance_ppm, min_dbe, max_dbe, max_results,min_bounds, max_bounds)             # <<<<<<<<<<<<<<
@@ -21185,10 +21185,10 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_6decompose_mass_parallel(CYTHON_
  * 
 */
   __pyx_t_8 = __Pyx_PyLong_As_int(__pyx_v_max_results); if (unlikely((__pyx_t_8 == (int)-1) && PyErr_Occurred())) __PYX_ERR(0, 202, __pyx_L1_error)
-  __pyx_t_9 = __pyx_f_19mass_decomposer_cpp__convert_params(__pyx_v_tolerance_ppm, __pyx_v_min_dbe, __pyx_v_max_dbe, __pyx_t_8, __pyx_v_min_bounds, __pyx_v_max_bounds); if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 202, __pyx_L1_error)
+  __pyx_t_9 = __pyx_f_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp__convert_params(__pyx_v_tolerance_ppm, __pyx_v_min_dbe, __pyx_v_max_dbe, __pyx_t_8, __pyx_v_min_bounds, __pyx_v_max_bounds); if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 202, __pyx_L1_error)
   __pyx_v_params = __pyx_t_9;
 
-  /* "mass_decomposer_cpp.pyx":205
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":205
  *     cdef vector[vector[Formula_cpp]] all_results
  * 
  *     all_results = MassDecomposer.decompose_parallel(masses_vec, params)             # <<<<<<<<<<<<<<
@@ -21197,7 +21197,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_6decompose_mass_parallel(CYTHON_
 */
   __pyx_v_all_results = MassDecomposer::decompose_parallel(__pyx_v_masses_vec, __pyx_v_params);
 
-  /* "mass_decomposer_cpp.pyx":207
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":207
  *     all_results = MassDecomposer.decompose_parallel(masses_vec, params)
  * 
  *     cdef size_t num_masses = all_results.size()             # <<<<<<<<<<<<<<
@@ -21206,7 +21206,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_6decompose_mass_parallel(CYTHON_
 */
   __pyx_v_num_masses = __pyx_v_all_results.size();
 
-  /* "mass_decomposer_cpp.pyx":208
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":208
  * 
  *     cdef size_t num_masses = all_results.size()
  *     cdef size_t total_formulas = 0             # <<<<<<<<<<<<<<
@@ -21215,7 +21215,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_6decompose_mass_parallel(CYTHON_
 */
   __pyx_v_total_formulas = 0;
 
-  /* "mass_decomposer_cpp.pyx":212
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":212
  * 
  *     # First pass: calculate total number of formulas to pre-allocate memory
  *     for i in range(num_masses):             # <<<<<<<<<<<<<<
@@ -21227,7 +21227,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_6decompose_mass_parallel(CYTHON_
   for (__pyx_t_11 = 0; __pyx_t_11 < __pyx_t_10; __pyx_t_11+=1) {
     __pyx_v_i = __pyx_t_11;
 
-    /* "mass_decomposer_cpp.pyx":213
+    /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":213
  *     # First pass: calculate total number of formulas to pre-allocate memory
  *     for i in range(num_masses):
  *         total_formulas += all_results[i].size()             # <<<<<<<<<<<<<<
@@ -21237,7 +21237,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_6decompose_mass_parallel(CYTHON_
     __pyx_v_total_formulas = (__pyx_v_total_formulas + (__pyx_v_all_results[__pyx_v_i]).size());
   }
 
-  /* "mass_decomposer_cpp.pyx":216
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":216
  * 
  *     # Allocate flat numpy arrays for offsets and the flattened formula data
  *     cdef np.ndarray offsets_array = np.empty(num_masses + 1, dtype=np.int32)             # <<<<<<<<<<<<<<
@@ -21287,7 +21287,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_6decompose_mass_parallel(CYTHON_
   __pyx_v_offsets_array = ((PyArrayObject *)__pyx_t_1);
   __pyx_t_1 = 0;
 
-  /* "mass_decomposer_cpp.pyx":217
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":217
  *     # Allocate flat numpy arrays for offsets and the flattened formula data
  *     cdef np.ndarray offsets_array = np.empty(num_masses + 1, dtype=np.int32)
  *     cdef np.ndarray flat_formulas_array = np.empty(total_formulas * NUM_ELEMENTS, dtype=np.int32)             # <<<<<<<<<<<<<<
@@ -21337,7 +21337,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_6decompose_mass_parallel(CYTHON_
   __pyx_v_flat_formulas_array = ((PyArrayObject *)__pyx_t_1);
   __pyx_t_1 = 0;
 
-  /* "mass_decomposer_cpp.pyx":220
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":220
  * 
  *     # Get memoryviews for fast, direct memory access
  *     cdef int[:] offsets_view = offsets_array             # <<<<<<<<<<<<<<
@@ -21349,7 +21349,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_6decompose_mass_parallel(CYTHON_
   __pyx_t_13.memview = NULL;
   __pyx_t_13.data = NULL;
 
-  /* "mass_decomposer_cpp.pyx":221
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":221
  *     # Get memoryviews for fast, direct memory access
  *     cdef int[:] offsets_view = offsets_array
  *     cdef int[:] flat_formulas_view = flat_formulas_array             # <<<<<<<<<<<<<<
@@ -21361,7 +21361,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_6decompose_mass_parallel(CYTHON_
   __pyx_t_13.memview = NULL;
   __pyx_t_13.data = NULL;
 
-  /* "mass_decomposer_cpp.pyx":223
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":223
  *     cdef int[:] flat_formulas_view = flat_formulas_array
  * 
  *     cdef size_t current_offset = 0             # <<<<<<<<<<<<<<
@@ -21370,7 +21370,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_6decompose_mass_parallel(CYTHON_
 */
   __pyx_v_current_offset = 0;
 
-  /* "mass_decomposer_cpp.pyx":224
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":224
  * 
  *     cdef size_t current_offset = 0
  *     cdef size_t formula_idx = 0             # <<<<<<<<<<<<<<
@@ -21379,7 +21379,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_6decompose_mass_parallel(CYTHON_
 */
   __pyx_v_formula_idx = 0;
 
-  /* "mass_decomposer_cpp.pyx":228
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":228
  * 
  *     # Second pass: fill the flat arrays
  *     for i in range(num_masses):             # <<<<<<<<<<<<<<
@@ -21391,7 +21391,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_6decompose_mass_parallel(CYTHON_
   for (__pyx_t_11 = 0; __pyx_t_11 < __pyx_t_10; __pyx_t_11+=1) {
     __pyx_v_i = __pyx_t_11;
 
-    /* "mass_decomposer_cpp.pyx":229
+    /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":229
  *     # Second pass: fill the flat arrays
  *     for i in range(num_masses):
  *         offsets_view[i] = current_offset             # <<<<<<<<<<<<<<
@@ -21401,7 +21401,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_6decompose_mass_parallel(CYTHON_
     __pyx_t_14 = __pyx_v_i;
     *((int *) ( /* dim=0 */ (__pyx_v_offsets_view.data + __pyx_t_14 * __pyx_v_offsets_view.strides[0]) )) = __pyx_v_current_offset;
 
-    /* "mass_decomposer_cpp.pyx":230
+    /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":230
  *     for i in range(num_masses):
  *         offsets_view[i] = current_offset
  *         num_formulas_for_mass = all_results[i].size()             # <<<<<<<<<<<<<<
@@ -21410,7 +21410,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_6decompose_mass_parallel(CYTHON_
 */
     __pyx_v_num_formulas_for_mass = (__pyx_v_all_results[__pyx_v_i]).size();
 
-    /* "mass_decomposer_cpp.pyx":231
+    /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":231
  *         offsets_view[i] = current_offset
  *         num_formulas_for_mass = all_results[i].size()
  *         for j in range(num_formulas_for_mass):             # <<<<<<<<<<<<<<
@@ -21422,7 +21422,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_6decompose_mass_parallel(CYTHON_
     for (__pyx_t_16 = 0; __pyx_t_16 < __pyx_t_15; __pyx_t_16+=1) {
       __pyx_v_j = __pyx_t_16;
 
-      /* "mass_decomposer_cpp.pyx":232
+      /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":232
  *         num_formulas_for_mass = all_results[i].size()
  *         for j in range(num_formulas_for_mass):
  *             for k in range(NUM_ELEMENTS):             # <<<<<<<<<<<<<<
@@ -21434,7 +21434,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_6decompose_mass_parallel(CYTHON_
       for (__pyx_t_18 = 0; __pyx_t_18 < __pyx_t_17; __pyx_t_18+=1) {
         __pyx_v_k = __pyx_t_18;
 
-        /* "mass_decomposer_cpp.pyx":234
+        /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":234
  *             for k in range(NUM_ELEMENTS):
  *                 # Copy formula data into the flat buffer
  *                 flat_formulas_view[formula_idx * NUM_ELEMENTS + k] = all_results[i][j][k]             # <<<<<<<<<<<<<<
@@ -21445,7 +21445,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_6decompose_mass_parallel(CYTHON_
         *((int *) ( /* dim=0 */ (__pyx_v_flat_formulas_view.data + __pyx_t_19 * __pyx_v_flat_formulas_view.strides[0]) )) = (((__pyx_v_all_results[__pyx_v_i])[__pyx_v_j])[__pyx_v_k]);
       }
 
-      /* "mass_decomposer_cpp.pyx":235
+      /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":235
  *                 # Copy formula data into the flat buffer
  *                 flat_formulas_view[formula_idx * NUM_ELEMENTS + k] = all_results[i][j][k]
  *             formula_idx += 1             # <<<<<<<<<<<<<<
@@ -21455,7 +21455,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_6decompose_mass_parallel(CYTHON_
       __pyx_v_formula_idx = (__pyx_v_formula_idx + 1);
     }
 
-    /* "mass_decomposer_cpp.pyx":236
+    /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":236
  *                 flat_formulas_view[formula_idx * NUM_ELEMENTS + k] = all_results[i][j][k]
  *             formula_idx += 1
  *         current_offset += num_formulas_for_mass             # <<<<<<<<<<<<<<
@@ -21465,7 +21465,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_6decompose_mass_parallel(CYTHON_
     __pyx_v_current_offset = (__pyx_v_current_offset + __pyx_v_num_formulas_for_mass);
   }
 
-  /* "mass_decomposer_cpp.pyx":238
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":238
  *         current_offset += num_formulas_for_mass
  * 
  *     offsets_view[num_masses] = total_formulas             # <<<<<<<<<<<<<<
@@ -21475,7 +21475,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_6decompose_mass_parallel(CYTHON_
   __pyx_t_3 = __pyx_v_num_masses;
   *((int *) ( /* dim=0 */ (__pyx_v_offsets_view.data + __pyx_t_3 * __pyx_v_offsets_view.strides[0]) )) = __pyx_v_total_formulas;
 
-  /* "mass_decomposer_cpp.pyx":242
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":242
  *     # Create Arrow arrays from the numpy arrays (zero-copy).
  *     # These are Python objects, so we don't use cdef.
  *     value_array = pa.array(flat_formulas_array, type=pa.int32())             # <<<<<<<<<<<<<<
@@ -21542,7 +21542,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_6decompose_mass_parallel(CYTHON_
   __pyx_v_value_array = __pyx_t_1;
   __pyx_t_1 = 0;
 
-  /* "mass_decomposer_cpp.pyx":243
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":243
  *     # These are Python objects, so we don't use cdef.
  *     value_array = pa.array(flat_formulas_array, type=pa.int32())
  *     offset_array = pa.array(offsets_array, type=pa.int32())             # <<<<<<<<<<<<<<
@@ -21609,7 +21609,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_6decompose_mass_parallel(CYTHON_
   __pyx_v_offset_array = __pyx_t_1;
   __pyx_t_1 = 0;
 
-  /* "mass_decomposer_cpp.pyx":247
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":247
  *     # Build the nested array structure
  *     # 1. Innermost array: FixedSizeList for each formula
  *     formula_list_array = pa.FixedSizeListArray.from_arrays(value_array, NUM_ELEMENTS)             # <<<<<<<<<<<<<<
@@ -21638,7 +21638,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_6decompose_mass_parallel(CYTHON_
   __pyx_v_formula_list_array = __pyx_t_1;
   __pyx_t_1 = 0;
 
-  /* "mass_decomposer_cpp.pyx":249
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":249
  *     formula_list_array = pa.FixedSizeListArray.from_arrays(value_array, NUM_ELEMENTS)
  *     # 2. Outermost array: ListArray for the list of formulas per mass
  *     final_array = pa.ListArray.from_arrays(offset_array, formula_list_array)             # <<<<<<<<<<<<<<
@@ -21664,7 +21664,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_6decompose_mass_parallel(CYTHON_
   __pyx_v_final_array = __pyx_t_1;
   __pyx_t_1 = 0;
 
-  /* "mass_decomposer_cpp.pyx":251
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":251
  *     final_array = pa.ListArray.from_arrays(offset_array, formula_list_array)
  * 
  *     return pl.from_arrow(             # <<<<<<<<<<<<<<
@@ -21679,7 +21679,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_6decompose_mass_parallel(CYTHON_
   __Pyx_GOTREF(__pyx_t_6);
   __Pyx_DECREF(__pyx_t_20); __pyx_t_20 = 0;
 
-  /* "mass_decomposer_cpp.pyx":253
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":253
  *     return pl.from_arrow(
  *         data=final_array,
  *         schema={"decomposed_formula":pl.List(pl.Array(pl.Int32, NUM_ELEMENTS))})             # <<<<<<<<<<<<<<
@@ -21782,7 +21782,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_6decompose_mass_parallel(CYTHON_
   __pyx_t_1 = 0;
   goto __pyx_L0;
 
-  /* "mass_decomposer_cpp.pyx":183
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":183
  *         del decomposer
  * 
  * def decompose_mass_parallel(             # <<<<<<<<<<<<<<
@@ -21811,7 +21811,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_6decompose_mass_parallel(CYTHON_
     __Pyx_ErrFetch(&__pyx_type, &__pyx_value, &__pyx_tb);
     __Pyx_SafeReleaseBuffer(&__pyx_pybuffernd_contig_masses.rcbuffer->pybuffer);
   __Pyx_ErrRestore(__pyx_type, __pyx_value, __pyx_tb);}
-  __Pyx_AddTraceback("mass_decomposer_cpp.decompose_mass_parallel", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __Pyx_AddTraceback("ms_utils.formula_annotation.mass_decomposition_impl.mass_decomposer_cpp.decompose_mass_parallel", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __pyx_r = NULL;
   goto __pyx_L2;
   __pyx_L0:;
@@ -21832,7 +21832,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_6decompose_mass_parallel(CYTHON_
   return __pyx_r;
 }
 
-/* "mass_decomposer_cpp.pyx":255
+/* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":255
  *         schema={"decomposed_formula":pl.List(pl.Array(pl.Int32, NUM_ELEMENTS))})
  * 
  * def decompose_mass_parallel_per_bounds(             # <<<<<<<<<<<<<<
@@ -21841,16 +21841,16 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_6decompose_mass_parallel(CYTHON_
 */
 
 /* Python wrapper */
-static PyObject *__pyx_pw_19mass_decomposer_cpp_9decompose_mass_parallel_per_bounds(PyObject *__pyx_self, 
+static PyObject *__pyx_pw_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp_9decompose_mass_parallel_per_bounds(PyObject *__pyx_self, 
 #if CYTHON_METH_FASTCALL
 PyObject *const *__pyx_args, Py_ssize_t __pyx_nargs, PyObject *__pyx_kwds
 #else
 PyObject *__pyx_args, PyObject *__pyx_kwds
 #endif
 ); /*proto*/
-PyDoc_STRVAR(__pyx_doc_19mass_decomposer_cpp_8decompose_mass_parallel_per_bounds, "decompose_mass_parallel_per_bounds(target_masses: pl.Series, min_bounds_per_mass: pl.Series, max_bounds_per_mass: pl.Series, double tolerance_ppm: float = 5.0, double min_dbe: float = 0.0, double max_dbe: float = 40.0, double max_hetero_ratio: float = 100.0, int max_results: int = 100000) -> pl.Series");
-static PyMethodDef __pyx_mdef_19mass_decomposer_cpp_9decompose_mass_parallel_per_bounds = {"decompose_mass_parallel_per_bounds", (PyCFunction)(void(*)(void))(__Pyx_PyCFunction_FastCallWithKeywords)__pyx_pw_19mass_decomposer_cpp_9decompose_mass_parallel_per_bounds, __Pyx_METH_FASTCALL|METH_KEYWORDS, __pyx_doc_19mass_decomposer_cpp_8decompose_mass_parallel_per_bounds};
-static PyObject *__pyx_pw_19mass_decomposer_cpp_9decompose_mass_parallel_per_bounds(PyObject *__pyx_self, 
+PyDoc_STRVAR(__pyx_doc_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp_8decompose_mass_parallel_per_bounds, "decompose_mass_parallel_per_bounds(target_masses: pl.Series, min_bounds_per_mass: pl.Series, max_bounds_per_mass: pl.Series, double tolerance_ppm: float = 5.0, double min_dbe: float = 0.0, double max_dbe: float = 40.0, double max_hetero_ratio: float = 100.0, int max_results: int = 100000) -> pl.Series");
+static PyMethodDef __pyx_mdef_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp_9decompose_mass_parallel_per_bounds = {"decompose_mass_parallel_per_bounds", (PyCFunction)(void(*)(void))(__Pyx_PyCFunction_FastCallWithKeywords)__pyx_pw_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp_9decompose_mass_parallel_per_bounds, __Pyx_METH_FASTCALL|METH_KEYWORDS, __pyx_doc_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp_8decompose_mass_parallel_per_bounds};
+static PyObject *__pyx_pw_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp_9decompose_mass_parallel_per_bounds(PyObject *__pyx_self, 
 #if CYTHON_METH_FASTCALL
 PyObject *const *__pyx_args, Py_ssize_t __pyx_nargs, PyObject *__pyx_kwds
 #else
@@ -21999,12 +21999,12 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
   for (Py_ssize_t __pyx_temp=0; __pyx_temp < (Py_ssize_t)(sizeof(values)/sizeof(values[0])); ++__pyx_temp) {
     Py_XDECREF(values[__pyx_temp]);
   }
-  __Pyx_AddTraceback("mass_decomposer_cpp.decompose_mass_parallel_per_bounds", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __Pyx_AddTraceback("ms_utils.formula_annotation.mass_decomposition_impl.mass_decomposer_cpp.decompose_mass_parallel_per_bounds", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __Pyx_RefNannyFinishContext();
   return NULL;
   __pyx_L4_argument_unpacking_done:;
   if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_max_results), (&PyLong_Type), 0, "max_results", 2))) __PYX_ERR(0, 263, __pyx_L1_error)
-  __pyx_r = __pyx_pf_19mass_decomposer_cpp_8decompose_mass_parallel_per_bounds(__pyx_self, __pyx_v_target_masses, __pyx_v_min_bounds_per_mass, __pyx_v_max_bounds_per_mass, __pyx_v_tolerance_ppm, __pyx_v_min_dbe, __pyx_v_max_dbe, __pyx_v_max_hetero_ratio, __pyx_v_max_results);
+  __pyx_r = __pyx_pf_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp_8decompose_mass_parallel_per_bounds(__pyx_self, __pyx_v_target_masses, __pyx_v_min_bounds_per_mass, __pyx_v_max_bounds_per_mass, __pyx_v_tolerance_ppm, __pyx_v_min_dbe, __pyx_v_max_dbe, __pyx_v_max_hetero_ratio, __pyx_v_max_results);
 
   /* function exit code */
   goto __pyx_L0;
@@ -22023,7 +22023,7 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
   return __pyx_r;
 }
 
-static PyObject *__pyx_pf_19mass_decomposer_cpp_8decompose_mass_parallel_per_bounds(CYTHON_UNUSED PyObject *__pyx_self, PyObject *__pyx_v_target_masses, PyObject *__pyx_v_min_bounds_per_mass, PyObject *__pyx_v_max_bounds_per_mass, double __pyx_v_tolerance_ppm, double __pyx_v_min_dbe, double __pyx_v_max_dbe, CYTHON_UNUSED double __pyx_v_max_hetero_ratio, PyObject *__pyx_v_max_results) {
+static PyObject *__pyx_pf_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp_8decompose_mass_parallel_per_bounds(CYTHON_UNUSED PyObject *__pyx_self, PyObject *__pyx_v_target_masses, PyObject *__pyx_v_min_bounds_per_mass, PyObject *__pyx_v_max_bounds_per_mass, double __pyx_v_tolerance_ppm, double __pyx_v_min_dbe, double __pyx_v_max_dbe, CYTHON_UNUSED double __pyx_v_max_hetero_ratio, PyObject *__pyx_v_max_results) {
   PyArrayObject *__pyx_v_contig_masses = 0;
   PyArrayObject *__pyx_v_contig_min_bounds = 0;
   PyArrayObject *__pyx_v_contig_max_bounds = 0;
@@ -22110,7 +22110,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_8decompose_mass_parallel_per_bou
   __pyx_pybuffernd_contig_max_bounds.data = NULL;
   __pyx_pybuffernd_contig_max_bounds.rcbuffer = &__pyx_pybuffer_contig_max_bounds;
 
-  /* "mass_decomposer_cpp.pyx":270
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":270
  *     # max_bounds_per_mass = max_bounds_per_mass.to_numpy()
  * 
  *     cdef np.ndarray[double, ndim=1, mode="c"] contig_masses = np.ascontiguousarray(target_masses.to_numpy(), dtype=np.float64)             # <<<<<<<<<<<<<<
@@ -22176,7 +22176,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_8decompose_mass_parallel_per_bou
   __pyx_v_contig_masses = ((PyArrayObject *)__pyx_t_1);
   __pyx_t_1 = 0;
 
-  /* "mass_decomposer_cpp.pyx":271
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":271
  * 
  *     cdef np.ndarray[double, ndim=1, mode="c"] contig_masses = np.ascontiguousarray(target_masses.to_numpy(), dtype=np.float64)
  *     cdef np.ndarray[np.int32_t, ndim=2, mode="c"] contig_min_bounds = np.ascontiguousarray(min_bounds_per_mass.to_numpy(), dtype=np.int32)             # <<<<<<<<<<<<<<
@@ -22242,7 +22242,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_8decompose_mass_parallel_per_bou
   __pyx_v_contig_min_bounds = ((PyArrayObject *)__pyx_t_1);
   __pyx_t_1 = 0;
 
-  /* "mass_decomposer_cpp.pyx":272
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":272
  *     cdef np.ndarray[double, ndim=1, mode="c"] contig_masses = np.ascontiguousarray(target_masses.to_numpy(), dtype=np.float64)
  *     cdef np.ndarray[np.int32_t, ndim=2, mode="c"] contig_min_bounds = np.ascontiguousarray(min_bounds_per_mass.to_numpy(), dtype=np.int32)
  *     cdef np.ndarray[np.int32_t, ndim=2, mode="c"] contig_max_bounds = np.ascontiguousarray(max_bounds_per_mass.to_numpy(), dtype=np.int32)             # <<<<<<<<<<<<<<
@@ -22308,7 +22308,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_8decompose_mass_parallel_per_bou
   __pyx_v_contig_max_bounds = ((PyArrayObject *)__pyx_t_1);
   __pyx_t_1 = 0;
 
-  /* "mass_decomposer_cpp.pyx":274
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":274
  *     cdef np.ndarray[np.int32_t, ndim=2, mode="c"] contig_max_bounds = np.ascontiguousarray(max_bounds_per_mass.to_numpy(), dtype=np.int32)
  * 
  *     cdef int n_masses = contig_masses.shape[0]             # <<<<<<<<<<<<<<
@@ -22317,7 +22317,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_8decompose_mass_parallel_per_bou
 */
   __pyx_v_n_masses = (__pyx_f_5numpy_7ndarray_5shape_shape(((PyArrayObject *)__pyx_v_contig_masses))[0]);
 
-  /* "mass_decomposer_cpp.pyx":275
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":275
  * 
  *     cdef int n_masses = contig_masses.shape[0]
  *     if n_masses == 0:             # <<<<<<<<<<<<<<
@@ -22327,7 +22327,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_8decompose_mass_parallel_per_bou
   __pyx_t_8 = (__pyx_v_n_masses == 0);
   if (__pyx_t_8) {
 
-    /* "mass_decomposer_cpp.pyx":278
+    /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":278
  *         # Returning an empty series is more consistent than raising an error
  *         # for an empty input, matching the behavior of other functions.
  *         return pl.Series("decomposed_formula", [], dtype=pl.List(pl.Array(pl.Int32, NUM_ELEMENTS)))             # <<<<<<<<<<<<<<
@@ -22435,7 +22435,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_8decompose_mass_parallel_per_bou
     __pyx_t_1 = 0;
     goto __pyx_L0;
 
-    /* "mass_decomposer_cpp.pyx":275
+    /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":275
  * 
  *     cdef int n_masses = contig_masses.shape[0]
  *     if n_masses == 0:             # <<<<<<<<<<<<<<
@@ -22444,7 +22444,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_8decompose_mass_parallel_per_bou
 */
   }
 
-  /* "mass_decomposer_cpp.pyx":279
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":279
  *         # for an empty input, matching the behavior of other functions.
  *         return pl.Series("decomposed_formula", [], dtype=pl.List(pl.Array(pl.Int32, NUM_ELEMENTS)))
  *     if contig_min_bounds.shape[0] != n_masses or contig_max_bounds.shape[0] != n_masses:             # <<<<<<<<<<<<<<
@@ -22462,7 +22462,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_8decompose_mass_parallel_per_bou
   __pyx_L5_bool_binop_done:;
   if (unlikely(__pyx_t_8)) {
 
-    /* "mass_decomposer_cpp.pyx":280
+    /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":280
  *         return pl.Series("decomposed_formula", [], dtype=pl.List(pl.Array(pl.Int32, NUM_ELEMENTS)))
  *     if contig_min_bounds.shape[0] != n_masses or contig_max_bounds.shape[0] != n_masses:
  *         raise ValueError("Number of rows in min_bounds_per_mass and max_bounds_per_mass must match the number of target masses.")             # <<<<<<<<<<<<<<
@@ -22485,7 +22485,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_8decompose_mass_parallel_per_bou
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
     __PYX_ERR(0, 280, __pyx_L1_error)
 
-    /* "mass_decomposer_cpp.pyx":279
+    /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":279
  *         # for an empty input, matching the behavior of other functions.
  *         return pl.Series("decomposed_formula", [], dtype=pl.List(pl.Array(pl.Int32, NUM_ELEMENTS)))
  *     if contig_min_bounds.shape[0] != n_masses or contig_max_bounds.shape[0] != n_masses:             # <<<<<<<<<<<<<<
@@ -22494,7 +22494,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_8decompose_mass_parallel_per_bou
 */
   }
 
-  /* "mass_decomposer_cpp.pyx":281
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":281
  *     if contig_min_bounds.shape[0] != n_masses or contig_max_bounds.shape[0] != n_masses:
  *         raise ValueError("Number of rows in min_bounds_per_mass and max_bounds_per_mass must match the number of target masses.")
  *     if contig_min_bounds.shape[1] != NUM_ELEMENTS or contig_max_bounds.shape[1] != NUM_ELEMENTS:             # <<<<<<<<<<<<<<
@@ -22512,7 +22512,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_8decompose_mass_parallel_per_bou
   __pyx_L8_bool_binop_done:;
   if (unlikely(__pyx_t_8)) {
 
-    /* "mass_decomposer_cpp.pyx":282
+    /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":282
  *         raise ValueError("Number of rows in min_bounds_per_mass and max_bounds_per_mass must match the number of target masses.")
  *     if contig_min_bounds.shape[1] != NUM_ELEMENTS or contig_max_bounds.shape[1] != NUM_ELEMENTS:
  *         raise ValueError(f"Number of columns in bounds arrays must be {NUM_ELEMENTS}.")             # <<<<<<<<<<<<<<
@@ -22545,7 +22545,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_8decompose_mass_parallel_per_bou
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
     __PYX_ERR(0, 282, __pyx_L1_error)
 
-    /* "mass_decomposer_cpp.pyx":281
+    /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":281
  *     if contig_min_bounds.shape[0] != n_masses or contig_max_bounds.shape[0] != n_masses:
  *         raise ValueError("Number of rows in min_bounds_per_mass and max_bounds_per_mass must match the number of target masses.")
  *     if contig_min_bounds.shape[1] != NUM_ELEMENTS or contig_max_bounds.shape[1] != NUM_ELEMENTS:             # <<<<<<<<<<<<<<
@@ -22554,7 +22554,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_8decompose_mass_parallel_per_bou
 */
   }
 
-  /* "mass_decomposer_cpp.pyx":285
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":285
  * 
  *         # Create a dummy params object; min/max_bounds are ignored by the C++ function
  *     cdef np.ndarray dummy_bounds = np.zeros(NUM_ELEMENTS, dtype=np.int32)             # <<<<<<<<<<<<<<
@@ -22604,7 +22604,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_8decompose_mass_parallel_per_bou
   __pyx_v_dummy_bounds = ((PyArrayObject *)__pyx_t_1);
   __pyx_t_1 = 0;
 
-  /* "mass_decomposer_cpp.pyx":287
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":287
  *     cdef np.ndarray dummy_bounds = np.zeros(NUM_ELEMENTS, dtype=np.int32)
  *     cdef DecompositionParams params = _convert_params(tolerance_ppm, min_dbe, max_dbe,
  *                                                      max_results,             # <<<<<<<<<<<<<<
@@ -22613,17 +22613,17 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_8decompose_mass_parallel_per_bou
 */
   __pyx_t_17 = __Pyx_PyLong_As_int(__pyx_v_max_results); if (unlikely((__pyx_t_17 == (int)-1) && PyErr_Occurred())) __PYX_ERR(0, 287, __pyx_L1_error)
 
-  /* "mass_decomposer_cpp.pyx":286
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":286
  *         # Create a dummy params object; min/max_bounds are ignored by the C++ function
  *     cdef np.ndarray dummy_bounds = np.zeros(NUM_ELEMENTS, dtype=np.int32)
  *     cdef DecompositionParams params = _convert_params(tolerance_ppm, min_dbe, max_dbe,             # <<<<<<<<<<<<<<
  *                                                      max_results,
  *                                                      dummy_bounds, dummy_bounds)
 */
-  __pyx_t_18 = __pyx_f_19mass_decomposer_cpp__convert_params(__pyx_v_tolerance_ppm, __pyx_v_min_dbe, __pyx_v_max_dbe, __pyx_t_17, __pyx_v_dummy_bounds, __pyx_v_dummy_bounds); if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 286, __pyx_L1_error)
+  __pyx_t_18 = __pyx_f_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp__convert_params(__pyx_v_tolerance_ppm, __pyx_v_min_dbe, __pyx_v_max_dbe, __pyx_t_17, __pyx_v_dummy_bounds, __pyx_v_dummy_bounds); if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 286, __pyx_L1_error)
   __pyx_v_params = __pyx_t_18;
 
-  /* "mass_decomposer_cpp.pyx":292
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":292
  *     # Efficiently populate C++ vectors from numpy arrays
  *     cdef vector[double] masses_vec
  *     cdef double* masses_ptr = &contig_masses[0]             # <<<<<<<<<<<<<<
@@ -22633,7 +22633,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_8decompose_mass_parallel_per_bou
   __pyx_t_19 = 0;
   __pyx_v_masses_ptr = (&(*__Pyx_BufPtrCContig1d(double *, __pyx_pybuffernd_contig_masses.rcbuffer->pybuffer.buf, __pyx_t_19, __pyx_pybuffernd_contig_masses.diminfo[0].strides)));
 
-  /* "mass_decomposer_cpp.pyx":293
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":293
  *     cdef vector[double] masses_vec
  *     cdef double* masses_ptr = &contig_masses[0]
  *     masses_vec.assign(masses_ptr, masses_ptr + n_masses)             # <<<<<<<<<<<<<<
@@ -22647,7 +22647,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_8decompose_mass_parallel_per_bou
     __PYX_ERR(0, 293, __pyx_L1_error)
   }
 
-  /* "mass_decomposer_cpp.pyx":296
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":296
  * 
  *     cdef vector[pair[Formula_cpp, Formula_cpp]] bounds_vec
  *     bounds_vec.reserve(n_masses)             # <<<<<<<<<<<<<<
@@ -22661,7 +22661,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_8decompose_mass_parallel_per_bou
     __PYX_ERR(0, 296, __pyx_L1_error)
   }
 
-  /* "mass_decomposer_cpp.pyx":298
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":298
  *     bounds_vec.reserve(n_masses)
  * 
  *     cdef np.int32_t* min_bounds_ptr = &contig_min_bounds[0, 0]             # <<<<<<<<<<<<<<
@@ -22672,7 +22672,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_8decompose_mass_parallel_per_bou
   __pyx_t_20 = 0;
   __pyx_v_min_bounds_ptr = (&(*__Pyx_BufPtrCContig2d(__pyx_t_5numpy_int32_t *, __pyx_pybuffernd_contig_min_bounds.rcbuffer->pybuffer.buf, __pyx_t_19, __pyx_pybuffernd_contig_min_bounds.diminfo[0].strides, __pyx_t_20, __pyx_pybuffernd_contig_min_bounds.diminfo[1].strides)));
 
-  /* "mass_decomposer_cpp.pyx":299
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":299
  * 
  *     cdef np.int32_t* min_bounds_ptr = &contig_min_bounds[0, 0]
  *     cdef np.int32_t* max_bounds_ptr = &contig_max_bounds[0, 0]             # <<<<<<<<<<<<<<
@@ -22683,7 +22683,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_8decompose_mass_parallel_per_bou
   __pyx_t_19 = 0;
   __pyx_v_max_bounds_ptr = (&(*__Pyx_BufPtrCContig2d(__pyx_t_5numpy_int32_t *, __pyx_pybuffernd_contig_max_bounds.rcbuffer->pybuffer.buf, __pyx_t_20, __pyx_pybuffernd_contig_max_bounds.diminfo[0].strides, __pyx_t_19, __pyx_pybuffernd_contig_max_bounds.diminfo[1].strides)));
 
-  /* "mass_decomposer_cpp.pyx":302
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":302
  *     cdef size_t i
  *     cdef Formula_cpp min_f, max_f
  *     cdef size_t formula_size_bytes = NUM_ELEMENTS * sizeof(int)             # <<<<<<<<<<<<<<
@@ -22692,7 +22692,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_8decompose_mass_parallel_per_bou
 */
   __pyx_v_formula_size_bytes = (FormulaAnnotation::NUM_ELEMENTS * (sizeof(int)));
 
-  /* "mass_decomposer_cpp.pyx":304
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":304
  *     cdef size_t formula_size_bytes = NUM_ELEMENTS * sizeof(int)
  * 
  *     for i in range(n_masses):             # <<<<<<<<<<<<<<
@@ -22704,7 +22704,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_8decompose_mass_parallel_per_bou
   for (__pyx_t_6 = 0; __pyx_t_6 < __pyx_t_21; __pyx_t_6+=1) {
     __pyx_v_i = __pyx_t_6;
 
-    /* "mass_decomposer_cpp.pyx":305
+    /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":305
  * 
  *     for i in range(n_masses):
  *         memcpy(<void*>&min_f[0], min_bounds_ptr + i * NUM_ELEMENTS, formula_size_bytes)             # <<<<<<<<<<<<<<
@@ -22713,7 +22713,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_8decompose_mass_parallel_per_bou
 */
     (void)(memcpy(((void *)(&(__pyx_v_min_f[0]))), (__pyx_v_min_bounds_ptr + (__pyx_v_i * FormulaAnnotation::NUM_ELEMENTS)), __pyx_v_formula_size_bytes));
 
-    /* "mass_decomposer_cpp.pyx":306
+    /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":306
  *     for i in range(n_masses):
  *         memcpy(<void*>&min_f[0], min_bounds_ptr + i * NUM_ELEMENTS, formula_size_bytes)
  *         memcpy(<void*>&max_f[0], max_bounds_ptr + i * NUM_ELEMENTS, formula_size_bytes)             # <<<<<<<<<<<<<<
@@ -22722,7 +22722,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_8decompose_mass_parallel_per_bou
 */
     (void)(memcpy(((void *)(&(__pyx_v_max_f[0]))), (__pyx_v_max_bounds_ptr + (__pyx_v_i * FormulaAnnotation::NUM_ELEMENTS)), __pyx_v_formula_size_bytes));
 
-    /* "mass_decomposer_cpp.pyx":307
+    /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":307
  *         memcpy(<void*>&min_f[0], min_bounds_ptr + i * NUM_ELEMENTS, formula_size_bytes)
  *         memcpy(<void*>&max_f[0], max_bounds_ptr + i * NUM_ELEMENTS, formula_size_bytes)
  *         bounds_vec.push_back(pair[Formula_cpp, Formula_cpp](min_f, max_f))             # <<<<<<<<<<<<<<
@@ -22743,7 +22743,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_8decompose_mass_parallel_per_bou
     }
   }
 
-  /* "mass_decomposer_cpp.pyx":310
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":310
  * 
  *     cdef vector[vector[Formula_cpp]] all_results
  *     all_results = MassDecomposer.decompose_masses_parallel_per_bounds(masses_vec, bounds_vec, params)             # <<<<<<<<<<<<<<
@@ -22752,7 +22752,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_8decompose_mass_parallel_per_bou
 */
   __pyx_v_all_results = MassDecomposer::decompose_masses_parallel_per_bounds(__pyx_v_masses_vec, __pyx_v_bounds_vec, __pyx_v_params);
 
-  /* "mass_decomposer_cpp.pyx":312
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":312
  *     all_results = MassDecomposer.decompose_masses_parallel_per_bounds(masses_vec, bounds_vec, params)
  * 
  *     cdef size_t num_masses = all_results.size()             # <<<<<<<<<<<<<<
@@ -22761,7 +22761,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_8decompose_mass_parallel_per_bou
 */
   __pyx_v_num_masses = __pyx_v_all_results.size();
 
-  /* "mass_decomposer_cpp.pyx":313
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":313
  * 
  *     cdef size_t num_masses = all_results.size()
  *     cdef size_t total_formulas = 0             # <<<<<<<<<<<<<<
@@ -22770,7 +22770,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_8decompose_mass_parallel_per_bou
 */
   __pyx_v_total_formulas = 0;
 
-  /* "mass_decomposer_cpp.pyx":316
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":316
  *     cdef size_t k
  * 
  *     for i in range(num_masses):             # <<<<<<<<<<<<<<
@@ -22782,7 +22782,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_8decompose_mass_parallel_per_bou
   for (__pyx_t_24 = 0; __pyx_t_24 < __pyx_t_23; __pyx_t_24+=1) {
     __pyx_v_i = __pyx_t_24;
 
-    /* "mass_decomposer_cpp.pyx":317
+    /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":317
  * 
  *     for i in range(num_masses):
  *         total_formulas += all_results[i].size()             # <<<<<<<<<<<<<<
@@ -22792,7 +22792,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_8decompose_mass_parallel_per_bou
     __pyx_v_total_formulas = (__pyx_v_total_formulas + (__pyx_v_all_results[__pyx_v_i]).size());
   }
 
-  /* "mass_decomposer_cpp.pyx":319
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":319
  *         total_formulas += all_results[i].size()
  * 
  *     cdef np.ndarray offsets_array = np.empty(num_masses + 1, dtype=np.int32)             # <<<<<<<<<<<<<<
@@ -22842,7 +22842,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_8decompose_mass_parallel_per_bou
   __pyx_v_offsets_array = ((PyArrayObject *)__pyx_t_1);
   __pyx_t_1 = 0;
 
-  /* "mass_decomposer_cpp.pyx":320
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":320
  * 
  *     cdef np.ndarray offsets_array = np.empty(num_masses + 1, dtype=np.int32)
  *     cdef np.ndarray flat_formulas_array = np.empty(total_formulas * NUM_ELEMENTS, dtype=np.int32)             # <<<<<<<<<<<<<<
@@ -22892,7 +22892,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_8decompose_mass_parallel_per_bou
   __pyx_v_flat_formulas_array = ((PyArrayObject *)__pyx_t_1);
   __pyx_t_1 = 0;
 
-  /* "mass_decomposer_cpp.pyx":322
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":322
  *     cdef np.ndarray flat_formulas_array = np.empty(total_formulas * NUM_ELEMENTS, dtype=np.int32)
  * 
  *     cdef int[:] offsets_view = offsets_array             # <<<<<<<<<<<<<<
@@ -22904,7 +22904,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_8decompose_mass_parallel_per_bou
   __pyx_t_25.memview = NULL;
   __pyx_t_25.data = NULL;
 
-  /* "mass_decomposer_cpp.pyx":323
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":323
  * 
  *     cdef int[:] offsets_view = offsets_array
  *     cdef int[:] flat_formulas_view = flat_formulas_array             # <<<<<<<<<<<<<<
@@ -22916,7 +22916,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_8decompose_mass_parallel_per_bou
   __pyx_t_25.memview = NULL;
   __pyx_t_25.data = NULL;
 
-  /* "mass_decomposer_cpp.pyx":325
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":325
  *     cdef int[:] flat_formulas_view = flat_formulas_array
  * 
  *     cdef size_t current_offset = 0             # <<<<<<<<<<<<<<
@@ -22925,7 +22925,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_8decompose_mass_parallel_per_bou
 */
   __pyx_v_current_offset = 0;
 
-  /* "mass_decomposer_cpp.pyx":326
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":326
  * 
  *     cdef size_t current_offset = 0
  *     cdef size_t formula_idx = 0             # <<<<<<<<<<<<<<
@@ -22934,7 +22934,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_8decompose_mass_parallel_per_bou
 */
   __pyx_v_formula_idx = 0;
 
-  /* "mass_decomposer_cpp.pyx":329
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":329
  *     cdef size_t num_formulas_for_mass
  * 
  *     for i in range(num_masses):             # <<<<<<<<<<<<<<
@@ -22946,7 +22946,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_8decompose_mass_parallel_per_bou
   for (__pyx_t_24 = 0; __pyx_t_24 < __pyx_t_23; __pyx_t_24+=1) {
     __pyx_v_i = __pyx_t_24;
 
-    /* "mass_decomposer_cpp.pyx":330
+    /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":330
  * 
  *     for i in range(num_masses):
  *         offsets_view[i] = current_offset             # <<<<<<<<<<<<<<
@@ -22956,7 +22956,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_8decompose_mass_parallel_per_bou
     __pyx_t_26 = __pyx_v_i;
     *((int *) ( /* dim=0 */ (__pyx_v_offsets_view.data + __pyx_t_26 * __pyx_v_offsets_view.strides[0]) )) = __pyx_v_current_offset;
 
-    /* "mass_decomposer_cpp.pyx":331
+    /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":331
  *     for i in range(num_masses):
  *         offsets_view[i] = current_offset
  *         num_formulas_for_mass = all_results[i].size()             # <<<<<<<<<<<<<<
@@ -22965,7 +22965,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_8decompose_mass_parallel_per_bou
 */
     __pyx_v_num_formulas_for_mass = (__pyx_v_all_results[__pyx_v_i]).size();
 
-    /* "mass_decomposer_cpp.pyx":332
+    /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":332
  *         offsets_view[i] = current_offset
  *         num_formulas_for_mass = all_results[i].size()
  *         for j in range(num_formulas_for_mass):             # <<<<<<<<<<<<<<
@@ -22977,7 +22977,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_8decompose_mass_parallel_per_bou
     for (__pyx_t_28 = 0; __pyx_t_28 < __pyx_t_27; __pyx_t_28+=1) {
       __pyx_v_j = __pyx_t_28;
 
-      /* "mass_decomposer_cpp.pyx":333
+      /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":333
  *         num_formulas_for_mass = all_results[i].size()
  *         for j in range(num_formulas_for_mass):
  *             for k in range(NUM_ELEMENTS):             # <<<<<<<<<<<<<<
@@ -22989,7 +22989,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_8decompose_mass_parallel_per_bou
       for (__pyx_t_29 = 0; __pyx_t_29 < __pyx_t_21; __pyx_t_29+=1) {
         __pyx_v_k = __pyx_t_29;
 
-        /* "mass_decomposer_cpp.pyx":334
+        /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":334
  *         for j in range(num_formulas_for_mass):
  *             for k in range(NUM_ELEMENTS):
  *                 flat_formulas_view[formula_idx * NUM_ELEMENTS + k] = all_results[i][j][k]             # <<<<<<<<<<<<<<
@@ -23000,7 +23000,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_8decompose_mass_parallel_per_bou
         *((int *) ( /* dim=0 */ (__pyx_v_flat_formulas_view.data + __pyx_t_30 * __pyx_v_flat_formulas_view.strides[0]) )) = (((__pyx_v_all_results[__pyx_v_i])[__pyx_v_j])[__pyx_v_k]);
       }
 
-      /* "mass_decomposer_cpp.pyx":335
+      /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":335
  *             for k in range(NUM_ELEMENTS):
  *                 flat_formulas_view[formula_idx * NUM_ELEMENTS + k] = all_results[i][j][k]
  *             formula_idx += 1             # <<<<<<<<<<<<<<
@@ -23010,7 +23010,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_8decompose_mass_parallel_per_bou
       __pyx_v_formula_idx = (__pyx_v_formula_idx + 1);
     }
 
-    /* "mass_decomposer_cpp.pyx":336
+    /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":336
  *                 flat_formulas_view[formula_idx * NUM_ELEMENTS + k] = all_results[i][j][k]
  *             formula_idx += 1
  *         current_offset += num_formulas_for_mass             # <<<<<<<<<<<<<<
@@ -23020,7 +23020,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_8decompose_mass_parallel_per_bou
     __pyx_v_current_offset = (__pyx_v_current_offset + __pyx_v_num_formulas_for_mass);
   }
 
-  /* "mass_decomposer_cpp.pyx":338
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":338
  *         current_offset += num_formulas_for_mass
  * 
  *     offsets_view[num_masses] = total_formulas             # <<<<<<<<<<<<<<
@@ -23030,7 +23030,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_8decompose_mass_parallel_per_bou
   __pyx_t_6 = __pyx_v_num_masses;
   *((int *) ( /* dim=0 */ (__pyx_v_offsets_view.data + __pyx_t_6 * __pyx_v_offsets_view.strides[0]) )) = __pyx_v_total_formulas;
 
-  /* "mass_decomposer_cpp.pyx":340
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":340
  *     offsets_view[num_masses] = total_formulas
  * 
  *     value_array = pa.array(flat_formulas_array, type=pa.int32())             # <<<<<<<<<<<<<<
@@ -23097,7 +23097,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_8decompose_mass_parallel_per_bou
   __pyx_v_value_array = __pyx_t_1;
   __pyx_t_1 = 0;
 
-  /* "mass_decomposer_cpp.pyx":341
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":341
  * 
  *     value_array = pa.array(flat_formulas_array, type=pa.int32())
  *     offset_array = pa.array(offsets_array, type=pa.int32())             # <<<<<<<<<<<<<<
@@ -23164,7 +23164,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_8decompose_mass_parallel_per_bou
   __pyx_v_offset_array = __pyx_t_1;
   __pyx_t_1 = 0;
 
-  /* "mass_decomposer_cpp.pyx":343
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":343
  *     offset_array = pa.array(offsets_array, type=pa.int32())
  * 
  *     formula_list_array = pa.FixedSizeListArray.from_arrays(value_array, NUM_ELEMENTS)             # <<<<<<<<<<<<<<
@@ -23193,7 +23193,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_8decompose_mass_parallel_per_bou
   __pyx_v_formula_list_array = __pyx_t_1;
   __pyx_t_1 = 0;
 
-  /* "mass_decomposer_cpp.pyx":344
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":344
  * 
  *     formula_list_array = pa.FixedSizeListArray.from_arrays(value_array, NUM_ELEMENTS)
  *     final_array = pa.ListArray.from_arrays(offset_array, formula_list_array)             # <<<<<<<<<<<<<<
@@ -23219,7 +23219,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_8decompose_mass_parallel_per_bou
   __pyx_v_final_array = __pyx_t_1;
   __pyx_t_1 = 0;
 
-  /* "mass_decomposer_cpp.pyx":346
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":346
  *     final_array = pa.ListArray.from_arrays(offset_array, formula_list_array)
  * 
  *     return pl.from_arrow(             # <<<<<<<<<<<<<<
@@ -23234,7 +23234,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_8decompose_mass_parallel_per_bou
   __Pyx_GOTREF(__pyx_t_2);
   __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
 
-  /* "mass_decomposer_cpp.pyx":348
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":348
  *     return pl.from_arrow(
  *         data=final_array,
  *         schema={"decomposed_formula": pl.List(pl.Array(pl.Int32, NUM_ELEMENTS))})             # <<<<<<<<<<<<<<
@@ -23337,7 +23337,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_8decompose_mass_parallel_per_bou
   __pyx_t_1 = 0;
   goto __pyx_L0;
 
-  /* "mass_decomposer_cpp.pyx":255
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":255
  *         schema={"decomposed_formula":pl.List(pl.Array(pl.Int32, NUM_ELEMENTS))})
  * 
  * def decompose_mass_parallel_per_bounds(             # <<<<<<<<<<<<<<
@@ -23368,7 +23368,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_8decompose_mass_parallel_per_bou
     __Pyx_SafeReleaseBuffer(&__pyx_pybuffernd_contig_max_bounds.rcbuffer->pybuffer);
     __Pyx_SafeReleaseBuffer(&__pyx_pybuffernd_contig_min_bounds.rcbuffer->pybuffer);
   __Pyx_ErrRestore(__pyx_type, __pyx_value, __pyx_tb);}
-  __Pyx_AddTraceback("mass_decomposer_cpp.decompose_mass_parallel_per_bounds", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __Pyx_AddTraceback("ms_utils.formula_annotation.mass_decomposition_impl.mass_decomposer_cpp.decompose_mass_parallel_per_bounds", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __pyx_r = NULL;
   goto __pyx_L2;
   __pyx_L0:;
@@ -23393,7 +23393,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_8decompose_mass_parallel_per_bou
   return __pyx_r;
 }
 
-/* "mass_decomposer_cpp.pyx":350
+/* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":350
  *         schema={"decomposed_formula": pl.List(pl.Array(pl.Int32, NUM_ELEMENTS))})
  * 
  * def decompose_spectrum(             # <<<<<<<<<<<<<<
@@ -23402,16 +23402,16 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_8decompose_mass_parallel_per_bou
 */
 
 /* Python wrapper */
-static PyObject *__pyx_pw_19mass_decomposer_cpp_11decompose_spectrum(PyObject *__pyx_self, 
+static PyObject *__pyx_pw_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp_11decompose_spectrum(PyObject *__pyx_self, 
 #if CYTHON_METH_FASTCALL
 PyObject *const *__pyx_args, Py_ssize_t __pyx_nargs, PyObject *__pyx_kwds
 #else
 PyObject *__pyx_args, PyObject *__pyx_kwds
 #endif
 ); /*proto*/
-PyDoc_STRVAR(__pyx_doc_19mass_decomposer_cpp_10decompose_spectrum, "decompose_spectrum(double precursor_mass: float, list fragment_masses: list, ndarray min_bounds: np.ndarray, ndarray max_bounds: np.ndarray, double tolerance_ppm: float = 5.0, double min_dbe: float = 0.0, double max_dbe: float = 40.0, double max_hetero_ratio: float = 100.0, int max_results: int = 100000) -> list");
-static PyMethodDef __pyx_mdef_19mass_decomposer_cpp_11decompose_spectrum = {"decompose_spectrum", (PyCFunction)(void(*)(void))(__Pyx_PyCFunction_FastCallWithKeywords)__pyx_pw_19mass_decomposer_cpp_11decompose_spectrum, __Pyx_METH_FASTCALL|METH_KEYWORDS, __pyx_doc_19mass_decomposer_cpp_10decompose_spectrum};
-static PyObject *__pyx_pw_19mass_decomposer_cpp_11decompose_spectrum(PyObject *__pyx_self, 
+PyDoc_STRVAR(__pyx_doc_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp_10decompose_spectrum, "decompose_spectrum(double precursor_mass: float, list fragment_masses: list, ndarray min_bounds: np.ndarray, ndarray max_bounds: np.ndarray, double tolerance_ppm: float = 5.0, double min_dbe: float = 0.0, double max_dbe: float = 40.0, double max_hetero_ratio: float = 100.0, int max_results: int = 100000) -> list");
+static PyMethodDef __pyx_mdef_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp_11decompose_spectrum = {"decompose_spectrum", (PyCFunction)(void(*)(void))(__Pyx_PyCFunction_FastCallWithKeywords)__pyx_pw_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp_11decompose_spectrum, __Pyx_METH_FASTCALL|METH_KEYWORDS, __pyx_doc_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp_10decompose_spectrum};
+static PyObject *__pyx_pw_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp_11decompose_spectrum(PyObject *__pyx_self, 
 #if CYTHON_METH_FASTCALL
 PyObject *const *__pyx_args, Py_ssize_t __pyx_nargs, PyObject *__pyx_kwds
 #else
@@ -23568,7 +23568,7 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
   for (Py_ssize_t __pyx_temp=0; __pyx_temp < (Py_ssize_t)(sizeof(values)/sizeof(values[0])); ++__pyx_temp) {
     Py_XDECREF(values[__pyx_temp]);
   }
-  __Pyx_AddTraceback("mass_decomposer_cpp.decompose_spectrum", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __Pyx_AddTraceback("ms_utils.formula_annotation.mass_decomposition_impl.mass_decomposer_cpp.decompose_spectrum", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __Pyx_RefNannyFinishContext();
   return NULL;
   __pyx_L4_argument_unpacking_done:;
@@ -23576,7 +23576,7 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
   if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_min_bounds), __pyx_mstate_global->__pyx_ptype_5numpy_ndarray, 0, "min_bounds", 0))) __PYX_ERR(0, 353, __pyx_L1_error)
   if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_max_bounds), __pyx_mstate_global->__pyx_ptype_5numpy_ndarray, 0, "max_bounds", 0))) __PYX_ERR(0, 354, __pyx_L1_error)
   if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_max_results), (&PyLong_Type), 0, "max_results", 2))) __PYX_ERR(0, 359, __pyx_L1_error)
-  __pyx_r = __pyx_pf_19mass_decomposer_cpp_10decompose_spectrum(__pyx_self, __pyx_v_precursor_mass, __pyx_v_fragment_masses, __pyx_v_min_bounds, __pyx_v_max_bounds, __pyx_v_tolerance_ppm, __pyx_v_min_dbe, __pyx_v_max_dbe, __pyx_v_max_hetero_ratio, __pyx_v_max_results);
+  __pyx_r = __pyx_pf_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp_10decompose_spectrum(__pyx_self, __pyx_v_precursor_mass, __pyx_v_fragment_masses, __pyx_v_min_bounds, __pyx_v_max_bounds, __pyx_v_tolerance_ppm, __pyx_v_min_dbe, __pyx_v_max_dbe, __pyx_v_max_hetero_ratio, __pyx_v_max_results);
 
   /* function exit code */
   goto __pyx_L0;
@@ -23595,7 +23595,7 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
   return __pyx_r;
 }
 
-static PyObject *__pyx_pf_19mass_decomposer_cpp_10decompose_spectrum(CYTHON_UNUSED PyObject *__pyx_self, double __pyx_v_precursor_mass, PyObject *__pyx_v_fragment_masses, PyArrayObject *__pyx_v_min_bounds, PyArrayObject *__pyx_v_max_bounds, double __pyx_v_tolerance_ppm, double __pyx_v_min_dbe, double __pyx_v_max_dbe, CYTHON_UNUSED double __pyx_v_max_hetero_ratio, PyObject *__pyx_v_max_results) {
+static PyObject *__pyx_pf_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp_10decompose_spectrum(CYTHON_UNUSED PyObject *__pyx_self, double __pyx_v_precursor_mass, PyObject *__pyx_v_fragment_masses, PyArrayObject *__pyx_v_min_bounds, PyArrayObject *__pyx_v_max_bounds, double __pyx_v_tolerance_ppm, double __pyx_v_min_dbe, double __pyx_v_max_dbe, CYTHON_UNUSED double __pyx_v_max_hetero_ratio, PyObject *__pyx_v_max_results) {
   struct DecompositionParams __pyx_v_params;
   std::vector<double>  __pyx_v_frag_masses_vec;
   MassDecomposer *__pyx_v_decomposer;
@@ -23640,7 +23640,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_10decompose_spectrum(CYTHON_UNUS
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("decompose_spectrum", 0);
 
-  /* "mass_decomposer_cpp.pyx":361
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":361
  *     max_results: int = 100000
  * ) -> list:
  *     if not fragment_masses:             # <<<<<<<<<<<<<<
@@ -23652,7 +23652,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_10decompose_spectrum(CYTHON_UNUS
   __pyx_t_2 = (!__pyx_t_1);
   if (__pyx_t_2) {
 
-    /* "mass_decomposer_cpp.pyx":362
+    /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":362
  * ) -> list:
  *     if not fragment_masses:
  *         return []             # <<<<<<<<<<<<<<
@@ -23666,7 +23666,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_10decompose_spectrum(CYTHON_UNUS
     __pyx_t_3 = 0;
     goto __pyx_L0;
 
-    /* "mass_decomposer_cpp.pyx":361
+    /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":361
  *     max_results: int = 100000
  * ) -> list:
  *     if not fragment_masses:             # <<<<<<<<<<<<<<
@@ -23675,7 +23675,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_10decompose_spectrum(CYTHON_UNUS
 */
   }
 
-  /* "mass_decomposer_cpp.pyx":364
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":364
  *         return []
  *     cdef DecompositionParams params = _convert_params(tolerance_ppm, min_dbe, max_dbe,
  *                                                      max_results,             # <<<<<<<<<<<<<<
@@ -23684,17 +23684,17 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_10decompose_spectrum(CYTHON_UNUS
 */
   __pyx_t_4 = __Pyx_PyLong_As_int(__pyx_v_max_results); if (unlikely((__pyx_t_4 == (int)-1) && PyErr_Occurred())) __PYX_ERR(0, 364, __pyx_L1_error)
 
-  /* "mass_decomposer_cpp.pyx":363
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":363
  *     if not fragment_masses:
  *         return []
  *     cdef DecompositionParams params = _convert_params(tolerance_ppm, min_dbe, max_dbe,             # <<<<<<<<<<<<<<
  *                                                      max_results,
  *                                                      min_bounds, max_bounds)
 */
-  __pyx_t_5 = __pyx_f_19mass_decomposer_cpp__convert_params(__pyx_v_tolerance_ppm, __pyx_v_min_dbe, __pyx_v_max_dbe, __pyx_t_4, __pyx_v_min_bounds, __pyx_v_max_bounds); if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 363, __pyx_L1_error)
+  __pyx_t_5 = __pyx_f_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp__convert_params(__pyx_v_tolerance_ppm, __pyx_v_min_dbe, __pyx_v_max_dbe, __pyx_t_4, __pyx_v_min_bounds, __pyx_v_max_bounds); if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 363, __pyx_L1_error)
   __pyx_v_params = __pyx_t_5;
 
-  /* "mass_decomposer_cpp.pyx":366
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":366
  *                                                      max_results,
  *                                                      min_bounds, max_bounds)
  *     cdef vector[double] frag_masses_vec = fragment_masses             # <<<<<<<<<<<<<<
@@ -23704,7 +23704,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_10decompose_spectrum(CYTHON_UNUS
   __pyx_t_6 = __pyx_convert_vector_from_py_double(__pyx_v_fragment_masses); if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 366, __pyx_L1_error)
   __pyx_v_frag_masses_vec = __PYX_STD_MOVE_IF_SUPPORTED(__pyx_t_6);
 
-  /* "mass_decomposer_cpp.pyx":367
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":367
  *                                                      min_bounds, max_bounds)
  *     cdef vector[double] frag_masses_vec = fragment_masses
  *     cdef MassDecomposer* decomposer = new MassDecomposer(params.min_bounds, params.max_bounds)             # <<<<<<<<<<<<<<
@@ -23713,7 +23713,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_10decompose_spectrum(CYTHON_UNUS
 */
   __pyx_v_decomposer = new MassDecomposer(__pyx_v_params.min_bounds, __pyx_v_params.max_bounds);
 
-  /* "mass_decomposer_cpp.pyx":370
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":370
  *     cdef ProperSpectrumResults cpp_results
  * 
  *     try:             # <<<<<<<<<<<<<<
@@ -23722,7 +23722,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_10decompose_spectrum(CYTHON_UNUS
 */
   /*try:*/ {
 
-    /* "mass_decomposer_cpp.pyx":371
+    /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":371
  * 
  *     try:
  *         cpp_results = decomposer.decompose_spectrum(precursor_mass, frag_masses_vec, params)             # <<<<<<<<<<<<<<
@@ -23731,7 +23731,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_10decompose_spectrum(CYTHON_UNUS
 */
     __pyx_v_cpp_results = __pyx_v_decomposer->decompose_spectrum(__pyx_v_precursor_mass, __pyx_v_frag_masses_vec, __pyx_v_params);
 
-    /* "mass_decomposer_cpp.pyx":372
+    /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":372
  *     try:
  *         cpp_results = decomposer.decompose_spectrum(precursor_mass, frag_masses_vec, params)
  *         python_results = []             # <<<<<<<<<<<<<<
@@ -23743,7 +23743,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_10decompose_spectrum(CYTHON_UNUS
     __pyx_v_python_results = ((PyObject*)__pyx_t_3);
     __pyx_t_3 = 0;
 
-    /* "mass_decomposer_cpp.pyx":373
+    /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":373
  *         cpp_results = decomposer.decompose_spectrum(precursor_mass, frag_masses_vec, params)
  *         python_results = []
  *         for decomp in cpp_results.decompositions:             # <<<<<<<<<<<<<<
@@ -23755,7 +23755,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_10decompose_spectrum(CYTHON_UNUS
       __pyx_t_8 = *__pyx_t_7;
       __pyx_v_decomp = __pyx_t_8;
 
-      /* "mass_decomposer_cpp.pyx":375
+      /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":375
  *         for decomp in cpp_results.decompositions:
  *             py_decomp = {
  *                 'precursor': _convert_formula_to_array(decomp.precursor),             # <<<<<<<<<<<<<<
@@ -23764,12 +23764,12 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_10decompose_spectrum(CYTHON_UNUS
 */
       __pyx_t_3 = __Pyx_PyDict_NewPresized(6); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 375, __pyx_L5_error)
       __Pyx_GOTREF(__pyx_t_3);
-      __pyx_t_9 = ((PyObject *)__pyx_f_19mass_decomposer_cpp__convert_formula_to_array(__pyx_v_decomp.precursor)); if (unlikely(!__pyx_t_9)) __PYX_ERR(0, 375, __pyx_L5_error)
+      __pyx_t_9 = ((PyObject *)__pyx_f_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp__convert_formula_to_array(__pyx_v_decomp.precursor)); if (unlikely(!__pyx_t_9)) __PYX_ERR(0, 375, __pyx_L5_error)
       __Pyx_GOTREF(__pyx_t_9);
       if (PyDict_SetItem(__pyx_t_3, __pyx_mstate_global->__pyx_n_u_precursor, __pyx_t_9) < 0) __PYX_ERR(0, 375, __pyx_L5_error)
       __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
 
-      /* "mass_decomposer_cpp.pyx":376
+      /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":376
  *             py_decomp = {
  *                 'precursor': _convert_formula_to_array(decomp.precursor),
  *                 'precursor_mass': decomp.precursor_mass,             # <<<<<<<<<<<<<<
@@ -23781,7 +23781,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_10decompose_spectrum(CYTHON_UNUS
       if (PyDict_SetItem(__pyx_t_3, __pyx_mstate_global->__pyx_n_u_precursor_mass, __pyx_t_9) < 0) __PYX_ERR(0, 375, __pyx_L5_error)
       __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
 
-      /* "mass_decomposer_cpp.pyx":377
+      /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":377
  *                 'precursor': _convert_formula_to_array(decomp.precursor),
  *                 'precursor_mass': decomp.precursor_mass,
  *                 'precursor_error_ppm': decomp.precursor_error_ppm,             # <<<<<<<<<<<<<<
@@ -23794,7 +23794,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_10decompose_spectrum(CYTHON_UNUS
       __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
       { /* enter inner scope */
 
-        /* "mass_decomposer_cpp.pyx":378
+        /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":378
  *                 'precursor_mass': decomp.precursor_mass,
  *                 'precursor_error_ppm': decomp.precursor_error_ppm,
  *                 'fragments': [[_convert_formula_to_array(f) for f in frag_list] for frag_list in decomp.fragments],             # <<<<<<<<<<<<<<
@@ -23814,7 +23814,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_10decompose_spectrum(CYTHON_UNUS
             for (; __pyx_t_13 != __pyx_8genexpr3__pyx_v_frag_list.end(); ++__pyx_t_13) {
               __pyx_t_14 = *__pyx_t_13;
               __pyx_8genexpr4__pyx_v_f = __PYX_STD_MOVE_IF_SUPPORTED(__pyx_t_14);
-              __pyx_t_15 = ((PyObject *)__pyx_f_19mass_decomposer_cpp__convert_formula_to_array(__pyx_8genexpr4__pyx_v_f)); if (unlikely(!__pyx_t_15)) __PYX_ERR(0, 378, __pyx_L5_error)
+              __pyx_t_15 = ((PyObject *)__pyx_f_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp__convert_formula_to_array(__pyx_8genexpr4__pyx_v_f)); if (unlikely(!__pyx_t_15)) __PYX_ERR(0, 378, __pyx_L5_error)
               __Pyx_GOTREF(__pyx_t_15);
               if (unlikely(__Pyx_ListComp_Append(__pyx_t_12, (PyObject*)__pyx_t_15))) __PYX_ERR(0, 378, __pyx_L5_error)
               __Pyx_DECREF(__pyx_t_15); __pyx_t_15 = 0;
@@ -23828,7 +23828,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_10decompose_spectrum(CYTHON_UNUS
       __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
       { /* enter inner scope */
 
-        /* "mass_decomposer_cpp.pyx":379
+        /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":379
  *                 'precursor_error_ppm': decomp.precursor_error_ppm,
  *                 'fragments': [[_convert_formula_to_array(f) for f in frag_list] for frag_list in decomp.fragments],
  *                 'fragment_masses': [list(fm) for fm in decomp.fragment_masses],             # <<<<<<<<<<<<<<
@@ -23854,7 +23854,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_10decompose_spectrum(CYTHON_UNUS
       __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
       { /* enter inner scope */
 
-        /* "mass_decomposer_cpp.pyx":380
+        /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":380
  *                 'fragments': [[_convert_formula_to_array(f) for f in frag_list] for frag_list in decomp.fragments],
  *                 'fragment_masses': [list(fm) for fm in decomp.fragment_masses],
  *                 'fragment_errors_ppm': [list(fe) for fe in decomp.fragment_errors_ppm]             # <<<<<<<<<<<<<<
@@ -23881,7 +23881,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_10decompose_spectrum(CYTHON_UNUS
       __Pyx_XDECREF_SET(__pyx_v_py_decomp, ((PyObject*)__pyx_t_3));
       __pyx_t_3 = 0;
 
-      /* "mass_decomposer_cpp.pyx":382
+      /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":382
  *                 'fragment_errors_ppm': [list(fe) for fe in decomp.fragment_errors_ppm]
  *             }
  *             python_results.append(py_decomp)             # <<<<<<<<<<<<<<
@@ -23890,7 +23890,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_10decompose_spectrum(CYTHON_UNUS
 */
       __pyx_t_17 = __Pyx_PyList_Append(__pyx_v_python_results, __pyx_v_py_decomp); if (unlikely(__pyx_t_17 == ((int)-1))) __PYX_ERR(0, 382, __pyx_L5_error)
 
-      /* "mass_decomposer_cpp.pyx":373
+      /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":373
  *         cpp_results = decomposer.decompose_spectrum(precursor_mass, frag_masses_vec, params)
  *         python_results = []
  *         for decomp in cpp_results.decompositions:             # <<<<<<<<<<<<<<
@@ -23899,7 +23899,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_10decompose_spectrum(CYTHON_UNUS
 */
     }
 
-    /* "mass_decomposer_cpp.pyx":383
+    /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":383
  *             }
  *             python_results.append(py_decomp)
  *         return python_results             # <<<<<<<<<<<<<<
@@ -23912,7 +23912,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_10decompose_spectrum(CYTHON_UNUS
     goto __pyx_L4_return;
   }
 
-  /* "mass_decomposer_cpp.pyx":385
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":385
  *         return python_results
  *     finally:
  *         del decomposer             # <<<<<<<<<<<<<<
@@ -23963,7 +23963,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_10decompose_spectrum(CYTHON_UNUS
     }
   }
 
-  /* "mass_decomposer_cpp.pyx":350
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":350
  *         schema={"decomposed_formula": pl.List(pl.Array(pl.Int32, NUM_ELEMENTS))})
  * 
  * def decompose_spectrum(             # <<<<<<<<<<<<<<
@@ -23977,7 +23977,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_10decompose_spectrum(CYTHON_UNUS
   __Pyx_XDECREF(__pyx_t_9);
   __Pyx_XDECREF(__pyx_t_12);
   __Pyx_XDECREF(__pyx_t_15);
-  __Pyx_AddTraceback("mass_decomposer_cpp.decompose_spectrum", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __Pyx_AddTraceback("ms_utils.formula_annotation.mass_decomposition_impl.mass_decomposer_cpp.decompose_spectrum", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __pyx_r = NULL;
   __pyx_L0:;
   __Pyx_XDECREF(__pyx_v_python_results);
@@ -23987,7 +23987,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_10decompose_spectrum(CYTHON_UNUS
   return __pyx_r;
 }
 
-/* "mass_decomposer_cpp.pyx":387
+/* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":387
  *         del decomposer
  * 
  * def decompose_spectra_parallel(             # <<<<<<<<<<<<<<
@@ -23996,16 +23996,16 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_10decompose_spectrum(CYTHON_UNUS
 */
 
 /* Python wrapper */
-static PyObject *__pyx_pw_19mass_decomposer_cpp_13decompose_spectra_parallel(PyObject *__pyx_self, 
+static PyObject *__pyx_pw_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp_13decompose_spectra_parallel(PyObject *__pyx_self, 
 #if CYTHON_METH_FASTCALL
 PyObject *const *__pyx_args, Py_ssize_t __pyx_nargs, PyObject *__pyx_kwds
 #else
 PyObject *__pyx_args, PyObject *__pyx_kwds
 #endif
 ); /*proto*/
-PyDoc_STRVAR(__pyx_doc_19mass_decomposer_cpp_12decompose_spectra_parallel, "decompose_spectra_parallel(spectra_data: Iterable[dict], ndarray min_bounds: np.ndarray, ndarray max_bounds: np.ndarray, double tolerance_ppm: float = 5.0, double min_dbe: float = 0.0, double max_dbe: float = 40.0, double max_hetero_ratio: float = 100.0, int max_results: int = 100000) -> list");
-static PyMethodDef __pyx_mdef_19mass_decomposer_cpp_13decompose_spectra_parallel = {"decompose_spectra_parallel", (PyCFunction)(void(*)(void))(__Pyx_PyCFunction_FastCallWithKeywords)__pyx_pw_19mass_decomposer_cpp_13decompose_spectra_parallel, __Pyx_METH_FASTCALL|METH_KEYWORDS, __pyx_doc_19mass_decomposer_cpp_12decompose_spectra_parallel};
-static PyObject *__pyx_pw_19mass_decomposer_cpp_13decompose_spectra_parallel(PyObject *__pyx_self, 
+PyDoc_STRVAR(__pyx_doc_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp_12decompose_spectra_parallel, "decompose_spectra_parallel(spectra_data: Iterable[dict], ndarray min_bounds: np.ndarray, ndarray max_bounds: np.ndarray, double tolerance_ppm: float = 5.0, double min_dbe: float = 0.0, double max_dbe: float = 40.0, double max_hetero_ratio: float = 100.0, int max_results: int = 100000) -> list");
+static PyMethodDef __pyx_mdef_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp_13decompose_spectra_parallel = {"decompose_spectra_parallel", (PyCFunction)(void(*)(void))(__Pyx_PyCFunction_FastCallWithKeywords)__pyx_pw_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp_13decompose_spectra_parallel, __Pyx_METH_FASTCALL|METH_KEYWORDS, __pyx_doc_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp_12decompose_spectra_parallel};
+static PyObject *__pyx_pw_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp_13decompose_spectra_parallel(PyObject *__pyx_self, 
 #if CYTHON_METH_FASTCALL
 PyObject *const *__pyx_args, Py_ssize_t __pyx_nargs, PyObject *__pyx_kwds
 #else
@@ -24154,14 +24154,14 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
   for (Py_ssize_t __pyx_temp=0; __pyx_temp < (Py_ssize_t)(sizeof(values)/sizeof(values[0])); ++__pyx_temp) {
     Py_XDECREF(values[__pyx_temp]);
   }
-  __Pyx_AddTraceback("mass_decomposer_cpp.decompose_spectra_parallel", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __Pyx_AddTraceback("ms_utils.formula_annotation.mass_decomposition_impl.mass_decomposer_cpp.decompose_spectra_parallel", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __Pyx_RefNannyFinishContext();
   return NULL;
   __pyx_L4_argument_unpacking_done:;
   if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_min_bounds), __pyx_mstate_global->__pyx_ptype_5numpy_ndarray, 0, "min_bounds", 0))) __PYX_ERR(0, 389, __pyx_L1_error)
   if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_max_bounds), __pyx_mstate_global->__pyx_ptype_5numpy_ndarray, 0, "max_bounds", 0))) __PYX_ERR(0, 390, __pyx_L1_error)
   if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_max_results), (&PyLong_Type), 0, "max_results", 2))) __PYX_ERR(0, 395, __pyx_L1_error)
-  __pyx_r = __pyx_pf_19mass_decomposer_cpp_12decompose_spectra_parallel(__pyx_self, __pyx_v_spectra_data, __pyx_v_min_bounds, __pyx_v_max_bounds, __pyx_v_tolerance_ppm, __pyx_v_min_dbe, __pyx_v_max_dbe, __pyx_v_max_hetero_ratio, __pyx_v_max_results);
+  __pyx_r = __pyx_pf_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp_12decompose_spectra_parallel(__pyx_self, __pyx_v_spectra_data, __pyx_v_min_bounds, __pyx_v_max_bounds, __pyx_v_tolerance_ppm, __pyx_v_min_dbe, __pyx_v_max_dbe, __pyx_v_max_hetero_ratio, __pyx_v_max_results);
 
   /* function exit code */
   goto __pyx_L0;
@@ -24180,7 +24180,7 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
   return __pyx_r;
 }
 
-static PyObject *__pyx_pf_19mass_decomposer_cpp_12decompose_spectra_parallel(CYTHON_UNUSED PyObject *__pyx_self, PyObject *__pyx_v_spectra_data, PyArrayObject *__pyx_v_min_bounds, PyArrayObject *__pyx_v_max_bounds, double __pyx_v_tolerance_ppm, double __pyx_v_min_dbe, double __pyx_v_max_dbe, CYTHON_UNUSED double __pyx_v_max_hetero_ratio, PyObject *__pyx_v_max_results) {
+static PyObject *__pyx_pf_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp_12decompose_spectra_parallel(CYTHON_UNUSED PyObject *__pyx_self, PyObject *__pyx_v_spectra_data, PyArrayObject *__pyx_v_min_bounds, PyArrayObject *__pyx_v_max_bounds, double __pyx_v_tolerance_ppm, double __pyx_v_min_dbe, double __pyx_v_max_dbe, CYTHON_UNUSED double __pyx_v_max_hetero_ratio, PyObject *__pyx_v_max_results) {
   PyObject *__pyx_v_spectra_data_list = NULL;
   struct DecompositionParams __pyx_v_params;
   std::vector<struct Spectrum>  __pyx_v_spectra_vec;
@@ -24224,7 +24224,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_12decompose_spectra_parallel(CYT
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("decompose_spectra_parallel", 0);
 
-  /* "mass_decomposer_cpp.pyx":398
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":398
  * ) -> list:
  *     # Convert iterable to list to allow checking for emptiness and getting length
  *     spectra_data_list = list(spectra_data)             # <<<<<<<<<<<<<<
@@ -24236,7 +24236,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_12decompose_spectra_parallel(CYT
   __pyx_v_spectra_data_list = ((PyObject*)__pyx_t_1);
   __pyx_t_1 = 0;
 
-  /* "mass_decomposer_cpp.pyx":399
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":399
  *     # Convert iterable to list to allow checking for emptiness and getting length
  *     spectra_data_list = list(spectra_data)
  *     if not spectra_data_list:             # <<<<<<<<<<<<<<
@@ -24248,7 +24248,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_12decompose_spectra_parallel(CYT
   __pyx_t_3 = (!__pyx_t_2);
   if (__pyx_t_3) {
 
-    /* "mass_decomposer_cpp.pyx":400
+    /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":400
  *     spectra_data_list = list(spectra_data)
  *     if not spectra_data_list:
  *         return []             # <<<<<<<<<<<<<<
@@ -24262,7 +24262,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_12decompose_spectra_parallel(CYT
     __pyx_t_1 = 0;
     goto __pyx_L0;
 
-    /* "mass_decomposer_cpp.pyx":399
+    /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":399
  *     # Convert iterable to list to allow checking for emptiness and getting length
  *     spectra_data_list = list(spectra_data)
  *     if not spectra_data_list:             # <<<<<<<<<<<<<<
@@ -24271,7 +24271,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_12decompose_spectra_parallel(CYT
 */
   }
 
-  /* "mass_decomposer_cpp.pyx":402
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":402
  *         return []
  *     cdef DecompositionParams params = _convert_params(tolerance_ppm, min_dbe, max_dbe,
  *                                                      max_results,             # <<<<<<<<<<<<<<
@@ -24280,17 +24280,17 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_12decompose_spectra_parallel(CYT
 */
   __pyx_t_4 = __Pyx_PyLong_As_int(__pyx_v_max_results); if (unlikely((__pyx_t_4 == (int)-1) && PyErr_Occurred())) __PYX_ERR(0, 402, __pyx_L1_error)
 
-  /* "mass_decomposer_cpp.pyx":401
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":401
  *     if not spectra_data_list:
  *         return []
  *     cdef DecompositionParams params = _convert_params(tolerance_ppm, min_dbe, max_dbe,             # <<<<<<<<<<<<<<
  *                                                      max_results,
  *                                                      min_bounds, max_bounds)
 */
-  __pyx_t_5 = __pyx_f_19mass_decomposer_cpp__convert_params(__pyx_v_tolerance_ppm, __pyx_v_min_dbe, __pyx_v_max_dbe, __pyx_t_4, __pyx_v_min_bounds, __pyx_v_max_bounds); if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 401, __pyx_L1_error)
+  __pyx_t_5 = __pyx_f_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp__convert_params(__pyx_v_tolerance_ppm, __pyx_v_min_dbe, __pyx_v_max_dbe, __pyx_t_4, __pyx_v_min_bounds, __pyx_v_max_bounds); if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 401, __pyx_L1_error)
   __pyx_v_params = __pyx_t_5;
 
-  /* "mass_decomposer_cpp.pyx":405
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":405
  *                                                      min_bounds, max_bounds)
  *     cdef vector[Spectrum] spectra_vec
  *     spectra_vec.reserve(len(spectra_data_list))             # <<<<<<<<<<<<<<
@@ -24305,7 +24305,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_12decompose_spectra_parallel(CYT
     __PYX_ERR(0, 405, __pyx_L1_error)
   }
 
-  /* "mass_decomposer_cpp.pyx":407
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":407
  *     spectra_vec.reserve(len(spectra_data_list))
  *     cdef Spectrum s
  *     for spec_data in spectra_data_list:             # <<<<<<<<<<<<<<
@@ -24329,7 +24329,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_12decompose_spectra_parallel(CYT
     __Pyx_XDECREF_SET(__pyx_v_spec_data, __pyx_t_7);
     __pyx_t_7 = 0;
 
-    /* "mass_decomposer_cpp.pyx":408
+    /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":408
  *     cdef Spectrum s
  *     for spec_data in spectra_data_list:
  *         s.precursor_mass = spec_data['precursor_mass']             # <<<<<<<<<<<<<<
@@ -24342,7 +24342,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_12decompose_spectra_parallel(CYT
     __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
     __pyx_v_s.precursor_mass = __pyx_t_8;
 
-    /* "mass_decomposer_cpp.pyx":409
+    /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":409
  *     for spec_data in spectra_data_list:
  *         s.precursor_mass = spec_data['precursor_mass']
  *         s.fragment_masses = spec_data['fragment_masses']             # <<<<<<<<<<<<<<
@@ -24355,7 +24355,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_12decompose_spectra_parallel(CYT
     __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
     __pyx_v_s.fragment_masses = __PYX_STD_MOVE_IF_SUPPORTED(__pyx_t_9);
 
-    /* "mass_decomposer_cpp.pyx":410
+    /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":410
  *         s.precursor_mass = spec_data['precursor_mass']
  *         s.fragment_masses = spec_data['fragment_masses']
  *         spectra_vec.push_back(s)             # <<<<<<<<<<<<<<
@@ -24369,7 +24369,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_12decompose_spectra_parallel(CYT
       __PYX_ERR(0, 410, __pyx_L1_error)
     }
 
-    /* "mass_decomposer_cpp.pyx":407
+    /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":407
  *     spectra_vec.reserve(len(spectra_data_list))
  *     cdef Spectrum s
  *     for spec_data in spectra_data_list:             # <<<<<<<<<<<<<<
@@ -24379,7 +24379,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_12decompose_spectra_parallel(CYT
   }
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-  /* "mass_decomposer_cpp.pyx":413
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":413
  * 
  *     cdef vector[ProperSpectrumResults] all_cpp_results
  *     all_cpp_results = MassDecomposer.decompose_spectra_parallel(spectra_vec, params)             # <<<<<<<<<<<<<<
@@ -24388,7 +24388,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_12decompose_spectra_parallel(CYT
 */
   __pyx_v_all_cpp_results = MassDecomposer::decompose_spectra_parallel(__pyx_v_spectra_vec, __pyx_v_params);
 
-  /* "mass_decomposer_cpp.pyx":414
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":414
  *     cdef vector[ProperSpectrumResults] all_cpp_results
  *     all_cpp_results = MassDecomposer.decompose_spectra_parallel(spectra_vec, params)
  *     all_python_results = []             # <<<<<<<<<<<<<<
@@ -24400,7 +24400,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_12decompose_spectra_parallel(CYT
   __pyx_v_all_python_results = ((PyObject*)__pyx_t_1);
   __pyx_t_1 = 0;
 
-  /* "mass_decomposer_cpp.pyx":415
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":415
  *     all_cpp_results = MassDecomposer.decompose_spectra_parallel(spectra_vec, params)
  *     all_python_results = []
  *     for cpp_results in all_cpp_results:             # <<<<<<<<<<<<<<
@@ -24412,7 +24412,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_12decompose_spectra_parallel(CYT
     __pyx_t_11 = *__pyx_t_10;
     __pyx_v_cpp_results = __pyx_t_11;
 
-    /* "mass_decomposer_cpp.pyx":416
+    /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":416
  *     all_python_results = []
  *     for cpp_results in all_cpp_results:
  *         python_results = []             # <<<<<<<<<<<<<<
@@ -24424,7 +24424,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_12decompose_spectra_parallel(CYT
     __Pyx_XDECREF_SET(__pyx_v_python_results, ((PyObject*)__pyx_t_1));
     __pyx_t_1 = 0;
 
-    /* "mass_decomposer_cpp.pyx":417
+    /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":417
  *     for cpp_results in all_cpp_results:
  *         python_results = []
  *         for decomp in cpp_results.decompositions:             # <<<<<<<<<<<<<<
@@ -24436,7 +24436,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_12decompose_spectra_parallel(CYT
       __pyx_t_13 = *__pyx_t_12;
       __pyx_v_decomp = __pyx_t_13;
 
-      /* "mass_decomposer_cpp.pyx":419
+      /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":419
  *         for decomp in cpp_results.decompositions:
  *             py_decomp = {
  *                 'precursor': _convert_formula_to_array(decomp.precursor),             # <<<<<<<<<<<<<<
@@ -24445,12 +24445,12 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_12decompose_spectra_parallel(CYT
 */
       __pyx_t_1 = __Pyx_PyDict_NewPresized(6); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 419, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_1);
-      __pyx_t_7 = ((PyObject *)__pyx_f_19mass_decomposer_cpp__convert_formula_to_array(__pyx_v_decomp.precursor)); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 419, __pyx_L1_error)
+      __pyx_t_7 = ((PyObject *)__pyx_f_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp__convert_formula_to_array(__pyx_v_decomp.precursor)); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 419, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_7);
       if (PyDict_SetItem(__pyx_t_1, __pyx_mstate_global->__pyx_n_u_precursor, __pyx_t_7) < 0) __PYX_ERR(0, 419, __pyx_L1_error)
       __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
 
-      /* "mass_decomposer_cpp.pyx":420
+      /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":420
  *             py_decomp = {
  *                 'precursor': _convert_formula_to_array(decomp.precursor),
  *                 'precursor_mass': decomp.precursor_mass,             # <<<<<<<<<<<<<<
@@ -24462,7 +24462,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_12decompose_spectra_parallel(CYT
       if (PyDict_SetItem(__pyx_t_1, __pyx_mstate_global->__pyx_n_u_precursor_mass, __pyx_t_7) < 0) __PYX_ERR(0, 419, __pyx_L1_error)
       __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
 
-      /* "mass_decomposer_cpp.pyx":421
+      /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":421
  *                 'precursor': _convert_formula_to_array(decomp.precursor),
  *                 'precursor_mass': decomp.precursor_mass,
  *                 'precursor_error_ppm': decomp.precursor_error_ppm,             # <<<<<<<<<<<<<<
@@ -24475,7 +24475,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_12decompose_spectra_parallel(CYT
       __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
       { /* enter inner scope */
 
-        /* "mass_decomposer_cpp.pyx":422
+        /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":422
  *                 'precursor_mass': decomp.precursor_mass,
  *                 'precursor_error_ppm': decomp.precursor_error_ppm,
  *                 'fragments': [[_convert_formula_to_array(f) for f in frag_list] for frag_list in decomp.fragments],             # <<<<<<<<<<<<<<
@@ -24495,7 +24495,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_12decompose_spectra_parallel(CYT
             for (; __pyx_t_17 != __pyx_8genexpr7__pyx_v_frag_list.end(); ++__pyx_t_17) {
               __pyx_t_18 = *__pyx_t_17;
               __pyx_8genexpr8__pyx_v_f = __PYX_STD_MOVE_IF_SUPPORTED(__pyx_t_18);
-              __pyx_t_19 = ((PyObject *)__pyx_f_19mass_decomposer_cpp__convert_formula_to_array(__pyx_8genexpr8__pyx_v_f)); if (unlikely(!__pyx_t_19)) __PYX_ERR(0, 422, __pyx_L1_error)
+              __pyx_t_19 = ((PyObject *)__pyx_f_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp__convert_formula_to_array(__pyx_8genexpr8__pyx_v_f)); if (unlikely(!__pyx_t_19)) __PYX_ERR(0, 422, __pyx_L1_error)
               __Pyx_GOTREF(__pyx_t_19);
               if (unlikely(__Pyx_ListComp_Append(__pyx_t_16, (PyObject*)__pyx_t_19))) __PYX_ERR(0, 422, __pyx_L1_error)
               __Pyx_DECREF(__pyx_t_19); __pyx_t_19 = 0;
@@ -24509,7 +24509,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_12decompose_spectra_parallel(CYT
       __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
       { /* enter inner scope */
 
-        /* "mass_decomposer_cpp.pyx":423
+        /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":423
  *                 'precursor_error_ppm': decomp.precursor_error_ppm,
  *                 'fragments': [[_convert_formula_to_array(f) for f in frag_list] for frag_list in decomp.fragments],
  *                 'fragment_masses': [list(fm) for fm in decomp.fragment_masses],             # <<<<<<<<<<<<<<
@@ -24535,7 +24535,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_12decompose_spectra_parallel(CYT
       __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
       { /* enter inner scope */
 
-        /* "mass_decomposer_cpp.pyx":424
+        /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":424
  *                 'fragments': [[_convert_formula_to_array(f) for f in frag_list] for frag_list in decomp.fragments],
  *                 'fragment_masses': [list(fm) for fm in decomp.fragment_masses],
  *                 'fragment_errors_ppm': [list(fe) for fe in decomp.fragment_errors_ppm]             # <<<<<<<<<<<<<<
@@ -24562,7 +24562,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_12decompose_spectra_parallel(CYT
       __Pyx_XDECREF_SET(__pyx_v_py_decomp, ((PyObject*)__pyx_t_1));
       __pyx_t_1 = 0;
 
-      /* "mass_decomposer_cpp.pyx":426
+      /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":426
  *                 'fragment_errors_ppm': [list(fe) for fe in decomp.fragment_errors_ppm]
  *             }
  *             python_results.append(py_decomp)             # <<<<<<<<<<<<<<
@@ -24571,7 +24571,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_12decompose_spectra_parallel(CYT
 */
       __pyx_t_21 = __Pyx_PyList_Append(__pyx_v_python_results, __pyx_v_py_decomp); if (unlikely(__pyx_t_21 == ((int)-1))) __PYX_ERR(0, 426, __pyx_L1_error)
 
-      /* "mass_decomposer_cpp.pyx":417
+      /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":417
  *     for cpp_results in all_cpp_results:
  *         python_results = []
  *         for decomp in cpp_results.decompositions:             # <<<<<<<<<<<<<<
@@ -24580,7 +24580,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_12decompose_spectra_parallel(CYT
 */
     }
 
-    /* "mass_decomposer_cpp.pyx":427
+    /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":427
  *             }
  *             python_results.append(py_decomp)
  *         all_python_results.append(python_results)             # <<<<<<<<<<<<<<
@@ -24589,7 +24589,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_12decompose_spectra_parallel(CYT
 */
     __pyx_t_21 = __Pyx_PyList_Append(__pyx_v_all_python_results, __pyx_v_python_results); if (unlikely(__pyx_t_21 == ((int)-1))) __PYX_ERR(0, 427, __pyx_L1_error)
 
-    /* "mass_decomposer_cpp.pyx":415
+    /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":415
  *     all_cpp_results = MassDecomposer.decompose_spectra_parallel(spectra_vec, params)
  *     all_python_results = []
  *     for cpp_results in all_cpp_results:             # <<<<<<<<<<<<<<
@@ -24598,7 +24598,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_12decompose_spectra_parallel(CYT
 */
   }
 
-  /* "mass_decomposer_cpp.pyx":428
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":428
  *             python_results.append(py_decomp)
  *         all_python_results.append(python_results)
  *     return all_python_results             # <<<<<<<<<<<<<<
@@ -24610,7 +24610,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_12decompose_spectra_parallel(CYT
   __pyx_r = __pyx_v_all_python_results;
   goto __pyx_L0;
 
-  /* "mass_decomposer_cpp.pyx":387
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":387
  *         del decomposer
  * 
  * def decompose_spectra_parallel(             # <<<<<<<<<<<<<<
@@ -24624,7 +24624,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_12decompose_spectra_parallel(CYT
   __Pyx_XDECREF(__pyx_t_7);
   __Pyx_XDECREF(__pyx_t_16);
   __Pyx_XDECREF(__pyx_t_19);
-  __Pyx_AddTraceback("mass_decomposer_cpp.decompose_spectra_parallel", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __Pyx_AddTraceback("ms_utils.formula_annotation.mass_decomposition_impl.mass_decomposer_cpp.decompose_spectra_parallel", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __pyx_r = NULL;
   __pyx_L0:;
   __Pyx_XDECREF(__pyx_v_spectra_data_list);
@@ -24637,7 +24637,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_12decompose_spectra_parallel(CYT
   return __pyx_r;
 }
 
-/* "mass_decomposer_cpp.pyx":430
+/* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":430
  *     return all_python_results
  * 
  * def decompose_spectra_parallel_per_bounds(             # <<<<<<<<<<<<<<
@@ -24646,16 +24646,16 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_12decompose_spectra_parallel(CYT
 */
 
 /* Python wrapper */
-static PyObject *__pyx_pw_19mass_decomposer_cpp_15decompose_spectra_parallel_per_bounds(PyObject *__pyx_self, 
+static PyObject *__pyx_pw_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp_15decompose_spectra_parallel_per_bounds(PyObject *__pyx_self, 
 #if CYTHON_METH_FASTCALL
 PyObject *const *__pyx_args, Py_ssize_t __pyx_nargs, PyObject *__pyx_kwds
 #else
 PyObject *__pyx_args, PyObject *__pyx_kwds
 #endif
 ); /*proto*/
-PyDoc_STRVAR(__pyx_doc_19mass_decomposer_cpp_14decompose_spectra_parallel_per_bounds, "decompose_spectra_parallel_per_bounds(spectra_data: Iterable[dict], double tolerance_ppm: float = 5.0, double min_dbe: float = 0.0, double max_dbe: float = 40.0, double max_hetero_ratio: float = 100.0, int max_results: int = 100000) -> list");
-static PyMethodDef __pyx_mdef_19mass_decomposer_cpp_15decompose_spectra_parallel_per_bounds = {"decompose_spectra_parallel_per_bounds", (PyCFunction)(void(*)(void))(__Pyx_PyCFunction_FastCallWithKeywords)__pyx_pw_19mass_decomposer_cpp_15decompose_spectra_parallel_per_bounds, __Pyx_METH_FASTCALL|METH_KEYWORDS, __pyx_doc_19mass_decomposer_cpp_14decompose_spectra_parallel_per_bounds};
-static PyObject *__pyx_pw_19mass_decomposer_cpp_15decompose_spectra_parallel_per_bounds(PyObject *__pyx_self, 
+PyDoc_STRVAR(__pyx_doc_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp_14decompose_spectra_parallel_per_bounds, "decompose_spectra_parallel_per_bounds(spectra_data: Iterable[dict], double tolerance_ppm: float = 5.0, double min_dbe: float = 0.0, double max_dbe: float = 40.0, double max_hetero_ratio: float = 100.0, int max_results: int = 100000) -> list");
+static PyMethodDef __pyx_mdef_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp_15decompose_spectra_parallel_per_bounds = {"decompose_spectra_parallel_per_bounds", (PyCFunction)(void(*)(void))(__Pyx_PyCFunction_FastCallWithKeywords)__pyx_pw_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp_15decompose_spectra_parallel_per_bounds, __Pyx_METH_FASTCALL|METH_KEYWORDS, __pyx_doc_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp_14decompose_spectra_parallel_per_bounds};
+static PyObject *__pyx_pw_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp_15decompose_spectra_parallel_per_bounds(PyObject *__pyx_self, 
 #if CYTHON_METH_FASTCALL
 PyObject *const *__pyx_args, Py_ssize_t __pyx_nargs, PyObject *__pyx_kwds
 #else
@@ -24788,12 +24788,12 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
   for (Py_ssize_t __pyx_temp=0; __pyx_temp < (Py_ssize_t)(sizeof(values)/sizeof(values[0])); ++__pyx_temp) {
     Py_XDECREF(values[__pyx_temp]);
   }
-  __Pyx_AddTraceback("mass_decomposer_cpp.decompose_spectra_parallel_per_bounds", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __Pyx_AddTraceback("ms_utils.formula_annotation.mass_decomposition_impl.mass_decomposer_cpp.decompose_spectra_parallel_per_bounds", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __Pyx_RefNannyFinishContext();
   return NULL;
   __pyx_L4_argument_unpacking_done:;
   if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_max_results), (&PyLong_Type), 0, "max_results", 2))) __PYX_ERR(0, 436, __pyx_L1_error)
-  __pyx_r = __pyx_pf_19mass_decomposer_cpp_14decompose_spectra_parallel_per_bounds(__pyx_self, __pyx_v_spectra_data, __pyx_v_tolerance_ppm, __pyx_v_min_dbe, __pyx_v_max_dbe, __pyx_v_max_hetero_ratio, __pyx_v_max_results);
+  __pyx_r = __pyx_pf_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp_14decompose_spectra_parallel_per_bounds(__pyx_self, __pyx_v_spectra_data, __pyx_v_tolerance_ppm, __pyx_v_min_dbe, __pyx_v_max_dbe, __pyx_v_max_hetero_ratio, __pyx_v_max_results);
 
   /* function exit code */
   goto __pyx_L0;
@@ -24812,7 +24812,7 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
   return __pyx_r;
 }
 
-static PyObject *__pyx_pf_19mass_decomposer_cpp_14decompose_spectra_parallel_per_bounds(CYTHON_UNUSED PyObject *__pyx_self, PyObject *__pyx_v_spectra_data, double __pyx_v_tolerance_ppm, double __pyx_v_min_dbe, double __pyx_v_max_dbe, CYTHON_UNUSED double __pyx_v_max_hetero_ratio, PyObject *__pyx_v_max_results) {
+static PyObject *__pyx_pf_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp_14decompose_spectra_parallel_per_bounds(CYTHON_UNUSED PyObject *__pyx_self, PyObject *__pyx_v_spectra_data, double __pyx_v_tolerance_ppm, double __pyx_v_min_dbe, double __pyx_v_max_dbe, CYTHON_UNUSED double __pyx_v_max_hetero_ratio, PyObject *__pyx_v_max_results) {
   PyObject *__pyx_v_spectra_data_list = NULL;
   PyArrayObject *__pyx_v_dummy_bounds = 0;
   struct DecompositionParams __pyx_v_params;
@@ -24860,7 +24860,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_14decompose_spectra_parallel_per
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("decompose_spectra_parallel_per_bounds", 0);
 
-  /* "mass_decomposer_cpp.pyx":439
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":439
  * ) -> list:
  *     # Convert iterable to list to allow checking for emptiness and getting length
  *     spectra_data_list = list(spectra_data)             # <<<<<<<<<<<<<<
@@ -24872,7 +24872,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_14decompose_spectra_parallel_per
   __pyx_v_spectra_data_list = ((PyObject*)__pyx_t_1);
   __pyx_t_1 = 0;
 
-  /* "mass_decomposer_cpp.pyx":440
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":440
  *     # Convert iterable to list to allow checking for emptiness and getting length
  *     spectra_data_list = list(spectra_data)
  *     if not spectra_data_list:             # <<<<<<<<<<<<<<
@@ -24884,7 +24884,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_14decompose_spectra_parallel_per
   __pyx_t_3 = (!__pyx_t_2);
   if (__pyx_t_3) {
 
-    /* "mass_decomposer_cpp.pyx":441
+    /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":441
  *     spectra_data_list = list(spectra_data)
  *     if not spectra_data_list:
  *         return []             # <<<<<<<<<<<<<<
@@ -24898,7 +24898,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_14decompose_spectra_parallel_per
     __pyx_t_1 = 0;
     goto __pyx_L0;
 
-    /* "mass_decomposer_cpp.pyx":440
+    /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":440
  *     # Convert iterable to list to allow checking for emptiness and getting length
  *     spectra_data_list = list(spectra_data)
  *     if not spectra_data_list:             # <<<<<<<<<<<<<<
@@ -24907,7 +24907,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_14decompose_spectra_parallel_per
 */
   }
 
-  /* "mass_decomposer_cpp.pyx":443
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":443
  *         return []
  * 
  *     cdef np.ndarray dummy_bounds = np.zeros(NUM_ELEMENTS, dtype=np.int32)             # <<<<<<<<<<<<<<
@@ -24957,7 +24957,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_14decompose_spectra_parallel_per
   __pyx_v_dummy_bounds = ((PyArrayObject *)__pyx_t_1);
   __pyx_t_1 = 0;
 
-  /* "mass_decomposer_cpp.pyx":445
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":445
  *     cdef np.ndarray dummy_bounds = np.zeros(NUM_ELEMENTS, dtype=np.int32)
  *     cdef DecompositionParams params = _convert_params(tolerance_ppm, min_dbe, max_dbe,
  *                                                      max_results,             # <<<<<<<<<<<<<<
@@ -24966,17 +24966,17 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_14decompose_spectra_parallel_per
 */
   __pyx_t_10 = __Pyx_PyLong_As_int(__pyx_v_max_results); if (unlikely((__pyx_t_10 == (int)-1) && PyErr_Occurred())) __PYX_ERR(0, 445, __pyx_L1_error)
 
-  /* "mass_decomposer_cpp.pyx":444
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":444
  * 
  *     cdef np.ndarray dummy_bounds = np.zeros(NUM_ELEMENTS, dtype=np.int32)
  *     cdef DecompositionParams params = _convert_params(tolerance_ppm, min_dbe, max_dbe,             # <<<<<<<<<<<<<<
  *                                                      max_results,
  *                                                      dummy_bounds, dummy_bounds)
 */
-  __pyx_t_11 = __pyx_f_19mass_decomposer_cpp__convert_params(__pyx_v_tolerance_ppm, __pyx_v_min_dbe, __pyx_v_max_dbe, __pyx_t_10, __pyx_v_dummy_bounds, __pyx_v_dummy_bounds); if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 444, __pyx_L1_error)
+  __pyx_t_11 = __pyx_f_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp__convert_params(__pyx_v_tolerance_ppm, __pyx_v_min_dbe, __pyx_v_max_dbe, __pyx_t_10, __pyx_v_dummy_bounds, __pyx_v_dummy_bounds); if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 444, __pyx_L1_error)
   __pyx_v_params = __pyx_t_11;
 
-  /* "mass_decomposer_cpp.pyx":448
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":448
  *                                                      dummy_bounds, dummy_bounds)
  *     cdef vector[SpectrumWithBounds] spectra_vec
  *     spectra_vec.reserve(len(spectra_data_list))             # <<<<<<<<<<<<<<
@@ -24991,7 +24991,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_14decompose_spectra_parallel_per
     __PYX_ERR(0, 448, __pyx_L1_error)
   }
 
-  /* "mass_decomposer_cpp.pyx":450
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":450
  *     spectra_vec.reserve(len(spectra_data_list))
  *     cdef SpectrumWithBounds s
  *     for spec_data in spectra_data_list:             # <<<<<<<<<<<<<<
@@ -25015,7 +25015,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_14decompose_spectra_parallel_per
     __Pyx_XDECREF_SET(__pyx_v_spec_data, __pyx_t_6);
     __pyx_t_6 = 0;
 
-    /* "mass_decomposer_cpp.pyx":451
+    /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":451
  *     cdef SpectrumWithBounds s
  *     for spec_data in spectra_data_list:
  *         s.precursor_mass = spec_data['precursor_mass']             # <<<<<<<<<<<<<<
@@ -25028,7 +25028,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_14decompose_spectra_parallel_per
     __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
     __pyx_v_s.precursor_mass = __pyx_t_13;
 
-    /* "mass_decomposer_cpp.pyx":452
+    /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":452
  *     for spec_data in spectra_data_list:
  *         s.precursor_mass = spec_data['precursor_mass']
  *         s.fragment_masses = spec_data['fragment_masses']             # <<<<<<<<<<<<<<
@@ -25041,7 +25041,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_14decompose_spectra_parallel_per
     __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
     __pyx_v_s.fragment_masses = __PYX_STD_MOVE_IF_SUPPORTED(__pyx_t_14);
 
-    /* "mass_decomposer_cpp.pyx":453
+    /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":453
  *         s.precursor_mass = spec_data['precursor_mass']
  *         s.fragment_masses = spec_data['fragment_masses']
  *         _validate_bounds_array(spec_data['min_bounds'], "min_bounds in list")             # <<<<<<<<<<<<<<
@@ -25051,10 +25051,10 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_14decompose_spectra_parallel_per
     __pyx_t_6 = __Pyx_PyObject_Dict_GetItem(__pyx_v_spec_data, __pyx_mstate_global->__pyx_n_u_min_bounds); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 453, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_6);
     if (!(likely(((__pyx_t_6) == Py_None) || likely(__Pyx_TypeTest(__pyx_t_6, __pyx_mstate_global->__pyx_ptype_5numpy_ndarray))))) __PYX_ERR(0, 453, __pyx_L1_error)
-    __pyx_f_19mass_decomposer_cpp__validate_bounds_array(((PyArrayObject *)__pyx_t_6), __pyx_mstate_global->__pyx_kp_u_min_bounds_in_list); if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 453, __pyx_L1_error)
+    __pyx_f_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp__validate_bounds_array(((PyArrayObject *)__pyx_t_6), __pyx_mstate_global->__pyx_kp_u_min_bounds_in_list); if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 453, __pyx_L1_error)
     __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
 
-    /* "mass_decomposer_cpp.pyx":454
+    /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":454
  *         s.fragment_masses = spec_data['fragment_masses']
  *         _validate_bounds_array(spec_data['min_bounds'], "min_bounds in list")
  *         _validate_bounds_array(spec_data['max_bounds'], "max_bounds in list")             # <<<<<<<<<<<<<<
@@ -25064,10 +25064,10 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_14decompose_spectra_parallel_per
     __pyx_t_6 = __Pyx_PyObject_Dict_GetItem(__pyx_v_spec_data, __pyx_mstate_global->__pyx_n_u_max_bounds); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 454, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_6);
     if (!(likely(((__pyx_t_6) == Py_None) || likely(__Pyx_TypeTest(__pyx_t_6, __pyx_mstate_global->__pyx_ptype_5numpy_ndarray))))) __PYX_ERR(0, 454, __pyx_L1_error)
-    __pyx_f_19mass_decomposer_cpp__validate_bounds_array(((PyArrayObject *)__pyx_t_6), __pyx_mstate_global->__pyx_kp_u_max_bounds_in_list); if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 454, __pyx_L1_error)
+    __pyx_f_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp__validate_bounds_array(((PyArrayObject *)__pyx_t_6), __pyx_mstate_global->__pyx_kp_u_max_bounds_in_list); if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 454, __pyx_L1_error)
     __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
 
-    /* "mass_decomposer_cpp.pyx":455
+    /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":455
  *         _validate_bounds_array(spec_data['min_bounds'], "min_bounds in list")
  *         _validate_bounds_array(spec_data['max_bounds'], "max_bounds in list")
  *         s.precursor_min_bounds = _convert_numpy_to_formula(spec_data['min_bounds'])             # <<<<<<<<<<<<<<
@@ -25077,11 +25077,11 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_14decompose_spectra_parallel_per
     __pyx_t_6 = __Pyx_PyObject_Dict_GetItem(__pyx_v_spec_data, __pyx_mstate_global->__pyx_n_u_min_bounds); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 455, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_6);
     if (!(likely(((__pyx_t_6) == Py_None) || likely(__Pyx_TypeTest(__pyx_t_6, __pyx_mstate_global->__pyx_ptype_5numpy_ndarray))))) __PYX_ERR(0, 455, __pyx_L1_error)
-    __pyx_t_15 = __pyx_f_19mass_decomposer_cpp__convert_numpy_to_formula(((PyArrayObject *)__pyx_t_6)); if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 455, __pyx_L1_error)
+    __pyx_t_15 = __pyx_f_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp__convert_numpy_to_formula(((PyArrayObject *)__pyx_t_6)); if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 455, __pyx_L1_error)
     __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
     __pyx_v_s.precursor_min_bounds = __PYX_STD_MOVE_IF_SUPPORTED(__pyx_t_15);
 
-    /* "mass_decomposer_cpp.pyx":456
+    /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":456
  *         _validate_bounds_array(spec_data['max_bounds'], "max_bounds in list")
  *         s.precursor_min_bounds = _convert_numpy_to_formula(spec_data['min_bounds'])
  *         s.precursor_max_bounds = _convert_numpy_to_formula(spec_data['max_bounds'])             # <<<<<<<<<<<<<<
@@ -25091,11 +25091,11 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_14decompose_spectra_parallel_per
     __pyx_t_6 = __Pyx_PyObject_Dict_GetItem(__pyx_v_spec_data, __pyx_mstate_global->__pyx_n_u_max_bounds); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 456, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_6);
     if (!(likely(((__pyx_t_6) == Py_None) || likely(__Pyx_TypeTest(__pyx_t_6, __pyx_mstate_global->__pyx_ptype_5numpy_ndarray))))) __PYX_ERR(0, 456, __pyx_L1_error)
-    __pyx_t_15 = __pyx_f_19mass_decomposer_cpp__convert_numpy_to_formula(((PyArrayObject *)__pyx_t_6)); if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 456, __pyx_L1_error)
+    __pyx_t_15 = __pyx_f_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp__convert_numpy_to_formula(((PyArrayObject *)__pyx_t_6)); if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 456, __pyx_L1_error)
     __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
     __pyx_v_s.precursor_max_bounds = __PYX_STD_MOVE_IF_SUPPORTED(__pyx_t_15);
 
-    /* "mass_decomposer_cpp.pyx":457
+    /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":457
  *         s.precursor_min_bounds = _convert_numpy_to_formula(spec_data['min_bounds'])
  *         s.precursor_max_bounds = _convert_numpy_to_formula(spec_data['max_bounds'])
  *         spectra_vec.push_back(s)             # <<<<<<<<<<<<<<
@@ -25109,7 +25109,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_14decompose_spectra_parallel_per
       __PYX_ERR(0, 457, __pyx_L1_error)
     }
 
-    /* "mass_decomposer_cpp.pyx":450
+    /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":450
  *     spectra_vec.reserve(len(spectra_data_list))
  *     cdef SpectrumWithBounds s
  *     for spec_data in spectra_data_list:             # <<<<<<<<<<<<<<
@@ -25119,7 +25119,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_14decompose_spectra_parallel_per
   }
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-  /* "mass_decomposer_cpp.pyx":460
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":460
  * 
  *     cdef vector[ProperSpectrumResults] all_cpp_results
  *     all_cpp_results = MassDecomposer.decompose_spectra_parallel_per_bounds(spectra_vec, params)             # <<<<<<<<<<<<<<
@@ -25128,7 +25128,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_14decompose_spectra_parallel_per
 */
   __pyx_v_all_cpp_results = MassDecomposer::decompose_spectra_parallel_per_bounds(__pyx_v_spectra_vec, __pyx_v_params);
 
-  /* "mass_decomposer_cpp.pyx":461
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":461
  *     cdef vector[ProperSpectrumResults] all_cpp_results
  *     all_cpp_results = MassDecomposer.decompose_spectra_parallel_per_bounds(spectra_vec, params)
  *     all_python_results = []             # <<<<<<<<<<<<<<
@@ -25140,7 +25140,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_14decompose_spectra_parallel_per
   __pyx_v_all_python_results = ((PyObject*)__pyx_t_1);
   __pyx_t_1 = 0;
 
-  /* "mass_decomposer_cpp.pyx":462
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":462
  *     all_cpp_results = MassDecomposer.decompose_spectra_parallel_per_bounds(spectra_vec, params)
  *     all_python_results = []
  *     for cpp_results in all_cpp_results:             # <<<<<<<<<<<<<<
@@ -25152,7 +25152,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_14decompose_spectra_parallel_per
     __pyx_t_17 = *__pyx_t_16;
     __pyx_v_cpp_results = __pyx_t_17;
 
-    /* "mass_decomposer_cpp.pyx":463
+    /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":463
  *     all_python_results = []
  *     for cpp_results in all_cpp_results:
  *         python_results = []             # <<<<<<<<<<<<<<
@@ -25164,7 +25164,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_14decompose_spectra_parallel_per
     __Pyx_XDECREF_SET(__pyx_v_python_results, ((PyObject*)__pyx_t_1));
     __pyx_t_1 = 0;
 
-    /* "mass_decomposer_cpp.pyx":464
+    /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":464
  *     for cpp_results in all_cpp_results:
  *         python_results = []
  *         for decomp in cpp_results.decompositions:             # <<<<<<<<<<<<<<
@@ -25176,7 +25176,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_14decompose_spectra_parallel_per
       __pyx_t_19 = *__pyx_t_18;
       __pyx_v_decomp = __pyx_t_19;
 
-      /* "mass_decomposer_cpp.pyx":466
+      /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":466
  *         for decomp in cpp_results.decompositions:
  *             py_decomp = {
  *                 'precursor': _convert_formula_to_array(decomp.precursor),             # <<<<<<<<<<<<<<
@@ -25185,12 +25185,12 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_14decompose_spectra_parallel_per
 */
       __pyx_t_1 = __Pyx_PyDict_NewPresized(6); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 466, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_1);
-      __pyx_t_6 = ((PyObject *)__pyx_f_19mass_decomposer_cpp__convert_formula_to_array(__pyx_v_decomp.precursor)); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 466, __pyx_L1_error)
+      __pyx_t_6 = ((PyObject *)__pyx_f_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp__convert_formula_to_array(__pyx_v_decomp.precursor)); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 466, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_6);
       if (PyDict_SetItem(__pyx_t_1, __pyx_mstate_global->__pyx_n_u_precursor, __pyx_t_6) < 0) __PYX_ERR(0, 466, __pyx_L1_error)
       __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
 
-      /* "mass_decomposer_cpp.pyx":467
+      /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":467
  *             py_decomp = {
  *                 'precursor': _convert_formula_to_array(decomp.precursor),
  *                 'precursor_mass': decomp.precursor_mass,             # <<<<<<<<<<<<<<
@@ -25202,7 +25202,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_14decompose_spectra_parallel_per
       if (PyDict_SetItem(__pyx_t_1, __pyx_mstate_global->__pyx_n_u_precursor_mass, __pyx_t_6) < 0) __PYX_ERR(0, 466, __pyx_L1_error)
       __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
 
-      /* "mass_decomposer_cpp.pyx":468
+      /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":468
  *                 'precursor': _convert_formula_to_array(decomp.precursor),
  *                 'precursor_mass': decomp.precursor_mass,
  *                 'precursor_error_ppm': decomp.precursor_error_ppm,             # <<<<<<<<<<<<<<
@@ -25215,7 +25215,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_14decompose_spectra_parallel_per
       __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
       { /* enter inner scope */
 
-        /* "mass_decomposer_cpp.pyx":469
+        /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":469
  *                 'precursor_mass': decomp.precursor_mass,
  *                 'precursor_error_ppm': decomp.precursor_error_ppm,
  *                 'fragments': [[_convert_formula_to_array(f) for f in frag_list] for frag_list in decomp.fragments],             # <<<<<<<<<<<<<<
@@ -25235,7 +25235,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_14decompose_spectra_parallel_per
             for (; __pyx_t_22 != __pyx_9genexpr11__pyx_v_frag_list.end(); ++__pyx_t_22) {
               __pyx_t_15 = *__pyx_t_22;
               __pyx_9genexpr12__pyx_v_f = __PYX_STD_MOVE_IF_SUPPORTED(__pyx_t_15);
-              __pyx_t_8 = ((PyObject *)__pyx_f_19mass_decomposer_cpp__convert_formula_to_array(__pyx_9genexpr12__pyx_v_f)); if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 469, __pyx_L1_error)
+              __pyx_t_8 = ((PyObject *)__pyx_f_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp__convert_formula_to_array(__pyx_9genexpr12__pyx_v_f)); if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 469, __pyx_L1_error)
               __Pyx_GOTREF(__pyx_t_8);
               if (unlikely(__Pyx_ListComp_Append(__pyx_t_7, (PyObject*)__pyx_t_8))) __PYX_ERR(0, 469, __pyx_L1_error)
               __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
@@ -25249,7 +25249,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_14decompose_spectra_parallel_per
       __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
       { /* enter inner scope */
 
-        /* "mass_decomposer_cpp.pyx":470
+        /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":470
  *                 'precursor_error_ppm': decomp.precursor_error_ppm,
  *                 'fragments': [[_convert_formula_to_array(f) for f in frag_list] for frag_list in decomp.fragments],
  *                 'fragment_masses': [list(fm) for fm in decomp.fragment_masses],             # <<<<<<<<<<<<<<
@@ -25275,7 +25275,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_14decompose_spectra_parallel_per
       __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
       { /* enter inner scope */
 
-        /* "mass_decomposer_cpp.pyx":471
+        /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":471
  *                 'fragments': [[_convert_formula_to_array(f) for f in frag_list] for frag_list in decomp.fragments],
  *                 'fragment_masses': [list(fm) for fm in decomp.fragment_masses],
  *                 'fragment_errors_ppm': [list(fe) for fe in decomp.fragment_errors_ppm]             # <<<<<<<<<<<<<<
@@ -25302,7 +25302,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_14decompose_spectra_parallel_per
       __Pyx_XDECREF_SET(__pyx_v_py_decomp, ((PyObject*)__pyx_t_1));
       __pyx_t_1 = 0;
 
-      /* "mass_decomposer_cpp.pyx":473
+      /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":473
  *                 'fragment_errors_ppm': [list(fe) for fe in decomp.fragment_errors_ppm]
  *             }
  *             python_results.append(py_decomp)             # <<<<<<<<<<<<<<
@@ -25311,7 +25311,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_14decompose_spectra_parallel_per
 */
       __pyx_t_24 = __Pyx_PyList_Append(__pyx_v_python_results, __pyx_v_py_decomp); if (unlikely(__pyx_t_24 == ((int)-1))) __PYX_ERR(0, 473, __pyx_L1_error)
 
-      /* "mass_decomposer_cpp.pyx":464
+      /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":464
  *     for cpp_results in all_cpp_results:
  *         python_results = []
  *         for decomp in cpp_results.decompositions:             # <<<<<<<<<<<<<<
@@ -25320,7 +25320,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_14decompose_spectra_parallel_per
 */
     }
 
-    /* "mass_decomposer_cpp.pyx":474
+    /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":474
  *             }
  *             python_results.append(py_decomp)
  *         all_python_results.append(python_results)             # <<<<<<<<<<<<<<
@@ -25329,7 +25329,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_14decompose_spectra_parallel_per
 */
     __pyx_t_24 = __Pyx_PyList_Append(__pyx_v_all_python_results, __pyx_v_python_results); if (unlikely(__pyx_t_24 == ((int)-1))) __PYX_ERR(0, 474, __pyx_L1_error)
 
-    /* "mass_decomposer_cpp.pyx":462
+    /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":462
  *     all_cpp_results = MassDecomposer.decompose_spectra_parallel_per_bounds(spectra_vec, params)
  *     all_python_results = []
  *     for cpp_results in all_cpp_results:             # <<<<<<<<<<<<<<
@@ -25338,7 +25338,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_14decompose_spectra_parallel_per
 */
   }
 
-  /* "mass_decomposer_cpp.pyx":475
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":475
  *             python_results.append(py_decomp)
  *         all_python_results.append(python_results)
  *     return all_python_results             # <<<<<<<<<<<<<<
@@ -25350,7 +25350,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_14decompose_spectra_parallel_per
   __pyx_r = __pyx_v_all_python_results;
   goto __pyx_L0;
 
-  /* "mass_decomposer_cpp.pyx":430
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":430
  *     return all_python_results
  * 
  * def decompose_spectra_parallel_per_bounds(             # <<<<<<<<<<<<<<
@@ -25366,7 +25366,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_14decompose_spectra_parallel_per
   __Pyx_XDECREF(__pyx_t_6);
   __Pyx_XDECREF(__pyx_t_7);
   __Pyx_XDECREF(__pyx_t_8);
-  __Pyx_AddTraceback("mass_decomposer_cpp.decompose_spectra_parallel_per_bounds", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __Pyx_AddTraceback("ms_utils.formula_annotation.mass_decomposition_impl.mass_decomposer_cpp.decompose_spectra_parallel_per_bounds", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __pyx_r = NULL;
   __pyx_L0:;
   __Pyx_XDECREF(__pyx_v_spectra_data_list);
@@ -25380,7 +25380,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_14decompose_spectra_parallel_per
   return __pyx_r;
 }
 
-/* "mass_decomposer_cpp.pyx":477
+/* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":477
  *     return all_python_results
  * 
  * def decompose_spectrum_known_precursor(             # <<<<<<<<<<<<<<
@@ -25389,16 +25389,16 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_14decompose_spectra_parallel_per
 */
 
 /* Python wrapper */
-static PyObject *__pyx_pw_19mass_decomposer_cpp_17decompose_spectrum_known_precursor(PyObject *__pyx_self, 
+static PyObject *__pyx_pw_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp_17decompose_spectrum_known_precursor(PyObject *__pyx_self, 
 #if CYTHON_METH_FASTCALL
 PyObject *const *__pyx_args, Py_ssize_t __pyx_nargs, PyObject *__pyx_kwds
 #else
 PyObject *__pyx_args, PyObject *__pyx_kwds
 #endif
 ); /*proto*/
-PyDoc_STRVAR(__pyx_doc_19mass_decomposer_cpp_16decompose_spectrum_known_precursor, "decompose_spectrum_known_precursor(ndarray precursor_formula: np.ndarray, list fragment_masses: list, ndarray min_bounds: np.ndarray, ndarray max_bounds: np.ndarray, double tolerance_ppm: float = 5.0, int max_results: int = 100000) -> list");
-static PyMethodDef __pyx_mdef_19mass_decomposer_cpp_17decompose_spectrum_known_precursor = {"decompose_spectrum_known_precursor", (PyCFunction)(void(*)(void))(__Pyx_PyCFunction_FastCallWithKeywords)__pyx_pw_19mass_decomposer_cpp_17decompose_spectrum_known_precursor, __Pyx_METH_FASTCALL|METH_KEYWORDS, __pyx_doc_19mass_decomposer_cpp_16decompose_spectrum_known_precursor};
-static PyObject *__pyx_pw_19mass_decomposer_cpp_17decompose_spectrum_known_precursor(PyObject *__pyx_self, 
+PyDoc_STRVAR(__pyx_doc_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp_16decompose_spectrum_known_precursor, "decompose_spectrum_known_precursor(ndarray precursor_formula: np.ndarray, list fragment_masses: list, ndarray min_bounds: np.ndarray, ndarray max_bounds: np.ndarray, double tolerance_ppm: float = 5.0, int max_results: int = 100000) -> list");
+static PyMethodDef __pyx_mdef_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp_17decompose_spectrum_known_precursor = {"decompose_spectrum_known_precursor", (PyCFunction)(void(*)(void))(__Pyx_PyCFunction_FastCallWithKeywords)__pyx_pw_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp_17decompose_spectrum_known_precursor, __Pyx_METH_FASTCALL|METH_KEYWORDS, __pyx_doc_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp_16decompose_spectrum_known_precursor};
+static PyObject *__pyx_pw_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp_17decompose_spectrum_known_precursor(PyObject *__pyx_self, 
 #if CYTHON_METH_FASTCALL
 PyObject *const *__pyx_args, Py_ssize_t __pyx_nargs, PyObject *__pyx_kwds
 #else
@@ -25513,7 +25513,7 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
   for (Py_ssize_t __pyx_temp=0; __pyx_temp < (Py_ssize_t)(sizeof(values)/sizeof(values[0])); ++__pyx_temp) {
     Py_XDECREF(values[__pyx_temp]);
   }
-  __Pyx_AddTraceback("mass_decomposer_cpp.decompose_spectrum_known_precursor", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __Pyx_AddTraceback("ms_utils.formula_annotation.mass_decomposition_impl.mass_decomposer_cpp.decompose_spectrum_known_precursor", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __Pyx_RefNannyFinishContext();
   return NULL;
   __pyx_L4_argument_unpacking_done:;
@@ -25522,7 +25522,7 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
   if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_min_bounds), __pyx_mstate_global->__pyx_ptype_5numpy_ndarray, 0, "min_bounds", 0))) __PYX_ERR(0, 480, __pyx_L1_error)
   if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_max_bounds), __pyx_mstate_global->__pyx_ptype_5numpy_ndarray, 0, "max_bounds", 0))) __PYX_ERR(0, 481, __pyx_L1_error)
   if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_max_results), (&PyLong_Type), 0, "max_results", 2))) __PYX_ERR(0, 483, __pyx_L1_error)
-  __pyx_r = __pyx_pf_19mass_decomposer_cpp_16decompose_spectrum_known_precursor(__pyx_self, __pyx_v_precursor_formula, __pyx_v_fragment_masses, __pyx_v_min_bounds, __pyx_v_max_bounds, __pyx_v_tolerance_ppm, __pyx_v_max_results);
+  __pyx_r = __pyx_pf_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp_16decompose_spectrum_known_precursor(__pyx_self, __pyx_v_precursor_formula, __pyx_v_fragment_masses, __pyx_v_min_bounds, __pyx_v_max_bounds, __pyx_v_tolerance_ppm, __pyx_v_max_results);
 
   /* function exit code */
   goto __pyx_L0;
@@ -25541,7 +25541,7 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
   return __pyx_r;
 }
 
-static PyObject *__pyx_pf_19mass_decomposer_cpp_16decompose_spectrum_known_precursor(CYTHON_UNUSED PyObject *__pyx_self, PyArrayObject *__pyx_v_precursor_formula, PyObject *__pyx_v_fragment_masses, PyArrayObject *__pyx_v_min_bounds, PyArrayObject *__pyx_v_max_bounds, double __pyx_v_tolerance_ppm, PyObject *__pyx_v_max_results) {
+static PyObject *__pyx_pf_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp_16decompose_spectrum_known_precursor(CYTHON_UNUSED PyObject *__pyx_self, PyArrayObject *__pyx_v_precursor_formula, PyObject *__pyx_v_fragment_masses, PyArrayObject *__pyx_v_min_bounds, PyArrayObject *__pyx_v_max_bounds, double __pyx_v_tolerance_ppm, PyObject *__pyx_v_max_results) {
   struct DecompositionParams __pyx_v_params;
   Formula __pyx_v_cpp_precursor;
   Formula __pyx_v_min_b;
@@ -25576,16 +25576,16 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_16decompose_spectrum_known_precu
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("decompose_spectrum_known_precursor", 0);
 
-  /* "mass_decomposer_cpp.pyx":485
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":485
  *     max_results: int = 100000
  * ) -> list:
  *     _validate_bounds_array(precursor_formula, "precursor_formula")             # <<<<<<<<<<<<<<
  *     cdef DecompositionParams params = _convert_params(tolerance_ppm, 0, 100.0, max_results, min_bounds, max_bounds)
  * 
 */
-  __pyx_f_19mass_decomposer_cpp__validate_bounds_array(__pyx_v_precursor_formula, __pyx_mstate_global->__pyx_n_u_precursor_formula); if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 485, __pyx_L1_error)
+  __pyx_f_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp__validate_bounds_array(__pyx_v_precursor_formula, __pyx_mstate_global->__pyx_n_u_precursor_formula); if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 485, __pyx_L1_error)
 
-  /* "mass_decomposer_cpp.pyx":486
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":486
  * ) -> list:
  *     _validate_bounds_array(precursor_formula, "precursor_formula")
  *     cdef DecompositionParams params = _convert_params(tolerance_ppm, 0, 100.0, max_results, min_bounds, max_bounds)             # <<<<<<<<<<<<<<
@@ -25593,30 +25593,30 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_16decompose_spectrum_known_precu
  *     cdef Formula_cpp cpp_precursor = _convert_numpy_to_formula(precursor_formula)
 */
   __pyx_t_1 = __Pyx_PyLong_As_int(__pyx_v_max_results); if (unlikely((__pyx_t_1 == (int)-1) && PyErr_Occurred())) __PYX_ERR(0, 486, __pyx_L1_error)
-  __pyx_t_2 = __pyx_f_19mass_decomposer_cpp__convert_params(__pyx_v_tolerance_ppm, 0.0, 100.0, __pyx_t_1, __pyx_v_min_bounds, __pyx_v_max_bounds); if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 486, __pyx_L1_error)
+  __pyx_t_2 = __pyx_f_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp__convert_params(__pyx_v_tolerance_ppm, 0.0, 100.0, __pyx_t_1, __pyx_v_min_bounds, __pyx_v_max_bounds); if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 486, __pyx_L1_error)
   __pyx_v_params = __pyx_t_2;
 
-  /* "mass_decomposer_cpp.pyx":488
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":488
  *     cdef DecompositionParams params = _convert_params(tolerance_ppm, 0, 100.0, max_results, min_bounds, max_bounds)
  * 
  *     cdef Formula_cpp cpp_precursor = _convert_numpy_to_formula(precursor_formula)             # <<<<<<<<<<<<<<
  *     cdef Formula_cpp min_b = _convert_numpy_to_formula(min_bounds)
  * 
 */
-  __pyx_t_3 = __pyx_f_19mass_decomposer_cpp__convert_numpy_to_formula(__pyx_v_precursor_formula); if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 488, __pyx_L1_error)
+  __pyx_t_3 = __pyx_f_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp__convert_numpy_to_formula(__pyx_v_precursor_formula); if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 488, __pyx_L1_error)
   __pyx_v_cpp_precursor = __PYX_STD_MOVE_IF_SUPPORTED(__pyx_t_3);
 
-  /* "mass_decomposer_cpp.pyx":489
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":489
  * 
  *     cdef Formula_cpp cpp_precursor = _convert_numpy_to_formula(precursor_formula)
  *     cdef Formula_cpp min_b = _convert_numpy_to_formula(min_bounds)             # <<<<<<<<<<<<<<
  * 
  *     cdef vector[double] frag_masses_vec = fragment_masses
 */
-  __pyx_t_3 = __pyx_f_19mass_decomposer_cpp__convert_numpy_to_formula(__pyx_v_min_bounds); if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 489, __pyx_L1_error)
+  __pyx_t_3 = __pyx_f_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp__convert_numpy_to_formula(__pyx_v_min_bounds); if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 489, __pyx_L1_error)
   __pyx_v_min_b = __PYX_STD_MOVE_IF_SUPPORTED(__pyx_t_3);
 
-  /* "mass_decomposer_cpp.pyx":491
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":491
  *     cdef Formula_cpp min_b = _convert_numpy_to_formula(min_bounds)
  * 
  *     cdef vector[double] frag_masses_vec = fragment_masses             # <<<<<<<<<<<<<<
@@ -25626,7 +25626,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_16decompose_spectrum_known_precu
   __pyx_t_4 = __pyx_convert_vector_from_py_double(__pyx_v_fragment_masses); if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 491, __pyx_L1_error)
   __pyx_v_frag_masses_vec = __PYX_STD_MOVE_IF_SUPPORTED(__pyx_t_4);
 
-  /* "mass_decomposer_cpp.pyx":492
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":492
  * 
  *     cdef vector[double] frag_masses_vec = fragment_masses
  *     cdef MassDecomposer* decomposer = new MassDecomposer(min_b, cpp_precursor)             # <<<<<<<<<<<<<<
@@ -25635,7 +25635,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_16decompose_spectrum_known_precu
 */
   __pyx_v_decomposer = new MassDecomposer(__pyx_v_min_b, __pyx_v_cpp_precursor);
 
-  /* "mass_decomposer_cpp.pyx":495
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":495
  *     cdef vector[vector[Formula_cpp]] results
  * 
  *     try:             # <<<<<<<<<<<<<<
@@ -25644,7 +25644,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_16decompose_spectrum_known_precu
 */
   /*try:*/ {
 
-    /* "mass_decomposer_cpp.pyx":496
+    /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":496
  * 
  *     try:
  *         results = decomposer.decompose_spectrum_known_precursor(cpp_precursor, frag_masses_vec, params)             # <<<<<<<<<<<<<<
@@ -25653,7 +25653,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_16decompose_spectrum_known_precu
 */
     __pyx_v_results = __pyx_v_decomposer->decompose_spectrum_known_precursor(__pyx_v_cpp_precursor, __pyx_v_frag_masses_vec, __pyx_v_params);
 
-    /* "mass_decomposer_cpp.pyx":497
+    /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":497
  *     try:
  *         results = decomposer.decompose_spectrum_known_precursor(cpp_precursor, frag_masses_vec, params)
  *         return [[_convert_formula_to_array(f) for f in res] for res in results]             # <<<<<<<<<<<<<<
@@ -25675,7 +25675,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_16decompose_spectrum_known_precu
           for (; __pyx_t_9 != __pyx_9genexpr15__pyx_v_res.end(); ++__pyx_t_9) {
             __pyx_t_3 = *__pyx_t_9;
             __pyx_9genexpr16__pyx_v_f = __PYX_STD_MOVE_IF_SUPPORTED(__pyx_t_3);
-            __pyx_t_10 = ((PyObject *)__pyx_f_19mass_decomposer_cpp__convert_formula_to_array(__pyx_9genexpr16__pyx_v_f)); if (unlikely(!__pyx_t_10)) __PYX_ERR(0, 497, __pyx_L4_error)
+            __pyx_t_10 = ((PyObject *)__pyx_f_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp__convert_formula_to_array(__pyx_9genexpr16__pyx_v_f)); if (unlikely(!__pyx_t_10)) __PYX_ERR(0, 497, __pyx_L4_error)
             __Pyx_GOTREF(__pyx_t_10);
             if (unlikely(__Pyx_ListComp_Append(__pyx_t_8, (PyObject*)__pyx_t_10))) __PYX_ERR(0, 497, __pyx_L4_error)
             __Pyx_DECREF(__pyx_t_10); __pyx_t_10 = 0;
@@ -25690,7 +25690,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_16decompose_spectrum_known_precu
     goto __pyx_L3_return;
   }
 
-  /* "mass_decomposer_cpp.pyx":499
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":499
  *         return [[_convert_formula_to_array(f) for f in res] for res in results]
  *     finally:
  *         del decomposer             # <<<<<<<<<<<<<<
@@ -25740,7 +25740,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_16decompose_spectrum_known_precu
     }
   }
 
-  /* "mass_decomposer_cpp.pyx":477
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":477
  *     return all_python_results
  * 
  * def decompose_spectrum_known_precursor(             # <<<<<<<<<<<<<<
@@ -25753,7 +25753,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_16decompose_spectrum_known_precu
   __Pyx_XDECREF(__pyx_t_5);
   __Pyx_XDECREF(__pyx_t_8);
   __Pyx_XDECREF(__pyx_t_10);
-  __Pyx_AddTraceback("mass_decomposer_cpp.decompose_spectrum_known_precursor", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __Pyx_AddTraceback("ms_utils.formula_annotation.mass_decomposition_impl.mass_decomposer_cpp.decompose_spectrum_known_precursor", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __pyx_r = NULL;
   __pyx_L0:;
   __Pyx_XGIVEREF(__pyx_r);
@@ -25761,7 +25761,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_16decompose_spectrum_known_precu
   return __pyx_r;
 }
 
-/* "mass_decomposer_cpp.pyx":501
+/* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":501
  *         del decomposer
  * 
  * def decompose_spectra_known_precursor_parallel(             # <<<<<<<<<<<<<<
@@ -25770,16 +25770,16 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_16decompose_spectrum_known_precu
 */
 
 /* Python wrapper */
-static PyObject *__pyx_pw_19mass_decomposer_cpp_19decompose_spectra_known_precursor_parallel(PyObject *__pyx_self, 
+static PyObject *__pyx_pw_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp_19decompose_spectra_known_precursor_parallel(PyObject *__pyx_self, 
 #if CYTHON_METH_FASTCALL
 PyObject *const *__pyx_args, Py_ssize_t __pyx_nargs, PyObject *__pyx_kwds
 #else
 PyObject *__pyx_args, PyObject *__pyx_kwds
 #endif
 ); /*proto*/
-PyDoc_STRVAR(__pyx_doc_19mass_decomposer_cpp_18decompose_spectra_known_precursor_parallel, "decompose_spectra_known_precursor_parallel(spectra_data: Iterable[dict], ndarray min_bounds: np.ndarray, ndarray max_bounds: np.ndarray, double tolerance_ppm: float = 5.0, int max_results: int = 100000) -> list");
-static PyMethodDef __pyx_mdef_19mass_decomposer_cpp_19decompose_spectra_known_precursor_parallel = {"decompose_spectra_known_precursor_parallel", (PyCFunction)(void(*)(void))(__Pyx_PyCFunction_FastCallWithKeywords)__pyx_pw_19mass_decomposer_cpp_19decompose_spectra_known_precursor_parallel, __Pyx_METH_FASTCALL|METH_KEYWORDS, __pyx_doc_19mass_decomposer_cpp_18decompose_spectra_known_precursor_parallel};
-static PyObject *__pyx_pw_19mass_decomposer_cpp_19decompose_spectra_known_precursor_parallel(PyObject *__pyx_self, 
+PyDoc_STRVAR(__pyx_doc_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp_18decompose_spectra_known_precursor_parallel, "decompose_spectra_known_precursor_parallel(spectra_data: Iterable[dict], ndarray min_bounds: np.ndarray, ndarray max_bounds: np.ndarray, double tolerance_ppm: float = 5.0, int max_results: int = 100000) -> list");
+static PyMethodDef __pyx_mdef_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp_19decompose_spectra_known_precursor_parallel = {"decompose_spectra_known_precursor_parallel", (PyCFunction)(void(*)(void))(__Pyx_PyCFunction_FastCallWithKeywords)__pyx_pw_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp_19decompose_spectra_known_precursor_parallel, __Pyx_METH_FASTCALL|METH_KEYWORDS, __pyx_doc_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp_18decompose_spectra_known_precursor_parallel};
+static PyObject *__pyx_pw_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp_19decompose_spectra_known_precursor_parallel(PyObject *__pyx_self, 
 #if CYTHON_METH_FASTCALL
 PyObject *const *__pyx_args, Py_ssize_t __pyx_nargs, PyObject *__pyx_kwds
 #else
@@ -25886,14 +25886,14 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
   for (Py_ssize_t __pyx_temp=0; __pyx_temp < (Py_ssize_t)(sizeof(values)/sizeof(values[0])); ++__pyx_temp) {
     Py_XDECREF(values[__pyx_temp]);
   }
-  __Pyx_AddTraceback("mass_decomposer_cpp.decompose_spectra_known_precursor_parallel", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __Pyx_AddTraceback("ms_utils.formula_annotation.mass_decomposition_impl.mass_decomposer_cpp.decompose_spectra_known_precursor_parallel", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __Pyx_RefNannyFinishContext();
   return NULL;
   __pyx_L4_argument_unpacking_done:;
   if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_min_bounds), __pyx_mstate_global->__pyx_ptype_5numpy_ndarray, 0, "min_bounds", 0))) __PYX_ERR(0, 503, __pyx_L1_error)
   if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_max_bounds), __pyx_mstate_global->__pyx_ptype_5numpy_ndarray, 0, "max_bounds", 0))) __PYX_ERR(0, 504, __pyx_L1_error)
   if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_max_results), (&PyLong_Type), 0, "max_results", 2))) __PYX_ERR(0, 506, __pyx_L1_error)
-  __pyx_r = __pyx_pf_19mass_decomposer_cpp_18decompose_spectra_known_precursor_parallel(__pyx_self, __pyx_v_spectra_data, __pyx_v_min_bounds, __pyx_v_max_bounds, __pyx_v_tolerance_ppm, __pyx_v_max_results);
+  __pyx_r = __pyx_pf_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp_18decompose_spectra_known_precursor_parallel(__pyx_self, __pyx_v_spectra_data, __pyx_v_min_bounds, __pyx_v_max_bounds, __pyx_v_tolerance_ppm, __pyx_v_max_results);
 
   /* function exit code */
   goto __pyx_L0;
@@ -25912,7 +25912,7 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
   return __pyx_r;
 }
 
-static PyObject *__pyx_pf_19mass_decomposer_cpp_18decompose_spectra_known_precursor_parallel(CYTHON_UNUSED PyObject *__pyx_self, PyObject *__pyx_v_spectra_data, PyArrayObject *__pyx_v_min_bounds, PyArrayObject *__pyx_v_max_bounds, double __pyx_v_tolerance_ppm, PyObject *__pyx_v_max_results) {
+static PyObject *__pyx_pf_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp_18decompose_spectra_known_precursor_parallel(CYTHON_UNUSED PyObject *__pyx_self, PyObject *__pyx_v_spectra_data, PyArrayObject *__pyx_v_min_bounds, PyArrayObject *__pyx_v_max_bounds, double __pyx_v_tolerance_ppm, PyObject *__pyx_v_max_results) {
   PyObject *__pyx_v_spectra_data_list = NULL;
   struct DecompositionParams __pyx_v_params;
   std::vector<struct SpectrumWithKnownPrecursor>  __pyx_v_spectra_vec;
@@ -25947,7 +25947,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_18decompose_spectra_known_precur
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("decompose_spectra_known_precursor_parallel", 0);
 
-  /* "mass_decomposer_cpp.pyx":509
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":509
  * ) -> list:
  *     # Convert iterable to list to allow checking for emptiness and getting length
  *     spectra_data_list = list(spectra_data)             # <<<<<<<<<<<<<<
@@ -25959,7 +25959,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_18decompose_spectra_known_precur
   __pyx_v_spectra_data_list = ((PyObject*)__pyx_t_1);
   __pyx_t_1 = 0;
 
-  /* "mass_decomposer_cpp.pyx":510
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":510
  *     # Convert iterable to list to allow checking for emptiness and getting length
  *     spectra_data_list = list(spectra_data)
  *     if not spectra_data_list:             # <<<<<<<<<<<<<<
@@ -25971,7 +25971,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_18decompose_spectra_known_precur
   __pyx_t_3 = (!__pyx_t_2);
   if (__pyx_t_3) {
 
-    /* "mass_decomposer_cpp.pyx":511
+    /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":511
  *     spectra_data_list = list(spectra_data)
  *     if not spectra_data_list:
  *         return []             # <<<<<<<<<<<<<<
@@ -25985,7 +25985,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_18decompose_spectra_known_precur
     __pyx_t_1 = 0;
     goto __pyx_L0;
 
-    /* "mass_decomposer_cpp.pyx":510
+    /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":510
  *     # Convert iterable to list to allow checking for emptiness and getting length
  *     spectra_data_list = list(spectra_data)
  *     if not spectra_data_list:             # <<<<<<<<<<<<<<
@@ -25994,7 +25994,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_18decompose_spectra_known_precur
 */
   }
 
-  /* "mass_decomposer_cpp.pyx":512
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":512
  *     if not spectra_data_list:
  *         return []
  *     cdef DecompositionParams params = _convert_params(tolerance_ppm, 0, 100.0,  max_results, min_bounds, max_bounds)             # <<<<<<<<<<<<<<
@@ -26002,10 +26002,10 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_18decompose_spectra_known_precur
  *     cdef vector[SpectrumWithKnownPrecursor] spectra_vec
 */
   __pyx_t_4 = __Pyx_PyLong_As_int(__pyx_v_max_results); if (unlikely((__pyx_t_4 == (int)-1) && PyErr_Occurred())) __PYX_ERR(0, 512, __pyx_L1_error)
-  __pyx_t_5 = __pyx_f_19mass_decomposer_cpp__convert_params(__pyx_v_tolerance_ppm, 0.0, 100.0, __pyx_t_4, __pyx_v_min_bounds, __pyx_v_max_bounds); if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 512, __pyx_L1_error)
+  __pyx_t_5 = __pyx_f_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp__convert_params(__pyx_v_tolerance_ppm, 0.0, 100.0, __pyx_t_4, __pyx_v_min_bounds, __pyx_v_max_bounds); if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 512, __pyx_L1_error)
   __pyx_v_params = __pyx_t_5;
 
-  /* "mass_decomposer_cpp.pyx":515
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":515
  * 
  *     cdef vector[SpectrumWithKnownPrecursor] spectra_vec
  *     spectra_vec.reserve(len(spectra_data_list))             # <<<<<<<<<<<<<<
@@ -26020,7 +26020,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_18decompose_spectra_known_precur
     __PYX_ERR(0, 515, __pyx_L1_error)
   }
 
-  /* "mass_decomposer_cpp.pyx":517
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":517
  *     spectra_vec.reserve(len(spectra_data_list))
  *     cdef SpectrumWithKnownPrecursor s
  *     for i, spec_data in enumerate(spectra_data_list):             # <<<<<<<<<<<<<<
@@ -26053,7 +26053,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_18decompose_spectra_known_precur
     __pyx_t_1 = __pyx_t_8;
     __pyx_t_8 = 0;
 
-    /* "mass_decomposer_cpp.pyx":518
+    /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":518
  *     cdef SpectrumWithKnownPrecursor s
  *     for i, spec_data in enumerate(spectra_data_list):
  *         precursor_formula_arr = spec_data['precursor_formula']             # <<<<<<<<<<<<<<
@@ -26065,7 +26065,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_18decompose_spectra_known_precur
     __Pyx_XDECREF_SET(__pyx_v_precursor_formula_arr, __pyx_t_8);
     __pyx_t_8 = 0;
 
-    /* "mass_decomposer_cpp.pyx":519
+    /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":519
  *     for i, spec_data in enumerate(spectra_data_list):
  *         precursor_formula_arr = spec_data['precursor_formula']
  *         _validate_bounds_array(precursor_formula_arr, f"precursor_formula in spectra_data at index {i}")             # <<<<<<<<<<<<<<
@@ -26078,10 +26078,10 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_18decompose_spectra_known_precur
     __pyx_t_9 = __Pyx_PyUnicode_Concat(__pyx_mstate_global->__pyx_kp_u_precursor_formula_in_spectra_dat, __pyx_t_8); if (unlikely(!__pyx_t_9)) __PYX_ERR(0, 519, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_9);
     __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
-    __pyx_f_19mass_decomposer_cpp__validate_bounds_array(((PyArrayObject *)__pyx_v_precursor_formula_arr), ((PyObject*)__pyx_t_9)); if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 519, __pyx_L1_error)
+    __pyx_f_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp__validate_bounds_array(((PyArrayObject *)__pyx_v_precursor_formula_arr), ((PyObject*)__pyx_t_9)); if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 519, __pyx_L1_error)
     __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
 
-    /* "mass_decomposer_cpp.pyx":520
+    /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":520
  *         precursor_formula_arr = spec_data['precursor_formula']
  *         _validate_bounds_array(precursor_formula_arr, f"precursor_formula in spectra_data at index {i}")
  *         s.precursor_formula = _convert_numpy_to_formula(precursor_formula_arr)             # <<<<<<<<<<<<<<
@@ -26089,10 +26089,10 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_18decompose_spectra_known_precur
  *         spectra_vec.push_back(s)
 */
     if (!(likely(((__pyx_v_precursor_formula_arr) == Py_None) || likely(__Pyx_TypeTest(__pyx_v_precursor_formula_arr, __pyx_mstate_global->__pyx_ptype_5numpy_ndarray))))) __PYX_ERR(0, 520, __pyx_L1_error)
-    __pyx_t_10 = __pyx_f_19mass_decomposer_cpp__convert_numpy_to_formula(((PyArrayObject *)__pyx_v_precursor_formula_arr)); if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 520, __pyx_L1_error)
+    __pyx_t_10 = __pyx_f_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp__convert_numpy_to_formula(((PyArrayObject *)__pyx_v_precursor_formula_arr)); if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 520, __pyx_L1_error)
     __pyx_v_s.precursor_formula = __PYX_STD_MOVE_IF_SUPPORTED(__pyx_t_10);
 
-    /* "mass_decomposer_cpp.pyx":521
+    /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":521
  *         _validate_bounds_array(precursor_formula_arr, f"precursor_formula in spectra_data at index {i}")
  *         s.precursor_formula = _convert_numpy_to_formula(precursor_formula_arr)
  *         s.fragment_masses = spec_data['fragment_masses']             # <<<<<<<<<<<<<<
@@ -26105,7 +26105,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_18decompose_spectra_known_precur
     __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
     __pyx_v_s.fragment_masses = __PYX_STD_MOVE_IF_SUPPORTED(__pyx_t_11);
 
-    /* "mass_decomposer_cpp.pyx":522
+    /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":522
  *         s.precursor_formula = _convert_numpy_to_formula(precursor_formula_arr)
  *         s.fragment_masses = spec_data['fragment_masses']
  *         spectra_vec.push_back(s)             # <<<<<<<<<<<<<<
@@ -26119,7 +26119,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_18decompose_spectra_known_precur
       __PYX_ERR(0, 522, __pyx_L1_error)
     }
 
-    /* "mass_decomposer_cpp.pyx":517
+    /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":517
  *     spectra_vec.reserve(len(spectra_data_list))
  *     cdef SpectrumWithKnownPrecursor s
  *     for i, spec_data in enumerate(spectra_data_list):             # <<<<<<<<<<<<<<
@@ -26130,7 +26130,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_18decompose_spectra_known_precur
   __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-  /* "mass_decomposer_cpp.pyx":525
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":525
  * 
  *     cdef vector[vector[vector[Formula_cpp]]] all_results
  *     all_results = MassDecomposer.decompose_spectra_known_precursor_parallel(spectra_vec, params)             # <<<<<<<<<<<<<<
@@ -26138,7 +26138,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_18decompose_spectra_known_precur
 */
   __pyx_v_all_results = MassDecomposer::decompose_spectra_known_precursor_parallel(__pyx_v_spectra_vec, __pyx_v_params);
 
-  /* "mass_decomposer_cpp.pyx":526
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":526
  *     cdef vector[vector[vector[Formula_cpp]]] all_results
  *     all_results = MassDecomposer.decompose_spectra_known_precursor_parallel(spectra_vec, params)
  *     return [[[_convert_formula_to_array(f) for f in res] for res in spec_res] for spec_res in all_results]             # <<<<<<<<<<<<<<
@@ -26165,7 +26165,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_18decompose_spectra_known_precur
             for (; __pyx_t_16 != __pyx_9genexpr18__pyx_v_res.end(); ++__pyx_t_16) {
               __pyx_t_10 = *__pyx_t_16;
               __pyx_9genexpr19__pyx_v_f = __PYX_STD_MOVE_IF_SUPPORTED(__pyx_t_10);
-              __pyx_t_8 = ((PyObject *)__pyx_f_19mass_decomposer_cpp__convert_formula_to_array(__pyx_9genexpr19__pyx_v_f)); if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 526, __pyx_L1_error)
+              __pyx_t_8 = ((PyObject *)__pyx_f_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp__convert_formula_to_array(__pyx_9genexpr19__pyx_v_f)); if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 526, __pyx_L1_error)
               __Pyx_GOTREF(__pyx_t_8);
               if (unlikely(__Pyx_ListComp_Append(__pyx_t_9, (PyObject*)__pyx_t_8))) __PYX_ERR(0, 526, __pyx_L1_error)
               __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
@@ -26183,7 +26183,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_18decompose_spectra_known_precur
   __pyx_t_1 = 0;
   goto __pyx_L0;
 
-  /* "mass_decomposer_cpp.pyx":501
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":501
  *         del decomposer
  * 
  * def decompose_spectra_known_precursor_parallel(             # <<<<<<<<<<<<<<
@@ -26197,7 +26197,7 @@ static PyObject *__pyx_pf_19mass_decomposer_cpp_18decompose_spectra_known_precur
   __Pyx_XDECREF(__pyx_t_7);
   __Pyx_XDECREF(__pyx_t_8);
   __Pyx_XDECREF(__pyx_t_9);
-  __Pyx_AddTraceback("mass_decomposer_cpp.decompose_spectra_known_precursor_parallel", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __Pyx_AddTraceback("ms_utils.formula_annotation.mass_decomposition_impl.mass_decomposer_cpp.decompose_spectra_known_precursor_parallel", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __pyx_r = NULL;
   __pyx_L0:;
   __Pyx_XDECREF(__pyx_v_spectra_data_list);
@@ -26340,7 +26340,7 @@ static PyType_Slot __pyx_type___pyx_array_slots[] = {
   {0, 0},
 };
 static PyType_Spec __pyx_type___pyx_array_spec = {
-  "mass_decomposer_cpp.array",
+  "ms_utils.formula_annotation.mass_decomposition_impl.mass_decomposer_cpp.array",
   sizeof(struct __pyx_array_obj),
   0,
   Py_TPFLAGS_DEFAULT|Py_TPFLAGS_HAVE_VERSION_TAG|Py_TPFLAGS_CHECKTYPES|Py_TPFLAGS_HAVE_NEWBUFFER|Py_TPFLAGS_BASETYPE|Py_TPFLAGS_SEQUENCE,
@@ -26374,7 +26374,7 @@ static PyBufferProcs __pyx_tp_as_buffer_array = {
 
 static PyTypeObject __pyx_type___pyx_array = {
   PyVarObject_HEAD_INIT(0, 0)
-  "mass_decomposer_cpp.""array", /*tp_name*/
+  "ms_utils.formula_annotation.mass_decomposition_impl.mass_decomposer_cpp.""array", /*tp_name*/
   sizeof(struct __pyx_array_obj), /*tp_basicsize*/
   0, /*tp_itemsize*/
   __pyx_tp_dealloc_array, /*tp_dealloc*/
@@ -26529,7 +26529,7 @@ static PyType_Slot __pyx_type___pyx_MemviewEnum_slots[] = {
   {0, 0},
 };
 static PyType_Spec __pyx_type___pyx_MemviewEnum_spec = {
-  "mass_decomposer_cpp.Enum",
+  "ms_utils.formula_annotation.mass_decomposition_impl.mass_decomposer_cpp.Enum",
   sizeof(struct __pyx_MemviewEnum_obj),
   0,
   Py_TPFLAGS_DEFAULT|Py_TPFLAGS_HAVE_VERSION_TAG|Py_TPFLAGS_CHECKTYPES|Py_TPFLAGS_HAVE_NEWBUFFER|Py_TPFLAGS_BASETYPE|Py_TPFLAGS_HAVE_GC,
@@ -26539,7 +26539,7 @@ static PyType_Spec __pyx_type___pyx_MemviewEnum_spec = {
 
 static PyTypeObject __pyx_type___pyx_MemviewEnum = {
   PyVarObject_HEAD_INIT(0, 0)
-  "mass_decomposer_cpp.""Enum", /*tp_name*/
+  "ms_utils.formula_annotation.mass_decomposition_impl.mass_decomposer_cpp.""Enum", /*tp_name*/
   sizeof(struct __pyx_MemviewEnum_obj), /*tp_basicsize*/
   0, /*tp_itemsize*/
   __pyx_tp_dealloc_Enum, /*tp_dealloc*/
@@ -26824,7 +26824,7 @@ static PyType_Slot __pyx_type___pyx_memoryview_slots[] = {
   {0, 0},
 };
 static PyType_Spec __pyx_type___pyx_memoryview_spec = {
-  "mass_decomposer_cpp.memoryview",
+  "ms_utils.formula_annotation.mass_decomposition_impl.mass_decomposer_cpp.memoryview",
   sizeof(struct __pyx_memoryview_obj),
   0,
   Py_TPFLAGS_DEFAULT|Py_TPFLAGS_HAVE_VERSION_TAG|Py_TPFLAGS_CHECKTYPES|Py_TPFLAGS_HAVE_NEWBUFFER|Py_TPFLAGS_BASETYPE|Py_TPFLAGS_HAVE_GC,
@@ -26858,7 +26858,7 @@ static PyBufferProcs __pyx_tp_as_buffer_memoryview = {
 
 static PyTypeObject __pyx_type___pyx_memoryview = {
   PyVarObject_HEAD_INIT(0, 0)
-  "mass_decomposer_cpp.""memoryview", /*tp_name*/
+  "ms_utils.formula_annotation.mass_decomposition_impl.mass_decomposer_cpp.""memoryview", /*tp_name*/
   sizeof(struct __pyx_memoryview_obj), /*tp_basicsize*/
   0, /*tp_itemsize*/
   __pyx_tp_dealloc_memoryview, /*tp_dealloc*/
@@ -27008,7 +27008,7 @@ static PyType_Slot __pyx_type___pyx_memoryviewslice_slots[] = {
   {0, 0},
 };
 static PyType_Spec __pyx_type___pyx_memoryviewslice_spec = {
-  "mass_decomposer_cpp._memoryviewslice",
+  "ms_utils.formula_annotation.mass_decomposition_impl.mass_decomposer_cpp._memoryviewslice",
   sizeof(struct __pyx_memoryviewslice_obj),
   0,
   Py_TPFLAGS_DEFAULT|Py_TPFLAGS_HAVE_VERSION_TAG|Py_TPFLAGS_CHECKTYPES|Py_TPFLAGS_HAVE_NEWBUFFER|Py_TPFLAGS_BASETYPE|Py_TPFLAGS_HAVE_GC|Py_TPFLAGS_SEQUENCE,
@@ -27018,7 +27018,7 @@ static PyType_Spec __pyx_type___pyx_memoryviewslice_spec = {
 
 static PyTypeObject __pyx_type___pyx_memoryviewslice = {
   PyVarObject_HEAD_INIT(0, 0)
-  "mass_decomposer_cpp.""_memoryviewslice", /*tp_name*/
+  "ms_utils.formula_annotation.mass_decomposition_impl.mass_decomposer_cpp.""_memoryviewslice", /*tp_name*/
   sizeof(struct __pyx_memoryviewslice_obj), /*tp_basicsize*/
   0, /*tp_itemsize*/
   __pyx_tp_dealloc__memoryviewslice, /*tp_dealloc*/
@@ -27305,7 +27305,7 @@ static int __Pyx_modinit_type_import_code(__pyx_mstatetype *__pyx_mstate) {
   #endif
   __Pyx_ImportType_CheckSize_Warn_3_1_2); if (!__pyx_mstate->__pyx_ptype_7cpython_4type_type) __PYX_ERR(3, 9, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-  __pyx_t_1 = PyImport_ImportModule("numpy"); if (unlikely(!__pyx_t_1)) __PYX_ERR(2, 272, __pyx_L1_error)
+  __pyx_t_1 = PyImport_ImportModule("numpy"); if (unlikely(!__pyx_t_1)) __PYX_ERR(2, 228, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_mstate->__pyx_ptype_5numpy_dtype = __Pyx_ImportType_3_1_2(__pyx_t_1, "numpy", "dtype",
   #if defined(PYPY_VERSION_NUM) && PYPY_VERSION_NUM < 0x050B0000
@@ -27315,7 +27315,7 @@ static int __Pyx_modinit_type_import_code(__pyx_mstatetype *__pyx_mstate) {
   #else
   sizeof(PyArray_Descr), __PYX_GET_STRUCT_ALIGNMENT_3_1_2(PyArray_Descr),
   #endif
-  __Pyx_ImportType_CheckSize_Ignore_3_1_2); if (!__pyx_mstate->__pyx_ptype_5numpy_dtype) __PYX_ERR(2, 272, __pyx_L1_error)
+  __Pyx_ImportType_CheckSize_Ignore_3_1_2); if (!__pyx_mstate->__pyx_ptype_5numpy_dtype) __PYX_ERR(2, 228, __pyx_L1_error)
   __pyx_mstate->__pyx_ptype_5numpy_flatiter = __Pyx_ImportType_3_1_2(__pyx_t_1, "numpy", "flatiter",
   #if defined(PYPY_VERSION_NUM) && PYPY_VERSION_NUM < 0x050B0000
   sizeof(PyArrayIterObject), __PYX_GET_STRUCT_ALIGNMENT_3_1_2(PyArrayIterObject),
@@ -27324,7 +27324,7 @@ static int __Pyx_modinit_type_import_code(__pyx_mstatetype *__pyx_mstate) {
   #else
   sizeof(PyArrayIterObject), __PYX_GET_STRUCT_ALIGNMENT_3_1_2(PyArrayIterObject),
   #endif
-  __Pyx_ImportType_CheckSize_Ignore_3_1_2); if (!__pyx_mstate->__pyx_ptype_5numpy_flatiter) __PYX_ERR(2, 317, __pyx_L1_error)
+  __Pyx_ImportType_CheckSize_Ignore_3_1_2); if (!__pyx_mstate->__pyx_ptype_5numpy_flatiter) __PYX_ERR(2, 273, __pyx_L1_error)
   __pyx_mstate->__pyx_ptype_5numpy_broadcast = __Pyx_ImportType_3_1_2(__pyx_t_1, "numpy", "broadcast",
   #if defined(PYPY_VERSION_NUM) && PYPY_VERSION_NUM < 0x050B0000
   sizeof(PyArrayMultiIterObject), __PYX_GET_STRUCT_ALIGNMENT_3_1_2(PyArrayMultiIterObject),
@@ -27333,7 +27333,7 @@ static int __Pyx_modinit_type_import_code(__pyx_mstatetype *__pyx_mstate) {
   #else
   sizeof(PyArrayMultiIterObject), __PYX_GET_STRUCT_ALIGNMENT_3_1_2(PyArrayMultiIterObject),
   #endif
-  __Pyx_ImportType_CheckSize_Ignore_3_1_2); if (!__pyx_mstate->__pyx_ptype_5numpy_broadcast) __PYX_ERR(2, 321, __pyx_L1_error)
+  __Pyx_ImportType_CheckSize_Ignore_3_1_2); if (!__pyx_mstate->__pyx_ptype_5numpy_broadcast) __PYX_ERR(2, 277, __pyx_L1_error)
   __pyx_mstate->__pyx_ptype_5numpy_ndarray = __Pyx_ImportType_3_1_2(__pyx_t_1, "numpy", "ndarray",
   #if defined(PYPY_VERSION_NUM) && PYPY_VERSION_NUM < 0x050B0000
   sizeof(PyArrayObject), __PYX_GET_STRUCT_ALIGNMENT_3_1_2(PyArrayObject),
@@ -27342,7 +27342,7 @@ static int __Pyx_modinit_type_import_code(__pyx_mstatetype *__pyx_mstate) {
   #else
   sizeof(PyArrayObject), __PYX_GET_STRUCT_ALIGNMENT_3_1_2(PyArrayObject),
   #endif
-  __Pyx_ImportType_CheckSize_Ignore_3_1_2); if (!__pyx_mstate->__pyx_ptype_5numpy_ndarray) __PYX_ERR(2, 360, __pyx_L1_error)
+  __Pyx_ImportType_CheckSize_Ignore_3_1_2); if (!__pyx_mstate->__pyx_ptype_5numpy_ndarray) __PYX_ERR(2, 316, __pyx_L1_error)
   __pyx_mstate->__pyx_ptype_5numpy_generic = __Pyx_ImportType_3_1_2(__pyx_t_1, "numpy", "generic",
   #if defined(PYPY_VERSION_NUM) && PYPY_VERSION_NUM < 0x050B0000
   sizeof(PyObject), __PYX_GET_STRUCT_ALIGNMENT_3_1_2(PyObject),
@@ -27351,7 +27351,7 @@ static int __Pyx_modinit_type_import_code(__pyx_mstatetype *__pyx_mstate) {
   #else
   sizeof(PyObject), __PYX_GET_STRUCT_ALIGNMENT_3_1_2(PyObject),
   #endif
-  __Pyx_ImportType_CheckSize_Warn_3_1_2); if (!__pyx_mstate->__pyx_ptype_5numpy_generic) __PYX_ERR(2, 873, __pyx_L1_error)
+  __Pyx_ImportType_CheckSize_Warn_3_1_2); if (!__pyx_mstate->__pyx_ptype_5numpy_generic) __PYX_ERR(2, 825, __pyx_L1_error)
   __pyx_mstate->__pyx_ptype_5numpy_number = __Pyx_ImportType_3_1_2(__pyx_t_1, "numpy", "number",
   #if defined(PYPY_VERSION_NUM) && PYPY_VERSION_NUM < 0x050B0000
   sizeof(PyObject), __PYX_GET_STRUCT_ALIGNMENT_3_1_2(PyObject),
@@ -27360,7 +27360,7 @@ static int __Pyx_modinit_type_import_code(__pyx_mstatetype *__pyx_mstate) {
   #else
   sizeof(PyObject), __PYX_GET_STRUCT_ALIGNMENT_3_1_2(PyObject),
   #endif
-  __Pyx_ImportType_CheckSize_Warn_3_1_2); if (!__pyx_mstate->__pyx_ptype_5numpy_number) __PYX_ERR(2, 875, __pyx_L1_error)
+  __Pyx_ImportType_CheckSize_Warn_3_1_2); if (!__pyx_mstate->__pyx_ptype_5numpy_number) __PYX_ERR(2, 827, __pyx_L1_error)
   __pyx_mstate->__pyx_ptype_5numpy_integer = __Pyx_ImportType_3_1_2(__pyx_t_1, "numpy", "integer",
   #if defined(PYPY_VERSION_NUM) && PYPY_VERSION_NUM < 0x050B0000
   sizeof(PyObject), __PYX_GET_STRUCT_ALIGNMENT_3_1_2(PyObject),
@@ -27369,7 +27369,7 @@ static int __Pyx_modinit_type_import_code(__pyx_mstatetype *__pyx_mstate) {
   #else
   sizeof(PyObject), __PYX_GET_STRUCT_ALIGNMENT_3_1_2(PyObject),
   #endif
-  __Pyx_ImportType_CheckSize_Warn_3_1_2); if (!__pyx_mstate->__pyx_ptype_5numpy_integer) __PYX_ERR(2, 877, __pyx_L1_error)
+  __Pyx_ImportType_CheckSize_Warn_3_1_2); if (!__pyx_mstate->__pyx_ptype_5numpy_integer) __PYX_ERR(2, 829, __pyx_L1_error)
   __pyx_mstate->__pyx_ptype_5numpy_signedinteger = __Pyx_ImportType_3_1_2(__pyx_t_1, "numpy", "signedinteger",
   #if defined(PYPY_VERSION_NUM) && PYPY_VERSION_NUM < 0x050B0000
   sizeof(PyObject), __PYX_GET_STRUCT_ALIGNMENT_3_1_2(PyObject),
@@ -27378,7 +27378,7 @@ static int __Pyx_modinit_type_import_code(__pyx_mstatetype *__pyx_mstate) {
   #else
   sizeof(PyObject), __PYX_GET_STRUCT_ALIGNMENT_3_1_2(PyObject),
   #endif
-  __Pyx_ImportType_CheckSize_Warn_3_1_2); if (!__pyx_mstate->__pyx_ptype_5numpy_signedinteger) __PYX_ERR(2, 879, __pyx_L1_error)
+  __Pyx_ImportType_CheckSize_Warn_3_1_2); if (!__pyx_mstate->__pyx_ptype_5numpy_signedinteger) __PYX_ERR(2, 831, __pyx_L1_error)
   __pyx_mstate->__pyx_ptype_5numpy_unsignedinteger = __Pyx_ImportType_3_1_2(__pyx_t_1, "numpy", "unsignedinteger",
   #if defined(PYPY_VERSION_NUM) && PYPY_VERSION_NUM < 0x050B0000
   sizeof(PyObject), __PYX_GET_STRUCT_ALIGNMENT_3_1_2(PyObject),
@@ -27387,7 +27387,7 @@ static int __Pyx_modinit_type_import_code(__pyx_mstatetype *__pyx_mstate) {
   #else
   sizeof(PyObject), __PYX_GET_STRUCT_ALIGNMENT_3_1_2(PyObject),
   #endif
-  __Pyx_ImportType_CheckSize_Warn_3_1_2); if (!__pyx_mstate->__pyx_ptype_5numpy_unsignedinteger) __PYX_ERR(2, 881, __pyx_L1_error)
+  __Pyx_ImportType_CheckSize_Warn_3_1_2); if (!__pyx_mstate->__pyx_ptype_5numpy_unsignedinteger) __PYX_ERR(2, 833, __pyx_L1_error)
   __pyx_mstate->__pyx_ptype_5numpy_inexact = __Pyx_ImportType_3_1_2(__pyx_t_1, "numpy", "inexact",
   #if defined(PYPY_VERSION_NUM) && PYPY_VERSION_NUM < 0x050B0000
   sizeof(PyObject), __PYX_GET_STRUCT_ALIGNMENT_3_1_2(PyObject),
@@ -27396,7 +27396,7 @@ static int __Pyx_modinit_type_import_code(__pyx_mstatetype *__pyx_mstate) {
   #else
   sizeof(PyObject), __PYX_GET_STRUCT_ALIGNMENT_3_1_2(PyObject),
   #endif
-  __Pyx_ImportType_CheckSize_Warn_3_1_2); if (!__pyx_mstate->__pyx_ptype_5numpy_inexact) __PYX_ERR(2, 883, __pyx_L1_error)
+  __Pyx_ImportType_CheckSize_Warn_3_1_2); if (!__pyx_mstate->__pyx_ptype_5numpy_inexact) __PYX_ERR(2, 835, __pyx_L1_error)
   __pyx_mstate->__pyx_ptype_5numpy_floating = __Pyx_ImportType_3_1_2(__pyx_t_1, "numpy", "floating",
   #if defined(PYPY_VERSION_NUM) && PYPY_VERSION_NUM < 0x050B0000
   sizeof(PyObject), __PYX_GET_STRUCT_ALIGNMENT_3_1_2(PyObject),
@@ -27405,7 +27405,7 @@ static int __Pyx_modinit_type_import_code(__pyx_mstatetype *__pyx_mstate) {
   #else
   sizeof(PyObject), __PYX_GET_STRUCT_ALIGNMENT_3_1_2(PyObject),
   #endif
-  __Pyx_ImportType_CheckSize_Warn_3_1_2); if (!__pyx_mstate->__pyx_ptype_5numpy_floating) __PYX_ERR(2, 885, __pyx_L1_error)
+  __Pyx_ImportType_CheckSize_Warn_3_1_2); if (!__pyx_mstate->__pyx_ptype_5numpy_floating) __PYX_ERR(2, 837, __pyx_L1_error)
   __pyx_mstate->__pyx_ptype_5numpy_complexfloating = __Pyx_ImportType_3_1_2(__pyx_t_1, "numpy", "complexfloating",
   #if defined(PYPY_VERSION_NUM) && PYPY_VERSION_NUM < 0x050B0000
   sizeof(PyObject), __PYX_GET_STRUCT_ALIGNMENT_3_1_2(PyObject),
@@ -27414,7 +27414,7 @@ static int __Pyx_modinit_type_import_code(__pyx_mstatetype *__pyx_mstate) {
   #else
   sizeof(PyObject), __PYX_GET_STRUCT_ALIGNMENT_3_1_2(PyObject),
   #endif
-  __Pyx_ImportType_CheckSize_Warn_3_1_2); if (!__pyx_mstate->__pyx_ptype_5numpy_complexfloating) __PYX_ERR(2, 887, __pyx_L1_error)
+  __Pyx_ImportType_CheckSize_Warn_3_1_2); if (!__pyx_mstate->__pyx_ptype_5numpy_complexfloating) __PYX_ERR(2, 839, __pyx_L1_error)
   __pyx_mstate->__pyx_ptype_5numpy_flexible = __Pyx_ImportType_3_1_2(__pyx_t_1, "numpy", "flexible",
   #if defined(PYPY_VERSION_NUM) && PYPY_VERSION_NUM < 0x050B0000
   sizeof(PyObject), __PYX_GET_STRUCT_ALIGNMENT_3_1_2(PyObject),
@@ -27423,7 +27423,7 @@ static int __Pyx_modinit_type_import_code(__pyx_mstatetype *__pyx_mstate) {
   #else
   sizeof(PyObject), __PYX_GET_STRUCT_ALIGNMENT_3_1_2(PyObject),
   #endif
-  __Pyx_ImportType_CheckSize_Warn_3_1_2); if (!__pyx_mstate->__pyx_ptype_5numpy_flexible) __PYX_ERR(2, 889, __pyx_L1_error)
+  __Pyx_ImportType_CheckSize_Warn_3_1_2); if (!__pyx_mstate->__pyx_ptype_5numpy_flexible) __PYX_ERR(2, 841, __pyx_L1_error)
   __pyx_mstate->__pyx_ptype_5numpy_character = __Pyx_ImportType_3_1_2(__pyx_t_1, "numpy", "character",
   #if defined(PYPY_VERSION_NUM) && PYPY_VERSION_NUM < 0x050B0000
   sizeof(PyObject), __PYX_GET_STRUCT_ALIGNMENT_3_1_2(PyObject),
@@ -27432,7 +27432,7 @@ static int __Pyx_modinit_type_import_code(__pyx_mstatetype *__pyx_mstate) {
   #else
   sizeof(PyObject), __PYX_GET_STRUCT_ALIGNMENT_3_1_2(PyObject),
   #endif
-  __Pyx_ImportType_CheckSize_Warn_3_1_2); if (!__pyx_mstate->__pyx_ptype_5numpy_character) __PYX_ERR(2, 891, __pyx_L1_error)
+  __Pyx_ImportType_CheckSize_Warn_3_1_2); if (!__pyx_mstate->__pyx_ptype_5numpy_character) __PYX_ERR(2, 843, __pyx_L1_error)
   __pyx_mstate->__pyx_ptype_5numpy_ufunc = __Pyx_ImportType_3_1_2(__pyx_t_1, "numpy", "ufunc",
   #if defined(PYPY_VERSION_NUM) && PYPY_VERSION_NUM < 0x050B0000
   sizeof(PyUFuncObject), __PYX_GET_STRUCT_ALIGNMENT_3_1_2(PyUFuncObject),
@@ -27441,7 +27441,7 @@ static int __Pyx_modinit_type_import_code(__pyx_mstatetype *__pyx_mstate) {
   #else
   sizeof(PyUFuncObject), __PYX_GET_STRUCT_ALIGNMENT_3_1_2(PyUFuncObject),
   #endif
-  __Pyx_ImportType_CheckSize_Ignore_3_1_2); if (!__pyx_mstate->__pyx_ptype_5numpy_ufunc) __PYX_ERR(2, 955, __pyx_L1_error)
+  __Pyx_ImportType_CheckSize_Ignore_3_1_2); if (!__pyx_mstate->__pyx_ptype_5numpy_ufunc) __PYX_ERR(2, 907, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   __Pyx_RefNannyFinishContext();
   return 0;
@@ -27736,13 +27736,13 @@ __Pyx_RefNannySetupContext("PyInit_mass_decomposer_cpp", 0);
   if (__pyx_AsyncGen_init(__pyx_m) < 0) __PYX_ERR(0, 1, __pyx_L1_error)
   #endif
   /*--- Library function declarations ---*/
-  if (__pyx_module_is_main_mass_decomposer_cpp) {
+  if (__pyx_module_is_main_ms_utils__formula_annotation__mass_decomposition_impl__mass_decomposer_cpp) {
     if (PyObject_SetAttr(__pyx_m, __pyx_mstate_global->__pyx_n_u_name_2, __pyx_mstate_global->__pyx_n_u_main) < 0) __PYX_ERR(0, 1, __pyx_L1_error)
   }
   {
     PyObject *modules = PyImport_GetModuleDict(); if (unlikely(!modules)) __PYX_ERR(0, 1, __pyx_L1_error)
-    if (!PyDict_GetItemString(modules, "mass_decomposer_cpp")) {
-      if (unlikely((PyDict_SetItemString(modules, "mass_decomposer_cpp", __pyx_m) < 0))) __PYX_ERR(0, 1, __pyx_L1_error)
+    if (!PyDict_GetItemString(modules, "ms_utils.formula_annotation.mass_decomposition_impl.mass_decomposer_cpp")) {
+      if (unlikely((PyDict_SetItemString(modules, "ms_utils.formula_annotation.mass_decomposition_impl.mass_decomposer_cpp", __pyx_m) < 0))) __PYX_ERR(0, 1, __pyx_L1_error)
     }
   }
   /*--- Builtin init code ---*/
@@ -28292,7 +28292,7 @@ __Pyx_RefNannySetupContext("PyInit_mass_decomposer_cpp", 0);
   if (PyDict_SetItem(__pyx_mstate_global->__pyx_d, __pyx_mstate_global->__pyx_n_u_pyx_unpickle_Enum, __pyx_t_5) < 0) __PYX_ERR(1, 1, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
 
-  /* "mass_decomposer_cpp.pyx":12
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":12
  * # import memcpy
  * from libc.string cimport memcpy
  * import pyarrow as pa             # <<<<<<<<<<<<<<
@@ -28304,7 +28304,7 @@ __Pyx_RefNannySetupContext("PyInit_mass_decomposer_cpp", 0);
   if (PyDict_SetItem(__pyx_mstate_global->__pyx_d, __pyx_mstate_global->__pyx_n_u_pa, __pyx_t_5) < 0) __PYX_ERR(0, 12, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
 
-  /* "mass_decomposer_cpp.pyx":13
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":13
  * from libc.string cimport memcpy
  * import pyarrow as pa
  * import polars as pl             # <<<<<<<<<<<<<<
@@ -28316,7 +28316,7 @@ __Pyx_RefNannySetupContext("PyInit_mass_decomposer_cpp", 0);
   if (PyDict_SetItem(__pyx_mstate_global->__pyx_d, __pyx_mstate_global->__pyx_n_u_pl, __pyx_t_5) < 0) __PYX_ERR(0, 13, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
 
-  /* "mass_decomposer_cpp.pyx":16
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":16
  * # cimport pyarrow as pa
  * # The libcpp.array import is no longer needed
  * from typing import List, Dict, Tuple, Iterable             # <<<<<<<<<<<<<<
@@ -28346,7 +28346,7 @@ __Pyx_RefNannySetupContext("PyInit_mass_decomposer_cpp", 0);
   __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
 
-  /* "mass_decomposer_cpp.pyx":17
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":17
  * # The libcpp.array import is no longer needed
  * from typing import List, Dict, Tuple, Iterable
  * import numpy as np             # <<<<<<<<<<<<<<
@@ -28358,19 +28358,19 @@ __Pyx_RefNannySetupContext("PyInit_mass_decomposer_cpp", 0);
   if (PyDict_SetItem(__pyx_mstate_global->__pyx_d, __pyx_mstate_global->__pyx_n_u_np, __pyx_t_4) < 0) __PYX_ERR(0, 17, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
 
-  /* "mass_decomposer_cpp.pyx":89
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":89
  * ctypedef np.int32_t F_DTYPE_t
  * 
  * def get_num_elements():             # <<<<<<<<<<<<<<
  *     return NUM_ELEMENTS
  * 
 */
-  __pyx_t_4 = __Pyx_CyFunction_New(&__pyx_mdef_19mass_decomposer_cpp_1get_num_elements, 0, __pyx_mstate_global->__pyx_n_u_get_num_elements, NULL, __pyx_mstate_global->__pyx_n_u_mass_decomposer_cpp, __pyx_mstate_global->__pyx_d, ((PyObject *)__pyx_mstate_global->__pyx_codeobj_tab[0])); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 89, __pyx_L1_error)
+  __pyx_t_4 = __Pyx_CyFunction_New(&__pyx_mdef_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp_1get_num_elements, 0, __pyx_mstate_global->__pyx_n_u_get_num_elements, NULL, __pyx_mstate_global->__pyx_n_u_ms_utils_formula_annotation_mass, __pyx_mstate_global->__pyx_d, ((PyObject *)__pyx_mstate_global->__pyx_codeobj_tab[0])); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 89, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_4);
   if (PyDict_SetItem(__pyx_mstate_global->__pyx_d, __pyx_mstate_global->__pyx_n_u_get_num_elements, __pyx_t_4) < 0) __PYX_ERR(0, 89, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
 
-  /* "mass_decomposer_cpp.pyx":150
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":150
  * # Public Python functions
  * 
  * def get_element_info() -> dict:             # <<<<<<<<<<<<<<
@@ -28380,14 +28380,14 @@ __Pyx_RefNannySetupContext("PyInit_mass_decomposer_cpp", 0);
   __pyx_t_4 = __Pyx_PyDict_NewPresized(1); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 150, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_4);
   if (PyDict_SetItem(__pyx_t_4, __pyx_mstate_global->__pyx_n_u_return, __pyx_mstate_global->__pyx_n_u_dict_2) < 0) __PYX_ERR(0, 150, __pyx_L1_error)
-  __pyx_t_5 = __Pyx_CyFunction_New(&__pyx_mdef_19mass_decomposer_cpp_3get_element_info, 0, __pyx_mstate_global->__pyx_n_u_get_element_info, NULL, __pyx_mstate_global->__pyx_n_u_mass_decomposer_cpp, __pyx_mstate_global->__pyx_d, ((PyObject *)__pyx_mstate_global->__pyx_codeobj_tab[1])); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 150, __pyx_L1_error)
+  __pyx_t_5 = __Pyx_CyFunction_New(&__pyx_mdef_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp_3get_element_info, 0, __pyx_mstate_global->__pyx_n_u_get_element_info, NULL, __pyx_mstate_global->__pyx_n_u_ms_utils_formula_annotation_mass, __pyx_mstate_global->__pyx_d, ((PyObject *)__pyx_mstate_global->__pyx_codeobj_tab[1])); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 150, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_5);
   __Pyx_CyFunction_SetAnnotationsDict(__pyx_t_5, __pyx_t_4);
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
   if (PyDict_SetItem(__pyx_mstate_global->__pyx_d, __pyx_mstate_global->__pyx_n_u_get_element_info, __pyx_t_5) < 0) __PYX_ERR(0, 150, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
 
-  /* "mass_decomposer_cpp.pyx":163
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":163
  *     min_bounds: np.ndarray,
  *     max_bounds: np.ndarray,
  *     tolerance_ppm: float = 5.0,             # <<<<<<<<<<<<<<
@@ -28397,7 +28397,7 @@ __Pyx_RefNannySetupContext("PyInit_mass_decomposer_cpp", 0);
   __pyx_t_5 = PyFloat_FromDouble(((double)5.0)); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 163, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_5);
 
-  /* "mass_decomposer_cpp.pyx":164
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":164
  *     max_bounds: np.ndarray,
  *     tolerance_ppm: float = 5.0,
  *     min_dbe: float = 0.0,             # <<<<<<<<<<<<<<
@@ -28407,7 +28407,7 @@ __Pyx_RefNannySetupContext("PyInit_mass_decomposer_cpp", 0);
   __pyx_t_4 = PyFloat_FromDouble(((double)0.0)); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 164, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_4);
 
-  /* "mass_decomposer_cpp.pyx":165
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":165
  *     tolerance_ppm: float = 5.0,
  *     min_dbe: float = 0.0,
  *     max_dbe: float = 40.0,             # <<<<<<<<<<<<<<
@@ -28417,7 +28417,7 @@ __Pyx_RefNannySetupContext("PyInit_mass_decomposer_cpp", 0);
   __pyx_t_6 = PyFloat_FromDouble(((double)40.0)); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 165, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_6);
 
-  /* "mass_decomposer_cpp.pyx":166
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":166
  *     min_dbe: float = 0.0,
  *     max_dbe: float = 40.0,
  *     max_hetero_ratio: float = 100.0,             # <<<<<<<<<<<<<<
@@ -28427,7 +28427,7 @@ __Pyx_RefNannySetupContext("PyInit_mass_decomposer_cpp", 0);
   __pyx_t_10 = PyFloat_FromDouble(((double)100.0)); if (unlikely(!__pyx_t_10)) __PYX_ERR(0, 166, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_10);
 
-  /* "mass_decomposer_cpp.pyx":159
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":159
  *     }
  * 
  * def decompose_mass(             # <<<<<<<<<<<<<<
@@ -28451,7 +28451,7 @@ __Pyx_RefNannySetupContext("PyInit_mass_decomposer_cpp", 0);
   if (PyDict_SetItem(__pyx_t_10, __pyx_mstate_global->__pyx_n_u_max_hetero_ratio, __pyx_mstate_global->__pyx_n_u_float) < 0) __PYX_ERR(0, 159, __pyx_L1_error)
   if (PyDict_SetItem(__pyx_t_10, __pyx_mstate_global->__pyx_n_u_max_results, __pyx_mstate_global->__pyx_n_u_int) < 0) __PYX_ERR(0, 159, __pyx_L1_error)
   if (PyDict_SetItem(__pyx_t_10, __pyx_mstate_global->__pyx_n_u_return, __pyx_mstate_global->__pyx_kp_u_list_np_ndarray) < 0) __PYX_ERR(0, 159, __pyx_L1_error)
-  __pyx_t_6 = __Pyx_CyFunction_New(&__pyx_mdef_19mass_decomposer_cpp_5decompose_mass, 0, __pyx_mstate_global->__pyx_n_u_decompose_mass, NULL, __pyx_mstate_global->__pyx_n_u_mass_decomposer_cpp, __pyx_mstate_global->__pyx_d, ((PyObject *)__pyx_mstate_global->__pyx_codeobj_tab[2])); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 159, __pyx_L1_error)
+  __pyx_t_6 = __Pyx_CyFunction_New(&__pyx_mdef_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp_5decompose_mass, 0, __pyx_mstate_global->__pyx_n_u_decompose_mass, NULL, __pyx_mstate_global->__pyx_n_u_ms_utils_formula_annotation_mass, __pyx_mstate_global->__pyx_d, ((PyObject *)__pyx_mstate_global->__pyx_codeobj_tab[2])); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 159, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_6);
   __Pyx_CyFunction_SetDefaultsTuple(__pyx_t_6, __pyx_t_11);
   __Pyx_CyFunction_SetAnnotationsDict(__pyx_t_6, __pyx_t_10);
@@ -28460,7 +28460,7 @@ __Pyx_RefNannySetupContext("PyInit_mass_decomposer_cpp", 0);
   if (PyDict_SetItem(__pyx_mstate_global->__pyx_d, __pyx_mstate_global->__pyx_n_u_decompose_mass, __pyx_t_6) < 0) __PYX_ERR(0, 159, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
 
-  /* "mass_decomposer_cpp.pyx":187
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":187
  *     min_bounds: np.ndarray, # 1D array of min bounds (shape must match NUM_ELEMENTS)
  *     max_bounds: np.ndarray, # 1D array of max bounds (shape must match NUM_ELEMENTS)
  *     tolerance_ppm: float = 5.0,             # <<<<<<<<<<<<<<
@@ -28470,7 +28470,7 @@ __Pyx_RefNannySetupContext("PyInit_mass_decomposer_cpp", 0);
   __pyx_t_6 = PyFloat_FromDouble(((double)5.0)); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 187, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_6);
 
-  /* "mass_decomposer_cpp.pyx":188
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":188
  *     max_bounds: np.ndarray, # 1D array of max bounds (shape must match NUM_ELEMENTS)
  *     tolerance_ppm: float = 5.0,
  *     min_dbe: float = 0.0,             # <<<<<<<<<<<<<<
@@ -28480,7 +28480,7 @@ __Pyx_RefNannySetupContext("PyInit_mass_decomposer_cpp", 0);
   __pyx_t_10 = PyFloat_FromDouble(((double)0.0)); if (unlikely(!__pyx_t_10)) __PYX_ERR(0, 188, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_10);
 
-  /* "mass_decomposer_cpp.pyx":189
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":189
  *     tolerance_ppm: float = 5.0,
  *     min_dbe: float = 0.0,
  *     max_dbe: float = 40.0,             # <<<<<<<<<<<<<<
@@ -28490,7 +28490,7 @@ __Pyx_RefNannySetupContext("PyInit_mass_decomposer_cpp", 0);
   __pyx_t_11 = PyFloat_FromDouble(((double)40.0)); if (unlikely(!__pyx_t_11)) __PYX_ERR(0, 189, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_11);
 
-  /* "mass_decomposer_cpp.pyx":190
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":190
  *     min_dbe: float = 0.0,
  *     max_dbe: float = 40.0,
  *     max_hetero_ratio: float = 100.0,             # <<<<<<<<<<<<<<
@@ -28500,7 +28500,7 @@ __Pyx_RefNannySetupContext("PyInit_mass_decomposer_cpp", 0);
   __pyx_t_4 = PyFloat_FromDouble(((double)100.0)); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 190, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_4);
 
-  /* "mass_decomposer_cpp.pyx":183
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":183
  *         del decomposer
  * 
  * def decompose_mass_parallel(             # <<<<<<<<<<<<<<
@@ -28524,7 +28524,7 @@ __Pyx_RefNannySetupContext("PyInit_mass_decomposer_cpp", 0);
   if (PyDict_SetItem(__pyx_t_4, __pyx_mstate_global->__pyx_n_u_max_hetero_ratio, __pyx_mstate_global->__pyx_n_u_float) < 0) __PYX_ERR(0, 183, __pyx_L1_error)
   if (PyDict_SetItem(__pyx_t_4, __pyx_mstate_global->__pyx_n_u_max_results, __pyx_mstate_global->__pyx_n_u_int) < 0) __PYX_ERR(0, 183, __pyx_L1_error)
   if (PyDict_SetItem(__pyx_t_4, __pyx_mstate_global->__pyx_n_u_return, __pyx_mstate_global->__pyx_kp_u_pl_Series) < 0) __PYX_ERR(0, 183, __pyx_L1_error)
-  __pyx_t_11 = __Pyx_CyFunction_New(&__pyx_mdef_19mass_decomposer_cpp_7decompose_mass_parallel, 0, __pyx_mstate_global->__pyx_n_u_decompose_mass_parallel, NULL, __pyx_mstate_global->__pyx_n_u_mass_decomposer_cpp, __pyx_mstate_global->__pyx_d, ((PyObject *)__pyx_mstate_global->__pyx_codeobj_tab[3])); if (unlikely(!__pyx_t_11)) __PYX_ERR(0, 183, __pyx_L1_error)
+  __pyx_t_11 = __Pyx_CyFunction_New(&__pyx_mdef_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp_7decompose_mass_parallel, 0, __pyx_mstate_global->__pyx_n_u_decompose_mass_parallel, NULL, __pyx_mstate_global->__pyx_n_u_ms_utils_formula_annotation_mass, __pyx_mstate_global->__pyx_d, ((PyObject *)__pyx_mstate_global->__pyx_codeobj_tab[3])); if (unlikely(!__pyx_t_11)) __PYX_ERR(0, 183, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_11);
   __Pyx_CyFunction_SetDefaultsTuple(__pyx_t_11, __pyx_t_5);
   __Pyx_CyFunction_SetAnnotationsDict(__pyx_t_11, __pyx_t_4);
@@ -28533,7 +28533,7 @@ __Pyx_RefNannySetupContext("PyInit_mass_decomposer_cpp", 0);
   if (PyDict_SetItem(__pyx_mstate_global->__pyx_d, __pyx_mstate_global->__pyx_n_u_decompose_mass_parallel, __pyx_t_11) < 0) __PYX_ERR(0, 183, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_11); __pyx_t_11 = 0;
 
-  /* "mass_decomposer_cpp.pyx":259
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":259
  *     min_bounds_per_mass: pl.Series, # series of 1D arrays of min bounds, each with shape (NUM_ELEMENTS,)
  *     max_bounds_per_mass: pl.Series, #   series of 1D arrays of max bounds, each with shape (NUM_ELEMENTS,)
  *     tolerance_ppm: float = 5.0,             # <<<<<<<<<<<<<<
@@ -28543,7 +28543,7 @@ __Pyx_RefNannySetupContext("PyInit_mass_decomposer_cpp", 0);
   __pyx_t_11 = PyFloat_FromDouble(((double)5.0)); if (unlikely(!__pyx_t_11)) __PYX_ERR(0, 259, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_11);
 
-  /* "mass_decomposer_cpp.pyx":260
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":260
  *     max_bounds_per_mass: pl.Series, #   series of 1D arrays of max bounds, each with shape (NUM_ELEMENTS,)
  *     tolerance_ppm: float = 5.0,
  *     min_dbe: float = 0.0,             # <<<<<<<<<<<<<<
@@ -28553,7 +28553,7 @@ __Pyx_RefNannySetupContext("PyInit_mass_decomposer_cpp", 0);
   __pyx_t_4 = PyFloat_FromDouble(((double)0.0)); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 260, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_4);
 
-  /* "mass_decomposer_cpp.pyx":261
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":261
  *     tolerance_ppm: float = 5.0,
  *     min_dbe: float = 0.0,
  *     max_dbe: float = 40.0,             # <<<<<<<<<<<<<<
@@ -28563,7 +28563,7 @@ __Pyx_RefNannySetupContext("PyInit_mass_decomposer_cpp", 0);
   __pyx_t_5 = PyFloat_FromDouble(((double)40.0)); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 261, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_5);
 
-  /* "mass_decomposer_cpp.pyx":262
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":262
  *     min_dbe: float = 0.0,
  *     max_dbe: float = 40.0,
  *     max_hetero_ratio: float = 100.0,             # <<<<<<<<<<<<<<
@@ -28573,7 +28573,7 @@ __Pyx_RefNannySetupContext("PyInit_mass_decomposer_cpp", 0);
   __pyx_t_10 = PyFloat_FromDouble(((double)100.0)); if (unlikely(!__pyx_t_10)) __PYX_ERR(0, 262, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_10);
 
-  /* "mass_decomposer_cpp.pyx":255
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":255
  *         schema={"decomposed_formula":pl.List(pl.Array(pl.Int32, NUM_ELEMENTS))})
  * 
  * def decompose_mass_parallel_per_bounds(             # <<<<<<<<<<<<<<
@@ -28597,7 +28597,7 @@ __Pyx_RefNannySetupContext("PyInit_mass_decomposer_cpp", 0);
   if (PyDict_SetItem(__pyx_t_10, __pyx_mstate_global->__pyx_n_u_max_hetero_ratio, __pyx_mstate_global->__pyx_n_u_float) < 0) __PYX_ERR(0, 255, __pyx_L1_error)
   if (PyDict_SetItem(__pyx_t_10, __pyx_mstate_global->__pyx_n_u_max_results, __pyx_mstate_global->__pyx_n_u_int) < 0) __PYX_ERR(0, 255, __pyx_L1_error)
   if (PyDict_SetItem(__pyx_t_10, __pyx_mstate_global->__pyx_n_u_return, __pyx_mstate_global->__pyx_kp_u_pl_Series) < 0) __PYX_ERR(0, 255, __pyx_L1_error)
-  __pyx_t_5 = __Pyx_CyFunction_New(&__pyx_mdef_19mass_decomposer_cpp_9decompose_mass_parallel_per_bounds, 0, __pyx_mstate_global->__pyx_n_u_decompose_mass_parallel_per_boun, NULL, __pyx_mstate_global->__pyx_n_u_mass_decomposer_cpp, __pyx_mstate_global->__pyx_d, ((PyObject *)__pyx_mstate_global->__pyx_codeobj_tab[4])); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 255, __pyx_L1_error)
+  __pyx_t_5 = __Pyx_CyFunction_New(&__pyx_mdef_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp_9decompose_mass_parallel_per_bounds, 0, __pyx_mstate_global->__pyx_n_u_decompose_mass_parallel_per_boun, NULL, __pyx_mstate_global->__pyx_n_u_ms_utils_formula_annotation_mass, __pyx_mstate_global->__pyx_d, ((PyObject *)__pyx_mstate_global->__pyx_codeobj_tab[4])); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 255, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_5);
   __Pyx_CyFunction_SetDefaultsTuple(__pyx_t_5, __pyx_t_6);
   __Pyx_CyFunction_SetAnnotationsDict(__pyx_t_5, __pyx_t_10);
@@ -28606,7 +28606,7 @@ __Pyx_RefNannySetupContext("PyInit_mass_decomposer_cpp", 0);
   if (PyDict_SetItem(__pyx_mstate_global->__pyx_d, __pyx_mstate_global->__pyx_n_u_decompose_mass_parallel_per_boun, __pyx_t_5) < 0) __PYX_ERR(0, 255, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
 
-  /* "mass_decomposer_cpp.pyx":355
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":355
  *     min_bounds: np.ndarray,
  *     max_bounds: np.ndarray,
  *     tolerance_ppm: float = 5.0,             # <<<<<<<<<<<<<<
@@ -28616,7 +28616,7 @@ __Pyx_RefNannySetupContext("PyInit_mass_decomposer_cpp", 0);
   __pyx_t_5 = PyFloat_FromDouble(((double)5.0)); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 355, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_5);
 
-  /* "mass_decomposer_cpp.pyx":356
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":356
  *     max_bounds: np.ndarray,
  *     tolerance_ppm: float = 5.0,
  *     min_dbe: float = 0.0,             # <<<<<<<<<<<<<<
@@ -28626,7 +28626,7 @@ __Pyx_RefNannySetupContext("PyInit_mass_decomposer_cpp", 0);
   __pyx_t_10 = PyFloat_FromDouble(((double)0.0)); if (unlikely(!__pyx_t_10)) __PYX_ERR(0, 356, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_10);
 
-  /* "mass_decomposer_cpp.pyx":357
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":357
  *     tolerance_ppm: float = 5.0,
  *     min_dbe: float = 0.0,
  *     max_dbe: float = 40.0,             # <<<<<<<<<<<<<<
@@ -28636,7 +28636,7 @@ __Pyx_RefNannySetupContext("PyInit_mass_decomposer_cpp", 0);
   __pyx_t_6 = PyFloat_FromDouble(((double)40.0)); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 357, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_6);
 
-  /* "mass_decomposer_cpp.pyx":358
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":358
  *     min_dbe: float = 0.0,
  *     max_dbe: float = 40.0,
  *     max_hetero_ratio: float = 100.0,             # <<<<<<<<<<<<<<
@@ -28646,7 +28646,7 @@ __Pyx_RefNannySetupContext("PyInit_mass_decomposer_cpp", 0);
   __pyx_t_4 = PyFloat_FromDouble(((double)100.0)); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 358, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_4);
 
-  /* "mass_decomposer_cpp.pyx":350
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":350
  *         schema={"decomposed_formula": pl.List(pl.Array(pl.Int32, NUM_ELEMENTS))})
  * 
  * def decompose_spectrum(             # <<<<<<<<<<<<<<
@@ -28671,7 +28671,7 @@ __Pyx_RefNannySetupContext("PyInit_mass_decomposer_cpp", 0);
   if (PyDict_SetItem(__pyx_t_4, __pyx_mstate_global->__pyx_n_u_max_hetero_ratio, __pyx_mstate_global->__pyx_n_u_float) < 0) __PYX_ERR(0, 350, __pyx_L1_error)
   if (PyDict_SetItem(__pyx_t_4, __pyx_mstate_global->__pyx_n_u_max_results, __pyx_mstate_global->__pyx_n_u_int) < 0) __PYX_ERR(0, 350, __pyx_L1_error)
   if (PyDict_SetItem(__pyx_t_4, __pyx_mstate_global->__pyx_n_u_return, __pyx_mstate_global->__pyx_n_u_list) < 0) __PYX_ERR(0, 350, __pyx_L1_error)
-  __pyx_t_6 = __Pyx_CyFunction_New(&__pyx_mdef_19mass_decomposer_cpp_11decompose_spectrum, 0, __pyx_mstate_global->__pyx_n_u_decompose_spectrum, NULL, __pyx_mstate_global->__pyx_n_u_mass_decomposer_cpp, __pyx_mstate_global->__pyx_d, ((PyObject *)__pyx_mstate_global->__pyx_codeobj_tab[5])); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 350, __pyx_L1_error)
+  __pyx_t_6 = __Pyx_CyFunction_New(&__pyx_mdef_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp_11decompose_spectrum, 0, __pyx_mstate_global->__pyx_n_u_decompose_spectrum, NULL, __pyx_mstate_global->__pyx_n_u_ms_utils_formula_annotation_mass, __pyx_mstate_global->__pyx_d, ((PyObject *)__pyx_mstate_global->__pyx_codeobj_tab[5])); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 350, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_6);
   __Pyx_CyFunction_SetDefaultsTuple(__pyx_t_6, __pyx_t_11);
   __Pyx_CyFunction_SetAnnotationsDict(__pyx_t_6, __pyx_t_4);
@@ -28680,7 +28680,7 @@ __Pyx_RefNannySetupContext("PyInit_mass_decomposer_cpp", 0);
   if (PyDict_SetItem(__pyx_mstate_global->__pyx_d, __pyx_mstate_global->__pyx_n_u_decompose_spectrum, __pyx_t_6) < 0) __PYX_ERR(0, 350, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
 
-  /* "mass_decomposer_cpp.pyx":391
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":391
  *     min_bounds: np.ndarray,
  *     max_bounds: np.ndarray,
  *     tolerance_ppm: float = 5.0,             # <<<<<<<<<<<<<<
@@ -28690,7 +28690,7 @@ __Pyx_RefNannySetupContext("PyInit_mass_decomposer_cpp", 0);
   __pyx_t_6 = PyFloat_FromDouble(((double)5.0)); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 391, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_6);
 
-  /* "mass_decomposer_cpp.pyx":392
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":392
  *     max_bounds: np.ndarray,
  *     tolerance_ppm: float = 5.0,
  *     min_dbe: float = 0.0,             # <<<<<<<<<<<<<<
@@ -28700,7 +28700,7 @@ __Pyx_RefNannySetupContext("PyInit_mass_decomposer_cpp", 0);
   __pyx_t_4 = PyFloat_FromDouble(((double)0.0)); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 392, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_4);
 
-  /* "mass_decomposer_cpp.pyx":393
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":393
  *     tolerance_ppm: float = 5.0,
  *     min_dbe: float = 0.0,
  *     max_dbe: float = 40.0,             # <<<<<<<<<<<<<<
@@ -28710,7 +28710,7 @@ __Pyx_RefNannySetupContext("PyInit_mass_decomposer_cpp", 0);
   __pyx_t_11 = PyFloat_FromDouble(((double)40.0)); if (unlikely(!__pyx_t_11)) __PYX_ERR(0, 393, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_11);
 
-  /* "mass_decomposer_cpp.pyx":394
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":394
  *     min_dbe: float = 0.0,
  *     max_dbe: float = 40.0,
  *     max_hetero_ratio: float = 100.0,             # <<<<<<<<<<<<<<
@@ -28720,7 +28720,7 @@ __Pyx_RefNannySetupContext("PyInit_mass_decomposer_cpp", 0);
   __pyx_t_10 = PyFloat_FromDouble(((double)100.0)); if (unlikely(!__pyx_t_10)) __PYX_ERR(0, 394, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_10);
 
-  /* "mass_decomposer_cpp.pyx":387
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":387
  *         del decomposer
  * 
  * def decompose_spectra_parallel(             # <<<<<<<<<<<<<<
@@ -28744,7 +28744,7 @@ __Pyx_RefNannySetupContext("PyInit_mass_decomposer_cpp", 0);
   if (PyDict_SetItem(__pyx_t_10, __pyx_mstate_global->__pyx_n_u_max_hetero_ratio, __pyx_mstate_global->__pyx_n_u_float) < 0) __PYX_ERR(0, 387, __pyx_L1_error)
   if (PyDict_SetItem(__pyx_t_10, __pyx_mstate_global->__pyx_n_u_max_results, __pyx_mstate_global->__pyx_n_u_int) < 0) __PYX_ERR(0, 387, __pyx_L1_error)
   if (PyDict_SetItem(__pyx_t_10, __pyx_mstate_global->__pyx_n_u_return, __pyx_mstate_global->__pyx_n_u_list) < 0) __PYX_ERR(0, 387, __pyx_L1_error)
-  __pyx_t_11 = __Pyx_CyFunction_New(&__pyx_mdef_19mass_decomposer_cpp_13decompose_spectra_parallel, 0, __pyx_mstate_global->__pyx_n_u_decompose_spectra_parallel, NULL, __pyx_mstate_global->__pyx_n_u_mass_decomposer_cpp, __pyx_mstate_global->__pyx_d, ((PyObject *)__pyx_mstate_global->__pyx_codeobj_tab[6])); if (unlikely(!__pyx_t_11)) __PYX_ERR(0, 387, __pyx_L1_error)
+  __pyx_t_11 = __Pyx_CyFunction_New(&__pyx_mdef_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp_13decompose_spectra_parallel, 0, __pyx_mstate_global->__pyx_n_u_decompose_spectra_parallel, NULL, __pyx_mstate_global->__pyx_n_u_ms_utils_formula_annotation_mass, __pyx_mstate_global->__pyx_d, ((PyObject *)__pyx_mstate_global->__pyx_codeobj_tab[6])); if (unlikely(!__pyx_t_11)) __PYX_ERR(0, 387, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_11);
   __Pyx_CyFunction_SetDefaultsTuple(__pyx_t_11, __pyx_t_5);
   __Pyx_CyFunction_SetAnnotationsDict(__pyx_t_11, __pyx_t_10);
@@ -28753,7 +28753,7 @@ __Pyx_RefNannySetupContext("PyInit_mass_decomposer_cpp", 0);
   if (PyDict_SetItem(__pyx_mstate_global->__pyx_d, __pyx_mstate_global->__pyx_n_u_decompose_spectra_parallel, __pyx_t_11) < 0) __PYX_ERR(0, 387, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_11); __pyx_t_11 = 0;
 
-  /* "mass_decomposer_cpp.pyx":432
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":432
  * def decompose_spectra_parallel_per_bounds(
  *     spectra_data: Iterable[dict], # list of dicts with 'precursor_mass', 'fragment_masses', 'min_bounds', 'max_bounds'
  *     tolerance_ppm: float = 5.0,             # <<<<<<<<<<<<<<
@@ -28763,7 +28763,7 @@ __Pyx_RefNannySetupContext("PyInit_mass_decomposer_cpp", 0);
   __pyx_t_11 = PyFloat_FromDouble(((double)5.0)); if (unlikely(!__pyx_t_11)) __PYX_ERR(0, 432, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_11);
 
-  /* "mass_decomposer_cpp.pyx":433
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":433
  *     spectra_data: Iterable[dict], # list of dicts with 'precursor_mass', 'fragment_masses', 'min_bounds', 'max_bounds'
  *     tolerance_ppm: float = 5.0,
  *     min_dbe: float = 0.0,             # <<<<<<<<<<<<<<
@@ -28773,7 +28773,7 @@ __Pyx_RefNannySetupContext("PyInit_mass_decomposer_cpp", 0);
   __pyx_t_10 = PyFloat_FromDouble(((double)0.0)); if (unlikely(!__pyx_t_10)) __PYX_ERR(0, 433, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_10);
 
-  /* "mass_decomposer_cpp.pyx":434
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":434
  *     tolerance_ppm: float = 5.0,
  *     min_dbe: float = 0.0,
  *     max_dbe: float = 40.0,             # <<<<<<<<<<<<<<
@@ -28783,7 +28783,7 @@ __Pyx_RefNannySetupContext("PyInit_mass_decomposer_cpp", 0);
   __pyx_t_5 = PyFloat_FromDouble(((double)40.0)); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 434, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_5);
 
-  /* "mass_decomposer_cpp.pyx":435
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":435
  *     min_dbe: float = 0.0,
  *     max_dbe: float = 40.0,
  *     max_hetero_ratio: float = 100.0,             # <<<<<<<<<<<<<<
@@ -28793,7 +28793,7 @@ __Pyx_RefNannySetupContext("PyInit_mass_decomposer_cpp", 0);
   __pyx_t_4 = PyFloat_FromDouble(((double)100.0)); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 435, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_4);
 
-  /* "mass_decomposer_cpp.pyx":430
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":430
  *     return all_python_results
  * 
  * def decompose_spectra_parallel_per_bounds(             # <<<<<<<<<<<<<<
@@ -28815,7 +28815,7 @@ __Pyx_RefNannySetupContext("PyInit_mass_decomposer_cpp", 0);
   if (PyDict_SetItem(__pyx_t_4, __pyx_mstate_global->__pyx_n_u_max_hetero_ratio, __pyx_mstate_global->__pyx_n_u_float) < 0) __PYX_ERR(0, 430, __pyx_L1_error)
   if (PyDict_SetItem(__pyx_t_4, __pyx_mstate_global->__pyx_n_u_max_results, __pyx_mstate_global->__pyx_n_u_int) < 0) __PYX_ERR(0, 430, __pyx_L1_error)
   if (PyDict_SetItem(__pyx_t_4, __pyx_mstate_global->__pyx_n_u_return, __pyx_mstate_global->__pyx_n_u_list) < 0) __PYX_ERR(0, 430, __pyx_L1_error)
-  __pyx_t_5 = __Pyx_CyFunction_New(&__pyx_mdef_19mass_decomposer_cpp_15decompose_spectra_parallel_per_bounds, 0, __pyx_mstate_global->__pyx_n_u_decompose_spectra_parallel_per_b, NULL, __pyx_mstate_global->__pyx_n_u_mass_decomposer_cpp, __pyx_mstate_global->__pyx_d, ((PyObject *)__pyx_mstate_global->__pyx_codeobj_tab[7])); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 430, __pyx_L1_error)
+  __pyx_t_5 = __Pyx_CyFunction_New(&__pyx_mdef_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp_15decompose_spectra_parallel_per_bounds, 0, __pyx_mstate_global->__pyx_n_u_decompose_spectra_parallel_per_b, NULL, __pyx_mstate_global->__pyx_n_u_ms_utils_formula_annotation_mass, __pyx_mstate_global->__pyx_d, ((PyObject *)__pyx_mstate_global->__pyx_codeobj_tab[7])); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 430, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_5);
   __Pyx_CyFunction_SetDefaultsTuple(__pyx_t_5, __pyx_t_6);
   __Pyx_CyFunction_SetAnnotationsDict(__pyx_t_5, __pyx_t_4);
@@ -28824,7 +28824,7 @@ __Pyx_RefNannySetupContext("PyInit_mass_decomposer_cpp", 0);
   if (PyDict_SetItem(__pyx_mstate_global->__pyx_d, __pyx_mstate_global->__pyx_n_u_decompose_spectra_parallel_per_b, __pyx_t_5) < 0) __PYX_ERR(0, 430, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
 
-  /* "mass_decomposer_cpp.pyx":482
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":482
  *     min_bounds: np.ndarray,
  *     max_bounds: np.ndarray,
  *     tolerance_ppm: float = 5.0,             # <<<<<<<<<<<<<<
@@ -28834,7 +28834,7 @@ __Pyx_RefNannySetupContext("PyInit_mass_decomposer_cpp", 0);
   __pyx_t_5 = PyFloat_FromDouble(((double)5.0)); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 482, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_5);
 
-  /* "mass_decomposer_cpp.pyx":477
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":477
  *     return all_python_results
  * 
  * def decompose_spectrum_known_precursor(             # <<<<<<<<<<<<<<
@@ -28853,7 +28853,7 @@ __Pyx_RefNannySetupContext("PyInit_mass_decomposer_cpp", 0);
   if (PyDict_SetItem(__pyx_t_5, __pyx_mstate_global->__pyx_n_u_tolerance_ppm, __pyx_mstate_global->__pyx_n_u_float) < 0) __PYX_ERR(0, 477, __pyx_L1_error)
   if (PyDict_SetItem(__pyx_t_5, __pyx_mstate_global->__pyx_n_u_max_results, __pyx_mstate_global->__pyx_n_u_int) < 0) __PYX_ERR(0, 477, __pyx_L1_error)
   if (PyDict_SetItem(__pyx_t_5, __pyx_mstate_global->__pyx_n_u_return, __pyx_mstate_global->__pyx_n_u_list) < 0) __PYX_ERR(0, 477, __pyx_L1_error)
-  __pyx_t_6 = __Pyx_CyFunction_New(&__pyx_mdef_19mass_decomposer_cpp_17decompose_spectrum_known_precursor, 0, __pyx_mstate_global->__pyx_n_u_decompose_spectrum_known_precurs, NULL, __pyx_mstate_global->__pyx_n_u_mass_decomposer_cpp, __pyx_mstate_global->__pyx_d, ((PyObject *)__pyx_mstate_global->__pyx_codeobj_tab[8])); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 477, __pyx_L1_error)
+  __pyx_t_6 = __Pyx_CyFunction_New(&__pyx_mdef_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp_17decompose_spectrum_known_precursor, 0, __pyx_mstate_global->__pyx_n_u_decompose_spectrum_known_precurs, NULL, __pyx_mstate_global->__pyx_n_u_ms_utils_formula_annotation_mass, __pyx_mstate_global->__pyx_d, ((PyObject *)__pyx_mstate_global->__pyx_codeobj_tab[8])); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 477, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_6);
   __Pyx_CyFunction_SetDefaultsTuple(__pyx_t_6, __pyx_t_4);
   __Pyx_CyFunction_SetAnnotationsDict(__pyx_t_6, __pyx_t_5);
@@ -28862,7 +28862,7 @@ __Pyx_RefNannySetupContext("PyInit_mass_decomposer_cpp", 0);
   if (PyDict_SetItem(__pyx_mstate_global->__pyx_d, __pyx_mstate_global->__pyx_n_u_decompose_spectrum_known_precurs, __pyx_t_6) < 0) __PYX_ERR(0, 477, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
 
-  /* "mass_decomposer_cpp.pyx":505
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":505
  *     min_bounds: np.ndarray,
  *     max_bounds: np.ndarray,
  *     tolerance_ppm: float = 5.0,             # <<<<<<<<<<<<<<
@@ -28872,7 +28872,7 @@ __Pyx_RefNannySetupContext("PyInit_mass_decomposer_cpp", 0);
   __pyx_t_6 = PyFloat_FromDouble(((double)5.0)); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 505, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_6);
 
-  /* "mass_decomposer_cpp.pyx":501
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":501
  *         del decomposer
  * 
  * def decompose_spectra_known_precursor_parallel(             # <<<<<<<<<<<<<<
@@ -28890,7 +28890,7 @@ __Pyx_RefNannySetupContext("PyInit_mass_decomposer_cpp", 0);
   if (PyDict_SetItem(__pyx_t_6, __pyx_mstate_global->__pyx_n_u_tolerance_ppm, __pyx_mstate_global->__pyx_n_u_float) < 0) __PYX_ERR(0, 501, __pyx_L1_error)
   if (PyDict_SetItem(__pyx_t_6, __pyx_mstate_global->__pyx_n_u_max_results, __pyx_mstate_global->__pyx_n_u_int) < 0) __PYX_ERR(0, 501, __pyx_L1_error)
   if (PyDict_SetItem(__pyx_t_6, __pyx_mstate_global->__pyx_n_u_return, __pyx_mstate_global->__pyx_n_u_list) < 0) __PYX_ERR(0, 501, __pyx_L1_error)
-  __pyx_t_4 = __Pyx_CyFunction_New(&__pyx_mdef_19mass_decomposer_cpp_19decompose_spectra_known_precursor_parallel, 0, __pyx_mstate_global->__pyx_n_u_decompose_spectra_known_precurso, NULL, __pyx_mstate_global->__pyx_n_u_mass_decomposer_cpp, __pyx_mstate_global->__pyx_d, ((PyObject *)__pyx_mstate_global->__pyx_codeobj_tab[9])); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 501, __pyx_L1_error)
+  __pyx_t_4 = __Pyx_CyFunction_New(&__pyx_mdef_8ms_utils_18formula_annotation_23mass_decomposition_impl_19mass_decomposer_cpp_19decompose_spectra_known_precursor_parallel, 0, __pyx_mstate_global->__pyx_n_u_decompose_spectra_known_precurso, NULL, __pyx_mstate_global->__pyx_n_u_ms_utils_formula_annotation_mass, __pyx_mstate_global->__pyx_d, ((PyObject *)__pyx_mstate_global->__pyx_codeobj_tab[9])); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 501, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_4);
   __Pyx_CyFunction_SetDefaultsTuple(__pyx_t_4, __pyx_t_5);
   __Pyx_CyFunction_SetAnnotationsDict(__pyx_t_4, __pyx_t_6);
@@ -28899,7 +28899,7 @@ __Pyx_RefNannySetupContext("PyInit_mass_decomposer_cpp", 0);
   if (PyDict_SetItem(__pyx_mstate_global->__pyx_d, __pyx_mstate_global->__pyx_n_u_decompose_spectra_known_precurso, __pyx_t_4) < 0) __PYX_ERR(0, 501, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
 
-  /* "mass_decomposer_cpp.pyx":1
+  /* "ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx":1
  * # cython: language_level=3, boundscheck=False, wraparound=False, cdivision=True             # <<<<<<<<<<<<<<
  * """
  * Cython wrapper for the C++ mass decomposition implementation with OpenMP
@@ -28920,7 +28920,7 @@ __Pyx_RefNannySetupContext("PyInit_mass_decomposer_cpp", 0);
   __Pyx_XDECREF(__pyx_t_11);
   if (__pyx_m) {
     if (__pyx_mstate->__pyx_d && stringtab_initialized) {
-      __Pyx_AddTraceback("init mass_decomposer_cpp", __pyx_clineno, __pyx_lineno, __pyx_filename);
+      __Pyx_AddTraceback("init ms_utils.formula_annotation.mass_decomposition_impl.mass_decomposer_cpp", __pyx_clineno, __pyx_lineno, __pyx_filename);
     }
     #if !CYTHON_USE_MODULE_STATE
     Py_CLEAR(__pyx_m);
@@ -28934,7 +28934,7 @@ __Pyx_RefNannySetupContext("PyInit_mass_decomposer_cpp", 0);
     }
     #endif
   } else if (!PyErr_Occurred()) {
-    PyErr_SetString(PyExc_ImportError, "init mass_decomposer_cpp");
+    PyErr_SetString(PyExc_ImportError, "init ms_utils.formula_annotation.mass_decomposition_impl.mass_decomposer_cpp");
   }
   __pyx_L0:;
   __Pyx_RefNannyFinishContext();
@@ -29115,8 +29115,6 @@ static const __Pyx_StringTabEntry __pyx_string_tab[] = {
   {__pyx_k_list, sizeof(__pyx_k_list), 0, 1, 1}, /* PyObject cname: __pyx_n_u_list */
   {__pyx_k_list_np_ndarray, sizeof(__pyx_k_list_np_ndarray), 0, 1, 0}, /* PyObject cname: __pyx_kp_u_list_np_ndarray */
   {__pyx_k_main, sizeof(__pyx_k_main), 0, 1, 1}, /* PyObject cname: __pyx_n_u_main */
-  {__pyx_k_mass_decomposer_cpp, sizeof(__pyx_k_mass_decomposer_cpp), 0, 1, 1}, /* PyObject cname: __pyx_n_u_mass_decomposer_cpp */
-  {__pyx_k_mass_decomposer_cpp_pyx, sizeof(__pyx_k_mass_decomposer_cpp_pyx), 0, 1, 0}, /* PyObject cname: __pyx_kp_u_mass_decomposer_cpp_pyx */
   {__pyx_k_masses, sizeof(__pyx_k_masses), 0, 1, 1}, /* PyObject cname: __pyx_n_u_masses */
   {__pyx_k_masses_ptr, sizeof(__pyx_k_masses_ptr), 0, 1, 1}, /* PyObject cname: __pyx_n_u_masses_ptr */
   {__pyx_k_masses_vec, sizeof(__pyx_k_masses_vec), 0, 1, 1}, /* PyObject cname: __pyx_n_u_masses_vec */
@@ -29138,6 +29136,7 @@ static const __Pyx_StringTabEntry __pyx_string_tab[] = {
   {__pyx_k_min_f, sizeof(__pyx_k_min_f), 0, 1, 1}, /* PyObject cname: __pyx_n_u_min_f */
   {__pyx_k_mode, sizeof(__pyx_k_mode), 0, 1, 1}, /* PyObject cname: __pyx_n_u_mode */
   {__pyx_k_module, sizeof(__pyx_k_module), 0, 1, 1}, /* PyObject cname: __pyx_n_u_module */
+  {__pyx_k_ms_utils_formula_annotation_mass, sizeof(__pyx_k_ms_utils_formula_annotation_mass), 0, 1, 1}, /* PyObject cname: __pyx_n_u_ms_utils_formula_annotation_mass */
   {__pyx_k_must_be_a_1D_array, sizeof(__pyx_k_must_be_a_1D_array), 0, 1, 0}, /* PyObject cname: __pyx_kp_u_must_be_a_1D_array */
   {__pyx_k_must_be_of_type_numpy_int32, sizeof(__pyx_k_must_be_of_type_numpy_int32), 0, 1, 0}, /* PyObject cname: __pyx_kp_u_must_be_of_type_numpy_int32 */
   {__pyx_k_must_have_length, sizeof(__pyx_k_must_have_length), 0, 1, 0}, /* PyObject cname: __pyx_kp_u_must_have_length */
@@ -29204,6 +29203,7 @@ static const __Pyx_StringTabEntry __pyx_string_tab[] = {
   {__pyx_k_spectra_data, sizeof(__pyx_k_spectra_data), 0, 1, 1}, /* PyObject cname: __pyx_n_u_spectra_data */
   {__pyx_k_spectra_data_list, sizeof(__pyx_k_spectra_data_list), 0, 1, 1}, /* PyObject cname: __pyx_n_u_spectra_data_list */
   {__pyx_k_spectra_vec, sizeof(__pyx_k_spectra_vec), 0, 1, 1}, /* PyObject cname: __pyx_n_u_spectra_vec */
+  {__pyx_k_src_ms_utils_formula_annotation, sizeof(__pyx_k_src_ms_utils_formula_annotation), 0, 1, 0}, /* PyObject cname: __pyx_kp_u_src_ms_utils_formula_annotation */
   {__pyx_k_start, sizeof(__pyx_k_start), 0, 1, 1}, /* PyObject cname: __pyx_n_u_start */
   {__pyx_k_step, sizeof(__pyx_k_step), 0, 1, 1}, /* PyObject cname: __pyx_n_u_step */
   {__pyx_k_stop, sizeof(__pyx_k_stop), 0, 1, 1}, /* PyObject cname: __pyx_n_u_stop */
@@ -29245,7 +29245,7 @@ static int __Pyx_InitCachedBuiltins(__pyx_mstatetype *__pyx_mstate) {
   __pyx_builtin_Ellipsis = __Pyx_GetBuiltinName(__pyx_mstate->__pyx_n_u_Ellipsis); if (!__pyx_builtin_Ellipsis) __PYX_ERR(1, 408, __pyx_L1_error)
   __pyx_builtin_id = __Pyx_GetBuiltinName(__pyx_mstate->__pyx_n_u_id); if (!__pyx_builtin_id) __PYX_ERR(1, 618, __pyx_L1_error)
   __pyx_builtin_IndexError = __Pyx_GetBuiltinName(__pyx_mstate->__pyx_n_u_IndexError); if (!__pyx_builtin_IndexError) __PYX_ERR(1, 914, __pyx_L1_error)
-  __pyx_builtin_ImportError = __Pyx_GetBuiltinName(__pyx_mstate->__pyx_n_u_ImportError); if (!__pyx_builtin_ImportError) __PYX_ERR(2, 1051, __pyx_L1_error)
+  __pyx_builtin_ImportError = __Pyx_GetBuiltinName(__pyx_mstate->__pyx_n_u_ImportError); if (!__pyx_builtin_ImportError) __PYX_ERR(2, 1010, __pyx_L1_error)
   return 0;
   __pyx_L1_error:;
   return -1;
@@ -29344,52 +29344,52 @@ static int __Pyx_CreateCodeObjects(__pyx_mstatetype *__pyx_mstate) {
   {
     const __Pyx_PyCode_New_function_description descr = {0, 0, 0, 0, (unsigned int)(CO_OPTIMIZED|CO_NEWLOCALS), 89, 7};
     PyObject* const varnames[] = {0};
-    __pyx_mstate_global->__pyx_codeobj_tab[0] = __Pyx_PyCode_New(descr, varnames, __pyx_mstate->__pyx_kp_u_mass_decomposer_cpp_pyx, __pyx_mstate->__pyx_n_u_get_num_elements, __pyx_k_1, tuple_dedup_map); if (unlikely(!__pyx_mstate_global->__pyx_codeobj_tab[0])) goto bad;
+    __pyx_mstate_global->__pyx_codeobj_tab[0] = __Pyx_PyCode_New(descr, varnames, __pyx_mstate->__pyx_kp_u_src_ms_utils_formula_annotation, __pyx_mstate->__pyx_n_u_get_num_elements, __pyx_k_1, tuple_dedup_map); if (unlikely(!__pyx_mstate_global->__pyx_codeobj_tab[0])) goto bad;
   }
   {
     const __Pyx_PyCode_New_function_description descr = {0, 0, 0, 2, (unsigned int)(CO_OPTIMIZED|CO_NEWLOCALS), 150, 61};
     PyObject* const varnames[] = {__pyx_mstate->__pyx_n_u_i, __pyx_mstate->__pyx_n_u_i};
-    __pyx_mstate_global->__pyx_codeobj_tab[1] = __Pyx_PyCode_New(descr, varnames, __pyx_mstate->__pyx_kp_u_mass_decomposer_cpp_pyx, __pyx_mstate->__pyx_n_u_get_element_info, __pyx_k_G1IT_e1A_D_U_1, tuple_dedup_map); if (unlikely(!__pyx_mstate_global->__pyx_codeobj_tab[1])) goto bad;
+    __pyx_mstate_global->__pyx_codeobj_tab[1] = __Pyx_PyCode_New(descr, varnames, __pyx_mstate->__pyx_kp_u_src_ms_utils_formula_annotation, __pyx_mstate->__pyx_n_u_get_element_info, __pyx_k_G1IT_e1A_D_U_1, tuple_dedup_map); if (unlikely(!__pyx_mstate_global->__pyx_codeobj_tab[1])) goto bad;
   }
   {
     const __Pyx_PyCode_New_function_description descr = {8, 0, 0, 13, (unsigned int)(CO_OPTIMIZED|CO_NEWLOCALS), 159, 123};
     PyObject* const varnames[] = {__pyx_mstate->__pyx_n_u_target_mass, __pyx_mstate->__pyx_n_u_min_bounds, __pyx_mstate->__pyx_n_u_max_bounds, __pyx_mstate->__pyx_n_u_tolerance_ppm, __pyx_mstate->__pyx_n_u_min_dbe, __pyx_mstate->__pyx_n_u_max_dbe, __pyx_mstate->__pyx_n_u_max_hetero_ratio, __pyx_mstate->__pyx_n_u_max_results, __pyx_mstate->__pyx_n_u_params, __pyx_mstate->__pyx_n_u_decomposer, __pyx_mstate->__pyx_n_u_results, __pyx_mstate->__pyx_n_u_python_results, __pyx_mstate->__pyx_n_u_res};
-    __pyx_mstate_global->__pyx_codeobj_tab[2] = __Pyx_PyCode_New(descr, varnames, __pyx_mstate->__pyx_kp_u_mass_decomposer_cpp_pyx, __pyx_mstate->__pyx_n_u_decompose_mass, __pyx_k_1_Q_Q_a_oQoYa565A_8_FRS_Ja_A_31, tuple_dedup_map); if (unlikely(!__pyx_mstate_global->__pyx_codeobj_tab[2])) goto bad;
+    __pyx_mstate_global->__pyx_codeobj_tab[2] = __Pyx_PyCode_New(descr, varnames, __pyx_mstate->__pyx_kp_u_src_ms_utils_formula_annotation, __pyx_mstate->__pyx_n_u_decompose_mass, __pyx_k_1_Q_Q_a_oQoYa565A_8_FRS_Ja_A_31, tuple_dedup_map); if (unlikely(!__pyx_mstate_global->__pyx_codeobj_tab[2])) goto bad;
   }
   {
     const __Pyx_PyCode_New_function_description descr = {8, 0, 0, 30, (unsigned int)(CO_OPTIMIZED|CO_NEWLOCALS), 183, 478};
     PyObject* const varnames[] = {__pyx_mstate->__pyx_n_u_target_masses, __pyx_mstate->__pyx_n_u_min_bounds, __pyx_mstate->__pyx_n_u_max_bounds, __pyx_mstate->__pyx_n_u_tolerance_ppm, __pyx_mstate->__pyx_n_u_min_dbe, __pyx_mstate->__pyx_n_u_max_dbe, __pyx_mstate->__pyx_n_u_max_hetero_ratio, __pyx_mstate->__pyx_n_u_max_results, __pyx_mstate->__pyx_n_u_contig_masses, __pyx_mstate->__pyx_n_u_masses_ptr, __pyx_mstate->__pyx_n_u_n_masses, __pyx_mstate->__pyx_n_u_masses_vec, __pyx_mstate->__pyx_n_u_params, __pyx_mstate->__pyx_n_u_all_results, __pyx_mstate->__pyx_n_u_num_masses, __pyx_mstate->__pyx_n_u_total_formulas, __pyx_mstate->__pyx_n_u_i, __pyx_mstate->__pyx_n_u_j, __pyx_mstate->__pyx_n_u_k, __pyx_mstate->__pyx_n_u_offsets_array, __pyx_mstate->__pyx_n_u_flat_formulas_array, __pyx_mstate->__pyx_n_u_offsets_view, __pyx_mstate->__pyx_n_u_flat_formulas_view, __pyx_mstate->__pyx_n_u_current_offset, __pyx_mstate->__pyx_n_u_formula_idx, __pyx_mstate->__pyx_n_u_num_formulas_for_mass, __pyx_mstate->__pyx_n_u_value_array, __pyx_mstate->__pyx_n_u_offset_array, __pyx_mstate->__pyx_n_u_formula_list_array, __pyx_mstate->__pyx_n_u_final_array};
-    __pyx_mstate_global->__pyx_codeobj_tab[3] = __Pyx_PyCode_New(descr, varnames, __pyx_mstate->__pyx_kp_u_mass_decomposer_cpp_pyx, __pyx_mstate->__pyx_n_u_decompose_mass_parallel, __pyx_k_1_Q_Q_a_M_b_RRSSbbhhjjk_a_AQ_aq, tuple_dedup_map); if (unlikely(!__pyx_mstate_global->__pyx_codeobj_tab[3])) goto bad;
+    __pyx_mstate_global->__pyx_codeobj_tab[3] = __Pyx_PyCode_New(descr, varnames, __pyx_mstate->__pyx_kp_u_src_ms_utils_formula_annotation, __pyx_mstate->__pyx_n_u_decompose_mass_parallel, __pyx_k_1_Q_Q_a_M_b_RRSSbbhhjjk_a_AQ_aq, tuple_dedup_map); if (unlikely(!__pyx_mstate_global->__pyx_codeobj_tab[3])) goto bad;
   }
   {
     const __Pyx_PyCode_New_function_description descr = {8, 0, 0, 39, (unsigned int)(CO_OPTIMIZED|CO_NEWLOCALS), 255, 837};
     PyObject* const varnames[] = {__pyx_mstate->__pyx_n_u_target_masses, __pyx_mstate->__pyx_n_u_min_bounds_per_mass, __pyx_mstate->__pyx_n_u_max_bounds_per_mass, __pyx_mstate->__pyx_n_u_tolerance_ppm, __pyx_mstate->__pyx_n_u_min_dbe, __pyx_mstate->__pyx_n_u_max_dbe, __pyx_mstate->__pyx_n_u_max_hetero_ratio, __pyx_mstate->__pyx_n_u_max_results, __pyx_mstate->__pyx_n_u_contig_masses, __pyx_mstate->__pyx_n_u_contig_min_bounds, __pyx_mstate->__pyx_n_u_contig_max_bounds, __pyx_mstate->__pyx_n_u_n_masses, __pyx_mstate->__pyx_n_u_dummy_bounds, __pyx_mstate->__pyx_n_u_params, __pyx_mstate->__pyx_n_u_masses_vec, __pyx_mstate->__pyx_n_u_masses_ptr, __pyx_mstate->__pyx_n_u_bounds_vec, __pyx_mstate->__pyx_n_u_min_bounds_ptr, __pyx_mstate->__pyx_n_u_max_bounds_ptr, __pyx_mstate->__pyx_n_u_i, __pyx_mstate->__pyx_n_u_min_f, __pyx_mstate->__pyx_n_u_max_f, __pyx_mstate->__pyx_n_u_formula_size_bytes, __pyx_mstate->__pyx_n_u_all_results, __pyx_mstate->__pyx_n_u_num_masses, __pyx_mstate->__pyx_n_u_total_formulas, __pyx_mstate->__pyx_n_u_k, __pyx_mstate->__pyx_n_u_offsets_array, __pyx_mstate->__pyx_n_u_flat_formulas_array, __pyx_mstate->__pyx_n_u_offsets_view, __pyx_mstate->__pyx_n_u_flat_formulas_view, __pyx_mstate->__pyx_n_u_current_offset, __pyx_mstate->__pyx_n_u_formula_idx, __pyx_mstate->__pyx_n_u_num_formulas_for_mass, __pyx_mstate->__pyx_n_u_j, __pyx_mstate->__pyx_n_u_value_array, __pyx_mstate->__pyx_n_u_offset_array, __pyx_mstate->__pyx_n_u_formula_list_array, __pyx_mstate->__pyx_n_u_final_array};
-    __pyx_mstate_global->__pyx_codeobj_tab[4] = __Pyx_PyCode_New(descr, varnames, __pyx_mstate->__pyx_kp_u_mass_decomposer_cpp_pyx, __pyx_mstate->__pyx_n_u_decompose_mass_parallel_per_boun, __pyx_k_1_Q_Q_a_b_RRSS_iimmssuuv_FbHZZ, tuple_dedup_map); if (unlikely(!__pyx_mstate_global->__pyx_codeobj_tab[4])) goto bad;
+    __pyx_mstate_global->__pyx_codeobj_tab[4] = __Pyx_PyCode_New(descr, varnames, __pyx_mstate->__pyx_kp_u_src_ms_utils_formula_annotation, __pyx_mstate->__pyx_n_u_decompose_mass_parallel_per_boun, __pyx_k_1_Q_Q_a_b_RRSS_iimmssuuv_FbHZZ, tuple_dedup_map); if (unlikely(!__pyx_mstate_global->__pyx_codeobj_tab[4])) goto bad;
   }
   {
     const __Pyx_PyCode_New_function_description descr = {9, 0, 0, 20, (unsigned int)(CO_OPTIMIZED|CO_NEWLOCALS), 350, 253};
     PyObject* const varnames[] = {__pyx_mstate->__pyx_n_u_precursor_mass, __pyx_mstate->__pyx_n_u_fragment_masses, __pyx_mstate->__pyx_n_u_min_bounds, __pyx_mstate->__pyx_n_u_max_bounds, __pyx_mstate->__pyx_n_u_tolerance_ppm, __pyx_mstate->__pyx_n_u_min_dbe, __pyx_mstate->__pyx_n_u_max_dbe, __pyx_mstate->__pyx_n_u_max_hetero_ratio, __pyx_mstate->__pyx_n_u_max_results, __pyx_mstate->__pyx_n_u_params, __pyx_mstate->__pyx_n_u_frag_masses_vec, __pyx_mstate->__pyx_n_u_decomposer, __pyx_mstate->__pyx_n_u_cpp_results, __pyx_mstate->__pyx_n_u_python_results, __pyx_mstate->__pyx_n_u_decomp, __pyx_mstate->__pyx_n_u_py_decomp, __pyx_mstate->__pyx_n_u_frag_list, __pyx_mstate->__pyx_n_u_f, __pyx_mstate->__pyx_n_u_fm, __pyx_mstate->__pyx_n_u_fe};
-    __pyx_mstate_global->__pyx_codeobj_tab[5] = __Pyx_PyCode_New(descr, varnames, __pyx_mstate->__pyx_kp_u_mass_decomposer_cpp_pyx, __pyx_mstate->__pyx_n_u_decompose_spectrum, __pyx_k_1_Q_Q_a_t1_q_oQoYa565A_8_FRS_j, tuple_dedup_map); if (unlikely(!__pyx_mstate_global->__pyx_codeobj_tab[5])) goto bad;
+    __pyx_mstate_global->__pyx_codeobj_tab[5] = __Pyx_PyCode_New(descr, varnames, __pyx_mstate->__pyx_kp_u_src_ms_utils_formula_annotation, __pyx_mstate->__pyx_n_u_decompose_spectrum, __pyx_k_1_Q_Q_a_t1_q_oQoYa565A_8_FRS_j, tuple_dedup_map); if (unlikely(!__pyx_mstate_global->__pyx_codeobj_tab[5])) goto bad;
   }
   {
     const __Pyx_PyCode_New_function_description descr = {8, 0, 0, 23, (unsigned int)(CO_OPTIMIZED|CO_NEWLOCALS), 387, 296};
     PyObject* const varnames[] = {__pyx_mstate->__pyx_n_u_spectra_data, __pyx_mstate->__pyx_n_u_min_bounds, __pyx_mstate->__pyx_n_u_max_bounds, __pyx_mstate->__pyx_n_u_tolerance_ppm, __pyx_mstate->__pyx_n_u_min_dbe, __pyx_mstate->__pyx_n_u_max_dbe, __pyx_mstate->__pyx_n_u_max_hetero_ratio, __pyx_mstate->__pyx_n_u_max_results, __pyx_mstate->__pyx_n_u_spectra_data_list, __pyx_mstate->__pyx_n_u_params, __pyx_mstate->__pyx_n_u_spectra_vec, __pyx_mstate->__pyx_n_u_s, __pyx_mstate->__pyx_n_u_spec_data, __pyx_mstate->__pyx_n_u_all_cpp_results, __pyx_mstate->__pyx_n_u_all_python_results, __pyx_mstate->__pyx_n_u_cpp_results, __pyx_mstate->__pyx_n_u_python_results, __pyx_mstate->__pyx_n_u_decomp, __pyx_mstate->__pyx_n_u_py_decomp, __pyx_mstate->__pyx_n_u_frag_list, __pyx_mstate->__pyx_n_u_f, __pyx_mstate->__pyx_n_u_fm, __pyx_mstate->__pyx_n_u_fe};
-    __pyx_mstate_global->__pyx_codeobj_tab[6] = __Pyx_PyCode_New(descr, varnames, __pyx_mstate->__pyx_kp_u_mass_decomposer_cpp_pyx, __pyx_mstate->__pyx_n_u_decompose_spectra_parallel, __pyx_k_1_Q_Q_a_AQ_t1_q_oQoYa565A_xq_1A, tuple_dedup_map); if (unlikely(!__pyx_mstate_global->__pyx_codeobj_tab[6])) goto bad;
+    __pyx_mstate_global->__pyx_codeobj_tab[6] = __Pyx_PyCode_New(descr, varnames, __pyx_mstate->__pyx_kp_u_src_ms_utils_formula_annotation, __pyx_mstate->__pyx_n_u_decompose_spectra_parallel, __pyx_k_1_Q_Q_a_AQ_t1_q_oQoYa565A_xq_1A, tuple_dedup_map); if (unlikely(!__pyx_mstate_global->__pyx_codeobj_tab[6])) goto bad;
   }
   {
     const __Pyx_PyCode_New_function_description descr = {6, 0, 0, 22, (unsigned int)(CO_OPTIMIZED|CO_NEWLOCALS), 430, 368};
     PyObject* const varnames[] = {__pyx_mstate->__pyx_n_u_spectra_data, __pyx_mstate->__pyx_n_u_tolerance_ppm, __pyx_mstate->__pyx_n_u_min_dbe, __pyx_mstate->__pyx_n_u_max_dbe, __pyx_mstate->__pyx_n_u_max_hetero_ratio, __pyx_mstate->__pyx_n_u_max_results, __pyx_mstate->__pyx_n_u_spectra_data_list, __pyx_mstate->__pyx_n_u_dummy_bounds, __pyx_mstate->__pyx_n_u_params, __pyx_mstate->__pyx_n_u_spectra_vec, __pyx_mstate->__pyx_n_u_s, __pyx_mstate->__pyx_n_u_spec_data, __pyx_mstate->__pyx_n_u_all_cpp_results, __pyx_mstate->__pyx_n_u_all_python_results, __pyx_mstate->__pyx_n_u_cpp_results, __pyx_mstate->__pyx_n_u_python_results, __pyx_mstate->__pyx_n_u_decomp, __pyx_mstate->__pyx_n_u_py_decomp, __pyx_mstate->__pyx_n_u_frag_list, __pyx_mstate->__pyx_n_u_f, __pyx_mstate->__pyx_n_u_fm, __pyx_mstate->__pyx_n_u_fe};
-    __pyx_mstate_global->__pyx_codeobj_tab[7] = __Pyx_PyCode_New(descr, varnames, __pyx_mstate->__pyx_kp_u_mass_decomposer_cpp_pyx, __pyx_mstate->__pyx_n_u_decompose_spectra_parallel_per_b, __pyx_k_1_Q_Q_a_AQ_t1_q_2V1N_oQoYa565C1, tuple_dedup_map); if (unlikely(!__pyx_mstate_global->__pyx_codeobj_tab[7])) goto bad;
+    __pyx_mstate_global->__pyx_codeobj_tab[7] = __Pyx_PyCode_New(descr, varnames, __pyx_mstate->__pyx_kp_u_src_ms_utils_formula_annotation, __pyx_mstate->__pyx_n_u_decompose_spectra_parallel_per_b, __pyx_k_1_Q_Q_a_AQ_t1_q_2V1N_oQoYa565C1, tuple_dedup_map); if (unlikely(!__pyx_mstate_global->__pyx_codeobj_tab[7])) goto bad;
   }
   {
     const __Pyx_PyCode_New_function_description descr = {6, 0, 0, 14, (unsigned int)(CO_OPTIMIZED|CO_NEWLOCALS), 477, 149};
     PyObject* const varnames[] = {__pyx_mstate->__pyx_n_u_precursor_formula, __pyx_mstate->__pyx_n_u_fragment_masses, __pyx_mstate->__pyx_n_u_min_bounds, __pyx_mstate->__pyx_n_u_max_bounds, __pyx_mstate->__pyx_n_u_tolerance_ppm, __pyx_mstate->__pyx_n_u_max_results, __pyx_mstate->__pyx_n_u_params, __pyx_mstate->__pyx_n_u_cpp_precursor, __pyx_mstate->__pyx_n_u_min_b, __pyx_mstate->__pyx_n_u_frag_masses_vec, __pyx_mstate->__pyx_n_u_decomposer, __pyx_mstate->__pyx_n_u_results, __pyx_mstate->__pyx_n_u_res, __pyx_mstate->__pyx_n_u_f};
-    __pyx_mstate_global->__pyx_codeobj_tab[8] = __Pyx_PyCode_New(descr, varnames, __pyx_mstate->__pyx_kp_u_mass_decomposer_cpp_pyx, __pyx_mstate->__pyx_n_u_decompose_spectrum_known_precurs, __pyx_k_1_a_oQoS_hhi_aq_6aq_8_q_O_a_q_3, tuple_dedup_map); if (unlikely(!__pyx_mstate_global->__pyx_codeobj_tab[8])) goto bad;
+    __pyx_mstate_global->__pyx_codeobj_tab[8] = __Pyx_PyCode_New(descr, varnames, __pyx_mstate->__pyx_kp_u_src_ms_utils_formula_annotation, __pyx_mstate->__pyx_n_u_decompose_spectrum_known_precurs, __pyx_k_1_a_oQoS_hhi_aq_6aq_8_q_O_a_q_3, tuple_dedup_map); if (unlikely(!__pyx_mstate_global->__pyx_codeobj_tab[8])) goto bad;
   }
   {
     const __Pyx_PyCode_New_function_description descr = {5, 0, 0, 16, (unsigned int)(CO_OPTIMIZED|CO_NEWLOCALS), 501, 205};
     PyObject* const varnames[] = {__pyx_mstate->__pyx_n_u_spectra_data, __pyx_mstate->__pyx_n_u_min_bounds, __pyx_mstate->__pyx_n_u_max_bounds, __pyx_mstate->__pyx_n_u_tolerance_ppm, __pyx_mstate->__pyx_n_u_max_results, __pyx_mstate->__pyx_n_u_spectra_data_list, __pyx_mstate->__pyx_n_u_params, __pyx_mstate->__pyx_n_u_spectra_vec, __pyx_mstate->__pyx_n_u_s, __pyx_mstate->__pyx_n_u_i, __pyx_mstate->__pyx_n_u_spec_data, __pyx_mstate->__pyx_n_u_precursor_formula_arr, __pyx_mstate->__pyx_n_u_all_results, __pyx_mstate->__pyx_n_u_spec_res, __pyx_mstate->__pyx_n_u_res, __pyx_mstate->__pyx_n_u_f};
-    __pyx_mstate_global->__pyx_codeobj_tab[9] = __Pyx_PyCode_New(descr, varnames, __pyx_mstate->__pyx_kp_u_mass_decomposer_cpp_pyx, __pyx_mstate->__pyx_n_u_decompose_spectra_known_precurso, __pyx_k_1_AQ_t1_q_oQoS_P_iij_xq_1A_a_6b, tuple_dedup_map); if (unlikely(!__pyx_mstate_global->__pyx_codeobj_tab[9])) goto bad;
+    __pyx_mstate_global->__pyx_codeobj_tab[9] = __Pyx_PyCode_New(descr, varnames, __pyx_mstate->__pyx_kp_u_src_ms_utils_formula_annotation, __pyx_mstate->__pyx_n_u_decompose_spectra_known_precurso, __pyx_k_1_AQ_t1_q_oQoS_P_iij_xq_1A_a_6b, tuple_dedup_map); if (unlikely(!__pyx_mstate_global->__pyx_codeobj_tab[9])) goto bad;
   }
   Py_DECREF(tuple_dedup_map);
   return 0;

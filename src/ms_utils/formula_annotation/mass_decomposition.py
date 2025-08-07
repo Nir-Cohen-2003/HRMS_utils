@@ -1,4 +1,4 @@
-from mass_decomposition_impl.mass_decomposer_cpp import (
+from .mass_decomposition_impl.mass_decomposer_cpp import (
     decompose_mass_parallel,
     decompose_mass_parallel_per_bounds,
     decompose_spectra_parallel,
