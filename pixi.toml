@@ -32,6 +32,10 @@ channels = [
   "https://prefix.dev/pixi-build-backends",
   "https://prefix.dev/conda-forge",
 ]
+[package.build.configuration]
+platforms = ["linux-64", "win-64"]
+script = "python -m pip install . -vv --no-deps --no-build-isolation"
+
 
 [package.build-dependencies]
 setuptools = ">=68.0.0"
