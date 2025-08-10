@@ -29,15 +29,9 @@ src/ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_money_ch
 src/ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_parallel.cpp
 src/ms_utils/formula_annotation/mass_decomposition_impl/python_impl.py
 src/ms_utils/formula_annotation/mass_decomposition_impl/setup_bk.py
+src/ms_utils/interfaces/__init__.py
 src/ms_utils/interfaces/msdial.py
 src/ms_utils/interfaces/pubchem.py
-src/ms_utils/pyscreen/__init__.py
-src/ms_utils/pyscreen/epa.py
-src/ms_utils/pyscreen/gui.py
-src/ms_utils/pyscreen/main.py
-src/ms_utils/pyscreen/pyscreen_config.py
-src/ms_utils/pyscreen/rerun_gui.py
-src/ms_utils/pyscreen/spectral_search.py
 src/ms_utils/rdkit/__init__.py
 src/ms_utils/rdkit/fingerprint.py
 src/ms_utils/rdkit/fragmentation.py

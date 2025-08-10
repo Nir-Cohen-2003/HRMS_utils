@@ -2,9 +2,9 @@ import polars as pl
 import numpy as np
 from pathlib import Path
 from time import time
-from ms_entropy import calculate_spectral_entropy
+from ms_entropy import calculate_spectral_entropy, calculate_entropy_similarity
 from dataclasses import dataclass
-from ms_entropy import calculate_entropy_similarity
+
 
 MSDIAL_columns_to_read = {
     'Peak ID': pl.Int64,
@@ -176,7 +176,7 @@ def subtract_blank_frame(
                 pl.col('msms_intensity_blank'),
                 pl.col('msms_m/z_blank')
             ).map_batches(
-                lambda spectra: entropy_score_batch(
+                lambda spectra: _entropy_score_batch(
                     spectra.struct.field('msms_m/z').to_numpy(),
                     spectra.struct.field('msms_intensity').to_numpy(),
                     spectra.struct.field('msms_m/z_blank').to_numpy(),
@@ -193,7 +193,7 @@ def subtract_blank_frame(
     return cleaned_sample_df
 
 
-def entropy_score(
+def _entropy_score(
         spec1_mz:np.ndarray, spec1_intensity:np.ndarray,
         spec2_mz:np.ndarray, spec2_intensity:np.ndarray) -> np.float64:
     if any(x is None for x in [spec1_mz,spec2_mz,spec1_intensity,spec2_intensity]):
@@ -209,7 +209,7 @@ def entropy_score(
         noise_threshold=config.noise_threshold)
     score = np.float64(score)
     return score
-entropy_score_batch=np.vectorize(entropy_score)
+_entropy_score_batch=np.vectorize(_entropy_score)
 
 
 def _get_chromatogram_basic(path: str | Path)-> pl.LazyFrame :
@@ -258,7 +258,7 @@ def _add_entropy(chromatogram:pl.DataFrame)-> pl.DataFrame:
             pl.col('msms_m/z'),
             pl.col('msms_intensity')
         ).map_batches(
-            lambda spectra: calculate_spectral_entropy_wrapper_batch(
+            lambda spectra: _calculate_spectral_entropy_wrapper_batch(
                 spectra.struct.field('msms_m/z').to_numpy(),
                 spectra.struct.field('msms_intensity').to_numpy()),
             return_dtype=pl.Float32,
@@ -267,11 +267,11 @@ def _add_entropy(chromatogram:pl.DataFrame)-> pl.DataFrame:
     )
     return chromatogram
 
-def calculate_spectral_entropy_wrapper(mz,intesity):
+def _calculate_spectral_entropy_wrapper(mz,intesity):
     spectrum = np.column_stack((mz,intesity))
     spectrum = np.array(spectrum,dtype=np.float32)
     return calculate_spectral_entropy(spectrum)
-calculate_spectral_entropy_wrapper_batch=np.vectorize(calculate_spectral_entropy_wrapper)
+_calculate_spectral_entropy_wrapper_batch=np.vectorize(_calculate_spectral_entropy_wrapper)
 
 def _convert_MSMS_to_list(chromatogram: pl.LazyFrame | pl.DataFrame) -> pl.LazyFrame | pl.DataFrame:
 
