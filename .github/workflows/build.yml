@@ -29,6 +29,18 @@ jobs:
             irm https://pixi.sh/install.ps1 | iex
             echo "$HOME\.pixi\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
+      - name: Ensure Docker (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          if ! command -v docker >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y docker.io
+          fi
+          # Start docker if not already running
+          (sudo systemctl start docker 2>/dev/null || sudo service docker start 2>/dev/null || true)
+          docker --version
+          docker info || true
+
       - name: Show pixi version
         run: pixi --version
 
