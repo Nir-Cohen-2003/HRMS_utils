@@ -39,3 +39,9 @@ jobs:
       with:
         name: dist-${{ matrix.platform }}
         path: dist/
+
+    - name: Release wheels
+      uses: softprops/action-gh-release@v2
+      if: github.event_name == 'release'
+      with:
+        files: dist/*.whl
