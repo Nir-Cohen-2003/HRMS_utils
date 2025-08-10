@@ -13,17 +13,21 @@ cython = ">=3.0.0"
 setuptools = ">=68.0.0"
 numpy = ">=1.20.0"
 rdkit = ">=2024.0.0"
-ms_utils = {path = "."}
+twine = "*"
+hrms_utils = {path = "."}
+cibuildwheel = "*"           # added
 [pypi-dependencies]
 build = "*"
 
 [tasks]
 build-wheel = "python -m build"
 build-all = "python -m build --wheel --sdist"
-
+publish-test = "twine upload --repository testpypi dist/*"
+cibw-wheels = "python -m cibuildwheel --output-dir dist"   # added
+sdist = "python -m build --sdist"                          # added
 
 [package]
-name = "ms_utils"
+name = "hrms_utils"
 version = "0.1.0"
 
 [package.build]

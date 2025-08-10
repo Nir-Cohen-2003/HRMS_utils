@@ -7,7 +7,7 @@ import sys
 # --- Compilation settings from the nested setup.py ---
 
 # Define the base path for the extension module
-ext_base_path = "src/ms_utils/formula_annotation/mass_decomposition_impl"
+ext_base_path = "src/hrms_utils/formula_annotation/mass_decomposition_impl"
 
 # OpenMP flags
 openmp_compile_args = []
@@ -34,7 +34,7 @@ else:  # Unix-like systems
 extensions = [
     Extension(
         # The name of the extension module, including the package path
-        "ms_utils.formula_annotation.mass_decomposition_impl.mass_decomposer_cpp",
+        "hrms_utils.formula_annotation.mass_decomposition_impl.mass_decomposer_cpp",
         [
             # List of source files with paths relative to the project root
             os.path.join(ext_base_path, "mass_decomposer_cpp.pyx"),
@@ -52,19 +52,22 @@ extensions = [
 # --- Main setup configuration ---
 
 setup(
-    # find_packages will discover your 'ms_utils' package in 'src'
+    name="hrms_utils",
+    version="0.1.0",
+    description="Mass spec utilities",
+    python_requires=">=3.12",
     packages=find_packages(where="src"),
-    # Tells setuptools that packages are in 'src'
     package_dir={"": "src"},
-    # Cythonize the extensions
-    ext_modules=cythonize(extensions,
-                         compiler_directives={
-                             'language_level': 3,
-                             'boundscheck': False,
-                             'wraparound': False,
-                             'initializedcheck': False,
-                             'cdivision': True,
-                             'embedsignature': True
-                         }),
+    ext_modules=cythonize(
+        extensions,
+        compiler_directives={
+            "language_level": 3,
+            "boundscheck": False,
+            "wraparound": False,
+            "initializedcheck": False,
+            "cdivision": True,
+            "embedsignature": True,
+        },
+    ),
     zip_safe=False,
 )

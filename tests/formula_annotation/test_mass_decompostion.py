@@ -2,7 +2,7 @@ import polars as pl
 import numpy as np
 from typing import Any
 from pathlib import Path
-from ms_utils.formula_annotation import (
+from hrms_utils.formula_annotation import (
     decompose_mass,
     decompose_mass_per_bounds,
     decompose_spectra_known_precursor
