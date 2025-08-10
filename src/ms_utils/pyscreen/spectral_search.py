@@ -593,25 +593,6 @@ identity_score_NIST_like_batch = np.vectorize(identity_score_NIST_like)
 
 
 
-def entropy_score(
-        spec1_mz:np.ndarray, spec1_intensity:np.ndarray,
-        spec2_mz:np.ndarray, spec2_intensity:np.ndarray,
-        config:search_config) -> np.float64:
-    if any(x is None for x in [spec1_mz,spec2_mz,spec1_intensity,spec2_intensity]):
-        return -1
-    spec1 = np.column_stack((spec1_mz,spec1_intensity))
-    spec1 = np.array(spec1,dtype=np.float32)
-    spec2 = np.column_stack((spec2_mz,spec2_intensity))
-    spec2 = np.array(spec2,dtype=np.float32)
-    score = calculate_entropy_similarity(
-        spec1,spec2,
-        ms2_tolerance_in_ppm=config.ms2_mass_tolerance*10e6,
-        clean_spectra=True,
-        noise_threshold=config.noise_threshold)
-    score = np.float64(score)
-    return score
-entropy_score_batch=np.vectorize(entropy_score)
-
 if __name__ == "__main__":
     # testing the _read_SRCRESLT_type_file function
     file = Path(r"D:\Nir\pyscreen_test\250120_04amph_NIST_results.txt")

@@ -4,7 +4,7 @@ from pathlib import Path
 from time import time
 from ms_entropy import calculate_spectral_entropy
 from dataclasses import dataclass
-from ..pyscreen.spectral_search import entropy_score_batch # used to compare chromatograms against each other, which is a case of spectral search
+from ms_entropy import calculate_entropy_similarity
 
 MSDIAL_columns_to_read = {
     'Peak ID': pl.Int64,
@@ -41,16 +41,25 @@ MSDIAL_columns_to_output= [
 ]
 @dataclass
 class blank_config:
-    ms1_mass_tolerance: float=3e-6
-    dRT_min : float=0.1
-    ratio : float | int=5
-    use_ms2:bool=False
-    dRT_min_with_ms2:float=0.3
-    ms2_fit:float=0.85
+    ms1_mass_tolerance: float = 3e-6
+    dRT_min: float = 0.1
+    ratio: float | int = 5
+    use_ms2: bool = False
+    dRT_min_with_ms2: float = 0.3
+    ms2_fit: float = 0.85
+    ms2_mass_tolerance: float = 5e-6  # new field
+    noise_threshold: float = 0.005    # new field
+
     def __post_init__(self):
-        if self.ms1_mass_tolerance > 0.0001: # if the value is more than 0.0001, its a ppm value and we multiply by 1e-6
+        if self.ms1_mass_tolerance > 0.0001:  # if the value is more than 0.0001, its a ppm value and we multiply by 1e-6
             self.ms1_mass_tolerance = self.ms1_mass_tolerance * 1e-6
-            
+        if self.use_ms2:
+            # Ensure ms2_mass_tolerance and noise_threshold are set if use_ms2 is True
+            if not hasattr(self, 'ms2_mass_tolerance') or self.ms2_mass_tolerance is None:
+                self.ms2_mass_tolerance = 5e-6
+            if not hasattr(self, 'noise_threshold') or self.noise_threshold is None:
+                self.noise_threshold = 0.005
+
     def to_dict(self) -> dict:
         return {
             'ms1_mass_tolerance': self.ms1_mass_tolerance,
@@ -58,7 +67,9 @@ class blank_config:
             'ratio': self.ratio,
             'use_ms2': self.use_ms2,
             'dRT_min_with_ms2': self.dRT_min_with_ms2,
-            'ms2_fit': self.ms2_fit
+            'ms2_fit': self.ms2_fit,
+            'ms2_mass_tolerance': self.ms2_mass_tolerance,
+            'noise_threshold': self.noise_threshold
         }
 
     @classmethod
@@ -181,6 +192,24 @@ def subtract_blank_frame(
     cleaned_sample_df = sample_df.join(subtract_df,on="Peak ID", how='anti')
     return cleaned_sample_df
 
+
+def entropy_score(
+        spec1_mz:np.ndarray, spec1_intensity:np.ndarray,
+        spec2_mz:np.ndarray, spec2_intensity:np.ndarray) -> np.float64:
+    if any(x is None for x in [spec1_mz,spec2_mz,spec1_intensity,spec2_intensity]):
+        return -1
+    spec1 = np.column_stack((spec1_mz,spec1_intensity))
+    spec1 = np.array(spec1,dtype=np.float32)
+    spec2 = np.column_stack((spec2_mz,spec2_intensity))
+    spec2 = np.array(spec2,dtype=np.float32)
+    score = calculate_entropy_similarity(
+        spec1,spec2,
+        ms2_tolerance_in_ppm=config.ms2_mass_tolerance*10e6,
+        clean_spectra=True,
+        noise_threshold=config.noise_threshold)
+    score = np.float64(score)
+    return score
+entropy_score_batch=np.vectorize(entropy_score)
 
 
 def _get_chromatogram_basic(path: str | Path)-> pl.LazyFrame :
