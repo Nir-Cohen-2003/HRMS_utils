@@ -170,7 +170,6 @@ environments:
       - conda: https://prefix.dev/conda-forge/noarch/pyparsing-3.2.3-pyhe01879c_2.conda
       - conda: https://prefix.dev/conda-forge/noarch/pysocks-1.7.1-pyha55dd90_7.conda
       - conda: https://prefix.dev/conda-forge/linux-64/python-3.12.11-h9e4cc4f_0_cpython.conda
-      - conda: https://prefix.dev/conda-forge/linux-64/python-calamine-0.4.0-py312h12e396e_0.conda
       - conda: https://prefix.dev/conda-forge/noarch/python-dateutil-2.9.0.post0-pyhe01879c_2.conda
       - conda: https://prefix.dev/conda-forge/noarch/python-gil-3.12.11-hd8ed1ab_0.conda
       - conda: https://prefix.dev/conda-forge/noarch/python-tzdata-2025.2-pyhd8ed1ab_0.conda
@@ -350,7 +349,6 @@ environments:
       - conda: https://prefix.dev/conda-forge/noarch/pyparsing-3.2.3-pyhe01879c_2.conda
       - conda: https://prefix.dev/conda-forge/noarch/pysocks-1.7.1-pyh09c184e_7.conda
       - conda: https://prefix.dev/conda-forge/win-64/python-3.12.11-h3f84c4b_0_cpython.conda
-      - conda: https://prefix.dev/conda-forge/win-64/python-calamine-0.4.0-py312hb0142fd_0.conda
       - conda: https://prefix.dev/conda-forge/noarch/python-dateutil-2.9.0.post0-pyhe01879c_2.conda
       - conda: https://prefix.dev/conda-forge/noarch/python-gil-3.12.11-hd8ed1ab_0.conda
       - conda: https://prefix.dev/conda-forge/noarch/python-tzdata-2025.2-pyhd8ed1ab_0.conda
@@ -3651,7 +3649,6 @@ packages:
   - aiohttp >=3.8.1
   - pyarrow >=12.0.0
   - pandas >=1.3.0
-  - python-calamine
   - openpyxl
   - xlsx2csv
   - xlsxwriter
@@ -3659,7 +3656,7 @@ packages:
   - sqlalchemy
   - python
   input:
-    hash: fcbc0470ae9cae9e08d255d10653ba01aba63e927ceca6edb5ccd8180b69e155
+    hash: 577246675743b5e1bcbcd0677c5957ee03b3fad6dae3198645d1ca9e663da089
     globs: []
 - conda: https://prefix.dev/conda-forge/linux-64/multidict-6.6.3-py312h178313f_0.conda
   sha256: c703d148a85ffb4f11001d31b7c4c686a46ad554eeeaa02c69da59fbf0e00dbb
@@ -4531,39 +4528,6 @@ packages:
   purls: []
   size: 15829289
   timestamp: 1749047682640
-- conda: https://prefix.dev/conda-forge/linux-64/python-calamine-0.4.0-py312h12e396e_0.conda
-  sha256: c39b3436be83cc66c7993f0ad361ad865f4183cfeab6e6ccb9efebbadeb46448
-  md5: 18fb0187014101fc34ed3198819d6220
-  depends:
-  - __glibc >=2.17,<3.0.a0
-  - libgcc >=13
-  - packaging >=24.1
-  - python >=3.12,<3.13.0a0
-  - python_abi 3.12.* *_cp312
-  constrains:
-  - __glibc >=2.17
-  license: MIT
-  license_family: MIT
-  purls:
-  - pkg:pypi/python-calamine?source=hash-mapping
-  size: 767343
-  timestamp: 1751616743971
-- conda: https://prefix.dev/conda-forge/win-64/python-calamine-0.4.0-py312hb0142fd_0.conda
-  sha256: a8acbf76544c012949ff8fd325501c1e19490b657f5d446b2e8c9f5a2d5632ba
-  md5: 73d1f1d77c6941bec182c9d9f6961eac
-  depends:
-  - packaging >=24.1
-  - python >=3.12,<3.13.0a0
-  - python_abi 3.12.* *_cp312
-  - ucrt >=10.0.20348.0
-  - vc >=14.3,<15
-  - vc14_runtime >=14.44.35208
-  license: MIT
-  license_family: MIT
-  purls:
-  - pkg:pypi/python-calamine?source=hash-mapping
-  size: 612245
-  timestamp: 1751617003384
 - conda: https://prefix.dev/conda-forge/noarch/python-dateutil-2.9.0.post0-pyhe01879c_2.conda
   sha256: d6a17ece93bbd5139e02d2bd7dbfa80bee1a4261dced63f65f679121686bf664
   md5: 5b8d21249ff20967101ffa321cab24e8

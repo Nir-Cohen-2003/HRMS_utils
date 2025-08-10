@@ -9,11 +9,8 @@ msbuddy>=0.1.0
 scipy>=1.7.0
 pyarrow>=12.0.0
 pandas>=1.3.0
-calamine
 openpyxl
 xlsx2csv
 xlsxwriter
 connectorx
 sqlalchemy
-httpx>=0.23.0
-matplotlib>=3.5.0

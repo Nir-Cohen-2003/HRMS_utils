@@ -26,7 +26,7 @@ if is_windows:
 else:  # Unix-like systems
     openmp_compile_args = ['-fopenmp']
     openmp_link_args = ['-fopenmp']
-    cpp_compile_args.extend(['-march=native', '-ffast-math', '-funroll-loops'])
+    cpp_compile_args.extend([ '-ffast-math', '-funroll-loops'])
 
 
 # --- Define the extension ---
