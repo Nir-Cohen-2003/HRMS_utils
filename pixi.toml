@@ -13,13 +13,18 @@ cython = ">=3.0.0"
 setuptools = ">=68.0.0"
 numpy = ">=1.20.0"
 rdkit = ">=2024.0.0"
-ms_utils = {path = "."}
+clang = "*"
+clangxx = "*"
+llvm-openmp = "*"        # <-- add
+# (optional) cxx-compiler = "*"  # you can drop this if you wish
+
 [pypi-dependencies]
 build = "*"
 
 [tasks]
-build-wheel = "python -m build"
-build-all = "python -m build --wheel --sdist"
+# Use clang-cl on Windows (present as clang-cl.exe in the clang package)
+build-wheel = { cmd = "python -m build --wheel --no-isolation", env = { CC = "clang-cl", CXX = "clang-cl" } }
+build-all   = { cmd = "python -m build --wheel --sdist --no-isolation", env = { CC = "clang-cl", CXX = "clang-cl" } }
 
 
 [package]
@@ -44,6 +49,8 @@ numpy = ">=1.20.0"
 setuptools = ">=68.0.0"
 cython = ">=3.0.0"
 cxx-compiler = "*"
+clangxx = "*"
+clang = "*"
 pyarrow = ">=12.0.0" # might not be needed, but i do call it in the cython code
 
 [package.host-dependencies] 

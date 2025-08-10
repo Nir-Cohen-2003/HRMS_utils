@@ -2,6 +2,11 @@ MANIFEST.in
 README.md
 pyproject.toml
 setup.py
+src/ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_common.cpp
+src/ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_common.hpp
+src/ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.cpp
+src/ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_money_changing.cpp
+src/ms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_parallel.cpp
 src/ms_utils/__init__.py
 src/ms_utils.egg-info/PKG-INFO
 src/ms_utils.egg-info/SOURCES.txt
