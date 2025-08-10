@@ -57,9 +57,6 @@ jobs:
         if: runner.os == 'Linux'
         run: pixi run sdist
 
-      - name: List dist
-        run: ls -1 dist
-
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
