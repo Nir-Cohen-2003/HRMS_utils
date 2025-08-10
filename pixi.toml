@@ -17,7 +17,9 @@ clang = "*"
 clangxx = "*"
 llvm-openmp = "*"        # <-- add
 # (optional) cxx-compiler = "*"  # you can drop this if you wish
-
+twine = "*"
+# hrms_utils = {path = "."}
+cibuildwheel = "*"  
 [pypi-dependencies]
 build = "*"
 
@@ -25,7 +27,9 @@ build = "*"
 # Use clang-cl on Windows (present as clang-cl.exe in the clang package)
 build-wheel = { cmd = "python -m build --wheel --no-isolation", env = { CC = "clang-cl", CXX = "clang-cl" } }
 build-all   = { cmd = "python -m build --wheel --sdist --no-isolation", env = { CC = "clang-cl", CXX = "clang-cl" } }
-
+publish-test = "twine upload --repository testpypi dist/*"
+cibw-wheels = "python -m cibuildwheel --output-dir dist"   # added
+sdist = "python -m build --sdist"     
 
 [package]
 name = "ms_utils"
