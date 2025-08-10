@@ -16,6 +16,7 @@ dependencies = [
     "pyarrow>=12.0.0",
     "pandas>=1.3.0",
     "openpyxl",
+    "python-calamine",
     "xlsx2csv",
     "xlsxwriter",
     "connectorx",
