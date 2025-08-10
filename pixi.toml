@@ -24,6 +24,8 @@ build-all = "python -m build --wheel --sdist"
 publish-test = "twine upload --repository testpypi dist/*"
 cibw-wheels = "python -m cibuildwheel --output-dir dist"   # added
 sdist = "python -m build --sdist"                          # added
+build-wheel-win = { cmd = "python -m build --wheel --no-isolation"}
+build-all-win   = { cmd = "python -m build --wheel --sdist --no-isolation"}
 
 [package]
 name = "hrms_utils"
