@@ -30,7 +30,7 @@ build-all-win   = { cmd = "python -m build --wheel --sdist --no-isolation"}
 
 [package]
 name = "hrms_utils"
-version = "0.1.0"
+version = "0.1.0.post1"
 
 [package.build]
 backend = { name = "pixi-build-python", version = "0.1.*" }

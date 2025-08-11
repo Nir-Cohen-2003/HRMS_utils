@@ -52,10 +52,6 @@ extensions = [
 # --- Main setup configuration ---
 
 setup(
-    name="hrms_utils",
-    version="0.1.0",
-    description="Mass spec utilities",
-    python_requires=">=3.12",
     packages=find_packages(where="src"),
     package_dir={"": "src"},
     ext_modules=cythonize(
