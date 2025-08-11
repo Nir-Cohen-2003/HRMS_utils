@@ -21,9 +21,10 @@ build = "*"
 [tasks]
 build-wheel = "python -m build"
 build-all = "python -m build --wheel --sdist"
-publish-test = "twine upload --repository testpypi dist/*"
-cibw-wheels = "python -m cibuildwheel --output-dir dist"   # added
-sdist = "python -m build --sdist"                          # added
+publish-test = {cmd="twine upload --repository testpypi --skip-existing dist/*"}
+cibw-wheels = { cmd = "python -m cibuildwheel --output-dir dist", env = {CIBW_BUILD = "cp312-*", CIBW_SKIP = "*musllinux* *-win32", CIBW_ARCHS_WINDOWS = "AMD64"}, depends-on=["clean_dist"]}
+clean_dist = "rm -rf dist || true"
+sdist = "python -m build --sdist"
 build-wheel-win = { cmd = "python -m build --wheel --no-isolation"}
 build-all-win   = { cmd = "python -m build --wheel --sdist --no-isolation"}
 
