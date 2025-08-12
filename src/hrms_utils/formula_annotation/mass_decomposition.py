@@ -36,7 +36,6 @@ def decompose_mass(
         return_dtype=pl.List(pl.Array(pl.Int32, 15))
     ).alias("decomposed_formulas"))
 
-    Per-mass bounds:
     min_formula = np.zeros(15, dtype=np.int32)
     max_formula = np.array([100,0,40,20,10,5,2,1,0,0,0,0,0,0,0], dtype=np.int32)
     df = pl.DataFrame({
