@@ -83,6 +83,23 @@ class blank_config:
 
 
 def get_chromatogram(path: str | Path)-> pl.DataFrame :
+    '''Reads the .txt output of a complete chromatogram from MSDIAL (note- use the "trim content fo excel option), and returns a polars dataframe with the following schema:
+        Peak ID: pl.Int64
+        RT (min): pl.Float64
+        Precursor_mz_MSDIAL: pl.Float64
+        Height: pl.Float64
+        Precursor_type_MSDIAL: pl.String
+        msms_m/z: pl.List(pl.Float64)
+        msms_intensity: pl.List(pl.Float64)
+        isobars: pl.List(pl.Int64)
+        msms_m/z_cleaned: pl.List(pl.Float64)
+        msms_intensity_cleaned: pl.List(pl.Float64)
+        spectral_entropy: pl.Float32
+        energy_is_too_low: pl.Boolean
+        energy_is_too_high: pl.Boolean
+        ms1_isotopes_m/z: pl.List(pl.Float64)
+        ms1_isotopes_intensity: pl.List(pl.Float64)
+    '''
     chromatogram = _get_chromatogram_basic(path=path)
     chromatogram = _annotate_isobars_and_clean_spectrum(chromatogram=chromatogram)
     chromatogram = _add_energy_annotation(chromatogram=chromatogram)

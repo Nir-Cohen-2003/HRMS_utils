@@ -237,7 +237,7 @@ def deduce_isotopic_pattern(
     mass_tolerance_ppm: float = 5.0,
     minimum_intensity: float = 5e4,
     intensity_relative_tolerance: float = 0.5
-):
+)-> pl.Series:
     """
     Deduce the isotopic pattern from the given precursor and MS1 data for each precursor ion.
     Works on a complete polars DataFrame.
@@ -266,6 +266,7 @@ def deduce_isotopic_pattern(
             minimum_intensity=minimum_intensity,
             intensity_relative_tolerance=intensity_relative_tolerance
         )
+    bounds = pl.Series(bounds, dtype=pl.Array(inner=pl.Float64,shape=(8,)))
     return bounds
 
 def deduce_isotopic_pattern_inner(
@@ -297,7 +298,7 @@ def deduce_isotopic_pattern_inner(
         print(f"Precursor m/z {precursor_mz} not found in MS1 data.")
         return None
     precursor_ms1_mz = ms1_mzs[precursor_idx[ms1_intensities[precursor_idx].argmax()]]
-    print(precursor_ms1_mz)
+    # print(precursor_ms1_mz)
     precursor_ms1_intensity = ms1_intensities[precursor_idx].max()
 
     # C
@@ -351,8 +352,30 @@ def deduce_isotopic_pattern_inner(
 
 if __name__ == "__main__":
     # Test the function with some example data
-    precursor_mzs = pl.Series([100.0, 200.1], dtype=pl.Float64)
-    ms1_mzs = pl.Series([[100.0, 100.1, 100.2], [200.0, 200.1, 200.1+isotopic_pattern_dict["C"]["mass_difference"]]], dtype=pl.List(pl.Float64))
-    ms1_intensities = pl.Series([[1000, 1100, 1200], [2000, 2100, 2200]], dtype=pl.List(pl.Float64))
-    bounds = deduce_isotopic_pattern(precursor_mzs, ms1_mzs, ms1_intensities,minimum_intensity=150)
-    print(bounds)
+    # precursor_mzs = pl.Series([100.0, 200.1], dtype=pl.Float64)
+    # ms1_mzs = pl.Series([[100.0, 100.1, 100.2], [200.0, 200.1, 200.1+isotopic_pattern_dict["C"]["mass_difference"]]], dtype=pl.List(pl.Float64))
+    # ms1_intensities = pl.Series([[1000, 1100, 1200], [2000, 2100, 2200]], dtype=pl.List(pl.Float64))
+    from hrms_utils.interfaces.msdial import get_chromatogram
+    chromatogram = get_chromatogram("/home/analytit_admin/Data/iibr_data/250515_017.txt")
+    chromatogram = chromatogram.with_columns(
+        bounds = pl.struct(
+            pl.col("Precursor_mz_MSDIAL"),
+            pl.col("ms1_isotopes_m/z"),
+            pl.col("ms1_isotopes_intensity")
+        ).map_batches(
+            function= lambda x: deduce_isotopic_pattern(
+                x.struct.field("Precursor_mz_MSDIAL"),
+                x.struct.field("ms1_isotopes_m/z"),
+                x.struct.field("ms1_isotopes_intensity"),
+                mass_tolerance_ppm=5,
+                minimum_intensity=2e5,
+                intensity_relative_tolerance=0.1
+            ), return_dtype=pl.Array(inner=pl.Float64, shape=(8,))
+        )
+    )
+    # print(chromatogram.select(pl.col("bounds")).head(10).to_init_repr())
+    print(chromatogram.filter(
+        pl.col("bounds").arr.get(1) > 0
+    ).select([pl.col("bounds"), pl.col("Precursor_mz_MSDIAL")]).head(10).to_init_repr())
+
+ 
