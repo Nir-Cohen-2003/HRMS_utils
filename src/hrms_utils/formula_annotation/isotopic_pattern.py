@@ -2,6 +2,9 @@ import numpy as np
 import re
 from dataclasses import dataclass
 import polars as pl
+from typing import Dict, TypeVar, overload
+from .utils import element_data
+
 NITROGEN_SEPARATION_RESOLUTION=1e5
 
 @dataclass
@@ -33,23 +36,83 @@ class isotopic_pattern_config:
         kwargs['mass_tolerance'] = mass_tolerance
         kwargs['ms1_resolution'] = ms1_resolution
         return cls(**kwargs)
-MASS_ACCURACY_PPM_TO_DA_THRESHOLD = 200.0001
+MASS_ACCURACY_PPM_TO_DA_THRESHOLD = 200.0
 isotopic_pattern_arr = np.array( 
     #mass difference, zero isotope probability, first isoptope probability
     [
-        [1.0034,0.989,0.011], #C
+        [1.0034,0.9893,0.0107], #C
         [0.99703,0.996,0.004], #N
-        [1.9958,0.95,0.042], #S
-        [1.9971,0.758,0.242], #Cl
-        [1.998,0.507,0.493], #Br
+        [1.9958,0.9493,0.0429], #S
+        [1.9971,0.7578,0.2422], #Cl
+        [1.998,0.5069,0.4931], #Br
     ]
 )
 isotopic_pattern_dict = {
-    'C': {"mass_difference": isotopic_pattern_arr[0][0], "zero_isotope_probability": isotopic_pattern_arr[0][1], "first_isotope_probability": isotopic_pattern_arr[0][2]},
-    'N': {"mass_difference": isotopic_pattern_arr[1][0], "zero_isotope_probability": isotopic_pattern_arr[1][1], "first_isotope_probability": isotopic_pattern_arr[1][2]},
-    'S': {"mass_difference": isotopic_pattern_arr[2][0], "zero_isotope_probability": isotopic_pattern_arr[2][1], "first_isotope_probability": isotopic_pattern_arr[2][2]},
-    'Cl': {"mass_difference": isotopic_pattern_arr[3][0], "zero_isotope_probability": isotopic_pattern_arr[3][1], "first_isotope_probability": isotopic_pattern_arr[3][2]},
-    'Br': {"mass_difference": isotopic_pattern_arr[4][0], "zero_isotope_probability": isotopic_pattern_arr[4][1], "first_isotope_probability": isotopic_pattern_arr[4][2]},
+    'C': {
+        "mass_difference": isotopic_pattern_arr[0][0],
+        "zero_isotope_probability": isotopic_pattern_arr[0][1],
+        "first_isotope_probability": isotopic_pattern_arr[0][2],
+        "index": list(element_data.keys()).index("C")
+    },
+    'N': {
+        "mass_difference": isotopic_pattern_arr[1][0],
+        "zero_isotope_probability": isotopic_pattern_arr[1][1],
+        "first_isotope_probability": isotopic_pattern_arr[1][2],
+        "index": list(element_data.keys()).index("N")
+    },
+    'S': {
+        "mass_difference": isotopic_pattern_arr[2][0],
+        "zero_isotope_probability": isotopic_pattern_arr[2][1],
+        "first_isotope_probability": isotopic_pattern_arr[2][2],
+        "index": list(element_data.keys()).index("S")
+    },
+    'Cl': {
+        "mass_difference": isotopic_pattern_arr[3][0],
+        "zero_isotope_probability": isotopic_pattern_arr[3][1],
+        "first_isotope_probability": isotopic_pattern_arr[3][2],
+        "index": list(element_data.keys()).index("Cl")
+    },
+    'Br': {
+        "mass_difference": isotopic_pattern_arr[4][0],
+        "zero_isotope_probability": isotopic_pattern_arr[4][1],
+        "first_isotope_probability": isotopic_pattern_arr[4][2],
+        "index": list(element_data.keys()).index("Br")
+    },
+}
+
+DEFAULT_MIN_BOUND = {
+    'H': 0,
+    'B': 0,
+    'C': 0,
+    'N': 0,
+    'O': 0,
+    'F': 0,
+    'Na': 0,
+    'Si': 0,
+    'P': 0,
+    'S': 0,
+    'Cl': 0,
+    'K': 0,
+    'As': 0,
+    'Br': 0,
+    'I': 0,
+}
+DEFAULT_MAX_BOUND = {
+    'H': 0,
+    'B': 0,
+    'C': 0,
+    'N': 0,
+    'O': 0,
+    'F': 0,
+    'Na': 0,
+    'Si': 0,
+    'P': 0,
+    'S': 0,
+    'Cl': 0,
+    'K': 0,
+    'As': 0,
+    'Br': 0,
+    'I': 0,
 }
 
 def fits_isotopic_pattern_batch(mzs_batch, intensities_batch, formulas, precursor_mzs, config):
@@ -236,7 +299,9 @@ def deduce_isotopic_pattern(
     ms1_intensities: pl.Series,
     mass_tolerance_ppm: float = 5.0,
     minimum_intensity: float = 5e4,
-    intensity_relative_tolerance: float = 0.5
+    intensity_relative_tolerance: float = 0.5,
+    max_bounds: Dict[str, int] | None = None,
+    min_bounds: Dict[str, int] | None = None,
 )-> pl.Series:
     """
     Deduce the isotopic pattern from the given precursor and MS1 data for each precursor ion.
@@ -248,15 +313,27 @@ def deduce_isotopic_pattern(
         ms1_intensities (pl.Series): Each entry is a list of intensities for the corresponding mzs (length N).
         tolerance_ppm (float): m/z tolerance in ppm for matching isotopic peaks.
         minimum_intensity (float): the entire range between zero and this value is equivalent, so any peaks in this range (including any non-existent peak) will be considered to be both at zero (for lower bound) and at this value (for upper bound). hence, if a precursor is detected with intensity 5*minimum_intensity, we do expect to see its Cl and Br isotopes (so if the isotopic peaks are absent, we decide they are 0), but we don't expect to see its carbon isotopic peak if it's below ~20, so we can only say that the upper bound is 20, and the lower is 0. note that if we do see the carbon isotopic peak, we will consider it the same as 0.
+        max_bounds (Dict[str, int] | None): Maximum bounds for each element's isotopic pattern, used if no other value can be obtained (which is true for most elements expect C,S,Cl,Br currently).
+        min_bounds (Dict[str, int] | None): Minimum bounds for each element's isotopic pattern, used if no other value can be obtained (which is true for most elements expect C,S,Cl,Br currently).
 
+    Returns:
+        pl.Series: A series of arrays, each containing the deduced isotopic pattern for the corresponding precursor, with th
     Explanation:
         For each precursor, this function examines its MS1 spectrum (mzs and intensities).
         It searches for peaks corresponding to the expected isotopic mass differences (C, N, S, Cl, Br)
         within the given ppm tolerance    
         """
+    
+
+
     bounds = [None] * len(precursor_mzs)
     ms1_mzs = ms1_mzs.to_numpy()
     ms1_intensities = ms1_intensities.to_numpy()
+
+    if min_bounds is None:
+        min_bounds = DEFAULT_MIN_BOUND
+    if max_bounds is None:
+        max_bounds = DEFAULT_MAX_BOUND
     for i in range(len(precursor_mzs)):
         bounds[i] = deduce_isotopic_pattern_inner(
             precursor_mz=precursor_mzs[i],
@@ -266,8 +343,9 @@ def deduce_isotopic_pattern(
             minimum_intensity=minimum_intensity,
             intensity_relative_tolerance=intensity_relative_tolerance
         )
-    bounds = pl.Series(bounds, dtype=pl.Array(inner=pl.Float64,shape=(8,)))
+   
     return bounds
+
 
 def deduce_isotopic_pattern_inner(
         precursor_mz: float,
@@ -349,33 +427,3 @@ def deduce_isotopic_pattern_inner(
 
     return [C_lower, S_lower, Cl_lower, Br_lower, C_upper, S_upper, Cl_upper, Br_upper]
 
-
-if __name__ == "__main__":
-    # Test the function with some example data
-    # precursor_mzs = pl.Series([100.0, 200.1], dtype=pl.Float64)
-    # ms1_mzs = pl.Series([[100.0, 100.1, 100.2], [200.0, 200.1, 200.1+isotopic_pattern_dict["C"]["mass_difference"]]], dtype=pl.List(pl.Float64))
-    # ms1_intensities = pl.Series([[1000, 1100, 1200], [2000, 2100, 2200]], dtype=pl.List(pl.Float64))
-    from hrms_utils.interfaces.msdial import get_chromatogram
-    chromatogram = get_chromatogram("/home/analytit_admin/Data/iibr_data/250515_017.txt")
-    chromatogram = chromatogram.with_columns(
-        bounds = pl.struct(
-            pl.col("Precursor_mz_MSDIAL"),
-            pl.col("ms1_isotopes_m/z"),
-            pl.col("ms1_isotopes_intensity")
-        ).map_batches(
-            function= lambda x: deduce_isotopic_pattern(
-                x.struct.field("Precursor_mz_MSDIAL"),
-                x.struct.field("ms1_isotopes_m/z"),
-                x.struct.field("ms1_isotopes_intensity"),
-                mass_tolerance_ppm=5,
-                minimum_intensity=2e5,
-                intensity_relative_tolerance=0.1
-            ), return_dtype=pl.Array(inner=pl.Float64, shape=(8,))
-        )
-    )
-    # print(chromatogram.select(pl.col("bounds")).head(10).to_init_repr())
-    print(chromatogram.filter(
-        pl.col("bounds").arr.get(1) > 0
-    ).select([pl.col("bounds"), pl.col("Precursor_mz_MSDIAL")]).head(10).to_init_repr())
-
- 

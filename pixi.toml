@@ -50,6 +50,7 @@ xlsx2csv = "*"
 xlsxwriter = "*"
 connectorx = "*"
 sqlalchemy = "*"
+ipykernel = "*"
 [feature.testing.pypi-dependencies]
 hrms_utils = {path = ".",editable = true}
 

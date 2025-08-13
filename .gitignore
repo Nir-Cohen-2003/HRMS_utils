@@ -29,3 +29,4 @@ hrms_utils/mces/fast_mol_filter/fast_mol_filter/calculator.cpp
 **.conda
 dist/
 src/hrms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.cpp
+src/hrms_utils/formula_annotation/mass_decomposition_impl/**.pyd
