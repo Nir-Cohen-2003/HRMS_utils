@@ -2,6 +2,11 @@ MANIFEST.in
 README.md
 pyproject.toml
 setup.py
+src/hrms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_common.cpp
+src/hrms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_common.hpp
+src/hrms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.cpp
+src/hrms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_money_changing.cpp
+src/hrms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_parallel.cpp
 src/hrms_utils/__init__.py
 src/hrms_utils.egg-info/PKG-INFO
 src/hrms_utils.egg-info/SOURCES.txt
@@ -14,9 +19,11 @@ src/hrms_utils/formats/epa_xlsx.py
 src/hrms_utils/formats/mgf.py
 src/hrms_utils/formats/nist_mspec.py
 src/hrms_utils/formula_annotation/__init__.py
+src/hrms_utils/formula_annotation/element_table.py
 src/hrms_utils/formula_annotation/isotopic_pattern.py
 src/hrms_utils/formula_annotation/mass_decomposition.py
 src/hrms_utils/formula_annotation/ms_buddy.py
+src/hrms_utils/formula_annotation/msdial_interface.py
 src/hrms_utils/formula_annotation/sirius.py
 src/hrms_utils/formula_annotation/utils.py
 src/hrms_utils/formula_annotation/mass_decomposition_impl/__init__.py

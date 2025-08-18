@@ -35,7 +35,8 @@ std::vector<Formula> MassDecomposer::decompose(double target_mass, const Decompo
         is_initialized_ = true;
     }
     
-    double tolerance = target_mass * params.tolerance_ppm / 1e6;
+    // Use max(target_mass, 200.0) for tolerance calculation, since below it stops being in relative terms
+    double tolerance = std::max(target_mass, 200.0) * params.tolerance_ppm / 1e6;
     std::pair<long long, long long> bounds = integer_bound(target_mass - tolerance, target_mass + tolerance);
     long long start = bounds.first;
     long long end = bounds.second;

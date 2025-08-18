@@ -57,7 +57,8 @@ ProperSpectrumResults MassDecomposer::decompose_spectrum(
         for (int i = 0; i < FormulaAnnotation::NUM_ELEMENTS; ++i) {
             decomp.precursor_mass += precursor_formula[i] * FormulaAnnotation::ATOMIC_MASSES[i];
         }
-        decomp.precursor_error_ppm = std::abs(decomp.precursor_mass - precursor_mass) / precursor_mass * 1e6;
+        // Precursor error now absolute
+        decomp.precursor_error_ppm = std::abs(decomp.precursor_mass - precursor_mass);
 
         // Create bounds for fragment decomposition based on precursor formula
         Formula fragment_min_bounds{}; // All zeros
@@ -74,15 +75,20 @@ ProperSpectrumResults MassDecomposer::decompose_spectrum(
 
         for (size_t j = 0; j < fragment_masses.size(); ++j) {
             auto fragment_solutions = fragment_decomposer.decompose(fragment_masses[j], fragment_params);
-            
+
+            // Calculate allowed absolute error for this fragment
+            double allowed_error = std::max(fragment_masses[j], 200.0) * params.tolerance_ppm / 1e6;
+
             for (const auto& frag_formula : fragment_solutions) {
                 double calc_mass = 0.0;
                 for (int i = 0; i < FormulaAnnotation::NUM_ELEMENTS; ++i) {
                     calc_mass += frag_formula[i] * FormulaAnnotation::ATOMIC_MASSES[i];
                 }
-                double error_ppm = std::abs(calc_mass - fragment_masses[j]) / fragment_masses[j] * 1e6;
+                double abs_error = std::abs(calc_mass - fragment_masses[j]);
+                // Only accept if within allowed absolute error
+                if (abs_error > allowed_error) continue;
                 decomp.fragment_masses[j].push_back(calc_mass);
-                decomp.fragment_errors_ppm[j].push_back(error_ppm);
+                decomp.fragment_errors_ppm[j].push_back(abs_error);
             }
             decomp.fragments[j] = std::move(fragment_solutions);
         }

@@ -13,21 +13,16 @@ ext_base_path = "src/hrms_utils/formula_annotation/mass_decomposition_impl"
 openmp_compile_args = []
 openmp_link_args = []
 
-# C++ compile flags
-cpp_compile_args = ['-std=c++11', '-O3']
-
-# Detect compiler and set appropriate flags for the TARGET platform
-# sys.platform is patched by conda-build to reflect the target platform
 is_windows = sys.platform.startswith('win')
-
+# C++ compile flags
 if is_windows:
+    cpp_compile_args = ['/std:c++17', '/O2']
     openmp_compile_args = ['/openmp']
-    # -march=native is not applicable for cross-compilation
-else:  # Unix-like systems
+    openmp_link_args = []
+else:
+    cpp_compile_args = ['-std=c++17', '-O3', '-ffast-math', '-funroll-loops']
     openmp_compile_args = ['-fopenmp']
     openmp_link_args = ['-fopenmp']
-    cpp_compile_args.extend([ '-ffast-math', '-funroll-loops'])
-
 
 # --- Define the extension ---
 
