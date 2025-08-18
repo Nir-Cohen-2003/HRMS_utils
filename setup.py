@@ -16,11 +16,11 @@ openmp_link_args = []
 is_windows = sys.platform.startswith('win')
 # C++ compile flags
 if is_windows:
-    cpp_compile_args = ['/std:c++14', '/O2']
+    cpp_compile_args = ['/std:c++17', '/O2']
     openmp_compile_args = ['/openmp']
     openmp_link_args = []
 else:
-    cpp_compile_args = ['-std=c++11', '-O3', '-ffast-math', '-funroll-loops']
+    cpp_compile_args = ['-std=c++17', '-O3', '-ffast-math', '-funroll-loops']
     openmp_compile_args = ['-fopenmp']
     openmp_link_args = ['-fopenmp']
 

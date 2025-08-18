@@ -224,7 +224,8 @@ def deduce_isotopic_pattern(
     precursor_mzs: pl.Series,
     ms1_mzs: pl.Series,
     ms1_intensities: pl.Series,
-    mass_tolerance_ppm: float = 5.0,
+    ms1_mass_tolerance_ppm: float = 5.0,
+    isotopic_mass_tolerance_ppm: float = 3.0,
     minimum_intensity: float = 5e4,
     intensity_relative_tolerance: float = 0.5,
     min_bounds: Dict[str, int] | None = None,
@@ -238,7 +239,8 @@ def deduce_isotopic_pattern(
         precursor_mzs (pl.Series): Precursor m/z values (length N).
         ms1_mzs (pl.Series): Each entry is a list of m/z values for the corresponding precursor (length N).
         ms1_intensities (pl.Series): Each entry is a list of intensities for the corresponding mzs (length N).
-        tolerance_ppm (float): m/z tolerance in ppm for matching isotopic peaks.
+        ms1_mass_tolerance_ppm (float): Tolerance (in ppm) for matching the precursor m/z in the MS1 spectrum.
+        isotopic_mass_tolerance_ppm (float): Tolerance (in ppm) for matching the expected isotopic peaks (e.g., C, S, Cl, Br) in the MS1 spectrum. It might be lower than ms1_mass_tolerance_ppm, since there is a cancellation of errors.
         minimum_intensity (float): the entire range between zero and this value is equivalent, so any peaks in this range (including any non-existent peak) will be considered to be both at zero (for lower bound) and at this value (for upper bound). hence, if a precursor is detected with intensity 5*minimum_intensity, we do expect to see its Cl and Br isotopes (so if the isotopic peaks are absent, we decide they are 0), but we don't expect to see its carbon isotopic peak if it's below ~20, so we can only say that the upper bound is 20, and the lower is 0. note that if we do see the carbon isotopic peak, we will consider it the same as 0.
         max_bounds (Dict[str, int] | None): Maximum bounds for each element's isotopic pattern, used if no other value can be obtained (which is true for most elements expect C,S,Cl,Br currently).
         min_bounds (Dict[str, int] | None): Minimum bounds for each element's isotopic pattern, used if no other value can be obtained (which is true for most elements expect C,S,Cl,Br currently).
@@ -287,7 +289,8 @@ def deduce_isotopic_pattern(
             precursor_mz=precursor_mzs[i],
             ms1_mzs=ms1_mzs[i],
             ms1_intensities=ms1_intensities[i],
-            mass_tolerance_ppm=mass_tolerance_ppm,
+            ms1_mass_tolerance_ppm=ms1_mass_tolerance_ppm,
+            isotopic_mass_tolerance_ppm=isotopic_mass_tolerance_ppm,
             minimum_intensity=minimum_intensity,
             intensity_relative_tolerance=intensity_relative_tolerance,
             iso_mass_diffs=iso_mass_diffs,
@@ -327,7 +330,8 @@ def deduce_isotopic_pattern_inner(
         precursor_mz: float,
         ms1_mzs: np.ndarray,
         ms1_intensities: np.ndarray,
-        mass_tolerance_ppm: float,
+        ms1_mass_tolerance_ppm: float,
+        isotopic_mass_tolerance_ppm: float,
         minimum_intensity: float,
         intensity_relative_tolerance: float,
         iso_mass_diffs: np.ndarray,
@@ -337,16 +341,21 @@ def deduce_isotopic_pattern_inner(
     MASS_ACCURACY_PPM_TO_DA_THRESHOLD = 200
     ms1_mzs = np.atleast_1d(ms1_mzs)
     ms1_intensities = np.atleast_1d(ms1_intensities)
-    absolute_tolerance = np.max(np.array([precursor_mz * mass_tolerance_ppm * 1e-6, MASS_ACCURACY_PPM_TO_DA_THRESHOLD * mass_tolerance_ppm * 1e-6]))
-    precursor_idx = np.where(np.atleast_1d(np.isclose(ms1_mzs, precursor_mz, atol=absolute_tolerance, rtol=0.0)))[0]
+    # use this to detect the precursor
+    MS1_absolute_tolerance = np.max(np.array([precursor_mz, MASS_ACCURACY_PPM_TO_DA_THRESHOLD])) * ms1_mass_tolerance_ppm * 1e-6
+    # use this to detect the isotopic peaks
+    isotopic_absolute_tolerance = np.max(np.array([precursor_mz, MASS_ACCURACY_PPM_TO_DA_THRESHOLD])) * isotopic_mass_tolerance_ppm * 1e-6
+    precursor_idx = np.where(np.atleast_1d(np.isclose(ms1_mzs, precursor_mz, atol=MS1_absolute_tolerance, rtol=0.0)))[0]
     if len(precursor_idx) == 0:
         return None
-    precursor_ms1_mz = ms1_mzs[precursor_idx[ms1_intensities[precursor_idx].argmax()]]
+    
+    #the real mass measured for the precursor in the ms1
+    precursor_ms1_mz = ms1_mzs[precursor_idx[ms1_intensities[precursor_idx].argmax()]] 
     precursor_ms1_intensity = ms1_intensities[precursor_idx].max()
 
     # C
     c_peak_mz = precursor_ms1_mz + iso_mass_diffs[0]
-    c_peaks_idx = np.where(np.atleast_1d(np.isclose(ms1_mzs, c_peak_mz, atol=absolute_tolerance, rtol=0.0)))[0]
+    c_peaks_idx = np.where(np.atleast_1d(np.isclose(ms1_mzs, c_peak_mz, atol=isotopic_absolute_tolerance, rtol=0.0)))[0]
     C_peak_total_intensities = ms1_intensities[c_peaks_idx].max() if len(c_peaks_idx) > 0 else 0
     if C_peak_total_intensities < minimum_intensity:
         C_lower = 0
@@ -357,7 +366,7 @@ def deduce_isotopic_pattern_inner(
 
     # S
     s_peak_mz = precursor_ms1_mz + iso_mass_diffs[1]
-    s_peaks_idx = np.where(np.atleast_1d(np.isclose(ms1_mzs, s_peak_mz, atol=absolute_tolerance, rtol=0.0)))[0]
+    s_peaks_idx = np.where(np.atleast_1d(np.isclose(ms1_mzs, s_peak_mz, atol=isotopic_absolute_tolerance, rtol=0.0)))[0]
     S_peak_total_intensities = ms1_intensities[s_peaks_idx].max() if len(s_peaks_idx) > 0 else 0
     if S_peak_total_intensities < minimum_intensity:
         S_lower = 0
@@ -368,7 +377,7 @@ def deduce_isotopic_pattern_inner(
 
     # Cl
     cl_peak_mz = precursor_ms1_mz + iso_mass_diffs[2]
-    cl_peaks_idx = np.where(np.atleast_1d(np.isclose(ms1_mzs, cl_peak_mz, atol=absolute_tolerance, rtol=0.0)))[0]
+    cl_peaks_idx = np.where(np.atleast_1d(np.isclose(ms1_mzs, cl_peak_mz, atol=isotopic_absolute_tolerance, rtol=0.0)))[0]
     Cl_peak_total_intensities = ms1_intensities[cl_peaks_idx].max() if len(cl_peaks_idx) > 0 else 0
     if Cl_peak_total_intensities < minimum_intensity:
         Cl_lower = 0
@@ -381,7 +390,7 @@ def deduce_isotopic_pattern_inner(
     # we do this only if we got a positive estimation on Cl_lower, and at least 2 on Cl_upper
     if Cl_lower > 0 and Cl_upper >= 2:
         second_cl_peak_mz = precursor_ms1_mz + iso_mass_diffs[2] * 2
-        cl_peaks_idx = np.where(np.atleast_1d(np.isclose(ms1_mzs, second_cl_peak_mz, atol=absolute_tolerance, rtol=0.0)))[0]
+        cl_peaks_idx = np.where(np.atleast_1d(np.isclose(ms1_mzs, second_cl_peak_mz, atol=isotopic_absolute_tolerance, rtol=0.0)))[0]
         second_Cl_peak_total_intensities = ms1_intensities[cl_peaks_idx].max() if len(cl_peaks_idx) > 0 else 0
         # now, if truly there are at least 2 Cls, then we can get a ratio between the first Cl peak and the second
         expected_Cl_ratio = iso_first_probs[2] / (2*iso_zero_probs[2])
@@ -394,7 +403,7 @@ def deduce_isotopic_pattern_inner(
 
     # Br
     br_peak_mz = precursor_ms1_mz + iso_mass_diffs[3]
-    br_peaks_idx = np.where(np.atleast_1d(np.isclose(ms1_mzs, br_peak_mz, atol=absolute_tolerance, rtol=0.0)))[0]
+    br_peaks_idx = np.where(np.atleast_1d(np.isclose(ms1_mzs, br_peak_mz, atol=isotopic_absolute_tolerance, rtol=0.0)))[0]
     Br_peak_total_intensities = ms1_intensities[br_peaks_idx].max() if len(br_peaks_idx) > 0 else 0
     if Br_peak_total_intensities < minimum_intensity:
         Br_lower = 0
@@ -407,4 +416,3 @@ def deduce_isotopic_pattern_inner(
     return [C_lower, S_lower, Cl_lower, Br_lower, C_upper, S_upper, Cl_upper, Br_upper]
 
 
-# if __name__ == "__main__":
