@@ -30,3 +30,4 @@ hrms_utils/mces/fast_mol_filter/fast_mol_filter/calculator.cpp
 dist/
 src/hrms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.cpp
 src/hrms_utils/formula_annotation/mass_decomposition_impl/**.pyd
+!src\hrms_utils\formula_annotation\isotopic_pattern.ipynb

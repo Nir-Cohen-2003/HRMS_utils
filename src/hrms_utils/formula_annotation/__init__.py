@@ -6,6 +6,7 @@ from .mass_decomposition import (
 from .isotopic_pattern import (
     isotopic_pattern_config,
     fits_isotopic_pattern_batch,
+    deduce_isotopic_pattern
 )
 from .sirius import (
     get_all_compounds,
@@ -19,8 +20,6 @@ from .utils import (
     format_formula_string_to_array,
     clean_formula_string_to_array,
     formula_to_array,
-    element_data,
     element_masses,
-    num_elements,
     formula_array_element_dtype,
 )

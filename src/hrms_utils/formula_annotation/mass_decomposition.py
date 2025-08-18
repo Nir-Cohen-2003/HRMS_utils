@@ -9,6 +9,7 @@ from .mass_decomposition_impl.mass_decomposer_cpp import (
 NUM_ELEMENTS = get_num_elements()
 import polars as pl
 import numpy as np
+from np.typing import NDArray
 from typing import Iterable
 from pathlib import Path
 from typing import List, Dict,Any
@@ -18,8 +19,8 @@ from typing import List, Dict,Any
 
 def decompose_mass(
     mass_series:pl.Series,
-    min_bounds: np.ndarray,
-    max_bounds: np.ndarray,
+    min_bounds: NDArray[np.int32],
+    max_bounds: NDArray[np.int32],
     tolerance_ppm: float = 5.0,
     min_dbe: float = 0.0,
     max_dbe: float = 40.0,
@@ -28,34 +29,50 @@ def decompose_mass(
 ):
     """
     Wrapper for decompose_mass_parallel, fixed bounds only, with validation of input types.
-    
-    df = pl.DataFrame({
-        "mass": [100.0, 200.0, 300.0, 400.0, 500.0]})       
-    df = df.with_columns(pl.col("mass").map_batches(
-        lambda x: decompose_mass(mass_series=x, min_bounds=min_formula, max_bounds=max_formula, tolerance_ppm=5.0, min_dbe=0.0, max_dbe=40.0),
-        return_dtype=pl.List(pl.Array(pl.Int32, 15))
-    ).alias("decomposed_formulas"))
 
-    min_formula = np.zeros(15, dtype=np.int32)
-    max_formula = np.array([100,0,40,20,10,5,2,1,0,0,0,0,0,0,0], dtype=np.int32)
-    df = pl.DataFrame({
-        "mass": [100.0, 200.0, 300.0, 400.0, 500.0],
-        "min_bounds": [min_formula] * 5,
-        "max_bounds": [max_formula] * 5
-    })  
-    nist = nist.with_columns(
-        pl.col("mass").map_batches(
-            function=lambda x: decompose_mass(
-                mass_series=x,
-                min_bounds=np.zeros(15, dtype=np.int32),
-                max_bounds=np.array([100, 0, 40, 20, 10, 5, 2, 1, 0, 0, 0, 0, 0, 0, 0], dtype=np.int32),
-                tolerance_ppm=5.0,
-                min_dbe=0.0,
-                max_dbe=40.0,
-            ),
-            return_dtype=pl.List(pl.Array(pl.Int32, 15)),
-            is_elementwise=True
-        ).alias("decomposed_formula"))
+    Example usage:
+
+        df = pl.DataFrame({
+            "mass": [100.0, 200.0, 300.0, 400.0, 500.0]
+        })
+
+        df = df.with_columns(
+            pl.col("mass").map_batches(
+                lambda x: decompose_mass(
+                    mass_series=x,
+                    min_bounds=min_formula,
+                    max_bounds=max_formula,
+                    tolerance_ppm=5.0,
+                    min_dbe=0.0,
+                    max_dbe=40.0
+                ),
+                return_dtype=pl.List(pl.Array(pl.Int32, 15))
+            ).alias("decomposed_formulas")
+        )
+
+        min_formula = np.zeros(15, dtype=np.int32)
+        max_formula = np.array([100, 0, 40, 20, 10, 5, 2, 1, 0, 0, 0, 0, 0, 0, 0], dtype=np.int32)
+
+        df = pl.DataFrame({
+            "mass": [100.0, 200.0, 300.0, 400.0, 500.0],
+            "min_bounds": [min_formula] * 5,
+            "max_bounds": [max_formula] * 5
+        })
+
+        nist = nist.with_columns(
+            pl.col("mass").map_batches(
+                function=lambda x: decompose_mass(
+                    mass_series=x,
+                    min_bounds=np.zeros(15, dtype=np.int32),
+                    max_bounds=np.array([100, 0, 40, 20, 10, 5, 2, 1, 0, 0, 0, 0, 0, 0, 0], dtype=np.int32),
+                    tolerance_ppm=5.0,
+                    min_dbe=0.0,
+                    max_dbe=40.0
+                ),
+                return_dtype=pl.List(pl.Array(pl.Int32, 15)),
+                is_elementwise=True
+            ).alias("decomposed_formula")
+        )
     """
     ## Validate input type and shapes
     assert isinstance(mass_series, pl.Series), f"mass_series should be a Polars Series, but got {type(mass_series)}"
@@ -91,8 +108,39 @@ def decompose_mass_per_bounds(
     min_dbe: float = 0.0,
     max_dbe: float = 40.0,  
     max_results: int = 100000,
-):
+) -> pl.Series:
+    """
+    Return a Polars Series of possible formulas for the mass.
 
+    The data type is:
+        pl.Series(pl.List(pl.Array(inner=pl.int32, shape=(15,))))
+
+    Example usage:
+
+        min_formula = np.zeros(15, dtype=np.int32)
+        max_formula = np.array([100, 0, 40, 20, 10, 5, 2, 1, 0, 0, 0, 0, 0, 0, 0], dtype=np.int32)
+
+        df = pl.DataFrame({
+            "mass": [100.0, 200.0, 300.0, 400.0, 500.0],
+            "min_bounds": [min_formula] * 5,
+            "max_bounds": [max_formula] * 5
+        })
+
+        df = df.with_columns(
+            pl.col("mass").map_batches(
+                function=lambda x: decompose_mass_per_bounds(
+                    mass_series=x,
+                    min_bounds=pl.col("min_bounds"),
+                    max_bounds=pl.col("max_bounds"),
+                    tolerance_ppm=5.0,
+                    min_dbe=0.0,
+                    max_dbe=40.0
+                ),
+                return_dtype=pl.List(pl.Array(pl.Int32, 15)),
+                is_elementwise=True
+            ).alias("decomposed_formula")
+        )
+    """
     ## Validate input type and shapes
     assert isinstance(mass_series, pl.Series), f"mass_series should be a Polars Series, but got {type(mass_series)}"
     assert mass_series.dtype == pl.Float64, f"mass_series should be of type Float64, but got {mass_series.dtype}"
@@ -275,39 +323,43 @@ def decompose_spectra(
 def decompose_spectra_known_precursor(
     precursor_formula_series: pl.Series,
     fragment_masses_series: pl.Series,
-    min_bounds,
-    max_bounds,
     tolerance_ppm: float = 5.0,
     max_results: int = 100000,
 ):
     """
-    Wrapper for spectrum decomposition with known precursor formulas.
-    Only supports uniform bounds.
-    df = df.with_columns(
-        pl.col("precursor_mass").map_batches(
-            lambda x: decompose_mass(
-                mass_series=x,
-                min_bounds=min_formula,     
-                max_bounds=max_formula,
-                tolerance_ppm=5.0,
-                min_dbe=0.0,
-                max_dbe=40.0,
-            ),
-            return_dtype=pl.List(pl.Array(pl.Int32, len(min_formula)))
-        ).alias("decomposed_formula")
-    )
-    df = df.explode("decomposed_formula")
-    df = df.with_columns(
-        pl.struct(["fragment_masses", "decomposed_formula"]).map_batches(
-            lambda row: decompose_spectra_known_precursor(
-                precursor_formula_series=row.struct.field("decomposed_formula"),
-                fragment_masses_series=row.struct.field("fragment_masses"),
-                min_bounds=min_formula,
-                max_bounds=max_formula,
-                tolerance_ppm=5.0,
-            )).alias("decomposed_spectra")
+    Decomposes the fragments, when the precursor was already decomposed.
+    The bounds for fragment masses are determined by the precursor formula (not accounting for water absorption in orbitraps, WIP) and by the "zero fragment" from below.
+
+    Example usage:
+
+        # Decompose precursor masses to formulas
+        df = df.with_columns(
+            pl.col("precursor_mass").map_batches(
+                lambda x: decompose_mass(
+                    mass_series=x,
+                    min_bounds=min_formula,     
+                    max_bounds=max_formula,
+                    tolerance_ppm=5.0,
+                    min_dbe=0.0,
+                    max_dbe=40.0,
+                ),
+                return_dtype=pl.List(pl.Array(pl.Int32, len(min_formula)))
+            ).alias("decomposed_formula")
         )
-    
+
+        # Explode formulas to one per row
+        df = df.explode("decomposed_formula")
+
+        # Annotate fragments for each precursor formula
+        df = df.with_columns(
+            pl.struct(["fragment_masses", "decomposed_formula"]).map_batches(
+                lambda row: decompose_spectra_known_precursor(
+                    precursor_formula_series=row.struct.field("decomposed_formula"),
+                    fragment_masses_series=row.struct.field("fragment_masses"),
+                    tolerance_ppm=5.0,
+                )
+            ).alias("decomposed_spectra")
+        )
     """
     precursor_formulas = precursor_formula_series.to_numpy()
     fragment_masses_list = fragment_masses_series.to_numpy()
@@ -315,12 +367,12 @@ def decompose_spectra_known_precursor(
         {"precursor_formula": pf, "fragment_masses": fm}
         for pf, fm in zip(precursor_formulas, fragment_masses_list)
     ]
+    # min_bounds is always zeros
+    min_bounds = np.zeros(NUM_ELEMENTS, dtype=np.int32)
     results = decompose_spectra_known_precursor_parallel(
         spectra_data=spectra_data,
         min_bounds=min_bounds,
-        max_bounds=max_bounds,
         tolerance_ppm=tolerance_ppm,
         max_results=max_results,
     )
-    return pl.Series(results, dtype= pl.List(pl.List(pl.Array(pl.Int32, len(min_bounds))))
-    )
+    return pl.Series(results, dtype=pl.List(pl.List(pl.Array(pl.Int32, NUM_ELEMENTS))))

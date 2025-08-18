@@ -440,6 +440,10 @@ def decompose_spectra_parallel_per_bounds(
     if not spectra_data_list:
         return []
     
+    # Validate only the first bounds arrays
+    _validate_bounds_array(spectra_data_list[0]['min_bounds'], "min_bounds in spectra_data[0]")
+    _validate_bounds_array(spectra_data_list[0]['max_bounds'], "max_bounds in spectra_data[0]")
+
     cdef np.ndarray dummy_bounds = np.zeros(NUM_ELEMENTS, dtype=np.int32)
     cdef DecompositionParams params = _convert_params(tolerance_ppm, min_dbe, max_dbe,
                                                      max_results,
@@ -450,8 +454,7 @@ def decompose_spectra_parallel_per_bounds(
     for spec_data in spectra_data_list:
         s.precursor_mass = spec_data['precursor_mass']
         s.fragment_masses = spec_data['fragment_masses']
-        _validate_bounds_array(spec_data['min_bounds'], "min_bounds in list")
-        _validate_bounds_array(spec_data['max_bounds'], "max_bounds in list")
+        # No need to validate here, just convert
         s.precursor_min_bounds = _convert_numpy_to_formula(spec_data['min_bounds'])
         s.precursor_max_bounds = _convert_numpy_to_formula(spec_data['max_bounds'])
         spectra_vec.push_back(s)
@@ -499,9 +502,7 @@ def decompose_spectrum_known_precursor(
         del decomposer
 
 def decompose_spectra_known_precursor_parallel(
-    spectra_data: Iterable[dict], # list of dicts with 'precursor_formula' (np.ndarray) and 'fragment_masses'
-    min_bounds: np.ndarray,
-    max_bounds: np.ndarray,
+    spectra_data: Iterable[dict],
     tolerance_ppm: float = 5.0,
     max_results: int = 100000
 ) -> list:
@@ -509,15 +510,18 @@ def decompose_spectra_known_precursor_parallel(
     spectra_data_list = list(spectra_data)
     if not spectra_data_list:
         return []
-    cdef DecompositionParams params = _convert_params(tolerance_ppm, 0, 100.0,  max_results, min_bounds, max_bounds)
+    # Validate only the first precursor_formula
+    precursor_formula_arr = spectra_data_list[0]['precursor_formula']
+    _validate_bounds_array(precursor_formula_arr, "precursor_formula in spectra_data[0]")
+
+    cdef np.ndarray min_bounds = np.zeros(NUM_ELEMENTS, dtype=np.int32)
+    cdef DecompositionParams params = _convert_params(tolerance_ppm, 0, 100.0, max_results, min_bounds, np.zeros(NUM_ELEMENTS, dtype=np.int32))
     
     cdef vector[SpectrumWithKnownPrecursor] spectra_vec
     spectra_vec.reserve(len(spectra_data_list))
     cdef SpectrumWithKnownPrecursor s
-    for i, spec_data in enumerate(spectra_data_list):
-        precursor_formula_arr = spec_data['precursor_formula']
-        _validate_bounds_array(precursor_formula_arr, f"precursor_formula in spectra_data at index {i}")
-        s.precursor_formula = _convert_numpy_to_formula(precursor_formula_arr)
+    for spec_data in spectra_data_list:
+        s.precursor_formula = _convert_numpy_to_formula(spec_data['precursor_formula'])
         s.fragment_masses = spec_data['fragment_masses']
         spectra_vec.push_back(s)
 

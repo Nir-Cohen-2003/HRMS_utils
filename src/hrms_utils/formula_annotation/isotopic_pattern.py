@@ -3,8 +3,8 @@ import re
 from dataclasses import dataclass
 import polars as pl
 from typing import Dict, TypeVar, overload
-from .utils import element_data
-
+from .element_table import ELEMENTS, ELEMENT_SYMBOLS, DEFAULT_MIN_BOUND, DEFAULT_MAX_BOUND
+from numba import njit, jit
 NITROGEN_SEPARATION_RESOLUTION=1e5
 
 @dataclass
@@ -37,83 +37,23 @@ class isotopic_pattern_config:
         kwargs['ms1_resolution'] = ms1_resolution
         return cls(**kwargs)
 MASS_ACCURACY_PPM_TO_DA_THRESHOLD = 200.0
-isotopic_pattern_arr = np.array( 
-    #mass difference, zero isotope probability, first isoptope probability
-    [
-        [1.0034,0.9893,0.0107], #C
-        [0.99703,0.996,0.004], #N
-        [1.9958,0.9493,0.0429], #S
-        [1.9971,0.7578,0.2422], #Cl
-        [1.998,0.5069,0.4931], #Br
-    ]
-)
-isotopic_pattern_dict = {
-    'C': {
-        "mass_difference": isotopic_pattern_arr[0][0],
-        "zero_isotope_probability": isotopic_pattern_arr[0][1],
-        "first_isotope_probability": isotopic_pattern_arr[0][2],
-        "index": list(element_data.keys()).index("C")
-    },
-    'N': {
-        "mass_difference": isotopic_pattern_arr[1][0],
-        "zero_isotope_probability": isotopic_pattern_arr[1][1],
-        "first_isotope_probability": isotopic_pattern_arr[1][2],
-        "index": list(element_data.keys()).index("N")
-    },
-    'S': {
-        "mass_difference": isotopic_pattern_arr[2][0],
-        "zero_isotope_probability": isotopic_pattern_arr[2][1],
-        "first_isotope_probability": isotopic_pattern_arr[2][2],
-        "index": list(element_data.keys()).index("S")
-    },
-    'Cl': {
-        "mass_difference": isotopic_pattern_arr[3][0],
-        "zero_isotope_probability": isotopic_pattern_arr[3][1],
-        "first_isotope_probability": isotopic_pattern_arr[3][2],
-        "index": list(element_data.keys()).index("Cl")
-    },
-    'Br': {
-        "mass_difference": isotopic_pattern_arr[4][0],
-        "zero_isotope_probability": isotopic_pattern_arr[4][1],
-        "first_isotope_probability": isotopic_pattern_arr[4][2],
-        "index": list(element_data.keys()).index("Br")
-    },
-}
 
-DEFAULT_MIN_BOUND = {
-    'H': 0,
-    'B': 0,
-    'C': 0,
-    'N': 0,
-    'O': 0,
-    'F': 0,
-    'Na': 0,
-    'Si': 0,
-    'P': 0,
-    'S': 0,
-    'Cl': 0,
-    'K': 0,
-    'As': 0,
-    'Br': 0,
-    'I': 0,
-}
-DEFAULT_MAX_BOUND = {
-    'H': 0,
-    'B': 0,
-    'C': 0,
-    'N': 0,
-    'O': 0,
-    'F': 0,
-    'Na': 0,
-    'Si': 0,
-    'P': 0,
-    'S': 0,
-    'Cl': 0,
-    'K': 0,
-    'As': 0,
-    'Br': 0,
-    'I': 0,
-}
+# Get isotopic pattern info from ELEMENTS
+def get_isotopic_pattern_dict():
+    pattern_dict = {}
+    for i, elem in enumerate(ELEMENTS):
+        if elem.isotopic_distribution is not None:
+            iso = elem.isotopic_distribution
+            pattern_dict[elem.symbol] = {
+                "mass_difference": iso.mass_differences[0],
+                "zero_isotope_probability": iso.abundances[0],
+                "first_isotope_probability": iso.abundances[1],
+                "index": i
+            }
+    return pattern_dict
+
+isotopic_pattern_dict = get_isotopic_pattern_dict()
+
 
 def fits_isotopic_pattern_batch(mzs_batch, intensities_batch, formulas, precursor_mzs, config):
     """
@@ -128,7 +68,7 @@ def fits_isotopic_pattern_batch(mzs_batch, intensities_batch, formulas, precurso
         return np.array([], dtype=bool)
 
     batch_size = len(formulas)
-    # Get element numbers for all formulas (shape: batch, 5)
+    # Get element numbers for all formulas (shape: batch, n_elements)
     element_numbers_batch = np.stack([get_element_numbers(f) for f in formulas])
 
     # Find precursor indices and intensities for each spectrum
@@ -142,92 +82,58 @@ def fits_isotopic_pattern_batch(mzs_batch, intensities_batch, formulas, precurso
         precursor_indices.append(idx)
         precursor_intensities.append(intensities[idx])
 
-    # Prepare element_fits (batch, 5)
-    element_fits = np.zeros_like(element_numbers_batch, dtype=bool)
+    # Prepare element_fits (batch, n_elements)
+    n_iso = len(isotopic_pattern_dict)
+    element_fits = np.zeros((batch_size, n_iso), dtype=bool)
+    iso_keys = list(isotopic_pattern_dict.keys())
 
     # C and N
     if config.ms1_resolution > NITROGEN_SEPARATION_RESOLUTION:
         # C
         for idx in range(batch_size):
-            element_fits[idx, 0] = check_element_fit(
-                config, 0, mzs_batch[idx], intensities_batch[idx],
-                element_numbers_batch[idx, 0], precursor_mzs[idx], precursor_intensities[idx]
+            element_fits[idx, iso_keys.index('C')] = check_element_fit(
+                config, iso_keys.index('C'), mzs_batch[idx], intensities_batch[idx],
+                element_numbers_batch[idx, ELEMENT_SYMBOLS.index('C')], precursor_mzs[idx], precursor_intensities[idx]
             )
         # N
         for idx in range(batch_size):
-            element_fits[idx, 1] = check_element_fit(
-                config, 1, mzs_batch[idx], intensities_batch[idx],
-                element_numbers_batch[idx, 1], precursor_mzs[idx], precursor_intensities[idx]
+            element_fits[idx, iso_keys.index('N')] = check_element_fit(
+                config, iso_keys.index('N'), mzs_batch[idx], intensities_batch[idx],
+                element_numbers_batch[idx, ELEMENT_SYMBOLS.index('N')], precursor_mzs[idx], precursor_intensities[idx]
             )
     else:
         # CN combined
         for idx in range(batch_size):
             CN_fit = check_CN_fit(
                 config, mzs_batch[idx], intensities_batch[idx],
-                element_numbers_batch[idx, 0], element_numbers_batch[idx, 1],
+                element_numbers_batch[idx, ELEMENT_SYMBOLS.index('C')],
+                element_numbers_batch[idx, ELEMENT_SYMBOLS.index('N')],
                 precursor_mzs[idx], precursor_intensities[idx]
             )
-            element_fits[idx, 0] = CN_fit
-            element_fits[idx, 1] = CN_fit
+            element_fits[idx, iso_keys.index('C')] = CN_fit
+            element_fits[idx, iso_keys.index('N')] = CN_fit
 
     # S, Cl, Br
-    for i in [2, 3, 4]:
+    for symbol in ['S', 'Cl', 'Br']:
+        i = iso_keys.index(symbol)
         for idx in range(batch_size):
             element_fits[idx, i] = check_element_fit(
                 config, i, mzs_batch[idx], intensities_batch[idx],
-                element_numbers_batch[idx, i], precursor_mzs[idx], precursor_intensities[idx]
+                element_numbers_batch[idx, ELEMENT_SYMBOLS.index(symbol)], precursor_mzs[idx], precursor_intensities[idx]
             )
 
     return np.all(element_fits, axis=1)
 
 def get_element_numbers(formula:str) -> np.ndarray:
-    has_C = re.search(r"C((\d+)|[A-Z]|$)",formula)
-    if has_C is None:
-        num_C = 0
-    else:
-        num_C = re.search(r"C(\d+)",has_C.group(0))
-        if num_C is None:
-            num_C = 1
-        else:
-            num_C = int(num_C.group(1))
-    has_N = re.search(r"N((\d+)|[A-Z]|$)",formula)
-    if has_N is None:
-        num_N = 0
-    else:
-        num_N = re.search(r"N(\d+)",has_N.group(0))
-        if num_N is None:
-            num_N = 1
-        else:
-            num_N = int(num_N.group(1))
-    has_S = re.search(r"S((\d+)|[A-Z]|$)",formula)
-    if has_S is None:
-        num_S = 0
-    else:
-        num_S = re.search(r"S(\d+)",has_S.group(0))
-        if num_S is None:
-            num_S = 1
-        else:
-            num_S = int(num_S.group(1))
-    has_Cl = re.search(r"Cl((\d+)|[A-Z]|$)",formula)
-    if has_Cl is None:
-        num_Cl = 0
-    else:
-        num_Cl = re.search(r"Cl(\d+)",has_Cl.group(0))
-        if num_Cl is None:
-            num_Cl = 1
-        else:
-            num_Cl = int(num_Cl.group(1))
-    has_Br = re.search(r"Br((\d+)|[A-Z]|$)",formula)
-    if has_Br is None:
-        num_Br = 0
-    else:
-        num_Br = re.search(r"Br(\d+)",has_Br.group(0))
-        if num_Br is None:
-            num_Br = 1
-        else:
-            num_Br = int(num_Br.group(1))
-
-    return np.array([num_C,num_N,num_S,num_Cl,num_Br])
+    # Returns array of element counts in the order of ELEMENT_SYMBOLS
+    arr = np.zeros(len(ELEMENT_SYMBOLS), dtype=int)
+    for i, symbol in enumerate(ELEMENT_SYMBOLS):
+        regex = ELEMENTS[i].regex
+        found = re.search(regex, formula)
+        if found is not None:
+            num = re.search(r'\d+', found.group())
+            arr[i] = int(num.group()) if num is not None else 1
+    return arr
 
 def check_element_fit(
         config:isotopic_pattern_config,
@@ -239,25 +145,26 @@ def check_element_fit(
         precursor_intensity:float):
     if element_number == 0:
         return True
+    iso_keys = list(isotopic_pattern_dict.keys())
+    iso = isotopic_pattern_dict[iso_keys[i]]
+    zero_isotope_intensity = np.power(iso["zero_isotope_probability"], element_number)
+    computed_isotope_relative_intensity = iso["first_isotope_probability"] * element_number / zero_isotope_intensity
+    computed_isotope_intensity = precursor_intensity * computed_isotope_relative_intensity
+    if computed_isotope_intensity < config.minimum_intensity:
+        return True
+    computed_isotope_mass = precursor_mz + iso["mass_difference"]
+    best_fit_index = (np.abs(mzs-computed_isotope_mass)).argmin()
+    isotope_mass = mzs[best_fit_index]
+
+    if not np.isclose(isotope_mass,computed_isotope_mass,rtol=config.mass_tolerance):
+        return False
     else:
-        zero_isotope_intesnsity = np.power(isotopic_pattern_arr[i][1],element_number)
-        computed_isotope_relative_intensity = isotopic_pattern_arr[i][2]*element_number/zero_isotope_intesnsity
-        computed_isotope_intensity = precursor_intensity*computed_isotope_relative_intensity
-        if computed_isotope_intensity < config.minimum_intensity: #meaning the intensity would be too small, and we won't be able to detect it reliably anyway.
-            return True
-        computed_isotope_mass = precursor_mz + isotopic_pattern_arr[i][0]
-        best_fit_index = (np.abs(mzs-computed_isotope_mass)).argmin()
-        isotope_mass = mzs[best_fit_index]
-        
-        if not np.isclose(isotope_mass,computed_isotope_mass,rtol=config.mass_tolerance): # then the element probably isn't even present, or the intensity is too low.
+        isotope_intensity = intensities[best_fit_index]
+        intensity_ratio = isotope_intensity/computed_isotope_intensity
+        if intensity_ratio > config.max_intensity_ratio or intensity_ratio < 1/config.max_intensity_ratio:
             return False
-        else:  
-            isotope_intensity = intensities[best_fit_index]
-            intensity_ratio = isotope_intensity/computed_isotope_intensity
-            if intensity_ratio > config.max_intensity_ratio or intensity_ratio < 1/config.max_intensity_ratio: # so we have the right isotope mass, but the ratio is off, meaning we don't have the correct number
-                return False
-            else:
-                return True
+        else:
+            return True
 
 def check_CN_fit(
         config:isotopic_pattern_config,
@@ -268,29 +175,49 @@ def check_CN_fit(
         precursor_mz:float,
         precursor_intensity:float):
     '''checks for fit of the combined N and C isotopic ratio'''
+    iso_C = isotopic_pattern_dict['C']
+    iso_N = isotopic_pattern_dict['N']
     if N_number == 0:
-        return check_element_fit(config,0,mzs,intensities,C_number,precursor_mz,precursor_intensity)
+        return check_element_fit(config, list(isotopic_pattern_dict.keys()).index('C'), mzs, intensities, C_number, precursor_mz, precursor_intensity)
     if C_number == 0:
-        return check_element_fit(config,1,mzs,intensities,N_number,precursor_mz,precursor_intensity)
-    
-    zero_isotope_intesnsity = np.power(isotopic_pattern_arr[0][1],C_number)*np.power(isotopic_pattern_arr[1][1],N_number)
-    computed_isotope_relative_intensity = (isotopic_pattern_arr[0][2]*C_number+isotopic_pattern_arr[1][2]*N_number)/zero_isotope_intesnsity
-    computed_isotope_intensity = precursor_intensity*computed_isotope_relative_intensity
-    if computed_isotope_intensity < config.minimum_intensity: #meaning the intensity would be too small, and we won't be able to detect it reliably anyway.
+        return check_element_fit(config, list(isotopic_pattern_dict.keys()).index('N'), mzs, intensities, N_number, precursor_mz, precursor_intensity)
+
+    zero_isotope_intensity = np.power(iso_C["zero_isotope_probability"], C_number) * np.power(iso_N["zero_isotope_probability"], N_number)
+    computed_isotope_relative_intensity = (iso_C["first_isotope_probability"]*C_number + iso_N["first_isotope_probability"]*N_number) / zero_isotope_intensity
+    computed_isotope_intensity = precursor_intensity * computed_isotope_relative_intensity
+    if computed_isotope_intensity < config.minimum_intensity:
         return True
-    computed_isotope_mass = precursor_mz + isotopic_pattern_arr[0][0] # the mass of C will be the main mass, since the N peak is smaller and will be merged to it.
+    computed_isotope_mass = precursor_mz + iso_C["mass_difference"]
     best_fit_index = (np.abs(mzs-computed_isotope_mass)).argmin()
     isotope_mass = mzs[best_fit_index]
-    
-    if not np.isclose(isotope_mass,computed_isotope_mass,rtol=config.mass_tolerance): # then the element probably isn't even present, or the intensity is too low.
+
+    if not np.isclose(isotope_mass,computed_isotope_mass,rtol=config.mass_tolerance):
         return False
-    else:  
+    else:
         isotope_intensity = intensities[best_fit_index]
         intensity_ratio = isotope_intensity/computed_isotope_intensity
-        if intensity_ratio > config.max_intensity_ratio or intensity_ratio < 1/config.max_intensity_ratio: # so we have the right isotope mass, but the ratio is off, meaning we don't have the correct number
+        if intensity_ratio > config.max_intensity_ratio or intensity_ratio < 1/config.max_intensity_ratio:
             return False
         else:
             return True
+iso_mass_diffs = np.array([
+    isotopic_pattern_dict['C']["mass_difference"],
+    isotopic_pattern_dict['S']["mass_difference"],
+    isotopic_pattern_dict['Cl']["mass_difference"],
+    isotopic_pattern_dict['Br']["mass_difference"]
+])
+iso_zero_probs = np.array([
+    isotopic_pattern_dict['C']["zero_isotope_probability"],
+    isotopic_pattern_dict['S']["zero_isotope_probability"],
+    isotopic_pattern_dict['Cl']["zero_isotope_probability"],
+    isotopic_pattern_dict['Br']["zero_isotope_probability"]
+])
+iso_first_probs = np.array([
+    isotopic_pattern_dict['C']["first_isotope_probability"],
+    isotopic_pattern_dict['S']["first_isotope_probability"],
+    isotopic_pattern_dict['Cl']["first_isotope_probability"],
+    isotopic_pattern_dict['Br']["first_isotope_probability"]
+])
 
 # this function will work on polars series, and will return an array
 def deduce_isotopic_pattern(
@@ -300,8 +227,8 @@ def deduce_isotopic_pattern(
     mass_tolerance_ppm: float = 5.0,
     minimum_intensity: float = 5e4,
     intensity_relative_tolerance: float = 0.5,
-    max_bounds: Dict[str, int] | None = None,
     min_bounds: Dict[str, int] | None = None,
+    max_bounds: Dict[str, int] | None = None,
 )-> pl.Series:
     """
     Deduce the isotopic pattern from the given precursor and MS1 data for each precursor ion.
@@ -324,106 +251,160 @@ def deduce_isotopic_pattern(
         within the given ppm tolerance    
         """
     
+    # if some bound is not given, use the default.
+    if min_bounds is None:
+        min_bounds = DEFAULT_MIN_BOUND.copy()
+    else:
+        # Merge user-provided min_bounds with defaults
+        min_bounds = {**DEFAULT_MIN_BOUND, **min_bounds}
+        for key in min_bounds.keys():
+            if key not in ELEMENT_SYMBOLS:
+                print(f"Warning: The hrms_utils isotopic pattern and mass decomposition does not handle the element {key}.")
+    # same for maximum
+    if max_bounds is None:
+        max_bounds = DEFAULT_MAX_BOUND.copy()
+    else:
+        # Merge user-provided max_bounds with defaults
+        max_bounds = {**DEFAULT_MAX_BOUND, **max_bounds}
+        for key in max_bounds.keys():
+            if key not in ELEMENT_SYMBOLS:
+                print(f"Warning: The hrms_utils isotopic pattern and mass decomposition does not handle the element {key}.")
+    # now do some sanity checks: max >= min for all keys, min >=0 for all
+    for key in ELEMENT_SYMBOLS:
+        if max_bounds[key] < min_bounds[key]:
+            print(f"Warning: Inconsistent bounds for {key}: max < min.")
+        if min_bounds[key] < 0:
+            print(f"Warning: Negative lower bound for {key}.")
+    #debug:
+    print(f"Using min bounds: {min_bounds}")
+    print(f"Using max bounds: {max_bounds}")
 
-
-    bounds = [None] * len(precursor_mzs)
     ms1_mzs = ms1_mzs.to_numpy()
     ms1_intensities = ms1_intensities.to_numpy()
-
-    if min_bounds is None:
-        min_bounds = DEFAULT_MIN_BOUND
-    if max_bounds is None:
-        max_bounds = DEFAULT_MAX_BOUND
+    deduced_bounds = [None] * len(precursor_mzs)
     for i in range(len(precursor_mzs)):
-        bounds[i] = deduce_isotopic_pattern_inner(
+        result = deduce_isotopic_pattern_inner(
             precursor_mz=precursor_mzs[i],
             ms1_mzs=ms1_mzs[i],
             ms1_intensities=ms1_intensities[i],
             mass_tolerance_ppm=mass_tolerance_ppm,
             minimum_intensity=minimum_intensity,
-            intensity_relative_tolerance=intensity_relative_tolerance
+            intensity_relative_tolerance=intensity_relative_tolerance,
+            iso_mass_diffs=iso_mass_diffs,
+            iso_zero_probs=iso_zero_probs,
+            iso_first_probs=iso_first_probs
         )
-   
-    return bounds
+        # print(result)
+        if result is None:
+            # Fill with NaNs or zeros
+            result = [-1] * 8  # or [0.0] * 8
+        deduced_bounds[i] = result
+    # convert to a 2d array of shape (N, 8)
+    deduced_bounds = np.array(deduced_bounds, dtype=np.float64).reshape(-1, 8)
+    # construct one row of the base bound, from min_bounds and max bounds
+    base_bounds = np.zeros((1, 30), dtype=np.float64)
+    # fill in the default values now:
+    # Fill in the base_bounds array with min_bounds (first 15) and max_bounds (last 15)
+    for idx, symbol in enumerate(ELEMENT_SYMBOLS):
+        base_bounds[0, idx] = min_bounds[symbol]
+        base_bounds[0, idx + 15] = max_bounds[symbol]
+    # Now create the bounds_array by repeating base_bounds for each precursor
+    bounds_array = np.repeat(base_bounds, len(deduced_bounds), axis=0)
+    
+    # now we copy the values, using vectorized operations
+    # Copy deduced bounds for C, S, Cl, Br into the bounds_array.
+    # The deduced_bounds array has shape (N, 8): [C_lower, S_lower, Cl_lower, Br_lower, C_upper, S_upper, Cl_upper, Br_upper]
+    # The bounds_array has shape (N, 30): [min_bounds..., max_bounds...]
+    # Fill in the appropriate indices for C, S, Cl, Br (both lower and upper bounds).
+    for idx, symbol in enumerate(['C', 'S', 'Cl', 'Br']):
+        bounds_array[:, ELEMENT_SYMBOLS.index(symbol)] = np.ceil(deduced_bounds[:, idx])      # lower bound
+        bounds_array[:, ELEMENT_SYMBOLS.index(symbol) + 15] = np.floor(deduced_bounds[:, idx + 4])  # upper bound
 
+    return pl.Series(values=bounds_array.astype(np.int32), dtype=pl.Array(inner=pl.Int32, shape=(30,)))
 
+@jit(nopython=False)
 def deduce_isotopic_pattern_inner(
         precursor_mz: float,
         ms1_mzs: np.ndarray,
         ms1_intensities: np.ndarray,
         mass_tolerance_ppm: float,
         minimum_intensity: float,
-        intensity_relative_tolerance: float
+        intensity_relative_tolerance: float,
+        iso_mass_diffs: np.ndarray,
+        iso_zero_probs: np.ndarray,
+        iso_first_probs: np.ndarray
 ):
-    """
-    Inner function to deduce the isotopic pattern for a single precursor ion.
-    returns the isotopic pattern an array, with structure:
-    [
-    C_lower
-    S_lower
-    Cl_lower
-    Br_lower
-    C_upper
-    S_upper
-    Cl_upper
-    Br_upper
-    ]
-    or None if the precursor itself can't be found. shouldn't happen, might become an exception in the future.
-    """
-    absolute_tolerance = np.max([precursor_mz * mass_tolerance_ppm * 1e-6, MASS_ACCURACY_PPM_TO_DA_THRESHOLD* mass_tolerance_ppm * 1e-6])
-    precursor_idx = np.where(np.isclose(ms1_mzs, precursor_mz, atol=absolute_tolerance, rtol=0))[0]
+    MASS_ACCURACY_PPM_TO_DA_THRESHOLD = 200
+    ms1_mzs = np.atleast_1d(ms1_mzs)
+    ms1_intensities = np.atleast_1d(ms1_intensities)
+    absolute_tolerance = np.max(np.array([precursor_mz * mass_tolerance_ppm * 1e-6, MASS_ACCURACY_PPM_TO_DA_THRESHOLD * mass_tolerance_ppm * 1e-6]))
+    precursor_idx = np.where(np.atleast_1d(np.isclose(ms1_mzs, precursor_mz, atol=absolute_tolerance, rtol=0.0)))[0]
     if len(precursor_idx) == 0:
-        print(f"Precursor m/z {precursor_mz} not found in MS1 data.")
         return None
     precursor_ms1_mz = ms1_mzs[precursor_idx[ms1_intensities[precursor_idx].argmax()]]
-    # print(precursor_ms1_mz)
     precursor_ms1_intensity = ms1_intensities[precursor_idx].max()
 
     # C
-    c_peak_mz = precursor_ms1_mz + isotopic_pattern_dict['C']["mass_difference"]
-    c_peaks_idx = np.where(np.isclose(ms1_mzs, c_peak_mz, atol=absolute_tolerance, rtol=0))[0]
+    c_peak_mz = precursor_ms1_mz + iso_mass_diffs[0]
+    c_peaks_idx = np.where(np.atleast_1d(np.isclose(ms1_mzs, c_peak_mz, atol=absolute_tolerance, rtol=0.0)))[0]
     C_peak_total_intensities = ms1_intensities[c_peaks_idx].max() if len(c_peaks_idx) > 0 else 0
     if C_peak_total_intensities < minimum_intensity:
         C_lower = 0
-        C_upper = (minimum_intensity * isotopic_pattern_dict['C']["zero_isotope_probability"]) / (isotopic_pattern_dict['C']["first_isotope_probability"]* precursor_ms1_intensity)
+        C_upper = (minimum_intensity * iso_zero_probs[0]) / (iso_first_probs[0] * precursor_ms1_intensity)
     else:
-        C_lower = (C_peak_total_intensities* (1-intensity_relative_tolerance) * isotopic_pattern_dict['C']["zero_isotope_probability"]) / (isotopic_pattern_dict['C']["first_isotope_probability"]* precursor_ms1_intensity)
-        C_upper = (C_peak_total_intensities *(1+intensity_relative_tolerance) * isotopic_pattern_dict['C']["zero_isotope_probability"]) / (isotopic_pattern_dict['C']["first_isotope_probability"]* precursor_ms1_intensity)
+        C_lower = (C_peak_total_intensities * (1 - intensity_relative_tolerance) * iso_zero_probs[0]) / (iso_first_probs[0] * precursor_ms1_intensity)
+        C_upper = (C_peak_total_intensities * (1 + intensity_relative_tolerance) * iso_zero_probs[0]) / (iso_first_probs[0] * precursor_ms1_intensity)
 
     # S
-    s_peak_mz = precursor_ms1_mz + isotopic_pattern_dict['S']["mass_difference"]
-    s_peaks_idx = np.where(np.isclose(ms1_mzs, s_peak_mz, atol=absolute_tolerance, rtol=0))[0]
+    s_peak_mz = precursor_ms1_mz + iso_mass_diffs[1]
+    s_peaks_idx = np.where(np.atleast_1d(np.isclose(ms1_mzs, s_peak_mz, atol=absolute_tolerance, rtol=0.0)))[0]
     S_peak_total_intensities = ms1_intensities[s_peaks_idx].max() if len(s_peaks_idx) > 0 else 0
     if S_peak_total_intensities < minimum_intensity:
         S_lower = 0
-        S_upper = (minimum_intensity * isotopic_pattern_dict['S']["zero_isotope_probability"]) / (isotopic_pattern_dict['S']["first_isotope_probability"]* precursor_ms1_intensity)
+        S_upper = (minimum_intensity * iso_zero_probs[1]) / (iso_first_probs[1] * precursor_ms1_intensity)
     else:
-        S_lower = (S_peak_total_intensities* (1-intensity_relative_tolerance) * isotopic_pattern_dict['S']["zero_isotope_probability"]) / (isotopic_pattern_dict['S']["first_isotope_probability"]* precursor_ms1_intensity)
-        S_upper = (S_peak_total_intensities *(1+intensity_relative_tolerance) * isotopic_pattern_dict['S']["zero_isotope_probability"]) / (isotopic_pattern_dict['S']["first_isotope_probability"]* precursor_ms1_intensity)
+        S_lower = (S_peak_total_intensities * (1 - intensity_relative_tolerance) * iso_zero_probs[1]) / (iso_first_probs[1] * precursor_ms1_intensity)
+        S_upper = (S_peak_total_intensities * (1 + intensity_relative_tolerance) * iso_zero_probs[1]) / (iso_first_probs[1] * precursor_ms1_intensity)
 
     # Cl
-    cl_peak_mz = precursor_ms1_mz + isotopic_pattern_dict['Cl']["mass_difference"]
-    cl_peaks_idx = np.where(np.isclose(ms1_mzs, cl_peak_mz, atol=absolute_tolerance, rtol=0))[0]
+    cl_peak_mz = precursor_ms1_mz + iso_mass_diffs[2]
+    cl_peaks_idx = np.where(np.atleast_1d(np.isclose(ms1_mzs, cl_peak_mz, atol=absolute_tolerance, rtol=0.0)))[0]
     Cl_peak_total_intensities = ms1_intensities[cl_peaks_idx].max() if len(cl_peaks_idx) > 0 else 0
     if Cl_peak_total_intensities < minimum_intensity:
         Cl_lower = 0
-        Cl_upper = (minimum_intensity * isotopic_pattern_dict['Cl']["zero_isotope_probability"]) / (isotopic_pattern_dict['Cl']["first_isotope_probability"]* precursor_ms1_intensity)
+        Cl_upper = (minimum_intensity * iso_zero_probs[2]) / (iso_first_probs[2] * precursor_ms1_intensity)
     else:
-        Cl_lower = (Cl_peak_total_intensities* (1-intensity_relative_tolerance) * isotopic_pattern_dict['Cl']["zero_isotope_probability"]) / (isotopic_pattern_dict['Cl']["first_isotope_probability"]* precursor_ms1_intensity)
-        Cl_upper = (Cl_peak_total_intensities *(1+intensity_relative_tolerance) * isotopic_pattern_dict['Cl']["zero_isotope_probability"]) / (isotopic_pattern_dict['Cl']["first_isotope_probability"]* precursor_ms1_intensity)
-    # TODO: Add support for second isotope for Cl (M+4)
+        Cl_lower = (Cl_peak_total_intensities * (1 - intensity_relative_tolerance) * iso_zero_probs[2]) / (iso_first_probs[2] * precursor_ms1_intensity)
+        Cl_upper = (Cl_peak_total_intensities * (1 + intensity_relative_tolerance) * iso_zero_probs[2]) / (iso_first_probs[2] * precursor_ms1_intensity)
+    # second Cl peak- the M+4
+    # we need this because 2 Cl and 1 Br look very similar
+    # we do this only if we got a positive estimation on Cl_lower, and at least 2 on Cl_upper
+    if Cl_lower > 0 and Cl_upper >= 2:
+        second_cl_peak_mz = precursor_ms1_mz + iso_mass_diffs[2] * 2
+        cl_peaks_idx = np.where(np.atleast_1d(np.isclose(ms1_mzs, second_cl_peak_mz, atol=absolute_tolerance, rtol=0.0)))[0]
+        second_Cl_peak_total_intensities = ms1_intensities[cl_peaks_idx].max() if len(cl_peaks_idx) > 0 else 0
+        # now, if truly there are at least 2 Cls, then we can get a ratio between the first Cl peak and the second
+        expected_Cl_ratio = iso_first_probs[2] / (2*iso_zero_probs[2])
+        actual_Cl_ratio = second_Cl_peak_total_intensities / Cl_peak_total_intensities
+        if expected_Cl_ratio * Cl_peak_total_intensities > minimum_intensity * (1+intensity_relative_tolerance): # we expect to see the second peak, even with the noise of the intesity
+            Cl_deviation = np.abs((actual_Cl_ratio - expected_Cl_ratio) / expected_Cl_ratio)
+            if Cl_deviation > intensity_relative_tolerance:
+                Cl_lower = 0
+                Cl_upper = 1
 
     # Br
-    br_peak_mz = precursor_ms1_mz + isotopic_pattern_dict['Br']["mass_difference"]
-    br_peaks_idx = np.where(np.isclose(ms1_mzs, br_peak_mz, atol=absolute_tolerance, rtol=0))[0]
+    br_peak_mz = precursor_ms1_mz + iso_mass_diffs[3]
+    br_peaks_idx = np.where(np.atleast_1d(np.isclose(ms1_mzs, br_peak_mz, atol=absolute_tolerance, rtol=0.0)))[0]
     Br_peak_total_intensities = ms1_intensities[br_peaks_idx].max() if len(br_peaks_idx) > 0 else 0
     if Br_peak_total_intensities < minimum_intensity:
         Br_lower = 0
-        Br_upper = (minimum_intensity * isotopic_pattern_dict['Br']["zero_isotope_probability"]) / (isotopic_pattern_dict['Br']["first_isotope_probability"]* precursor_ms1_intensity)
+        Br_upper = (minimum_intensity * iso_zero_probs[3]) / (iso_first_probs[3] * precursor_ms1_intensity)
     else:
-        Br_lower = (Br_peak_total_intensities* (1-intensity_relative_tolerance) * isotopic_pattern_dict['Br']["zero_isotope_probability"]) / (isotopic_pattern_dict['Br']["first_isotope_probability"]* precursor_ms1_intensity)
-        Br_upper = (Br_peak_total_intensities *(1+intensity_relative_tolerance) * isotopic_pattern_dict['Br']["zero_isotope_probability"]) / (isotopic_pattern_dict['Br']["first_isotope_probability"]* precursor_ms1_intensity)
+        Br_lower = (Br_peak_total_intensities * (1 - intensity_relative_tolerance) * iso_zero_probs[3]) / (iso_first_probs[3] * precursor_ms1_intensity)
+        Br_upper = (Br_peak_total_intensities * (1 + intensity_relative_tolerance) * iso_zero_probs[3]) / (iso_first_probs[3] * precursor_ms1_intensity)
     # TODO: Add support for second isotope for Br (M+4)
 
     return [C_lower, S_lower, Cl_lower, Br_lower, C_upper, S_upper, Cl_upper, Br_upper]
 
+
+# if __name__ == "__main__":
