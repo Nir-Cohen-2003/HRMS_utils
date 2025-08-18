@@ -7,7 +7,7 @@ platforms = ["linux-64","win-64"]
 preview = ["pixi-build"]
 [package]
 name = "hrms_utils"
-version = "0.1.0.post1"
+version = "0.2.0"
 
 [dependencies]
 python = "3.12.*"
@@ -24,7 +24,7 @@ build = "*"
 [tasks]
 build-wheel = "python -m build"
 build-all = "python -m build --wheel --sdist"
-publish-test = {cmd="twine upload --repository testpypi --skip-existing dist/*"}
+publish-test = {cmd="twine upload --repository testpypi --skip-existing dist/*", depends-on = ["cibw-wheels"]}
 cibw-wheels = { cmd = "python -m cibuildwheel --output-dir dist", env = {CIBW_BUILD = "cp312-* cp313-*", CIBW_SKIP = "*musllinux* *-win32", CIBW_ARCHS_WINDOWS = "AMD64"}, depends-on=["clean_dist"]}
 clean_dist = "rm -rf dist || true"
 sdist = "python -m build --sdist"
