@@ -606,7 +606,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/73/c1/0bc499838a6c6d3c6659103d08b545d9ff43c05cc3ef56accf2b264f46d8/msbuddy-0.3.12-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/e7/9c/0e6afc12c269578be5c0c1c9f4b49a8d32770a080260c333ac04cc1c832d/soupsieve-2.7-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/d0/30/dc54f88dd4a2b5dc8a0279bdd7270e735851848b762aeb1c1184ed1f6b14/tqdm-4.67.1-py3-none-any.whl
-      - pypi: ./
+      - pypi: ./dist/hrms_utils-0.1.0.post1-cp312-cp312-win_amd64.whl
       win-64:
       - conda: https://prefix.dev/conda-forge/win-64/_openmp_mutex-4.5-2_gnu.conda
       - conda: https://prefix.dev/conda-forge/noarch/_python_abi3_support-1.0-hd8ed1ab_2.conda
@@ -853,7 +853,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/73/c1/0bc499838a6c6d3c6659103d08b545d9ff43c05cc3ef56accf2b264f46d8/msbuddy-0.3.12-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/e7/9c/0e6afc12c269578be5c0c1c9f4b49a8d32770a080260c333ac04cc1c832d/soupsieve-2.7-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/d0/30/dc54f88dd4a2b5dc8a0279bdd7270e735851848b762aeb1c1184ed1f6b14/tqdm-4.67.1-py3-none-any.whl
-      - pypi: ./
+      - pypi: ./dist/hrms_utils-0.1.0.post1-cp312-cp312-win_amd64.whl
 packages:
 - conda: https://prefix.dev/conda-forge/linux-64/_libgcc_mutex-0.1-conda_forge.tar.bz2
   sha256: fe51de6107f9edc7aa4f786a70f4a883943bc9d39b3bb7307c04c41410990726
@@ -2531,10 +2531,9 @@ packages:
   - pkg:pypi/hpack?source=hash-mapping
   size: 30731
   timestamp: 1737618390337
-- pypi: ./
+- pypi: ./dist/hrms_utils-0.1.0.post1-cp312-cp312-win_amd64.whl
   name: hrms-utils
   version: 0.1.0.post1
-  sha256: c286fd6ee810bfa6e7ccf144c88d6d51b5ec4b52a8fa30fb09e2d3c90b06391f
   requires_dist:
   - polars>=1.32.0,<2
   - rdkit>=2024.0.0
@@ -2554,7 +2553,6 @@ packages:
   - connectorx
   - sqlalchemy
   requires_python: '>=3.12'
-  editable: true
 - conda: https://prefix.dev/conda-forge/noarch/humanize-4.12.3-pyhd8ed1ab_0.conda
   sha256: ee7f8f68cefac7095512aaadd912c08ba722f180b3d111cc386fcbbb218a7333
   md5: cb1cf47e9eb851362fa5686f72686e85

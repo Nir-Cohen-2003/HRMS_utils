@@ -109,6 +109,6 @@ connectorx = "*"
 sqlalchemy = "*"
 ipykernel = "*"
 [feature.testing.pypi-dependencies]
-hrms_utils = {path = ".",editable = true}
+hrms_utils = {path = "dist/hrms_utils-0.1.0.post1-cp312-cp312-win_amd64.whl",editable = false}
 
 

@@ -9,7 +9,7 @@ from .mass_decomposition_impl.mass_decomposer_cpp import (
 NUM_ELEMENTS = get_num_elements()
 import polars as pl
 import numpy as np
-from np.typing import NDArray
+from numpy.typing import NDArray
 from typing import Iterable
 from pathlib import Path
 from typing import List, Dict,Any
@@ -368,10 +368,8 @@ def decompose_spectra_known_precursor(
         for pf, fm in zip(precursor_formulas, fragment_masses_list)
     ]
     # min_bounds is always zeros
-    min_bounds = np.zeros(NUM_ELEMENTS, dtype=np.int32)
     results = decompose_spectra_known_precursor_parallel(
         spectra_data=spectra_data,
-        min_bounds=min_bounds,
         tolerance_ppm=tolerance_ppm,
         max_results=max_results,
     )

@@ -4,8 +4,7 @@ from .mass_decomposition import decompose_mass_per_bounds, decompose_spectra_kno
 
 def annotate_chromatogram_with_formulas(
     chromatogram: pl.DataFrame,
-    base_bounds: dict,
-    max_bounds: dict,
+    max_bounds: dict|None = None,
     mass_accuracy_ppm: float = 3.0,
     annotate_spectrum: bool = False
 ) -> pl.DataFrame:
@@ -33,7 +32,6 @@ def annotate_chromatogram_with_formulas(
                 batch.struct.field("ms1_isotopes_intensity"),
                 mass_tolerance_ppm=mass_accuracy_ppm,
                 intensity_relative_tolerance=0.05,
-                min_bounds=base_bounds,
                 max_bounds=max_bounds,
             ),
             return_dtype=pl.Array(inner=pl.Int32, shape=(30,))
@@ -59,14 +57,28 @@ def annotate_chromatogram_with_formulas(
             return_dtype=pl.List(pl.Array(inner=pl.Int32, shape=(15,)))
         ).alias("decomposed_formulas")
     )
+    
 
     if annotate_spectrum:
+        chromatogram = chromatogram.explode("decomposed_formulas")
         chromatogram = chromatogram.with_columns(
-            pl.struct(["msms_m/z", "decomposed_formula"]).map_batches(
+            pl.struct(["msms_m/z", "decomposed_formulas"]).map_batches(
                 lambda row: decompose_spectra_known_precursor(
-                    precursor_formula_series=row.struct.field("decomposed_formula"),
+                    precursor_formula_series=row.struct.field("decomposed_formulas"),
                     fragment_masses_series=row.struct.field("msms_m/z"),
                 tolerance_ppm=5.0,
-            )).alias("decomposed_spectra")
+                ), return_dtype=pl.List(pl.List(pl.Array(inner=pl.Int32, shape=(15,))))
+            ).alias("decomposed_spectra")
         )
     return chromatogram
+
+if __name__ == "__main__":
+    from ..interfaces import get_chromatogram
+
+    annotated_chromatogram = annotate_chromatogram_with_formulas(
+        get_chromatogram(),
+        mass_accuracy_ppm=3.0,
+        annotate_spectrum=True
+    )
+    
+    print(annotated_chromatogram)

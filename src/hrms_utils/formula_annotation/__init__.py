@@ -23,3 +23,5 @@ from .utils import (
     element_masses,
     formula_array_element_dtype,
 )
+
+from .msdial_interface import annotate_chromatogram_with_formulas
