@@ -327,8 +327,6 @@ environments:
     channels:
     - url: https://prefix.dev/pixi-build-backends/
     - url: https://prefix.dev/conda-forge/
-    indexes:
-    - https://pypi.org/simple
     packages:
       linux-64:
       - conda: https://prefix.dev/conda-forge/linux-64/_libgcc_mutex-0.1-conda_forge.tar.bz2
@@ -598,15 +596,6 @@ environments:
       - conda: https://prefix.dev/conda-forge/linux-64/zlib-1.3.1-hb9d3cd8_2.conda
       - conda: https://prefix.dev/conda-forge/linux-64/zstandard-0.23.0-py312h66e93f0_2.conda
       - conda: https://prefix.dev/conda-forge/linux-64/zstd-1.5.7-hb8e6e7a_2.conda
-      - pypi: https://files.pythonhosted.org/packages/50/cd/30110dc0ffcf3b131156077b90e9f60ed75711223f306da4db08eff8403b/beautifulsoup4-4.13.4-py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/64/23/e80f8e519fcdea4bdf483c6363db5629a10fd6be8e179bb47bdc07707bec/brain_isotopic_distribution-1.5.19-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
-      - pypi: https://files.pythonhosted.org/packages/28/cc/f0a932c8a9cd00ebdadd177c4dd312dd11771ea1856b2b86f57995e6e249/chemparse-0.3.2-py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/54/70/e07c381e6488a77094f04c85c9caf1c8008cdc30778f7019bc52e5285ef0/gdown-5.2.0-py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/7d/4f/1195bbac8e0c2acc5f740661631d8d750dc38d4a32b23ee5df3cde6f4e0d/joblib-1.5.1-py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/73/c1/0bc499838a6c6d3c6659103d08b545d9ff43c05cc3ef56accf2b264f46d8/msbuddy-0.3.12-py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/e7/9c/0e6afc12c269578be5c0c1c9f4b49a8d32770a080260c333ac04cc1c832d/soupsieve-2.7-py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/d0/30/dc54f88dd4a2b5dc8a0279bdd7270e735851848b762aeb1c1184ed1f6b14/tqdm-4.67.1-py3-none-any.whl
-      - pypi: ./dist/hrms_utils-0.1.0.post1-cp312-cp312-win_amd64.whl
       win-64:
       - conda: https://prefix.dev/conda-forge/win-64/_openmp_mutex-4.5-2_gnu.conda
       - conda: https://prefix.dev/conda-forge/noarch/_python_abi3_support-1.0-hd8ed1ab_2.conda
@@ -845,15 +834,6 @@ environments:
       - conda: https://prefix.dev/conda-forge/noarch/zipp-3.23.0-pyhd8ed1ab_0.conda
       - conda: https://prefix.dev/conda-forge/win-64/zstandard-0.23.0-py312h4389bb4_2.conda
       - conda: https://prefix.dev/conda-forge/win-64/zstd-1.5.7-hbeecb71_2.conda
-      - pypi: https://files.pythonhosted.org/packages/50/cd/30110dc0ffcf3b131156077b90e9f60ed75711223f306da4db08eff8403b/beautifulsoup4-4.13.4-py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/ec/4e/402b9fc1a958767b7390046ce3f72f876eddbc3fade1681b4baa29f1fb98/brain_isotopic_distribution-1.5.19-cp312-cp312-win_amd64.whl
-      - pypi: https://files.pythonhosted.org/packages/28/cc/f0a932c8a9cd00ebdadd177c4dd312dd11771ea1856b2b86f57995e6e249/chemparse-0.3.2-py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/54/70/e07c381e6488a77094f04c85c9caf1c8008cdc30778f7019bc52e5285ef0/gdown-5.2.0-py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/7d/4f/1195bbac8e0c2acc5f740661631d8d750dc38d4a32b23ee5df3cde6f4e0d/joblib-1.5.1-py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/73/c1/0bc499838a6c6d3c6659103d08b545d9ff43c05cc3ef56accf2b264f46d8/msbuddy-0.3.12-py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/e7/9c/0e6afc12c269578be5c0c1c9f4b49a8d32770a080260c333ac04cc1c832d/soupsieve-2.7-py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/d0/30/dc54f88dd4a2b5dc8a0279bdd7270e735851848b762aeb1c1184ed1f6b14/tqdm-4.67.1-py3-none-any.whl
-      - pypi: ./dist/hrms_utils-0.1.0.post1-cp312-cp312-win_amd64.whl
 packages:
 - conda: https://prefix.dev/conda-forge/linux-64/_libgcc_mutex-0.1-conda_forge.tar.bz2
   sha256: fe51de6107f9edc7aa4f786a70f4a883943bc9d39b3bb7307c04c41410990726
@@ -1531,19 +1511,6 @@ packages:
   - pkg:pypi/bashlex?source=hash-mapping
   size: 161483
   timestamp: 1725526799688
-- pypi: https://files.pythonhosted.org/packages/50/cd/30110dc0ffcf3b131156077b90e9f60ed75711223f306da4db08eff8403b/beautifulsoup4-4.13.4-py3-none-any.whl
-  name: beautifulsoup4
-  version: 4.13.4
-  sha256: 9bbbb14bfde9d79f38b8cd5f8c7c85f4b8f2523190ebed90e950a8dea4cb1c4b
-  requires_dist:
-  - soupsieve>1.2
-  - typing-extensions>=4.0.0
-  - cchardet ; extra == 'cchardet'
-  - chardet ; extra == 'chardet'
-  - charset-normalizer ; extra == 'charset-normalizer'
-  - html5lib ; extra == 'html5lib'
-  - lxml ; extra == 'lxml'
-  requires_python: '>=3.7.0'
 - conda: https://prefix.dev/conda-forge/noarch/bracex-2.2.1-pyhd8ed1ab_0.tar.bz2
   sha256: e3f867b5be7837366e989df8f6e64f94ec180676fea3494285ee873f24921156
   md5: 586272349d7bef5b1ef527b56dca73cb
@@ -1555,14 +1522,6 @@ packages:
   - pkg:pypi/bracex?source=hash-mapping
   size: 14045
   timestamp: 1636190617443
-- pypi: https://files.pythonhosted.org/packages/64/23/e80f8e519fcdea4bdf483c6363db5629a10fd6be8e179bb47bdc07707bec/brain_isotopic_distribution-1.5.19-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
-  name: brain-isotopic-distribution
-  version: 1.5.19
-  sha256: 0651e9490880c5d699f573277705b2ef0972d32a2b752ec3e49b768a7f75b597
-- pypi: https://files.pythonhosted.org/packages/ec/4e/402b9fc1a958767b7390046ce3f72f876eddbc3fade1681b4baa29f1fb98/brain_isotopic_distribution-1.5.19-cp312-cp312-win_amd64.whl
-  name: brain-isotopic-distribution
-  version: 1.5.19
-  sha256: 5bca2d1dd1e7bdbe760456583cf158444686566f30025630fc685308af57cea6
 - conda: https://prefix.dev/conda-forge/linux-64/brotli-1.1.0-hb9d3cd8_3.conda
   sha256: c969baaa5d7a21afb5ed4b8dd830f82b78e425caaa13d717766ed07a61630bec
   md5: 5d08a0ac29e6a5a984817584775d4131
@@ -1838,11 +1797,6 @@ packages:
   - pkg:pypi/charset-normalizer?source=hash-mapping
   size: 51033
   timestamp: 1754767444665
-- pypi: https://files.pythonhosted.org/packages/28/cc/f0a932c8a9cd00ebdadd177c4dd312dd11771ea1856b2b86f57995e6e249/chemparse-0.3.2-py3-none-any.whl
-  name: chemparse
-  version: 0.3.2
-  sha256: 67169faa673f804a518fac32e3b2072ef8c0d8c9df557b2d4f385424a750d819
-  requires_python: '>=3.6'
 - conda: https://prefix.dev/conda-forge/noarch/cibuildwheel-3.1.3-pyhe01879c_0.conda
   sha256: 7cc289af9b103afb401299ae10e7c6bcfccb7c5d75a48587e76c934b78ff46ef
   md5: 37657ba610b482f51aeee159339e93ad
@@ -2405,24 +2359,6 @@ packages:
   - pkg:pypi/frozenlist?source=hash-mapping
   size: 49472
   timestamp: 1752167442686
-- pypi: https://files.pythonhosted.org/packages/54/70/e07c381e6488a77094f04c85c9caf1c8008cdc30778f7019bc52e5285ef0/gdown-5.2.0-py3-none-any.whl
-  name: gdown
-  version: 5.2.0
-  sha256: 33083832d82b1101bdd0e9df3edd0fbc0e1c5f14c9d8c38d2a35bf1683b526d6
-  requires_dist:
-  - beautifulsoup4
-  - filelock
-  - requests[socks]
-  - tqdm
-  - build ; extra == 'test'
-  - mypy ; extra == 'test'
-  - pytest ; extra == 'test'
-  - pytest-xdist ; extra == 'test'
-  - ruff ; extra == 'test'
-  - twine ; extra == 'test'
-  - types-requests ; extra == 'test'
-  - types-setuptools ; extra == 'test'
-  requires_python: '>=3.8'
 - conda: https://prefix.dev/conda-forge/linux-64/gflags-2.2.2-h5888daf_1005.conda
   sha256: 6c33bf0c4d8f418546ba9c250db4e4221040936aef8956353bc764d4877bc39a
   md5: d411fc29e338efb48c5fd4576d71d881
@@ -2531,28 +2467,6 @@ packages:
   - pkg:pypi/hpack?source=hash-mapping
   size: 30731
   timestamp: 1737618390337
-- pypi: ./dist/hrms_utils-0.1.0.post1-cp312-cp312-win_amd64.whl
-  name: hrms-utils
-  version: 0.1.0.post1
-  requires_dist:
-  - polars>=1.32.0,<2
-  - rdkit>=2024.0.0
-  - numpy>=1.20.0
-  - numba>=0.55.0
-  - ms-entropy==1.3.4
-  - requests>=2.25.0
-  - aiohttp>=3.8.1
-  - msbuddy>=0.1.0
-  - scipy>=1.7.0
-  - pyarrow>=12.0.0
-  - pandas>=1.3.0
-  - openpyxl
-  - python-calamine
-  - xlsx2csv
-  - xlsxwriter
-  - connectorx
-  - sqlalchemy
-  requires_python: '>=3.12'
 - conda: https://prefix.dev/conda-forge/noarch/humanize-4.12.3-pyhd8ed1ab_0.conda
   sha256: ee7f8f68cefac7095512aaadd912c08ba722f180b3d111cc386fcbbb218a7333
   md5: cb1cf47e9eb851362fa5686f72686e85
@@ -2826,11 +2740,6 @@ packages:
   - pkg:pypi/jeepney?source=hash-mapping
   size: 40015
   timestamp: 1740828380668
-- pypi: https://files.pythonhosted.org/packages/7d/4f/1195bbac8e0c2acc5f740661631d8d750dc38d4a32b23ee5df3cde6f4e0d/joblib-1.5.1-py3-none-any.whl
-  name: joblib
-  version: 1.5.1
-  sha256: 4719a31f054c7d766948dcd83e9613686b27114f190f717cec7eaa2084f8a74a
-  requires_python: '>=3.9'
 - conda: https://prefix.dev/conda-forge/noarch/jupyter_client-8.6.3-pyhd8ed1ab_1.conda
   sha256: 19d8bd5bb2fde910ec59e081eeb59529491995ce0d653a5209366611023a0b3a
   md5: 4ebae00eae9705b0c3d6d1018a81d047
@@ -5054,22 +4963,6 @@ packages:
   - pkg:pypi/ms-entropy?source=hash-mapping
   size: 155617
   timestamp: 1734077644461
-- pypi: https://files.pythonhosted.org/packages/73/c1/0bc499838a6c6d3c6659103d08b545d9ff43c05cc3ef56accf2b264f46d8/msbuddy-0.3.12-py3-none-any.whl
-  name: msbuddy
-  version: 0.3.12
-  sha256: 958fbdd066a86869fe8ec50ce01fc89ff061be3706facfe9b2cd340db1e6e2bb
-  requires_dist:
-  - brain-isotopic-distribution
-  - numpy
-  - numba
-  - requests
-  - joblib
-  - gdown
-  - chemparse
-  - scipy
-  - tqdm
-  - pandas
-  requires_python: '>=3.8'
 - conda: https://prefix.dev/conda-forge/linux-64/multidict-6.6.3-py312h178313f_0.conda
   sha256: c703d148a85ffb4f11001d31b7c4c686a46ad554eeeaa02c69da59fbf0e00dbb
   md5: f4e246ec4ccdf73e50eefb0fa359a64e
@@ -6697,11 +6590,6 @@ packages:
   purls: []
   size: 67221
   timestamp: 1753083479147
-- pypi: https://files.pythonhosted.org/packages/e7/9c/0e6afc12c269578be5c0c1c9f4b49a8d32770a080260c333ac04cc1c832d/soupsieve-2.7-py3-none-any.whl
-  name: soupsieve
-  version: '2.7'
-  sha256: 6e60cc5c1ffaf1cebcc12e8188320b72071e922c2e897f737cadce79ad5d30c4
-  requires_python: '>=3.8'
 - conda: https://prefix.dev/conda-forge/linux-64/sqlalchemy-2.0.42-py312h4c3975b_0.conda
   sha256: b056a6b741566c72d2feb54610854de938ebb995ce521295718d622d7dc8c8af
   md5: 590596904f502f85bb5ddcf09447dd4c
@@ -6841,22 +6729,6 @@ packages:
   - pkg:pypi/tornado?source=hash-mapping
   size: 855809
   timestamp: 1754732413384
-- pypi: https://files.pythonhosted.org/packages/d0/30/dc54f88dd4a2b5dc8a0279bdd7270e735851848b762aeb1c1184ed1f6b14/tqdm-4.67.1-py3-none-any.whl
-  name: tqdm
-  version: 4.67.1
-  sha256: 26445eca388f82e72884e0d580d5464cd801a3ea01e63e5601bdff9ba6a48de2
-  requires_dist:
-  - colorama ; sys_platform == 'win32'
-  - pytest>=6 ; extra == 'dev'
-  - pytest-cov ; extra == 'dev'
-  - pytest-timeout ; extra == 'dev'
-  - pytest-asyncio>=0.24 ; extra == 'dev'
-  - nbval ; extra == 'dev'
-  - requests ; extra == 'discord'
-  - slack-sdk ; extra == 'slack'
-  - requests ; extra == 'telegram'
-  - ipywidgets>=6 ; extra == 'notebook'
-  requires_python: '>=3.7'
 - conda: https://prefix.dev/conda-forge/noarch/traitlets-5.14.3-pyhd8ed1ab_1.conda
   sha256: f39a5620c6e8e9e98357507262a7869de2ae8cc07da8b7f84e517c9fd6c2b959
   md5: 019a7385be9af33791c989871317e1ed

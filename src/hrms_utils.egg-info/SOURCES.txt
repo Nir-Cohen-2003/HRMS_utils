@@ -2,11 +2,6 @@ MANIFEST.in
 README.md
 pyproject.toml
 setup.py
-src/hrms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_common.cpp
-src/hrms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_common.hpp
-src/hrms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.cpp
-src/hrms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_money_changing.cpp
-src/hrms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_parallel.cpp
 src/hrms_utils/__init__.py
 src/hrms_utils.egg-info/PKG-INFO
 src/hrms_utils.egg-info/SOURCES.txt
