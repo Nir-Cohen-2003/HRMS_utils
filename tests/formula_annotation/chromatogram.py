@@ -32,3 +32,6 @@ if __name__ == "__main__":
     print(annotated_chromatogram.filter(
         pl.col("Precursor_mz_MSDIAL").is_close(other=pl.lit(150.1277),rel_tol=7e-6)
     ).select(["decomposed_formulas","decomposed_spectra_formulas","msms_m/z","msms_intensity","Height"]).to_init_repr())
+    print(annotated_chromatogram.filter(
+        pl.col("Precursor_mz_MSDIAL").is_close(other=pl.lit(150.1277),rel_tol=7e-6)
+    ).select(["cleaned_spectrum_formulas","cleaned_msms_mz","cleaned_msms_intensity"]).to_init_repr())
