@@ -2473,19 +2473,20 @@ packages:
   timestamp: 1737618390337
 - conda: .
   name: hrms_utils
-  version: 0.2.2
+  version: 0.3.0
   build: hbf21a9e_0
   subdir: linux-64
   depends:
   - polars >=1.32.0,<2
   - rdkit >=2024.0.0
-  - numpy >=1.20.0,<2.3
-  - numba
-  - ms_entropy ==1.3.4
+  - numpy >=1.20.0
+  - numpy >=1.23,<3
+  - numba >=0.61.0
+  - ms_entropy
   - scipy
   - requests
   - aiohttp
-  - pyarrow >=12.0.0
+  - pyarrow
   - pandas
   - python-calamine
   - openpyxl
@@ -2493,26 +2494,28 @@ packages:
   - xlsxwriter
   - connectorx
   - sqlalchemy
-  - numpy >=1.23,<3
+  - python
   - python_abi 3.12.* *_cp312
   input:
-    hash: f50652f29a931856980e94ffc2bde54d1ad83bbd1b58d8ba5eb781a00aa490b8
-    globs: []
+    hash: 792e5b6d36927a0ed241f5bc65e26c00dd5e6b395ab84a3173be02441458a0e5
+    globs:
+    - pyproject.toml
 - conda: .
   name: hrms_utils
-  version: 0.2.2
+  version: 0.3.0
   build: hbf21a9e_0
   subdir: win-64
   depends:
   - polars >=1.32.0,<2
   - rdkit >=2024.0.0
-  - numpy >=1.20.0,<2.3
-  - numba
-  - ms_entropy ==1.3.4
+  - numpy >=1.20.0
+  - numpy >=1.23,<3
+  - numba >=0.61.0
+  - ms_entropy
   - scipy
   - requests
   - aiohttp
-  - pyarrow >=12.0.0
+  - pyarrow
   - pandas
   - python-calamine
   - openpyxl
@@ -2520,11 +2523,12 @@ packages:
   - xlsxwriter
   - connectorx
   - sqlalchemy
-  - numpy >=1.23,<3
+  - python
   - python_abi 3.12.* *_cp312
   input:
-    hash: f50652f29a931856980e94ffc2bde54d1ad83bbd1b58d8ba5eb781a00aa490b8
-    globs: []
+    hash: 792e5b6d36927a0ed241f5bc65e26c00dd5e6b395ab84a3173be02441458a0e5
+    globs:
+    - pyproject.toml
 - conda: https://prefix.dev/conda-forge/noarch/humanize-4.12.3-pyhd8ed1ab_0.conda
   sha256: ee7f8f68cefac7095512aaadd912c08ba722f180b3d111cc386fcbbb218a7333
   md5: cb1cf47e9eb851362fa5686f72686e85
