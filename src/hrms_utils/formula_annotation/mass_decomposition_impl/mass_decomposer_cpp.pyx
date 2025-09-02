@@ -515,7 +515,7 @@ def decompose_spectra_known_precursor_parallel(
     _validate_bounds_array(precursor_formula_arr, "precursor_formula in spectra_data[0]")
 
     cdef np.ndarray min_bounds = np.zeros(NUM_ELEMENTS, dtype=np.int32)
-    cdef DecompositionParams params = _convert_params(tolerance_ppm, 0, 100.0, max_results, min_bounds, np.zeros(NUM_ELEMENTS, dtype=np.int32))
+    cdef DecompositionParams params = _convert_params(tolerance_ppm, 0, 30.0, max_results, min_bounds, np.zeros(NUM_ELEMENTS, dtype=np.int32))
     
     cdef vector[SpectrumWithKnownPrecursor] spectra_vec
     spectra_vec.reserve(len(spectra_data_list))

@@ -44,53 +44,44 @@ ProperSpectrumResults MassDecomposer::decompose_spectrum(
     const DecompositionParams& params) {
     ProperSpectrumResults results;
 
-    // Step 1: Decompose precursor mass to get all possible precursor formulas
+    // Decompose precursor mass
     std::vector<Formula> precursor_formulas = decompose(precursor_mass, params);
 
-    // Step 2: For each precursor formula, decompose fragments using it as maximal bounds
+    // For each precursor formula reuse existing helper
     for (const Formula& precursor_formula : precursor_formulas) {
         SpectrumDecomposition decomp;
         decomp.precursor = precursor_formula;
 
-        // Calculate precursor mass and error
+        // Calculate precursor mass and absolute error
         decomp.precursor_mass = 0.0;
         for (int i = 0; i < FormulaAnnotation::NUM_ELEMENTS; ++i) {
             decomp.precursor_mass += precursor_formula[i] * FormulaAnnotation::ATOMIC_MASSES[i];
         }
-        // Precursor error now absolute
         decomp.precursor_error_ppm = std::abs(decomp.precursor_mass - precursor_mass);
 
-        // Create bounds for fragment decomposition based on precursor formula
-        Formula fragment_min_bounds{}; // All zeros
-        Formula fragment_max_bounds = precursor_formula; // Max is what's in the precursor
+        // Get fragment decompositions (unfiltered) using existing function
+        auto fragment_solutions = decompose_spectrum_known_precursor(
+            precursor_formula, fragment_masses, params);
 
-        MassDecomposer fragment_decomposer(fragment_min_bounds, fragment_max_bounds);
-        DecompositionParams fragment_params = params;
-        fragment_params.min_dbe = -100.0;  // relaxed DBE for fragments
-        fragment_params.max_dbe = 100.0;
-        
-        decomp.fragments.resize(fragment_masses.size());
-        decomp.fragment_masses.resize(fragment_masses.size());
-        decomp.fragment_errors_ppm.resize(fragment_masses.size());
+        decomp.fragments = fragment_solutions;
+        decomp.fragment_masses.resize(fragment_solutions.size());
+        decomp.fragment_errors_ppm.resize(fragment_solutions.size());
 
-        for (size_t j = 0; j < fragment_masses.size(); ++j) {
-            auto fragment_solutions = fragment_decomposer.decompose(fragment_masses[j], fragment_params);
+        // Populate masses & errors with filtering (same logic as before)
+        for (size_t j = 0; j < fragment_solutions.size(); ++j) {
+            double target_mass = fragment_masses[j];
+            // double allowed_error = std::max(target_mass, 200.0) * params.tolerance_ppm / 1e6;
 
-            // Calculate allowed absolute error for this fragment
-            double allowed_error = std::max(fragment_masses[j], 200.0) * params.tolerance_ppm / 1e6;
-
-            for (const auto& frag_formula : fragment_solutions) {
+            for (const auto& frag_formula : fragment_solutions[j]) {
                 double calc_mass = 0.0;
-                for (int i = 0; i < FormulaAnnotation::NUM_ELEMENTS; ++i) {
-                    calc_mass += frag_formula[i] * FormulaAnnotation::ATOMIC_MASSES[i];
+                for (int k = 0; k < FormulaAnnotation::NUM_ELEMENTS; ++k) {
+                    calc_mass += frag_formula[k] * FormulaAnnotation::ATOMIC_MASSES[k];
                 }
-                double abs_error = std::abs(calc_mass - fragment_masses[j]);
-                // Only accept if within allowed absolute error
-                if (abs_error > allowed_error) continue;
+                double abs_error = std::abs(calc_mass - target_mass);
+                // if (abs_error > allowed_error) continue;
                 decomp.fragment_masses[j].push_back(calc_mass);
                 decomp.fragment_errors_ppm[j].push_back(abs_error);
             }
-            decomp.fragments[j] = std::move(fragment_solutions);
         }
 
         results.decompositions.push_back(std::move(decomp));
@@ -152,8 +143,7 @@ std::vector<std::vector<Formula>> MassDecomposer::decompose_spectrum_known_precu
     
     MassDecomposer fragment_decomposer(fragment_min_bounds, fragment_max_bounds);
     DecompositionParams fragment_params = params;
-    fragment_params.min_dbe = -100.0;  // relaxed DBE for fragments
-    fragment_params.max_dbe = 100.0;
+
     
     for (size_t j = 0; j < fragment_masses.size(); ++j) {
         fragment_results[j] = fragment_decomposer.decompose(fragment_masses[j], fragment_params);

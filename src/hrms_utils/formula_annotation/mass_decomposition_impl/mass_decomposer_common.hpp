@@ -3,7 +3,6 @@
 
 #include <vector>
 #include <string>
-// #include <unordered_map> // not needed anymore, using std::array for fixed-size Formula arrays
 #include <cmath>
 #include <algorithm>
 #include <memory>
