@@ -110,5 +110,3 @@ def validate_formula_array(arr):
         raise ValueError("Formula array contains negative element counts")
     return True
 
-# Example usage:
-# from .element_table import ELEMENTS, NUM_ELEMENTS, ELEMENT_SYMBOLS, ELEMENT_MASSES,

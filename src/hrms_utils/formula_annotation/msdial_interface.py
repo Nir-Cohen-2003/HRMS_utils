@@ -7,11 +7,14 @@ PROTON_MASS = ELEMENT_MASSES[ELEMENT_INDEX['H']]
 
 def annotate_chromatogram_with_formulas(
     chromatogram: pl.DataFrame,
+    addcut_mass: float = PROTON_MASS,
     max_bounds: dict|None = None,
     precursor_mass_accuracy_ppm: float = 3.0,
     fragment_mass_accuracy_ppm: float = 5.0,
     isotopic_mass_accuracy_ppm: float = 2.0,
-    annotate_spectrum: bool = False
+    isotopic_minimum_intensity: float = 5e4,
+    isotopic_intensity_absolute_tolerance: float = 5e5,
+    isotopic_intensity_relative_tolerance: float = 0.05,
 ) -> pl.DataFrame:
     """
     Annotate chromatogram with possible formulas using isotopic pattern deduction and mass decomposition. If annotate_spectrum is True, also annotate the fragments, and then you get each possible formula as a new line.
@@ -39,7 +42,9 @@ def annotate_chromatogram_with_formulas(
                 batch.struct.field("ms1_isotopes_intensity"),
                 ms1_mass_tolerance_ppm=precursor_mass_accuracy_ppm,
                 isotopic_mass_tolerance_ppm=isotopic_mass_accuracy_ppm,
-                intensity_relative_tolerance=0.05,
+                minimum_intensity=isotopic_minimum_intensity,
+                intensity_absolute_tolerance=isotopic_intensity_absolute_tolerance,
+                intensity_relative_tolerance=isotopic_intensity_relative_tolerance,
                 max_bounds=max_bounds,
             ),
             return_dtype=pl.Array(inner=pl.Int32, shape=(30,))
@@ -51,13 +56,13 @@ def annotate_chromatogram_with_formulas(
 
     # Mass decomposition
     chromatogram = chromatogram.with_columns(
-        non_protonated_mass = pl.col("Precursor_mz_MSDIAL") - PROTON_MASS
+        non_ionized_mass = pl.col("Precursor_mz_MSDIAL") - addcut_mass
     ).with_columns(
         pl.struct(
-            ["non_protonated_mass", "min_bounds", "max_bounds"]
+            ["non_ionized_mass", "min_bounds", "max_bounds"]
         ).map_batches(
             lambda batch: decompose_mass_per_bounds(
-                batch.struct.field("non_protonated_mass"),
+                batch.struct.field("non_ionized_mass"),
                 batch.struct.field("min_bounds"),
                 batch.struct.field("max_bounds"),
                 tolerance_ppm=precursor_mass_accuracy_ppm,
@@ -66,29 +71,19 @@ def annotate_chromatogram_with_formulas(
         ).alias("decomposed_formulas")
     )
     
-
-    if annotate_spectrum:
-        chromatogram = chromatogram.with_columns(pl.col("msms_m/z").sub(PROTON_MASS).alias("non_protonated_msms_m/z"))
-        chromatogram = chromatogram.explode("decomposed_formulas")
-        
-        chromatogram = chromatogram.with_columns(
-            pl.struct(["non_protonated_msms_m/z", "decomposed_formulas"]).map_batches(
-                lambda row: decompose_spectra_known_precursor(
-                    precursor_formula_series=row.struct.field("decomposed_formulas"),
-                    fragment_masses_series=row.struct.field("non_protonated_msms_m/z"),
-                    tolerance_ppm=fragment_mass_accuracy_ppm,
-                ), return_dtype=pl.List(pl.List(pl.Array(inner=pl.Int32, shape=(15,))))
-            ).alias("decomposed_spectra")
-        )
+    chromatogram = chromatogram.with_columns(pl.col("msms_m/z").sub(addcut_mass).alias("non_ionized_msms_m/z"))
+    chromatogram = chromatogram.explode("decomposed_formulas")
+    
+    chromatogram = chromatogram.with_columns(
+        pl.struct(["non_ionized_msms_m/z", "decomposed_formulas"]).map_batches(
+            lambda row: decompose_spectra_known_precursor(
+                precursor_formula_series=row.struct.field("decomposed_formulas"),
+                fragment_masses_series=row.struct.field("non_ionized_msms_m/z"),
+                tolerance_ppm=fragment_mass_accuracy_ppm,
+            ), return_dtype=pl.List(pl.List(pl.Array(inner=pl.Int32, shape=(15,))))
+        ).list.eval(pl.element().list.first()).alias("decomposed_spectra_formulas")
+    )
     return chromatogram
 
-if __name__ == "__main__":
-    from ..interfaces import get_chromatogram
 
-    annotated_chromatogram = annotate_chromatogram_with_formulas(
-        get_chromatogram(),
-        mass_accuracy_ppm=3.0,
-        annotate_spectrum=True
-    )
-    
-    print(annotated_chromatogram)
+

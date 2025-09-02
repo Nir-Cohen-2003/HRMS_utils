@@ -227,7 +227,8 @@ def deduce_isotopic_pattern(
     ms1_mass_tolerance_ppm: float = 5.0,
     isotopic_mass_tolerance_ppm: float = 3.0,
     minimum_intensity: float = 5e4,
-    intensity_relative_tolerance: float = 0.5,
+    intensity_absolute_tolerance: float = 5e4,
+    intensity_relative_tolerance: float = 0.05,
     min_bounds: Dict[str, int] | None = None,
     max_bounds: Dict[str, int] | None = None,
 )-> pl.Series:
@@ -292,6 +293,7 @@ def deduce_isotopic_pattern(
             ms1_mass_tolerance_ppm=ms1_mass_tolerance_ppm,
             isotopic_mass_tolerance_ppm=isotopic_mass_tolerance_ppm,
             minimum_intensity=minimum_intensity,
+            intensity_absolute_tolerance=intensity_absolute_tolerance,
             intensity_relative_tolerance=intensity_relative_tolerance,
             iso_mass_diffs=iso_mass_diffs,
             iso_zero_probs=iso_zero_probs,
@@ -333,6 +335,7 @@ def deduce_isotopic_pattern_inner(
         ms1_mass_tolerance_ppm: float,
         isotopic_mass_tolerance_ppm: float,
         minimum_intensity: float,
+        intensity_absolute_tolerance: float,
         intensity_relative_tolerance: float,
         iso_mass_diffs: np.ndarray,
         iso_zero_probs: np.ndarray,
@@ -361,8 +364,8 @@ def deduce_isotopic_pattern_inner(
         C_lower = 0
         C_upper = (minimum_intensity * iso_zero_probs[0]) / (iso_first_probs[0] * precursor_ms1_intensity)
     else:
-        C_lower = (C_peak_total_intensities * (1 - intensity_relative_tolerance) * iso_zero_probs[0]) / (iso_first_probs[0] * precursor_ms1_intensity)
-        C_upper = (C_peak_total_intensities * (1 + intensity_relative_tolerance) * iso_zero_probs[0]) / (iso_first_probs[0] * precursor_ms1_intensity)
+        C_lower = ((C_peak_total_intensities * (1 - intensity_relative_tolerance) - intensity_absolute_tolerance) * iso_zero_probs[0]) / (iso_first_probs[0] * precursor_ms1_intensity)
+        C_upper = ((C_peak_total_intensities * (1 + intensity_relative_tolerance) + intensity_absolute_tolerance) * iso_zero_probs[0]) / (iso_first_probs[0] * precursor_ms1_intensity)
 
     # S
     s_peak_mz = precursor_ms1_mz + iso_mass_diffs[1]
@@ -372,8 +375,8 @@ def deduce_isotopic_pattern_inner(
         S_lower = 0
         S_upper = (minimum_intensity * iso_zero_probs[1]) / (iso_first_probs[1] * precursor_ms1_intensity)
     else:
-        S_lower = (S_peak_total_intensities * (1 - intensity_relative_tolerance) * iso_zero_probs[1]) / (iso_first_probs[1] * precursor_ms1_intensity)
-        S_upper = (S_peak_total_intensities * (1 + intensity_relative_tolerance) * iso_zero_probs[1]) / (iso_first_probs[1] * precursor_ms1_intensity)
+        S_lower = ((S_peak_total_intensities * (1 - intensity_relative_tolerance) - intensity_absolute_tolerance) * iso_zero_probs[1]) / (iso_first_probs[1] * precursor_ms1_intensity)
+        S_upper = ((S_peak_total_intensities * (1 + intensity_relative_tolerance) + intensity_absolute_tolerance) * iso_zero_probs[1]) / (iso_first_probs[1] * precursor_ms1_intensity)
 
     # Cl
     cl_peak_mz = precursor_ms1_mz + iso_mass_diffs[2]
@@ -383,8 +386,8 @@ def deduce_isotopic_pattern_inner(
         Cl_lower = 0
         Cl_upper = (minimum_intensity * iso_zero_probs[2]) / (iso_first_probs[2] * precursor_ms1_intensity)
     else:
-        Cl_lower = (Cl_peak_total_intensities * (1 - intensity_relative_tolerance) * iso_zero_probs[2]) / (iso_first_probs[2] * precursor_ms1_intensity)
-        Cl_upper = (Cl_peak_total_intensities * (1 + intensity_relative_tolerance) * iso_zero_probs[2]) / (iso_first_probs[2] * precursor_ms1_intensity)
+        Cl_lower = ((Cl_peak_total_intensities * (1 - intensity_relative_tolerance) - intensity_absolute_tolerance) * iso_zero_probs[2]) / (iso_first_probs[2] * precursor_ms1_intensity)
+        Cl_upper = ((Cl_peak_total_intensities * (1 + intensity_relative_tolerance) + intensity_absolute_tolerance) * iso_zero_probs[2]) / (iso_first_probs[2] * precursor_ms1_intensity)
     # second Cl peak- the M+4
     # we need this because 2 Cl and 1 Br look very similar
     # we do this only if we got a positive estimation on Cl_lower, and at least 2 on Cl_upper
@@ -409,8 +412,8 @@ def deduce_isotopic_pattern_inner(
         Br_lower = 0
         Br_upper = (minimum_intensity * iso_zero_probs[3]) / (iso_first_probs[3] * precursor_ms1_intensity)
     else:
-        Br_lower = (Br_peak_total_intensities * (1 - intensity_relative_tolerance) * iso_zero_probs[3]) / (iso_first_probs[3] * precursor_ms1_intensity)
-        Br_upper = (Br_peak_total_intensities * (1 + intensity_relative_tolerance) * iso_zero_probs[3]) / (iso_first_probs[3] * precursor_ms1_intensity)
+        Br_lower = ((Br_peak_total_intensities * (1 - intensity_relative_tolerance) - intensity_absolute_tolerance) * iso_zero_probs[3]) / (iso_first_probs[3] * precursor_ms1_intensity)
+        Br_upper = ((Br_peak_total_intensities * (1 + intensity_relative_tolerance) + intensity_absolute_tolerance) * iso_zero_probs[3]) / (iso_first_probs[3] * precursor_ms1_intensity)
     # TODO: Add support for second isotope for Br (M+4)
 
     return [C_lower, S_lower, Cl_lower, Br_lower, C_upper, S_upper, Cl_upper, Br_upper]

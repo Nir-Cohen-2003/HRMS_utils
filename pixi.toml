@@ -7,7 +7,7 @@ platforms = ["linux-64","win-64"]
 preview = ["pixi-build"]
 [package]
 name = "hrms_utils"
-version = "0.2.1.post1"
+version = "0.2.2"
 
 [dependencies]
 python = "3.12.*"
@@ -90,6 +90,7 @@ sqlalchemy = "*"
 # '''
 runtest = "python -m "
 [feature.testing.dependencies]
+hrms_utils = {path = "."}
 polars = ">=1.32.0,<2"
 rdkit = ">=2024.0.0"
 numpy = ">=1.20.0,<2.3"

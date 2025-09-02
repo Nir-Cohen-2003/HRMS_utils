@@ -230,7 +230,6 @@ def decompose_spectra(
             {"precursor_mass": pm, "fragment_masses": fm}
             for pm, fm in zip(precursor_masses, fragment_masses_list)
         ]
-        from mass_decomposition_impl.mass_decomposer_cpp import decompose_spectra_parallel
         results = decompose_spectra_parallel(
             spectra_data=spectra_data,
             min_bounds=min_bounds,
