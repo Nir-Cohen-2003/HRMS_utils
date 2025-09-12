@@ -1,4 +1,4 @@
-from . import rdkit, formula_annotation, formats, interfaces
+from . import rdkit, formula_annotation, io_adapters
 
 if __name__ == "__main__":
-    print("This is the ms_utils package. Import submodules to use functionalities.")
+    print("This is the hrms_utils package. Import submodules to use functionalities.")

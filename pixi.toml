@@ -24,7 +24,9 @@ build = "*"
 [tasks]
 build-wheel = "python -m build"
 build-all = "python -m build --wheel --sdist"
-publish-test = {cmd="twine upload --repository testpypi --skip-existing dist/*", depends-on = ["cibw-wheels"]}
+publish-testpypi = {cmd="twine upload --repository testpypi --skip-existing dist/*", depends-on = ["cibw-wheels"]}
+publish-pypi = {cmd="twine upload --repository pypi --skip-existing dist/*", depends-on = ["cibw-wheels"]}
+publish-prefix = {cmd="rattler-build upload prefix --channel nir-cohen"}
 cibw-wheels = { cmd = "python -m cibuildwheel --output-dir dist", env = {CIBW_BUILD = "cp312-* cp313-*", CIBW_SKIP = "*musllinux* *-win32", CIBW_ARCHS_WINDOWS = "AMD64"}, depends-on=["clean_dist"]}
 clean_dist = "rm -rf dist || true"
 sdist = "python -m build --sdist"
@@ -43,9 +45,7 @@ backend = { name = "pixi-build-python", version = ">=0.1.0",channels = [
   "https://prefix.dev/conda-forge",
 ]}
 [package.build.config]
-# platforms = ["linux-64","win-64"]
 noarch = false
-# script = "python -m pip install . -vv --no-deps --no-build-isolation"
 
 [package.build-dependencies]
 python = "3.12.*"
@@ -90,6 +90,8 @@ sqlalchemy = "*"
 # '''
 mass_decomp = "python tests/formula_annotation/mass_decomposition.py"
 chromatogram = "python tests/formula_annotation/chromatogram.py"
+test_mol = "python tests/rdkit/mol.py"
+
 [feature.testing.dependencies]
 hrms_utils = {path = "."}
 polars = ">=1.32.0,<2"

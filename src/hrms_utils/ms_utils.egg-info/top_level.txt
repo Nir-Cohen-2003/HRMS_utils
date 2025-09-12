@@ -1,8 +1,0 @@
-formats
-formula
-main
-mces
-pubchem
-rdkit
-sirius
-spectral_similarity

@@ -1,0 +1,1 @@
+in the inteligent cleaning of spectrum, after removing peaks that are below the normalized mass accuracy threshold, check if any options got in.
