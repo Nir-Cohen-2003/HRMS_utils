@@ -173,3 +173,89 @@ std::vector<std::vector<std::vector<Formula>>> MassDecomposer::decompose_spectra
     
     return all_results;
 }
+
+MassDecomposer::CleanedSpectrumResult MassDecomposer::clean_spectrum_known_precursor(
+    const Formula& precursor_formula,
+    const std::vector<double>& fragment_masses,
+    const std::vector<double>& fragment_intensities,
+    const DecompositionParams& params) {
+
+    MassDecomposer::CleanedSpectrumResult out;
+
+    // Compute fragment solutions constrained by precursor formula
+    auto fragment_solutions = decompose_spectrum_known_precursor(precursor_formula, fragment_masses, params);
+
+    // Sanity: masses and intensities size must match solutions size
+    const size_t n = std::min(fragment_masses.size(), fragment_intensities.size());
+    if (fragment_solutions.size() != n) {
+        // Truncate safely to the minimum observed size
+    }
+
+    out.masses.reserve(n);
+    out.intensities.reserve(n);
+    out.fragment_formulas.reserve(n);
+    out.fragment_errors_ppm.reserve(n);
+
+    for (size_t i = 0; i < n; ++i) {
+        const double target = fragment_masses[i];
+        const double denom_allowed = std::max(target, 200.0);            // filtering
+        const double allowed_abs = denom_allowed * params.tolerance_ppm / 1e6;
+
+        const auto& formulas = fragment_solutions[i];
+        if (formulas.empty()) {
+            continue; // drop fragment with no formulas
+        }
+
+        std::vector<double> errors_ppm;
+        errors_ppm.reserve(formulas.size());
+
+        // Recompute error for reporting in ppm using the actual target mass
+        const double denom_report = (target != 0.0) ? target : denom_allowed;
+
+        for (const auto& f : formulas) {
+            double calc_mass = 0.0;
+            for (int k = 0; k < FormulaAnnotation::NUM_ELEMENTS; ++k) {
+                calc_mass += f[k] * FormulaAnnotation::ATOMIC_MASSES[k];
+            }
+            const double abs_err = std::abs(calc_mass - target);
+            if (abs_err > allowed_abs) {
+                continue; // filtered by tolerance
+            }
+            const double ppm = abs_err * 1e6 / denom_report; // report relative to actual mass
+            errors_ppm.push_back(ppm);
+        }
+
+        if (errors_ppm.empty()) {
+            continue; // all formulas filtered by tolerance => drop fragment
+        }
+
+        out.masses.push_back(target);
+        out.intensities.push_back(fragment_intensities[i]);
+        out.fragment_formulas.push_back(formulas);
+        out.fragment_errors_ppm.push_back(std::move(errors_ppm));
+    }
+
+    return out;
+}
+
+std::vector<MassDecomposer::CleanedSpectrumResult> MassDecomposer::clean_spectra_known_precursor_parallel(
+    const std::vector<MassDecomposer::CleanSpectrumWithKnownPrecursor>& spectra,
+    const DecompositionParams& params) {
+
+    const int n = static_cast<int>(spectra.size());
+    std::vector<MassDecomposer::CleanedSpectrumResult> all_results(n);
+
+    #pragma omp parallel
+    {
+        // Thread-local decomposer instance to call non-static member
+        MassDecomposer thread_decomposer(params.min_bounds, params.max_bounds);
+
+        #pragma omp for schedule(dynamic)
+        for (int i = 0; i < n; ++i) {
+            const auto& s = spectra[i];
+            all_results[i] = thread_decomposer.clean_spectrum_known_precursor(
+                s.precursor_formula, s.fragment_masses, s.fragment_intensities, params);
+        }
+    }
+    return all_results;
+}

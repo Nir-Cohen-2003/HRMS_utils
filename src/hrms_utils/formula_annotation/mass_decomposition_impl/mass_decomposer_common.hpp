@@ -29,6 +29,10 @@ namespace FormulaAnnotation {
 
     // New Formula Type
     using Formula = std::array<int, NUM_ELEMENTS>;
+
+    // Inline accessors so Cython can call functions instead of linking to constexpr objects.
+    inline const char* element_symbol_at(int i) { return ELEMENT_SYMBOLS[i]; }
+    inline double atomic_mass_at(int i) { return ATOMIC_MASSES[i]; }
 }
 
 // Result structure for formulas
@@ -157,6 +161,33 @@ public:
     // Parallel known precursor spectrum decomposition - processes multiple spectra with different known precursor formulas
     static std::vector<std::vector<std::vector<Formula>>> decompose_spectra_known_precursor_parallel(
         const std::vector<SpectrumWithKnownPrecursor>& spectra,
+        const DecompositionParams& params);
+
+    // New: input struct for cleaning with intensities
+    struct CleanSpectrumWithKnownPrecursor {
+        Formula precursor_formula;
+        std::vector<double> fragment_masses;
+        std::vector<double> fragment_intensities;
+    };
+
+    // New: result struct for cleaned spectrum
+    struct CleanedSpectrumResult {
+        std::vector<double> masses;   // kept fragment masses
+        std::vector<double> intensities; // kept fragment intensities
+        std::vector<std::vector<Formula>> fragment_formulas;     // per kept fragment
+        std::vector<std::vector<double>> fragment_errors_ppm;    // per kept fragment (aligned with formulas)
+    };
+
+    // New: clean a single spectrum with known precursor formula
+    CleanedSpectrumResult clean_spectrum_known_precursor(
+        const Formula& precursor_formula,
+        const std::vector<double>& fragment_masses,
+        const std::vector<double>& fragment_intensities,
+        const DecompositionParams& params);
+
+    // New: parallel cleaner for many spectra with known precursor formula
+    static std::vector<CleanedSpectrumResult> clean_spectra_known_precursor_parallel(
+        const std::vector<CleanSpectrumWithKnownPrecursor>& spectra,
         const DecompositionParams& params);
 };
 #endif // MASS_DECOMPOSER_COMMON_HPP
