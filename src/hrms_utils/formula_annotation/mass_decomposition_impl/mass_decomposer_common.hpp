@@ -28,7 +28,7 @@ namespace FormulaAnnotation {
     };
 
     // New Formula Type
-    using Formula = std::array<int, NUM_ELEMENTS>;
+    using Formula = std::array<int32_t, NUM_ELEMENTS>;
 
     // Inline accessors so Cython can call functions instead of linking to constexpr objects.
     inline const char* element_symbol_at(int i) { return ELEMENT_SYMBOLS[i]; }

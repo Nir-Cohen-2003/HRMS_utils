@@ -92,31 +92,29 @@ def get_num_elements():
 # Helper functions for converting Python objects to C++ and vice-versa
 
 cdef Formula_cpp _convert_numpy_to_formula(np.ndarray arr):
-    """Convert a NumPy array to a C++ Formula."""
+    """Convert a contiguous NumPy int32 array to a C++ Formula via memcpy."""
+    _validate_bounds_array(arr, "formula/bounds")
+    # Ensure C-contiguous view; if not, make one-time contiguous copy (small).
+    cdef np.ndarray contig = np.ascontiguousarray(arr, dtype=np.int32)
     cdef Formula_cpp formula
-    cdef int* arr_ptr = <int*>np.PyArray_DATA(arr)
-    for i in range(NUM_ELEMENTS):
-        formula[i] = arr_ptr[i]
+    # Typed memoryview guarantees C-contiguous layout for memcpy
+    cdef F_DTYPE_t[::1] mv = contig
+    cdef size_t nbytes = NUM_ELEMENTS * sizeof(F_DTYPE_t)
+    memcpy(<void*>&formula[0], <const void*>&mv[0], nbytes)
     return formula
 
 cdef np.ndarray _convert_formula_to_array(const Formula_cpp& cpp_formula):
-    """Convert C++ Formula to a NumPy array."""
+    """Convert C++ Formula to a NumPy array. Copy required to hand ownership to Python."""
     cdef np.ndarray arr = np.empty(NUM_ELEMENTS, dtype=np.int32)
-    cdef int* arr_ptr = <int*>np.PyArray_DATA(arr)
+    # A single memcpy would be ideal, but operator[] on a const Formula_cpp
+    # returns a const reference; taking &cpp_formula[0] in Cython is not
+    # straightforward without const_cast. Keep the simple loop for safety.
+    cdef F_DTYPE_t* arr_ptr = <F_DTYPE_t*>np.PyArray_DATA(arr)
+    cdef int i
     for i in range(NUM_ELEMENTS):
         arr_ptr[i] = cpp_formula[i]
     return arr
 
-# cdef Formula_cpp _convert_dict_to_formula(dict py_formula):
-#     """Convert Python dict to C++ Formula."""
-#     cdef Formula_cpp cpp_formula
-#     cpp_formula.fill(0)
-#     for i in range(NUM_ELEMENTS):
-#         # Remove the "FormulaAnnotation." prefix
-#         symbol_str = ELEMENT_SYMBOLS[i].decode('utf-8')
-#         if symbol_str in py_formula:
-#             cpp_formula[i] = py_formula[symbol_str]
-#     return cpp_formula
 
 cdef void _validate_bounds_array(np.ndarray arr, str name):
     if arr.ndim != 1:
@@ -299,7 +297,7 @@ def decompose_mass_parallel_per_bounds(
     cdef np.int32_t* max_bounds_ptr = &contig_max_bounds[0, 0]
     cdef size_t i
     cdef Formula_cpp min_f, max_f
-    cdef size_t formula_size_bytes = NUM_ELEMENTS * sizeof(int)
+    cdef size_t formula_size_bytes = NUM_ELEMENTS * sizeof(F_DTYPE_t)
 
     for i in range(n_masses):
         memcpy(<void*>&min_f[0], min_bounds_ptr + i * NUM_ELEMENTS, formula_size_bytes)
