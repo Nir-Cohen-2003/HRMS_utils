@@ -7,6 +7,8 @@
 #include <algorithm>
 #include <memory>
 #include <array>
+#include <cstdint>
+#include <cstddef>
 
 namespace FormulaAnnotation {
     // Centralized Element Definition
@@ -33,6 +35,17 @@ namespace FormulaAnnotation {
     // Inline accessors so Cython can call functions instead of linking to constexpr objects.
     inline const char* element_symbol_at(int i) { return ELEMENT_SYMBOLS[i]; }
     inline double atomic_mass_at(int i) { return ATOMIC_MASSES[i]; }
+
+    // Size helpers for safe bulk copies
+    inline constexpr std::size_t FORMULA_NBYTES() {
+        return sizeof(int32_t) * static_cast<std::size_t>(NUM_ELEMENTS);
+    }
+    inline const int32_t* formula_data_const(const Formula& f) noexcept {
+        return f.data();
+    }
+    inline int32_t* formula_data(Formula& f) noexcept {
+        return f.data();
+    }
 }
 
 // Result structure for formulas

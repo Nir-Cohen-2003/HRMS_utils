@@ -20,10 +20,11 @@ cimport numpy as np
 # C++ declarations from the header file
 cdef extern from "mass_decomposer_common.hpp" namespace "FormulaAnnotation":
     cdef int NUM_ELEMENTS
-    # Correctly declare as a pointer, not a fixed-size array
     cdef const char** ELEMENT_SYMBOLS
     cdef const double* ATOMIC_MASSES
-    # The problematic typedef is removed from here.
+    size_t FORMULA_NBYTES() nogil
+    const int* formula_data_const(const Formula_cpp&) nogil
+    int* formula_data(Formula_cpp&) nogil
 
 cdef extern from "mass_decomposer_common.hpp":
     # Define Formula_cpp as a cppclass and declare the methods we use on it.
@@ -103,16 +104,16 @@ cdef Formula_cpp _convert_numpy_to_formula(np.ndarray arr):
     memcpy(<void*>&formula[0], <const void*>&mv[0], nbytes)
     return formula
 
+# Module-level cached byte size for memcpy of a single Formula
+cdef size_t FORMULA_NBYTES_C = 0
+FORMULA_NBYTES_C = FORMULA_NBYTES()
+
 cdef np.ndarray _convert_formula_to_array(const Formula_cpp& cpp_formula):
-    """Convert C++ Formula to a NumPy array. Copy required to hand ownership to Python."""
+    """Convert C++ Formula to a NumPy array using a single memcpy."""
     cdef np.ndarray arr = np.empty(NUM_ELEMENTS, dtype=np.int32)
-    # A single memcpy would be ideal, but operator[] on a const Formula_cpp
-    # returns a const reference; taking &cpp_formula[0] in Cython is not
-    # straightforward without const_cast. Keep the simple loop for safety.
-    cdef F_DTYPE_t* arr_ptr = <F_DTYPE_t*>np.PyArray_DATA(arr)
-    cdef int i
-    for i in range(NUM_ELEMENTS):
-        arr_ptr[i] = cpp_formula[i]
+    cdef void* dst = <void*> np.PyArray_DATA(arr)
+    cdef const void* src = <const void*> formula_data_const(cpp_formula)
+    memcpy(dst, src, FORMULA_NBYTES_C)
     return arr
 
 
@@ -211,28 +212,29 @@ def decompose_mass_parallel(
         total_formulas += all_results[i].size()
         
     # Allocate flat numpy arrays for offsets and the flattened formula data
+    
     cdef np.ndarray offsets_array = np.empty(num_masses + 1, dtype=np.int32)
+    cdef np.int32_t[::1] offsets_view = offsets_array  # define view for writing offsets
     cdef np.ndarray flat_formulas_array = np.empty(total_formulas * NUM_ELEMENTS, dtype=np.int32)
-    
-    # Get memoryviews for fast, direct memory access
-    cdef int[:] offsets_view = offsets_array
-    cdef int[:] flat_formulas_view = flat_formulas_array
-    
+
+    # Use raw pointer + memcpy per formula (faster than k-loop)
+    cdef F_DTYPE_t* dst_base = <F_DTYPE_t*> np.PyArray_DATA(flat_formulas_array)
     cdef size_t current_offset = 0
     cdef size_t formula_idx = 0
     cdef size_t num_formulas_for_mass
-    
-    # Second pass: fill the flat arrays
+
     for i in range(num_masses):
         offsets_view[i] = current_offset
         num_formulas_for_mass = all_results[i].size()
         for j in range(num_formulas_for_mass):
-            for k in range(NUM_ELEMENTS):
-                # Copy formula data into the flat buffer
-                flat_formulas_view[formula_idx * NUM_ELEMENTS + k] = all_results[i][j][k]
+            memcpy(
+                <void*> (dst_base + formula_idx * NUM_ELEMENTS),
+                <const void*> formula_data_const(all_results[i][j]),
+                FORMULA_NBYTES_C
+            )
             formula_idx += 1
         current_offset += num_formulas_for_mass
-        
+
     offsets_view[num_masses] = total_formulas
     
     # Create Arrow arrays from the numpy arrays (zero-copy).
@@ -315,11 +317,10 @@ def decompose_mass_parallel_per_bounds(
         total_formulas += all_results[i].size()
 
     cdef np.ndarray offsets_array = np.empty(num_masses + 1, dtype=np.int32)
+    cdef np.int32_t[::1] offsets_view = offsets_array  # define view for writing offsets
     cdef np.ndarray flat_formulas_array = np.empty(total_formulas * NUM_ELEMENTS, dtype=np.int32)
 
-    cdef int[:] offsets_view = offsets_array
-    cdef int[:] flat_formulas_view = flat_formulas_array
-
+    cdef F_DTYPE_t* dst_base = <F_DTYPE_t*> np.PyArray_DATA(flat_formulas_array)
     cdef size_t current_offset = 0
     cdef size_t formula_idx = 0
     cdef size_t num_formulas_for_mass
@@ -328,8 +329,11 @@ def decompose_mass_parallel_per_bounds(
         offsets_view[i] = current_offset
         num_formulas_for_mass = all_results[i].size()
         for j in range(num_formulas_for_mass):
-            for k in range(NUM_ELEMENTS):
-                flat_formulas_view[formula_idx * NUM_ELEMENTS + k] = all_results[i][j][k]
+            memcpy(
+                <void*> (dst_base + formula_idx * NUM_ELEMENTS),
+                <const void*> formula_data_const(all_results[i][j]),
+                FORMULA_NBYTES_C
+            )
             formula_idx += 1
         current_offset += num_formulas_for_mass
 
