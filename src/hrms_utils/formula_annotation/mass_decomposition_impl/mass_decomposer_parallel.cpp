@@ -272,26 +272,29 @@ MassDecomposer::CleanedAndNormalizedSpectrumResult MassDecomposer::clean_and_nor
     const auto fragment_solutions = decompose_spectrum_known_precursor(
         precursor_formula, fragment_masses, params);
 
-
     // Selection bookkeeping
     std::vector<bool> keep(n, false);
     std::vector<Formula> chosen_formula(n);
     std::vector<double> chosen_error_unscaled(n, 0.0); // calc_mass - target_mass
 
-    // 1) Weighted mean error from fragments with only one option (weight = fragment mass).
-    // Why: prioritize correcting higher-mass fragments which typically carry lower relative ppm error.
-    double sum_w_err = 0.0;  // sum(w_i * err_i)
-    double sum_w = 0.0;      // sum(w_i)
+    // Helper: compute molecular mass for a formula
+    auto compute_mass_for = [](const Formula& f) {
+        double m = 0.0;
+        for (int k = 0; k < FormulaAnnotation::NUM_ELEMENTS; ++k) {
+            m += f[k] * FormulaAnnotation::ATOMIC_MASSES[k];
+        }
+        return m;
+    };
+
+    // 1) Initial weighted linear fit err ~ a + b * mass using single-option fragments only.
+    //    Weight = fragment mass. Rationale: higher mass fragments tend to have lower relative ppm.
+    double Sw = 0.0, Sx = 0.0, Sy = 0.0, Sxx = 0.0, Sxy = 0.0;
 
     for (size_t i = 0; i < n; ++i) {
         const auto& formulas = fragment_solutions[i];
         if (formulas.size() == 1) {
-            // Compute calc mass for the single formula
-            double calc_mass = 0.0;
-            for (int k = 0; k < FormulaAnnotation::NUM_ELEMENTS; ++k) {
-                calc_mass += formulas[0][k] * FormulaAnnotation::ATOMIC_MASSES[k];
-            }
             const double target = fragment_masses[i];
+            const double calc_mass = compute_mass_for(formulas[0]);
             const double err = calc_mass - target;
             const double w = target; // mass-weight
 
@@ -300,45 +303,53 @@ MassDecomposer::CleanedAndNormalizedSpectrumResult MassDecomposer::clean_and_nor
             keep[i] = true;
 
             if (w > 0.0) {
-                sum_w_err += w * err;
-                sum_w += w;
+                Sw  += w;
+                Sx  += w * target;
+                Sy  += w * err;
+                Sxx += w * target * target;
+                Sxy += w * target * err;
             }
         }
     }
 
-    double mean_error = (sum_w > 0.0) ? (sum_w_err / sum_w) : 0.0;
-
-    // 2) For multi-option fragments, choose from highest to lowest mass the formula
-    // that minimizes |err - current weighted mean|, updating the weighted mean.
-    std::vector<size_t> order(n);
-    for (size_t i = 0; i < n; ++i) order[i] = i;
-    std::sort(order.begin(), order.end(), [&](size_t a, size_t b) {
-        return fragment_masses[a] < fragment_masses[b];
-    });
-
-    for (int oi = static_cast<int>(order.size()) - 1; oi >= 0; --oi) {
-        const size_t i = order[oi];
-        const auto& formulas = fragment_solutions[i];
-        if (formulas.empty() || keep[i]) {
-            continue; // no candidates or already fixed (single-option)
+    auto finalize_fit = [](double Sw, double Sx, double Sy, double Sxx, double Sxy) {
+        double a = 0.0, b = 0.0;
+        const double denom = Sw * Sxx - Sx * Sx;
+        if (Sw > 0.0 && std::abs(denom) > 1e-12) {
+            b = (Sw * Sxy - Sx * Sy) / denom;
+            a = (Sy - b * Sx) / Sw;
+        } else if (Sw > 0.0) {
+            // Fallback to additive-only correction if slope is ill-conditioned
+            b = 0.0;
+            a = Sy / Sw;
+        } else {
+            a = 0.0;
+            b = 0.0;
         }
+        return std::pair<double,double>(a, b);
+    };
+
+    auto [a, b] = finalize_fit(Sw, Sx, Sy, Sxx, Sxy);
+
+    // 2) For multi-option fragments, pick the candidate whose error is closest to the current model:
+    //    minimize |(calc - target) - (a + b * target)|.
+    for (size_t i = 0; i < n; ++i) {
+        const auto& formulas = fragment_solutions[i];
+        if (formulas.empty() || keep[i]) continue;
 
         const double target = fragment_masses[i];
-        // Choose the formula minimizing |(calc - (target + current_mean_error))|
+        const double model = a + b * target;
+
         double best_abs = std::numeric_limits<double>::infinity();
         int best_idx = -1;
-        double best_err = 0.0; // calc - target for the chosen formula
+        double best_err = 0.0;
 
         for (int c = 0; c < static_cast<int>(formulas.size()); ++c) {
-            const Formula& f = formulas[c];
-            double calc_mass = 0.0;
-            for (int k = 0; k < FormulaAnnotation::NUM_ELEMENTS; ++k) {
-                calc_mass += f[k] * FormulaAnnotation::ATOMIC_MASSES[k];
-            }
+            const double calc_mass = compute_mass_for(formulas[c]);
             const double err = calc_mass - target;
-            const double abs_after_norm = std::abs(err - mean_error);
-            if (abs_after_norm < best_abs) {
-                best_abs = abs_after_norm;
+            const double dev = std::abs(err - model); // abs vs squared yields same argmin
+            if (dev < best_abs) {
+                best_abs = dev;
                 best_idx = c;
                 best_err = err;
             }
@@ -348,28 +359,39 @@ MassDecomposer::CleanedAndNormalizedSpectrumResult MassDecomposer::clean_and_nor
             chosen_formula[i] = formulas[best_idx];
             chosen_error_unscaled[i] = best_err;
             keep[i] = true;
-
-            // Update weighted running mean with this assignment
-            const double w = target; // mass-weight
-            if (w > 0.0) {
-                sum_w_err += w * best_err;
-                sum_w += w;
-                mean_error = sum_w_err / sum_w;
-            }
         }
     }
 
-    // 3) Emit kept fragments in original order with normalized masses and final error reporting.
-    // Normalized mass is target + final weighted mean_error (removing systemic bias favoring high masses).
+    // 3) Refit a and b using all selected fragments (single + chosen multi) with mass weights.
+    Sw = Sx = Sy = Sxx = Sxy = 0.0;
+    for (size_t i = 0; i < n; ++i) {
+        if (!keep[i]) continue;
+        const double target = fragment_masses[i];
+        const double err = chosen_error_unscaled[i];
+        const double w = target; // mass-weight
+        if (w > 0.0) {
+            Sw  += w;
+            Sx  += w * target;
+            Sy  += w * err;
+            Sxx += w * target * target;
+            Sxy += w * target * err;
+        }
+    }
+    std::tie(a, b) = finalize_fit(Sw, Sx, Sy, Sxx, Sxy);
+
+    // 4) Emit kept fragments in original order with normalized masses and final error reporting.
+    //    Normalized mass is target + (a + b*target). Error after normalization = err - (a + b*target).
     for (size_t i = 0; i < n; ++i) {
         if (!keep[i]) continue;
 
-        const double normalized_mass = fragment_masses[i] + mean_error;
-        const double denom_report = (normalized_mass != 0.0) ? normalized_mass
-                                                             : std::max(fragment_masses[i], 200.0);
+        const double target = fragment_masses[i];
+        const double correction = a + b * target; // additive + multiplicative (via mass term)
+        const double normalized_mass = target + correction;
 
-        // Error after normalization equals (calc - target) - mean_error
-        const double err_after_norm = chosen_error_unscaled[i] - mean_error;
+        const double err_after_norm = chosen_error_unscaled[i] - correction; // calc - normalized
+        const double denom_report = (normalized_mass != 0.0)
+            ? normalized_mass
+            : std::max(target, 200.0);
         const double ppm_after_norm = (err_after_norm * 1e6) / denom_report;
 
         out.masses_normalized.push_back(normalized_mass);
