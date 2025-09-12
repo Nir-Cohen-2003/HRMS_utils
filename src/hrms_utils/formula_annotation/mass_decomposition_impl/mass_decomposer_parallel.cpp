@@ -198,7 +198,6 @@ MassDecomposer::CleanedSpectrumResult MassDecomposer::clean_spectrum_known_precu
     for (size_t i = 0; i < n; ++i) {
         const double target = fragment_masses[i];
         const double denom_allowed = std::max(target, 200.0);            // filtering
-        const double allowed_abs = denom_allowed * params.tolerance_ppm / 1e6;
 
         const auto& formulas = fragment_solutions[i];
         if (formulas.empty()) {
