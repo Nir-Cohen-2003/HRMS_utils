@@ -3,7 +3,7 @@ from typing import List, Tuple, Dict
 import numpy as np
 from numba import njit, jit
 from .isotopic_pattern import deduce_isotopic_pattern
-from .mass_decomposition import decompose_mass_per_bounds, clean_spectra_known_precursor, NUM_ELEMENTS
+from .mass_decomposition import decompose_mass_per_bounds, clean_and_normalize_spectra_known_precursor, NUM_ELEMENTS
 from .element_table import ELEMENT_INDEX, ELEMENT_MASSES
 
 PROTON_MASS = ELEMENT_MASSES[ELEMENT_INDEX['H']]
@@ -70,27 +70,27 @@ def annotate_chromatogram_with_formulas(
     # Replace separate decomposition + Python cleaning with the all-in-one cleaner
     chromatogram = chromatogram.with_columns(
         pl.struct(["decomposed_formulas", "non_ionized_msms_m/z", "msms_intensity"]).map_batches(
-            lambda batch: clean_spectra_known_precursor(
+            lambda batch: clean_and_normalize_spectra_known_precursor(
                 precursor_formula_series=batch.struct.field("decomposed_formulas"),
                 fragment_masses_series=batch.struct.field("non_ionized_msms_m/z"),
                 fragment_intensities_series=batch.struct.field("msms_intensity"),
                 tolerance_ppm=fragment_mass_accuracy_ppm,
             ),
             return_dtype=pl.Struct({
-                "masses": pl.List(pl.Float64),
+                "masses_normalized": pl.List(pl.Float64),
                 "intensities": pl.List(pl.Float64),
-                "fragment_formulas": pl.List(pl.List(pl.Array(inner=pl.Int32, shape=(15,)))),
-                "fragment_errors_ppm": pl.List(pl.List(pl.Float64)),
+                "fragment_formulas": pl.List(pl.Array(inner=pl.Int32, shape=(15,))),
+                "fragment_errors_ppm": pl.List(pl.Float64),
             }),
         ).alias("cleaned_spectra")
     ).with_columns(
         pl.col("cleaned_spectra").struct.unnest()
     ).rename(
         {
-            "masses": "cleaned_msms_mz",
+            "masses_normalized": "cleaned_msms_mz",               # normalized masses
             "intensities": "cleaned_msms_intensity",
-            "fragment_formulas": "cleaned_spectrum_formulas",
-            "fragment_errors_ppm": "cleaned_fragment_errors_ppm",
+            "fragment_formulas": "cleaned_spectrum_formulas",     # now List[Array(int32, 15)]
+            "fragment_errors_ppm": "cleaned_fragment_errors_ppm", # now List[float]
         }
     ).drop(
         "cleaned_spectra"

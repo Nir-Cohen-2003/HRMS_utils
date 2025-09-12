@@ -202,5 +202,22 @@ public:
     static std::vector<CleanedSpectrumResult> clean_spectra_known_precursor_parallel(
         const std::vector<CleanSpectrumWithKnownPrecursor>& spectra,
         const DecompositionParams& params);
+
+    struct CleanedAndNormalizedSpectrumResult {
+        std::vector<double> masses_normalized;          // one per kept fragment (target + final_mean_error)
+        std::vector<double> intensities;                // aligned with masses_normalized
+        std::vector<Formula> fragment_formulas;         // one per kept fragment
+        std::vector<double> fragment_errors_ppm;        // one per kept fragment (after normalization)
+    }; 
+    CleanedAndNormalizedSpectrumResult clean_and_normalize_spectrum_known_precursor(
+        const Formula& precursor_formula,
+        const std::vector<double>& fragment_masses,
+        const std::vector<double>& fragment_intensities,
+        const DecompositionParams& params);
+
+    // New: parallel cleaner + normalizer for many spectra
+    static std::vector<CleanedAndNormalizedSpectrumResult> clean_and_normalize_spectra_known_precursor_parallel(
+        const std::vector<CleanSpectrumWithKnownPrecursor>& spectra,
+        const DecompositionParams& params);
 };
 #endif // MASS_DECOMPOSER_COMMON_HPP

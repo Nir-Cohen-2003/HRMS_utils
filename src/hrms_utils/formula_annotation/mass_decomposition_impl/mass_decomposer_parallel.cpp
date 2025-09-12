@@ -221,9 +221,6 @@ MassDecomposer::CleanedSpectrumResult MassDecomposer::clean_spectrum_known_precu
             errors_ppm.push_back(ppm);
         }
 
-        if (errors_ppm.empty()) {
-            continue; // all formulas filtered by tolerance => drop fragment
-        }
 
         out.masses.push_back(target);
         out.intensities.push_back(fragment_intensities[i]);
@@ -250,6 +247,157 @@ std::vector<MassDecomposer::CleanedSpectrumResult> MassDecomposer::clean_spectra
         for (int i = 0; i < n; ++i) {
             const auto& s = spectra[i];
             all_results[i] = thread_decomposer.clean_spectrum_known_precursor(
+                s.precursor_formula, s.fragment_masses, s.fragment_intensities, params);
+        }
+    }
+    return all_results;
+}
+
+MassDecomposer::CleanedAndNormalizedSpectrumResult MassDecomposer::clean_and_normalize_spectrum_known_precursor(
+    const Formula& precursor_formula,
+    const std::vector<double>& fragment_masses,
+    const std::vector<double>& fragment_intensities,
+    const DecompositionParams& params) {
+
+
+
+    const size_t n = fragment_masses.size();
+    MassDecomposer::CleanedAndNormalizedSpectrumResult out;
+    out.masses_normalized.reserve(n);
+    out.intensities.reserve(n);
+    out.fragment_formulas.reserve(n);
+    out.fragment_errors_ppm.reserve(n);
+
+    // Compute all candidate formulas per fragment under the precursor constraint
+    const auto fragment_solutions = decompose_spectrum_known_precursor(
+        precursor_formula, fragment_masses, params);
+
+
+    // Selection bookkeeping
+    std::vector<bool> keep(n, false);
+    std::vector<Formula> chosen_formula(n);
+    std::vector<double> chosen_error_unscaled(n, 0.0); // calc_mass - target_mass
+
+    // 1) Weighted mean error from fragments with only one option (weight = fragment mass).
+    // Why: prioritize correcting higher-mass fragments which typically carry lower relative ppm error.
+    double sum_w_err = 0.0;  // sum(w_i * err_i)
+    double sum_w = 0.0;      // sum(w_i)
+
+    for (size_t i = 0; i < n; ++i) {
+        const auto& formulas = fragment_solutions[i];
+        if (formulas.size() == 1) {
+            // Compute calc mass for the single formula
+            double calc_mass = 0.0;
+            for (int k = 0; k < FormulaAnnotation::NUM_ELEMENTS; ++k) {
+                calc_mass += formulas[0][k] * FormulaAnnotation::ATOMIC_MASSES[k];
+            }
+            const double target = fragment_masses[i];
+            const double err = calc_mass - target;
+            const double w = target; // mass-weight
+
+            chosen_formula[i] = formulas[0];
+            chosen_error_unscaled[i] = err;
+            keep[i] = true;
+
+            if (w > 0.0) {
+                sum_w_err += w * err;
+                sum_w += w;
+            }
+        }
+    }
+
+    double mean_error = (sum_w > 0.0) ? (sum_w_err / sum_w) : 0.0;
+
+    // 2) For multi-option fragments, choose from highest to lowest mass the formula
+    // that minimizes |err - current weighted mean|, updating the weighted mean.
+    std::vector<size_t> order(n);
+    for (size_t i = 0; i < n; ++i) order[i] = i;
+    std::sort(order.begin(), order.end(), [&](size_t a, size_t b) {
+        return fragment_masses[a] < fragment_masses[b];
+    });
+
+    for (int oi = static_cast<int>(order.size()) - 1; oi >= 0; --oi) {
+        const size_t i = order[oi];
+        const auto& formulas = fragment_solutions[i];
+        if (formulas.empty() || keep[i]) {
+            continue; // no candidates or already fixed (single-option)
+        }
+
+        const double target = fragment_masses[i];
+        // Choose the formula minimizing |(calc - (target + current_mean_error))|
+        double best_abs = std::numeric_limits<double>::infinity();
+        int best_idx = -1;
+        double best_err = 0.0; // calc - target for the chosen formula
+
+        for (int c = 0; c < static_cast<int>(formulas.size()); ++c) {
+            const Formula& f = formulas[c];
+            double calc_mass = 0.0;
+            for (int k = 0; k < FormulaAnnotation::NUM_ELEMENTS; ++k) {
+                calc_mass += f[k] * FormulaAnnotation::ATOMIC_MASSES[k];
+            }
+            const double err = calc_mass - target;
+            const double abs_after_norm = std::abs(err - mean_error);
+            if (abs_after_norm < best_abs) {
+                best_abs = abs_after_norm;
+                best_idx = c;
+                best_err = err;
+            }
+        }
+
+        if (best_idx >= 0) {
+            chosen_formula[i] = formulas[best_idx];
+            chosen_error_unscaled[i] = best_err;
+            keep[i] = true;
+
+            // Update weighted running mean with this assignment
+            const double w = target; // mass-weight
+            if (w > 0.0) {
+                sum_w_err += w * best_err;
+                sum_w += w;
+                mean_error = sum_w_err / sum_w;
+            }
+        }
+    }
+
+    // 3) Emit kept fragments in original order with normalized masses and final error reporting.
+    // Normalized mass is target + final weighted mean_error (removing systemic bias favoring high masses).
+    for (size_t i = 0; i < n; ++i) {
+        if (!keep[i]) continue;
+
+        const double normalized_mass = fragment_masses[i] + mean_error;
+        const double denom_report = (normalized_mass != 0.0) ? normalized_mass
+                                                             : std::max(fragment_masses[i], 200.0);
+
+        // Error after normalization equals (calc - target) - mean_error
+        const double err_after_norm = chosen_error_unscaled[i] - mean_error;
+        const double ppm_after_norm = (err_after_norm * 1e6) / denom_report;
+
+        out.masses_normalized.push_back(normalized_mass);
+        out.intensities.push_back(fragment_intensities[i]);
+        out.fragment_formulas.push_back(chosen_formula[i]);
+        out.fragment_errors_ppm.push_back(ppm_after_norm);
+    }
+
+    return out;
+}
+
+std::vector<MassDecomposer::CleanedAndNormalizedSpectrumResult>
+MassDecomposer::clean_and_normalize_spectra_known_precursor_parallel(
+    const std::vector<MassDecomposer::CleanSpectrumWithKnownPrecursor>& spectra,
+    const DecompositionParams& params) {
+
+    const int n = static_cast<int>(spectra.size());
+    std::vector<MassDecomposer::CleanedAndNormalizedSpectrumResult> all_results(n);
+
+    #pragma omp parallel
+    {
+        // Thread-local decomposer instance to call non-static member
+        MassDecomposer thread_decomposer(params.min_bounds, params.max_bounds);
+
+        #pragma omp for schedule(dynamic)
+        for (int i = 0; i < n; ++i) {
+            const auto& s = spectra[i];
+            all_results[i] = thread_decomposer.clean_and_normalize_spectrum_known_precursor(
                 s.precursor_formula, s.fragment_masses, s.fragment_intensities, params);
         }
     }
