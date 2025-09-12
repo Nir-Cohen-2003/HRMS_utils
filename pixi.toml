@@ -7,10 +7,10 @@ platforms = ["linux-64","win-64"]
 preview = ["pixi-build"]
 [package]
 name = "hrms_utils"
-version = "0.4.0"
+version = "0.5.0"
 
 [dependencies]
-python = "3.12.*"
+python = ">=3.12.0"
 pip = "*"
 cython = ">=3.0.0"
 setuptools = ">=68.0.0"
@@ -48,7 +48,7 @@ backend = { name = "pixi-build-python", version = ">=0.1.0",channels = [
 noarch = false
 
 [package.build-dependencies]
-python = "3.12.*"
+python = ">=3.12.0"
 pip = "*"
 numpy = ">=1.20.0,<2.3"
 setuptools = ">=68.0.0"
@@ -57,7 +57,7 @@ cxx-compiler = "*"
 pyarrow = ">=12.0.0" # might not be needed, but i do call it in the cython code
 
 [package.host-dependencies] 
-python = "3.12.*"
+python = ">=3.12.0"
 pip = "*"
 numpy = ">=1.20.0"
 setuptools = ">=68.0.0"

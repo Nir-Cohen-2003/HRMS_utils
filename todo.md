@@ -1,1 +1,2 @@
-in the inteligent cleaning of spectrum, after removing peaks that are below the normalized mass accuracy threshold, check if any options got in.
+1. in the inteligent cleaning of spectrum, after removing peaks that are below the normalized mass accuracy threshold, check if any options got in.
+2. seems like using the c++ version of rdkit is pretty complicated, at least when trying to build a wheel (since on conda we can use cmake+ librdkit-dev+ boost if needed, like in the faster mces repo). think well about how we should proceed, since this might be much faster but much more complicated. postpone it until it becomes a bottleneck.
