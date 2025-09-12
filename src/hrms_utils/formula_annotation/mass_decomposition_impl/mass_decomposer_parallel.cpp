@@ -257,6 +257,8 @@ MassDecomposer::CleanedAndNormalizedSpectrumResult MassDecomposer::clean_and_nor
     const Formula& precursor_formula,
     const std::vector<double>& fragment_masses,
     const std::vector<double>& fragment_intensities,
+    double precursor_mass,
+    double max_allowed_normalized_mass_error_ppm,
     const DecompositionParams& params) {
 
 
@@ -286,9 +288,24 @@ MassDecomposer::CleanedAndNormalizedSpectrumResult MassDecomposer::clean_and_nor
         return m;
     };
 
+    // Compute precursor modeled mass and error once; will be used as an extra calibration point.
+    const double precursor_calc_mass = compute_mass_for(precursor_formula);
+    const double precursor_err = precursor_calc_mass - precursor_mass;
+
     // 1) Initial weighted linear fit err ~ a + b * mass using single-option fragments only.
     //    Weight = fragment mass. Rationale: higher mass fragments tend to have lower relative ppm.
     double Sw = 0.0, Sx = 0.0, Sy = 0.0, Sxx = 0.0, Sxy = 0.0;
+
+    // Include the precursor as an additional calibration point in the initial fit.
+    // Why: improves stability when few single-option fragments exist.
+    if (precursor_mass > 0.0) {
+        const double w_prec = precursor_mass;
+        Sw  += w_prec;
+        Sx  += w_prec * precursor_mass;
+        Sy  += w_prec * precursor_err;
+        Sxx += w_prec * precursor_mass * precursor_mass;
+        Sxy += w_prec * precursor_mass * precursor_err;
+    }
 
     for (size_t i = 0; i < n; ++i) {
         const auto& formulas = fragment_solutions[i];
@@ -364,6 +381,17 @@ MassDecomposer::CleanedAndNormalizedSpectrumResult MassDecomposer::clean_and_nor
 
     // 3) Refit a and b using all selected fragments (single + chosen multi) with mass weights.
     Sw = Sx = Sy = Sxx = Sxy = 0.0;
+
+    // Include the precursor as a calibration point in the refit as well.
+    if (precursor_mass > 0.0) {
+        const double w_prec = precursor_mass;
+        Sw  += w_prec;
+        Sx  += w_prec * precursor_mass;
+        Sy  += w_prec * precursor_err;
+        Sxx += w_prec * precursor_mass * precursor_mass;
+        Sxy += w_prec * precursor_mass * precursor_err;
+    }
+
     for (size_t i = 0; i < n; ++i) {
         if (!keep[i]) continue;
         const double target = fragment_masses[i];
@@ -379,8 +407,19 @@ MassDecomposer::CleanedAndNormalizedSpectrumResult MassDecomposer::clean_and_nor
     }
     std::tie(a, b) = finalize_fit(Sw, Sx, Sy, Sxx, Sxy);
 
-    // 4) Emit kept fragments in original order with normalized masses and final error reporting.
-    //    Normalized mass is target + (a + b*target). Error after normalization = err - (a + b*target).
+    // 4) Compute normalized results for all kept fragments, then filter by max_allowed_normalized_mass_error_ppm.
+    std::vector<double> tmp_masses_normalized;
+    std::vector<double> tmp_intensities;
+    std::vector<Formula> tmp_fragment_formulas;
+    std::vector<double> tmp_fragment_errors_ppm;
+    std::vector<double> tmp_err_after_norm_ppm_abs; // for thresholding (ppm)
+
+    tmp_masses_normalized.reserve(n);
+    tmp_intensities.reserve(n);
+    tmp_fragment_formulas.reserve(n);
+    tmp_fragment_errors_ppm.reserve(n);
+    tmp_err_after_norm_ppm_abs.reserve(n);
+
     for (size_t i = 0; i < n; ++i) {
         if (!keep[i]) continue;
 
@@ -389,15 +428,24 @@ MassDecomposer::CleanedAndNormalizedSpectrumResult MassDecomposer::clean_and_nor
         const double normalized_mass = target + correction;
 
         const double err_after_norm = chosen_error_unscaled[i] - correction; // calc - normalized
-        const double denom_report = (normalized_mass != 0.0)
-            ? normalized_mass
-            : std::max(target, 200.0);
+        const double denom_report = std::max(normalized_mass, 200.0); // ppm denom
         const double ppm_after_norm = (err_after_norm * 1e6) / denom_report;
 
-        out.masses_normalized.push_back(normalized_mass);
-        out.intensities.push_back(fragment_intensities[i]);
-        out.fragment_formulas.push_back(chosen_formula[i]);
-        out.fragment_errors_ppm.push_back(ppm_after_norm);
+        tmp_masses_normalized.push_back(normalized_mass);
+        tmp_intensities.push_back(fragment_intensities[i]);
+        tmp_fragment_formulas.push_back(chosen_formula[i]);
+        tmp_fragment_errors_ppm.push_back(ppm_after_norm);
+        tmp_err_after_norm_ppm_abs.push_back(std::abs(ppm_after_norm));
+    }
+
+    // Apply final filtering based on absolute normalized ppm threshold.
+    for (size_t i = 0; i < tmp_masses_normalized.size(); ++i) {
+        if (tmp_err_after_norm_ppm_abs[i] <= max_allowed_normalized_mass_error_ppm) {
+            out.masses_normalized.push_back(tmp_masses_normalized[i]);
+            out.intensities.push_back(tmp_intensities[i]);
+            out.fragment_formulas.push_back(tmp_fragment_formulas[i]);
+            out.fragment_errors_ppm.push_back(tmp_fragment_errors_ppm[i]);
+        }
     }
 
     return out;
@@ -420,7 +468,12 @@ MassDecomposer::clean_and_normalize_spectra_known_precursor_parallel(
         for (int i = 0; i < n; ++i) {
             const auto& s = spectra[i];
             all_results[i] = thread_decomposer.clean_and_normalize_spectrum_known_precursor(
-                s.precursor_formula, s.fragment_masses, s.fragment_intensities, params);
+                s.precursor_formula,
+                s.fragment_masses,
+                s.fragment_intensities,
+                s.precursor_mass,
+                s.max_allowed_normalized_mass_error_ppm,
+                params);
         }
     }
     return all_results;

@@ -181,6 +181,9 @@ public:
         Formula precursor_formula;
         std::vector<double> fragment_masses;
         std::vector<double> fragment_intensities;
+        // Observed precursor mass (unnormalized) and ppm filter threshold after normalization
+        double precursor_mass;
+        double max_allowed_normalized_mass_error_ppm;
     };
 
     // New: result struct for cleaned spectrum
@@ -213,6 +216,8 @@ public:
         const Formula& precursor_formula,
         const std::vector<double>& fragment_masses,
         const std::vector<double>& fragment_intensities,
+        double precursor_mass,
+        double max_allowed_normalized_mass_error_ppm,
         const DecompositionParams& params);
 
     // New: parallel cleaner + normalizer for many spectra

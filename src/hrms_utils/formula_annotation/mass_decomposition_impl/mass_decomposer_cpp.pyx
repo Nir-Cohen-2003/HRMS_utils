@@ -73,6 +73,8 @@ cdef extern from "mass_decomposer_common.hpp":
         Formula_cpp precursor_formula
         vector[double] fragment_masses
         vector[double] fragment_intensities
+        double precursor_mass
+        double max_allowed_normalized_mass_error_ppm
 
     cdef cppclass CleanedSpectrumResult_cpp "MassDecomposer::CleanedSpectrumResult":
         vector[double] masses
@@ -725,19 +727,17 @@ def clean_spectra_known_precursor_parallel(
 
 def clean_and_normalize_spectra_known_precursor_parallel(
     precursor_formula_series: pl.Series,   # pl.Array(int32, NUM_ELEMENTS)
+    precursor_masses_series: pl.Series,    # Float64 per spectrum (observed)
     fragment_masses_series: pl.Series,     # list[float] per spectrum
     fragment_intensities_series: pl.Series,# list[float] per spectrum
     tolerance_ppm: float = 5.0,
-    max_results: int = 100000
+    max_results: int = 100000,
+    max_allowed_normalized_mass_error_ppm: float = 5.0
 ) -> pl.Series:
     """
-    Parallel cleaner that selects a single formula per fragment and normalizes masses
-    using the spectrum-level mean error. Returns a Series[Struct] with fields:
-      - masses_normalized: List[Float64]
-      - intensities: List[Float64]
-      - fragment_formulas: List[Array(Int32, NUM_ELEMENTS)]  # one formula per kept fragment
-      - fragment_errors_ppm: List[Float64]                   # after normalization
-    Note: This has one less nesting level than the previous cleaner.
+    Normalizes fragment masses using a spectrum-level linear error model augmented by the precursor point.
+    After normalization, drops fragments whose absolute normalized error in ppm exceeds max_allowed_normalized_mass_error_ppm.
+    PPM is computed with denominator max(normalized_mass, 200.0).
     """
     # Convert precursor formulas to 2D contiguous int32
     cdef np.ndarray[np.int32_t, ndim=2, mode="c"] contig_precursors = np.ascontiguousarray(
@@ -759,8 +759,10 @@ def clean_and_normalize_spectra_known_precursor_parallel(
         )
     if contig_precursors.shape[1] != NUM_ELEMENTS:
         raise ValueError(f"Each precursor formula must have length {NUM_ELEMENTS} (got {contig_precursors.shape[1]}).")
-    if fragment_masses_series.len() != n or fragment_intensities_series.len() != n:
-        raise ValueError("fragment_masses_series and fragment_intensities_series lengths must match precursor_formula_series length.")
+    if (fragment_masses_series.len() != n or
+        fragment_intensities_series.len() != n or
+        precursor_masses_series.len() != n):
+        raise ValueError("All input series must have the same length.")
 
     # Params: bounds are ignored here; pass zeros; DBE range for fragments
     cdef np.ndarray min_bounds = np.zeros(NUM_ELEMENTS, dtype=np.int32)
@@ -777,6 +779,7 @@ def clean_and_normalize_spectra_known_precursor_parallel(
 
     frag_mass_lists = fragment_masses_series.to_list()
     frag_int_lists = fragment_intensities_series.to_list()
+    prec_mass_list = precursor_masses_series.to_list()
 
     cdef np.int32_t* prec_ptr = &contig_precursors[0, 0]
     cdef size_t formula_size_bytes = NUM_ELEMENTS * sizeof(F_DTYPE_t)
@@ -794,6 +797,10 @@ def clean_and_normalize_spectra_known_precursor_parallel(
         # Copy precursor row i
         memcpy(<void*>&prec[0], <const void*>(prec_ptr + i * NUM_ELEMENTS), formula_size_bytes)
         s.precursor_formula = prec
+
+        # Observed precursor mass and ppm threshold
+        s.precursor_mass = <double>(prec_mass_list[i] if prec_mass_list[i] is not None else 0.0)
+        s.max_allowed_normalized_mass_error_ppm = <double>max_allowed_normalized_mass_error_ppm
 
         # Masses -> contiguous buffer
         seq_m = frag_mass_lists[i] if frag_mass_lists[i] is not None else []
