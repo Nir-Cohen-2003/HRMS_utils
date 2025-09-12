@@ -372,4 +372,4 @@ def decompose_spectra_known_precursor(
         tolerance_ppm=tolerance_ppm,
         max_results=max_results,
     )
-    return pl.Series(results, dtype=pl.List(pl.List(pl.Array(pl.Int32, NUM_ELEMENTS))))
+    return results

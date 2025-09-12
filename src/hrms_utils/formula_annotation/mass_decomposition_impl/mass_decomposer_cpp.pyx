@@ -529,4 +529,5 @@ def decompose_spectra_known_precursor_parallel(
 
     cdef vector[vector[vector[Formula_cpp]]] all_results
     all_results = MassDecomposer.decompose_spectra_known_precursor_parallel(spectra_vec, params)
-    return [[[_convert_formula_to_array(f) for f in res] for res in spec_res] for spec_res in all_results]
+    py_results =  [[[_convert_formula_to_array(f) for f in res] for res in spec_res] for spec_res in all_results]
+    return pl.Series(py_results, dtype=pl.List(pl.List(pl.Array(pl.Int32, NUM_ELEMENTS))))

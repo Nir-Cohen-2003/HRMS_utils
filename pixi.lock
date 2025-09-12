@@ -2494,10 +2494,10 @@ packages:
   - xlsxwriter
   - connectorx
   - sqlalchemy
-  - python
+  - python >=3.12
   - python_abi 3.12.* *_cp312
   input:
-    hash: 792e5b6d36927a0ed241f5bc65e26c00dd5e6b395ab84a3173be02441458a0e5
+    hash: fafc658a61157417c45dd29ad4f84dcabb31413a8a12b6c018566ad882454870
     globs:
     - pyproject.toml
 - conda: .
@@ -2523,10 +2523,10 @@ packages:
   - xlsxwriter
   - connectorx
   - sqlalchemy
-  - python
+  - python >=3.12
   - python_abi 3.12.* *_cp312
   input:
-    hash: 792e5b6d36927a0ed241f5bc65e26c00dd5e6b395ab84a3173be02441458a0e5
+    hash: fafc658a61157417c45dd29ad4f84dcabb31413a8a12b6c018566ad882454870
     globs:
     - pyproject.toml
 - conda: https://prefix.dev/conda-forge/noarch/humanize-4.12.3-pyhd8ed1ab_0.conda
