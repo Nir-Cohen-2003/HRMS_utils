@@ -295,10 +295,10 @@ def _convert_MSMS_to_list(chromatogram: pl.LazyFrame | pl.DataFrame) -> pl.LazyF
     chromatogram = chromatogram.with_columns(
         pl.col('MSMS spectrum').str.extract_all(
             pattern=r'(\d+\.\d+)'
-        ).list.eval(pl.element().str.to_decimal().cast(pl.Float64)).alias('msms_m/z'),
+        ).list.eval(pl.element().cast(pl.Float64)).alias('msms_m/z'),
         pl.col('MSMS spectrum').str.extract_all(
             pattern=r'(\d+)\s|(\d+$)'
-        ).list.eval(pl.element().str.extract( pattern=r'(\d+)').str.to_decimal().cast(pl.Float64).round(4)).alias('msms_intensity')
+        ).list.eval(pl.element().str.extract( pattern=r'(\d+)').cast(pl.Float64).round(4)).alias('msms_intensity')
         #).alias('msms_intensity')
     )
     chromatogram = chromatogram.with_columns(
@@ -312,10 +312,10 @@ def _convert_MS1_to_list(chromatogram: pl.LazyFrame | pl.DataFrame) -> pl.LazyFr
     chromatogram = chromatogram.with_columns(
         pl.col('MS1 isotopes').str.extract_all(
             pattern=r'(\d+\.\d+)'
-        ).list.eval(pl.element().str.to_decimal().cast(pl.Float64)).alias('ms1_isotopes_m/z'),
+        ).list.eval(pl.element().cast(pl.Float64)).alias('ms1_isotopes_m/z'),
         pl.col('MS1 isotopes').str.extract_all(
             pattern=r'(\d+)\s|(\d+$)'
-        ).list.eval(pl.element().str.extract( pattern=r'(\d+)').str.to_decimal().cast(pl.Float64).round(4)).alias('ms1_isotopes_intensity')
+        ).list.eval(pl.element().str.extract( pattern=r'(\d+)').cast(pl.Float64).round(4)).alias('ms1_isotopes_intensity')
     )
     # removed because we need to know the actual intensity of each, not only the relative.
     # chromatogram = chromatogram.with_columns(
