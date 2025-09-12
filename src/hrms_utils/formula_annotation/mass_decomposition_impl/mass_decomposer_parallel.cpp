@@ -77,10 +77,9 @@ ProperSpectrumResults MassDecomposer::decompose_spectrum(
                 for (int k = 0; k < FormulaAnnotation::NUM_ELEMENTS; ++k) {
                     calc_mass += frag_formula[k] * FormulaAnnotation::ATOMIC_MASSES[k];
                 }
-                double abs_error = std::abs(calc_mass - target_mass);
-                // if (abs_error > allowed_error) continue;
+                double error = calc_mass - target_mass;
                 decomp.fragment_masses[j].push_back(calc_mass);
-                decomp.fragment_errors_ppm[j].push_back(abs_error);
+                decomp.fragment_errors_ppm[j].push_back(error);
             }
         }
 
@@ -217,11 +216,8 @@ MassDecomposer::CleanedSpectrumResult MassDecomposer::clean_spectrum_known_precu
             for (int k = 0; k < FormulaAnnotation::NUM_ELEMENTS; ++k) {
                 calc_mass += f[k] * FormulaAnnotation::ATOMIC_MASSES[k];
             }
-            const double abs_err = std::abs(calc_mass - target);
-            if (abs_err > allowed_abs) {
-                continue; // filtered by tolerance
-            }
-            const double ppm = abs_err * 1e6 / denom_report; // report relative to actual mass
+            const double error = calc_mass - target;
+            const double ppm = error * 1e6 / denom_report; // report relative to actual mass
             errors_ppm.push_back(ppm);
         }
 

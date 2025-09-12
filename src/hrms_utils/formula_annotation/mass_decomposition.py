@@ -5,6 +5,7 @@ from .mass_decomposition_impl.mass_decomposer_cpp import (
     decompose_spectra_parallel_per_bounds,
     decompose_spectra_known_precursor_parallel, 
     get_num_elements,
+    clean_spectra_known_precursor_parallel as _clean_spectra_known_precursor_parallel,  # new
 )
 NUM_ELEMENTS = get_num_elements()
 import polars as pl
@@ -360,16 +361,88 @@ def decompose_spectra_known_precursor(
             ).alias("decomposed_spectra")
         )
     """
-    precursor_formulas = precursor_formula_series.to_numpy()
-    fragment_masses_list = fragment_masses_series.to_numpy()
-    spectra_data = [
-        {"precursor_formula": pf, "fragment_masses": fm}
-        for pf, fm in zip(precursor_formulas, fragment_masses_list)
-    ]
-    # min_bounds is always zeros
+
     results = decompose_spectra_known_precursor_parallel(
-        spectra_data=spectra_data,
+        precursor_formula_series,
+        fragment_masses_series,
         tolerance_ppm=tolerance_ppm,
         max_results=max_results,
     )
     return results
+
+def clean_spectra_known_precursor(
+    precursor_formula_series: pl.Series,
+    fragment_masses_series: pl.Series,
+    fragment_intensities_series: pl.Series,
+    *,
+    tolerance_ppm: float = 5.0,
+    max_results: int = 100000,
+) -> pl.Series:
+    """
+    Parallel spectrum cleaning for known precursors.
+
+    Expects per-spectrum:
+    - precursor_formula_series: Series of fixed-size int32 arrays shaped (NUM_ELEMENTS,).
+      dtype must be pl.Array(pl.Int32, NUM_ELEMENTS).
+    - fragment_masses_series: Series of List[float] (Float64).
+    - fragment_intensities_series: Series of List[float] (Float64).
+
+    Returns:
+    - pl.Series with dtype:
+        pl.Struct({
+            "masses": pl.List(pl.Float64),
+            "intensities": pl.List(pl.Float64),
+            "fragment_formulas": pl.List(pl.List(pl.Array(pl.Int32, NUM_ELEMENTS))),
+            "fragment_errors_ppm": pl.List(pl.List(pl.Float64)),
+        })
+      Each row corresponds to one spectrum and contains the cleaned fragment set:
+      - masses: kept fragment masses
+      - intensities: corresponding intensities
+      - fragment_formulas: for each kept fragment, a list of candidate molecular formulas
+      - fragment_errors_ppm: for each kept fragment, the mass errors in ppm aligned with formulas
+
+    Notes:
+    - Fails fast on mismatched series lengths or invalid dtypes.
+    - All heavy lifting is done in C++ with OpenMP; this wrapper is thin and explicit.
+
+    Example:
+        cleaned = clean_spectra_known_precursor(
+            precursor_formula_series=pl.col("decomposed_formula"),
+            fragment_masses_series=pl.col("fragment_masses"),
+            fragment_intensities_series=pl.col("fragment_intensities"),
+            tolerance_ppm=5.0,
+        )
+    """
+    # Validate inputs
+    assert isinstance(precursor_formula_series, pl.Series), "precursor_formula_series must be a Polars Series"
+    assert isinstance(fragment_masses_series, pl.Series), "fragment_masses_series must be a Polars Series"
+    assert isinstance(fragment_intensities_series, pl.Series), "fragment_intensities_series must be a Polars Series"
+
+    expected_arr_a = pl.Array(pl.Int32, NUM_ELEMENTS)
+    expected_arr_b = pl.Array(pl.Int32, shape=(NUM_ELEMENTS,))
+    assert precursor_formula_series.dtype in (expected_arr_a, expected_arr_b), (
+        f"precursor_formula_series.dtype must be pl.Array(pl.Int32, {NUM_ELEMENTS}), got {precursor_formula_series.dtype}"
+    )
+
+    expected_list = pl.List(pl.Float64)
+    assert fragment_masses_series.dtype == expected_list, (
+        f"fragment_masses_series.dtype must be List(Float64), got {fragment_masses_series.dtype}"
+    )
+    assert fragment_intensities_series.dtype == expected_list, (
+        f"fragment_intensities_series.dtype must be List(Float64), got {fragment_intensities_series.dtype}"
+    )
+
+    n = precursor_formula_series.len()
+    if fragment_masses_series.len() != n or fragment_intensities_series.len() != n:
+        raise ValueError("All input series must have the same length (one entry per spectrum).")
+
+    # Delegate to Cython/C++ implementation
+    return _clean_spectra_known_precursor_parallel(
+        precursor_formula_series=precursor_formula_series,
+        fragment_masses_series=fragment_masses_series,
+        fragment_intensities_series=fragment_intensities_series,
+        tolerance_ppm=tolerance_ppm,
+        max_results=max_results,
+    )
+
+
