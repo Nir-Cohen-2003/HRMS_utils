@@ -31,3 +31,4 @@ dist/
 src/hrms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.cpp
 src/hrms_utils/formula_annotation/mass_decomposition_impl/**.pyd
 !src\hrms_utils\formula_annotation\isotopic_pattern.ipynb
+tests/formula_annotation/250515_006.txt

@@ -7,7 +7,7 @@ platforms = ["linux-64","win-64"]
 preview = ["pixi-build"]
 [package]
 name = "hrms_utils"
-version = "0.3.0"
+version = "0.4.0"
 
 [dependencies]
 python = "3.12.*"
@@ -88,9 +88,8 @@ sqlalchemy = "*"
 # runtest = '''
 # python -c "import sys,os; p=sys.argv[1]; p=os.path.relpath(p,os.getcwd()); p=p[p.find('src/')+4:] if 'src/' in p else p; p=p[:-3] if p.endswith('.py') else p; p=p.replace('/', '.'); import runpy; runpy.run_module(p, run_name='__main__')"
 # '''
-runtest = "python -m "
-mass_decomp = "python tests/formula_annotation/test_mass_decompostion.py"
-
+mass_decomp = "python tests/formula_annotation/mass_decomposition.py"
+chromatogram = "python tests/formula_annotation/chromatogram.py"
 [feature.testing.dependencies]
 hrms_utils = {path = "."}
 polars = ">=1.32.0,<2"

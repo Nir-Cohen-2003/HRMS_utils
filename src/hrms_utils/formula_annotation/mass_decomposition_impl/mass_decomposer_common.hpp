@@ -7,6 +7,8 @@
 #include <algorithm>
 #include <memory>
 #include <array>
+#include <cstdint>
+#include <cstddef>
 
 namespace FormulaAnnotation {
     // Centralized Element Definition
@@ -28,7 +30,22 @@ namespace FormulaAnnotation {
     };
 
     // New Formula Type
-    using Formula = std::array<int, NUM_ELEMENTS>;
+    using Formula = std::array<int32_t, NUM_ELEMENTS>;
+
+    // Inline accessors so Cython can call functions instead of linking to constexpr objects.
+    inline const char* element_symbol_at(int i) { return ELEMENT_SYMBOLS[i]; }
+    inline double atomic_mass_at(int i) { return ATOMIC_MASSES[i]; }
+
+    // Size helpers for safe bulk copies
+    inline constexpr std::size_t FORMULA_NBYTES() {
+        return sizeof(int32_t) * static_cast<std::size_t>(NUM_ELEMENTS);
+    }
+    inline const int32_t* formula_data_const(const Formula& f) noexcept {
+        return f.data();
+    }
+    inline int32_t* formula_data(Formula& f) noexcept {
+        return f.data();
+    }
 }
 
 // Result structure for formulas
@@ -157,6 +174,55 @@ public:
     // Parallel known precursor spectrum decomposition - processes multiple spectra with different known precursor formulas
     static std::vector<std::vector<std::vector<Formula>>> decompose_spectra_known_precursor_parallel(
         const std::vector<SpectrumWithKnownPrecursor>& spectra,
+        const DecompositionParams& params);
+
+    // New: input struct for cleaning with intensities
+    struct CleanSpectrumWithKnownPrecursor {
+        Formula precursor_formula;
+        std::vector<double> fragment_masses;
+        std::vector<double> fragment_intensities;
+        // Observed precursor mass (unnormalized) and ppm filter threshold after normalization
+        double precursor_mass;
+        double max_allowed_normalized_mass_error_ppm;
+    };
+
+    // New: result struct for cleaned spectrum
+    struct CleanedSpectrumResult {
+        std::vector<double> masses;   // kept fragment masses
+        std::vector<double> intensities; // kept fragment intensities
+        std::vector<std::vector<Formula>> fragment_formulas;     // per kept fragment
+        std::vector<std::vector<double>> fragment_errors_ppm;    // per kept fragment (aligned with formulas)
+    };
+
+    // New: clean a single spectrum with known precursor formula
+    CleanedSpectrumResult clean_spectrum_known_precursor(
+        const Formula& precursor_formula,
+        const std::vector<double>& fragment_masses,
+        const std::vector<double>& fragment_intensities,
+        const DecompositionParams& params);
+
+    // New: parallel cleaner for many spectra with known precursor formula
+    static std::vector<CleanedSpectrumResult> clean_spectra_known_precursor_parallel(
+        const std::vector<CleanSpectrumWithKnownPrecursor>& spectra,
+        const DecompositionParams& params);
+
+    struct CleanedAndNormalizedSpectrumResult {
+        std::vector<double> masses_normalized;          // one per kept fragment (target + final_mean_error)
+        std::vector<double> intensities;                // aligned with masses_normalized
+        std::vector<Formula> fragment_formulas;         // one per kept fragment
+        std::vector<double> fragment_errors_ppm;        // one per kept fragment (after normalization)
+    }; 
+    CleanedAndNormalizedSpectrumResult clean_and_normalize_spectrum_known_precursor(
+        const Formula& precursor_formula,
+        const std::vector<double>& fragment_masses,
+        const std::vector<double>& fragment_intensities,
+        double precursor_mass,
+        double max_allowed_normalized_mass_error_ppm,
+        const DecompositionParams& params);
+
+    // New: parallel cleaner + normalizer for many spectra
+    static std::vector<CleanedAndNormalizedSpectrumResult> clean_and_normalize_spectra_known_precursor_parallel(
+        const std::vector<CleanSpectrumWithKnownPrecursor>& spectra,
         const DecompositionParams& params);
 };
 #endif // MASS_DECOMPOSER_COMMON_HPP
