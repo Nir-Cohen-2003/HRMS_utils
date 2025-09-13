@@ -2682,7 +2682,7 @@ packages:
   build: hbf21a9e_0
   subdir: linux-64
   depends:
-  - polars >=1.32.0,<2
+  - polars >=1.33.0,<2
   - rdkit >=2024.0.0
   - numpy >=1.20.0
   - numpy >=1.23,<3
@@ -2702,7 +2702,7 @@ packages:
   - python >=3.12
   - python_abi 3.13.* *_cp313
   input:
-    hash: 115181fe5bc29e010eb58ad59001c6cd28022342bc46e014dcadab4c520dcc23
+    hash: 223d143c5b5820fcd3637b25f4703b12d6c09ba1d74806cdd9de1736b6873bad
     globs:
     - pyproject.toml
 - conda: .
@@ -2711,7 +2711,7 @@ packages:
   build: hbf21a9e_0
   subdir: win-64
   depends:
-  - polars >=1.32.0,<2
+  - polars >=1.33.0,<2
   - rdkit >=2024.0.0
   - numpy >=1.20.0
   - numpy >=1.23,<3
@@ -2731,7 +2731,7 @@ packages:
   - python >=3.12
   - python_abi 3.13.* *_cp313
   input:
-    hash: 115181fe5bc29e010eb58ad59001c6cd28022342bc46e014dcadab4c520dcc23
+    hash: 223d143c5b5820fcd3637b25f4703b12d6c09ba1d74806cdd9de1736b6873bad
     globs:
     - pyproject.toml
 - conda: https://prefix.dev/conda-forge/noarch/humanize-4.13.0-pyhd8ed1ab_0.conda
