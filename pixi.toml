@@ -7,7 +7,7 @@ platforms = ["linux-64","win-64"]
 preview = ["pixi-build"]
 [package]
 name = "hrms_utils"
-version = "0.5.0"
+version = "0.5.1"
 
 [dependencies]
 python = ">=3.12.0"
@@ -91,7 +91,7 @@ sqlalchemy = "*"
 mass_decomp = "python tests/formula_annotation/mass_decomposition.py"
 chromatogram = "python tests/formula_annotation/chromatogram.py"
 test_mol = "python tests/rdkit/mol.py"
-
+test_info_score = "python tests/spectral_information.py"
 [feature.testing.dependencies]
 hrms_utils = {path = "."}
 polars = ">=1.33.0,<2"

@@ -7,7 +7,7 @@ import timeit
 if __name__ == "__main__":
         
     # Resolve the chromatogram file relative to this script to fail fast if missing.
-    chromatogram_path = Path(__file__).parent / "250515_006.txt"
+    chromatogram_path = Path(__file__).parent.parent/ "data" / "250515_006.txt"
     assert chromatogram_path.exists(), f"Required chromatogram file not found: {chromatogram_path}"
 
     chromatogram_df = get_chromatogram(str(chromatogram_path)).filter(

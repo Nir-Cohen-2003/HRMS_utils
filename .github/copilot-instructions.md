@@ -21,7 +21,7 @@ Concise, actionable rules for editing this repository. Keep changes explicit, fa
 - When needing to accelerate function execution, use numba jit compilation and vectorization unless there's a compelling reason to use multiprocessing or threading, in which case document the reason and use processpoolexecutor/threadpoolexecutor with clear comments.
 - when needing even more performance, use c++ with cython as compatibility layer, and edit the top level setup.py to include the new compiled extension. When working with code that is already in cython/c++, prefer keeping ocre logic in c++ and only use cython as a thin compatibility layer.
 - when using cython, put all cdef declaration at the top of the function, and use cdef types for all variables that can be typed.
-
+- when using assertions, include a message that explains what went wrong and how.
 ---
 
 ## Practical patterns and examples
@@ -58,6 +58,12 @@ Breaking-change propagation
   - any serialization/deserialization code
 - Remove code that handled the old contract unless the change request explicitly asked for backward compatibility.
 
+assertion examples
+bad: 
+if precursor.ndim != 1:
+  raise ValueError("precursor must be a 1D array")
+good:
+assert precursor.ndim == 1, f"precursor must be a 1D array, got {precursor.ndim}D array instead"
 ---
 
 ## Testing and CI

@@ -231,6 +231,108 @@ def annotate_chromatogram_with_formulas(
     isotopic_intensity_absolute_tolerance: float = 5e5,
     isotopic_intensity_relative_tolerance: float = 0.05,
 ) -> pl.DataFrame:
+    """
+    Annotate an MSDIAL chromatogram with isotopic patterns, candidate elemental formulas
+    and cleaned/normalized MS/MS fragments.
+
+    What the function does
+    - Deduce an isotopic pattern (element count bounds) for each precursor using the
+      observed MS1 isotopes.
+    - Compute candidate elemental decompositions for the (non-ionized) precursor mass
+      using the deduced bounds and the provided precursor mass tolerance.
+    - For each candidate formula, shift MS/MS fragment m/z values to the non-ionized
+      frame (subtracting addcut_mass), then clean and normalize the fragment spectrum
+      against the candidate formula (matching fragment masses with tolerance and
+      filtering/noise handling).
+    - Explode the chromatogram so each output row corresponds to one candidate precursor
+      formula (i.e., one decomposition), with accompanying cleaned MS/MS results.
+
+    Arguments
+    - chromatogram: pl.DataFrame
+        Input chromatogram. Required input columns (types expected):
+        - "Precursor_mz_MSDIAL": Float (precursor m/z measured by MSDIAL)
+        - "ms1_isotopes_m/z": List(Float) (observed MS1 isotope m/z values)
+        - "ms1_isotopes_intensity": List(Float) (absolute intensities for MS1 isotopes)
+        - "msms_m/z": List(Float) (observed MS/MS fragment m/z)
+        - "msms_intensity": List(Float) (observed MS/MS fragment intensities)
+        The function fails fast if required columns are missing.
+
+    - addcut_mass: float
+        Mass of the adduct or proton to subtract from observed m/z to obtain the
+        neutral (non-ionized) mass. Default is PROTON_MASS.
+
+    - max_bounds: dict | None
+        Optional user-specified upper bounds for element counts used by the isotopic
+        pattern deduction. If None, bounds are deduced from the data.
+
+    - precursor_mass_accuracy_ppm: float
+        Tolerance in ppm used for precursor mass matching (isotope deduction and
+        mass decomposition). Units: ppm.
+
+    - fragment_mass_accuracy_ppm: float
+        Tolerance in ppm used when matching observed fragment m/z to theoretical
+        fragment masses during cleaning. Units: ppm.
+
+    - normalized_fragment_mass_accuracy_ppm: float
+        Maximum allowed normalized mass error (in ppm) for fragment mass normalization
+        checks performed during cleaning/normalization.
+
+    - isotopic_mass_accuracy_ppm: float
+        Tolerance in ppm used when matching isotopic peaks to the expected isotope
+        positions during isotopic pattern deduction.
+
+    - isotopic_minimum_intensity: float
+        Minimum absolute intensity to consider an isotope peak when deducing the
+        isotopic pattern.
+
+    - isotopic_intensity_absolute_tolerance: float
+        Absolute intensity tolerance used when comparing expected vs observed isotope
+        intensities.
+
+    - isotopic_intensity_relative_tolerance: float
+        Relative intensity tolerance (fraction) used when comparing expected vs
+        observed isotope intensities.
+
+    Returned DataFrame (columns added / meaning)
+    The returned polars DataFrame contains the original chromatogram columns plus the
+    following annotations (types indicated informally):
+
+    - min_bounds: Array(Int32) length NUM_ELEMENTS
+        Per-element minimum counts inferred for the precursor formula (from isotopic pattern).
+    - max_bounds: Array(Int32) length NUM_ELEMENTS
+        Per-element maximum counts inferred for the precursor formula (from isotopic pattern).
+    - non_ionized_mass: Float
+        Precursor neutral mass = Precursor_mz_MSDIAL - addcut_mass.
+    - decomposed_formulas: List(Array(Int32, shape=(NUM_ELEMENTS,)))
+        Candidate elemental formula(s) for the precursor (each is an integer vector of
+        element counts). The function explodes this column so each output row contains
+        exactly one candidate formula (a single Array(Int32,...)).
+    - non_ionized_msms_m/z: List(Float)
+        MS/MS fragment m/z values shifted to the neutral frame (each mz - addcut_mass).
+    - cleaned_msms_mz: List(Float)
+        Cleaned and (internally) normalized fragment masses that were retained after
+        matching against the candidate formula and applying mass tolerances.
+    - cleaned_msms_intensity: List(Float)
+        Corresponding intensities for cleaned_msms_mz (normalized/filtered by the
+        cleaning routine).
+    - cleaned_spectrum_formulas: List(Array(Int32, shape=(NUM_ELEMENTS,)))
+        Per-fragment candidate elemental formulas (for fragments that were assigned a
+        formula by the cleaning routine). Each fragment formula is represented as an
+        element-count array aligned with NUM_ELEMENTS.
+    - cleaned_fragment_errors_ppm: List(Float)
+        Mass errors (in ppm) for the matched fragments after cleaning/normalization.
+
+    Notes and behavior
+    - The function relies on domain utilities: deduce_isotopic_pattern,
+      decompose_mass_per_bounds and clean_and_normalize_spectra_known_precursor. Any
+      change in those APIs must be propagated here.
+    - One input precursor row may expand into multiple output rows (one per candidate
+      decomposition) because of the explosion of "decomposed_formulas".
+    - Mass tolerances are expressed in ppm; callers should pass values appropriate
+      for their instrument and data quality.
+    - The function performs no downstream filtering of candidate formulas; downstream
+      ranking/selection is the caller's responsibility.
+    """
     # Isotopic pattern deduction
     chromatogram = chromatogram.with_columns(
         pl.struct(
