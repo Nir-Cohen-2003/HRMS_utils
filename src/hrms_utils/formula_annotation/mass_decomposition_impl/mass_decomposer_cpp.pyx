@@ -576,29 +576,24 @@ def clean_spectra_known_precursor_parallel(
       - intensities: List[Float64]
       - fragment_formulas: List[List[Array(Int32, NUM_ELEMENTS)]]
       - fragment_errors_ppm: List[List[Float64]]
+    Arrow-backed construction avoids per-row Python lists.
     """
     # Convert precursor formulas to 2D contiguous int32
     cdef np.ndarray[np.int32_t, ndim=2, mode="c"] contig_precursors = np.ascontiguousarray(
         precursor_formula_series.to_numpy(), dtype=np.int32
     )
     cdef int n = <int>contig_precursors.shape[0]
-    if n == 0:
-        return pl.Series(
-            "cleaned",
-            [],
-            dtype=pl.Struct(
-                {
-                    "normalized_masses": pl.List(pl.Float64),
-                    "cleaned_intensities": pl.List(pl.Float64),
-                    "fragment_formulas": pl.List(pl.List(pl.Array(pl.Int32, NUM_ELEMENTS))),
-                    "fragment_errors_ppm": pl.List(pl.List(pl.Float64)),
-                }
-            ),
-        )
     if contig_precursors.shape[1] != NUM_ELEMENTS:
         raise ValueError(f"Each precursor formula must have length {NUM_ELEMENTS} (got {contig_precursors.shape[1]}).")
     if fragment_masses_series.len() != n or fragment_intensities_series.len() != n:
         raise ValueError("fragment_masses_series and fragment_intensities_series lengths must match precursor_formula_series length.")
+    if n == 0:
+        # Return empty struct series with correct schema
+        s_masses = pl.Series("normalized_masses", [], dtype=pl.List(pl.Float64))
+        s_intens = pl.Series("cleaned_intensities", [], dtype=pl.List(pl.Float64))
+        s_frm = pl.Series("fragment_formulas", [], dtype=pl.List(pl.List(pl.Array(pl.Int32, NUM_ELEMENTS))))
+        s_err = pl.Series("fragment_errors_ppm", [], dtype=pl.List(pl.List(pl.Float64)))
+        return pl.struct(s_masses, s_intens, s_frm, s_err, eager=True)
 
     # Params: set DBE bounds for fragments; bounds ignored; pass zeros.
     cdef np.ndarray min_bounds = np.zeros(NUM_ELEMENTS, dtype=np.int32)
@@ -659,45 +654,108 @@ def clean_spectra_known_precursor_parallel(
     cdef vector[CleanedSpectrumResult_cpp] all_results
     all_results = MassDecomposer.clean_spectra_known_precursor_parallel(spectra_vec, params)
 
-    # Build field-wise Python containers (avoid dicts)
-    masses_col = []
-    intensities_col = []
-    frag_formulas_col = []
-    frag_errors_col = []
-
+    # First pass: sizes for outer (per-spectrum) and inner (per-fragment) lists
     cdef size_t si, fj, fk
     cdef size_t n_specs = all_results.size()
+    cdef size_t total_frags = 0
+    cdef size_t total_formulas = 0
+    cdef size_t total_masses = 0      # also equals total_frags
+    cdef size_t total_intens = 0      # also equals total_frags
+    cdef size_t nf = 0
     for si in range(n_specs):
-        # Masses and intensities
-        masses_col.append([all_results[si].masses[j] for j in range(all_results[si].masses.size())])
-        intensities_col.append([all_results[si].intensities[j] for j in range(all_results[si].intensities.size())])
+        nf = all_results[si].fragment_formulas.size()
+        total_frags += nf
+        total_masses += all_results[si].masses.size()
+        total_intens += all_results[si].intensities.size()
+        for fj in range(nf):
+            total_formulas += all_results[si].fragment_formulas[fj].size()
 
-        # Fragment formulas: List[List[Array(int32, NUM_ELEMENTS)]]
-        spec_frag_formulas = []
-        for fj in range(all_results[si].fragment_formulas.size()):
-            frag_list_py = []
-            for fk in range(all_results[si].fragment_formulas[fj].size()):
-                frag_list_py.append(_convert_formula_to_array(all_results[si].fragment_formulas[fj][fk]))
-            spec_frag_formulas.append(frag_list_py)
-        frag_formulas_col.append(spec_frag_formulas)
+    # Offsets arrays
+    cdef np.ndarray offs_frags = np.empty(n_specs + 1, dtype=np.int32)
+    cdef np.int32_t[::1] offs_frags_v = offs_frags
+    offs_frags_v[0] = 0
 
-        # Fragment errors: List[List[float]]
-        spec_frag_errors = []
-        for fj in range(all_results[si].fragment_errors_ppm.size()):
-            spec_frag_errors.append(
-                [all_results[si].fragment_errors_ppm[fj][k] for k in range(all_results[si].fragment_errors_ppm[fj].size())]
-            )
-        frag_errors_col.append(spec_frag_errors)
+    cdef np.ndarray offs_formulas = np.empty(total_frags + 1, dtype=np.int32)
+    cdef np.int32_t[::1] offs_formulas_v = offs_formulas
+    offs_formulas_v[0] = 0
 
-    # Create child Series with explicit dtypes
-    s_masses = pl.Series("normalized_masses", masses_col, dtype=pl.List(pl.Float64))
-    s_intensities = pl.Series("cleaned_intensities", intensities_col, dtype=pl.List(pl.Float64))
-    s_formulas = pl.Series(
-        "fragment_formulas",
-        frag_formulas_col,
-        dtype=pl.List(pl.List(pl.Array(pl.Int32, NUM_ELEMENTS))),
-    )
-    s_errors = pl.Series("fragment_errors_ppm", frag_errors_col, dtype=pl.List(pl.List(pl.Float64)))
+    # Flat buffers
+    cdef np.ndarray flat_masses = np.empty(total_masses, dtype=np.float64)
+    cdef double* masses_dst = <double*> np.PyArray_DATA(flat_masses)
+
+    cdef np.ndarray flat_intens = np.empty(total_intens, dtype=np.float64)
+    cdef double* intens_dst = <double*> np.PyArray_DATA(flat_intens)
+
+    cdef np.ndarray flat_formula_vals = np.empty(total_formulas * NUM_ELEMENTS, dtype=np.int32)
+    cdef F_DTYPE_t* fvals_dst = <F_DTYPE_t*> np.PyArray_DATA(flat_formula_vals)
+
+    cdef np.ndarray flat_errors = np.empty(total_formulas, dtype=np.float64)
+    cdef double* ferr_dst = <double*> np.PyArray_DATA(flat_errors)
+
+    # Second pass: fill offsets and buffers
+    cdef size_t frag_cursor = 0
+    cdef size_t formula_cursor = 0
+    cdef size_t mass_cursor = 0
+    cdef size_t intens_cursor = 0
+    cdef size_t n_mass_i = 0
+    cdef size_t n_int_i = 0
+    cdef size_t nf_pass2 = 0
+    cdef size_t nfk = 0
+
+    for si in range(n_specs):
+        # masses/intensities (one per fragment kept)
+        n_mass_i = all_results[si].masses.size()
+        for fj in range(n_mass_i):
+            masses_dst[mass_cursor + fj] = all_results[si].masses[fj]
+        mass_cursor += n_mass_i
+
+        n_int_i = all_results[si].intensities.size()
+        for fj in range(n_int_i):
+            intens_dst[intens_cursor + fj] = all_results[si].intensities[fj]
+        intens_cursor += n_int_i
+
+        # per-fragment formulas/errors
+        nf_pass2 = all_results[si].fragment_formulas.size()
+        for fj in range(nf_pass2):
+            nfk = all_results[si].fragment_formulas[fj].size()
+            # fill formulas (fixed-size lists) and errors for this fragment
+            for fk in range(nfk):
+                memcpy(
+                    <void*>(fvals_dst + (formula_cursor + fk) * NUM_ELEMENTS),
+                    <const void*> formula_data_const(all_results[si].fragment_formulas[fj][fk]),
+                    FORMULA_NBYTES_C
+                )
+                ferr_dst[formula_cursor + fk] = all_results[si].fragment_errors_ppm[fj][fk]
+            formula_cursor += nfk
+            offs_formulas_v[frag_cursor + 1] = <np.int32_t>formula_cursor
+            frag_cursor += 1
+
+        offs_frags_v[si + 1] = <np.int32_t>frag_cursor
+
+    # Build Arrow arrays
+    value_masses = pa.array(flat_masses, type=pa.float64())
+    value_intens = pa.array(flat_intens, type=pa.float64())
+    offs_frags_arr = pa.array(offs_frags, type=pa.int32())
+    masses_arr = pa.ListArray.from_arrays(offs_frags_arr, value_masses)
+    intens_arr = pa.ListArray.from_arrays(offs_frags_arr, value_intens)
+
+    # formulas nested: List (per spectrum) -> List (per fragment) -> FixedSizeList(NUM_ELEMENTS)
+    formula_values_arr = pa.array(flat_formula_vals, type=pa.int32())
+    fixed_formula_arr = pa.FixedSizeListArray.from_arrays(formula_values_arr, NUM_ELEMENTS)
+    offs_formulas_arr = pa.array(offs_formulas, type=pa.int32())
+    inner_frag_list = pa.ListArray.from_arrays(offs_formulas_arr, fixed_formula_arr)
+    outer_spec_list_formulas = pa.ListArray.from_arrays(offs_frags_arr, inner_frag_list)
+
+    # errors nested same shape as formulas
+    error_values_arr = pa.array(flat_errors, type=pa.float64())
+    inner_err_list = pa.ListArray.from_arrays(offs_formulas_arr, error_values_arr)
+    outer_spec_list_errors = pa.ListArray.from_arrays(offs_frags_arr, inner_err_list)
+
+    # Convert Arrow -> Polars Series and pack into a struct Series
+    s_masses = pl.Series("normalized_masses", masses_arr)
+    s_intensities = pl.Series("cleaned_intensities", intens_arr)
+    s_formulas = pl.Series("fragment_formulas", outer_spec_list_formulas)
+    s_errors = pl.Series("fragment_errors_ppm", outer_spec_list_errors)
     return pl.struct(
         s_masses,
         s_intensities,
@@ -717,33 +775,26 @@ def clean_and_normalize_spectra_known_precursor_parallel(
 ) -> pl.Series:
     """
     Normalizes fragment masses using a spectrum-level linear error model augmented by the precursor point.
-    After normalization, drops fragments whose absolute normalized error in ppm exceeds max_allowed_normalized_mass_error_ppm.
-    PPM is computed with denominator max(normalized_mass, 200.0).
+    After normalization, drops fragments whose abs(normalized error ppm) > max_allowed_normalized_mass_error_ppm.
+    Arrow-backed construction avoids per-row Python lists.
     """
     # Convert precursor formulas to 2D contiguous int32
     cdef np.ndarray[np.int32_t, ndim=2, mode="c"] contig_precursors = np.ascontiguousarray(
         precursor_formula_series.to_numpy(), dtype=np.int32
     )
     cdef int n = <int>contig_precursors.shape[0]
-    if n == 0:
-        return pl.Series(
-            "cleaned_normalized",
-            [],
-            dtype=pl.Struct(
-                {
-                    "masses_normalized": pl.List(pl.Float64),
-                    "cleaned_intensities": pl.List(pl.Float64),
-                    "fragment_formulas": pl.List(pl.Array(pl.Int32, NUM_ELEMENTS)),
-                    "fragment_errors_ppm": pl.List(pl.Float64),
-                }
-            ),
-        )
     if contig_precursors.shape[1] != NUM_ELEMENTS:
         raise ValueError(f"Each precursor formula must have length {NUM_ELEMENTS} (got {contig_precursors.shape[1]}).")
     if (fragment_masses_series.len() != n or
         fragment_intensities_series.len() != n or
         precursor_masses_series.len() != n):
         raise ValueError("All input series must have the same length.")
+    if n == 0:
+        s_masses = pl.Series("masses_normalized", [], dtype=pl.List(pl.Float64))
+        s_intens = pl.Series("cleaned_intensities", [], dtype=pl.List(pl.Float64))
+        s_frm = pl.Series("fragment_formulas", [], dtype=pl.List(pl.Array(pl.Int32, NUM_ELEMENTS)))
+        s_err = pl.Series("fragment_errors_ppm", [], dtype=pl.List(pl.Float64))
+        return pl.struct(s_masses, s_intens, s_frm, s_err, eager=True)
 
     # Params: bounds are ignored here; pass zeros; DBE range for fragments
     cdef np.ndarray min_bounds = np.zeros(NUM_ELEMENTS, dtype=np.int32)
@@ -809,37 +860,74 @@ def clean_and_normalize_spectra_known_precursor_parallel(
     cdef vector[CleanedAndNormalizedSpectrumResult_cpp] all_results
     all_results = MassDecomposer.clean_and_normalize_spectra_known_precursor_parallel(spectra_vec, params)
 
-    # Build field-wise Python containers matching the reduced nesting
-    masses_norm_col = []
-    intensities_col = []
-    frag_formulas_col = []
-    frag_errors_col = []
-
+    # First pass: count kept fragments per spectrum (one formula per fragment)
     cdef size_t si, k
     cdef size_t n_specs = all_results.size()
+    cdef size_t total_kept = 0
     for si in range(n_specs):
-        # Masses (normalized) and intensities
-        masses_norm_col.append([all_results[si].masses_normalized[j] for j in range(all_results[si].masses_normalized.size())])
-        intensities_col.append([all_results[si].intensities[j] for j in range(all_results[si].intensities.size())])
+        total_kept += all_results[si].fragment_formulas.size()
 
-        # Fragment formulas: List[Array(int32, NUM_ELEMENTS)] (one per kept fragment)
-        spec_formulas = []
-        for k in range(all_results[si].fragment_formulas.size()):
-            spec_formulas.append(_convert_formula_to_array(all_results[si].fragment_formulas[k]))
-        frag_formulas_col.append(spec_formulas)
+    # Offsets per spectrum (shared by masses, intensities, formulas, errors)
+    cdef np.ndarray offs_specs = np.empty(n_specs + 1, dtype=np.int32)
+    cdef np.int32_t[::1] offs_specs_v = offs_specs
+    offs_specs_v[0] = 0
 
-        # Fragment errors after normalization: List[Float64]
-        frag_errors_col.append([all_results[si].fragment_errors_ppm[j] for j in range(all_results[si].fragment_errors_ppm.size())])
+    # Flat buffers
+    cdef np.ndarray flat_masses_norm = np.empty(total_kept, dtype=np.float64)
+    cdef double* mass_dst = <double*> np.PyArray_DATA(flat_masses_norm)
 
-    # Create child Series with explicit dtypes
-    s_masses = pl.Series("masses_normalized", masses_norm_col, dtype=pl.List(pl.Float64))
-    s_intensities = pl.Series("cleaned_intensities", intensities_col, dtype=pl.List(pl.Float64))
-    s_formulas = pl.Series(
-        "fragment_formulas",
-        frag_formulas_col,
-        dtype=pl.List(pl.Array(pl.Int32, NUM_ELEMENTS)),
-    )
-    s_errors = pl.Series("fragment_errors_ppm", frag_errors_col, dtype=pl.List(pl.Float64))
+    cdef np.ndarray flat_intens = np.empty(total_kept, dtype=np.float64)
+    cdef double* intens_dst = <double*> np.PyArray_DATA(flat_intens)
+
+    cdef np.ndarray flat_formula_vals = np.empty(total_kept * NUM_ELEMENTS, dtype=np.int32)
+    cdef F_DTYPE_t* fvals_dst = <F_DTYPE_t*> np.PyArray_DATA(flat_formula_vals)
+
+    cdef np.ndarray flat_errors = np.empty(total_kept, dtype=np.float64)
+    cdef double* ferr_dst = <double*> np.PyArray_DATA(flat_errors)
+
+    # Fill buffers
+    cdef size_t cursor = 0
+    cdef size_t cnt = 0
+    for si in range(n_specs):
+        cnt = all_results[si].fragment_formulas.size()
+        # masses normalized
+        for k in range(cnt):
+            mass_dst[cursor + k] = all_results[si].masses_normalized[k]
+        # intensities
+        for k in range(cnt):
+            intens_dst[cursor + k] = all_results[si].intensities[k]
+        # single formula per kept fragment
+        for k in range(cnt):
+            memcpy(
+                <void*>(fvals_dst + (cursor + k) * NUM_ELEMENTS),
+                <const void*> formula_data_const(all_results[si].fragment_formulas[k]),
+                FORMULA_NBYTES_C
+            )
+            ferr_dst[cursor + k] = all_results[si].fragment_errors_ppm[k]
+        cursor += cnt
+        offs_specs_v[si + 1] = <np.int32_t>cursor
+
+    # Build Arrow arrays
+    offs_specs_arr = pa.array(offs_specs, type=pa.int32())
+
+    val_masses = pa.array(flat_masses_norm, type=pa.float64())
+    masses_arr = pa.ListArray.from_arrays(offs_specs_arr, val_masses)
+
+    val_intens = pa.array(flat_intens, type=pa.float64())
+    intens_arr = pa.ListArray.from_arrays(offs_specs_arr, val_intens)
+
+    val_formulas = pa.array(flat_formula_vals, type=pa.int32())
+    fixed_formulas = pa.FixedSizeListArray.from_arrays(val_formulas, NUM_ELEMENTS)
+    formulas_arr = pa.ListArray.from_arrays(offs_specs_arr, fixed_formulas)
+
+    val_errors = pa.array(flat_errors, type=pa.float64())
+    errors_arr = pa.ListArray.from_arrays(offs_specs_arr, val_errors)
+
+    # Convert Arrow -> Polars Series and pack into a struct Series
+    s_masses = pl.Series("masses_normalized", masses_arr)
+    s_intensities = pl.Series("cleaned_intensities", intens_arr)
+    s_formulas = pl.Series("fragment_formulas", formulas_arr)
+    s_errors = pl.Series("fragment_errors_ppm", errors_arr)
     return pl.struct(
         s_masses,
         s_intensities,
@@ -847,4 +935,3 @@ def clean_and_normalize_spectra_known_precursor_parallel(
         s_errors,
         eager=True
     )
-    
