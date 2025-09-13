@@ -269,7 +269,7 @@ def annotate_chromatogram_with_formulas(
             ),
             return_dtype=pl.List(pl.Array(inner=pl.Int32, shape=(NUM_ELEMENTS,)))
         ).alias("decomposed_formulas")
-    )
+    ).drop(["bounds"])
     
     chromatogram = chromatogram.with_columns(pl.col("msms_m/z").sub(addcut_mass).alias("non_ionized_msms_m/z"))
     chromatogram = chromatogram.explode("decomposed_formulas")
@@ -287,7 +287,7 @@ def annotate_chromatogram_with_formulas(
             ),
             return_dtype=pl.Struct({
                 "masses_normalized": pl.List(pl.Float64),
-                "intensities": pl.List(pl.Float64),
+                "cleaned_intensities": pl.List(pl.Float64),
                 "fragment_formulas": pl.List(pl.Array(inner=pl.Int32, shape=(NUM_ELEMENTS,))),
                 "fragment_errors_ppm": pl.List(pl.Float64),
             }),
@@ -297,7 +297,7 @@ def annotate_chromatogram_with_formulas(
     ).rename(
         {
             "masses_normalized": "cleaned_msms_mz",
-            "intensities": "cleaned_msms_intensity",
+            "cleaned_intensities": "cleaned_msms_intensity",
             "fragment_formulas": "cleaned_spectrum_formulas",
             "fragment_errors_ppm": "cleaned_fragment_errors_ppm",
         }

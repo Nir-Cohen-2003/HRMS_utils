@@ -588,8 +588,8 @@ def clean_spectra_known_precursor_parallel(
             [],
             dtype=pl.Struct(
                 {
-                    "masses": pl.List(pl.Float64),
-                    "intensities": pl.List(pl.Float64),
+                    "normalized_masses": pl.List(pl.Float64),
+                    "cleaned_intensities": pl.List(pl.Float64),
                     "fragment_formulas": pl.List(pl.List(pl.Array(pl.Int32, NUM_ELEMENTS))),
                     "fragment_errors_ppm": pl.List(pl.List(pl.Float64)),
                 }
@@ -690,39 +690,20 @@ def clean_spectra_known_precursor_parallel(
         frag_errors_col.append(spec_frag_errors)
 
     # Create child Series with explicit dtypes
-    s_masses = pl.Series("masses", masses_col, dtype=pl.List(pl.Float64))
-    s_intensities = pl.Series("intensities", intensities_col, dtype=pl.List(pl.Float64))
+    s_masses = pl.Series("normalized_masses", masses_col, dtype=pl.List(pl.Float64))
+    s_intensities = pl.Series("cleaned_intensities", intensities_col, dtype=pl.List(pl.Float64))
     s_formulas = pl.Series(
         "fragment_formulas",
         frag_formulas_col,
         dtype=pl.List(pl.List(pl.Array(pl.Int32, NUM_ELEMENTS))),
     )
     s_errors = pl.Series("fragment_errors_ppm", frag_errors_col, dtype=pl.List(pl.List(pl.Float64)))
-
-    # Pack into a Struct via Arrow to avoid dict overhead
-    child_arrays = [
-        s_masses.to_arrow(),
-        s_intensities.to_arrow(),
-        s_formulas.to_arrow(),
-        s_errors.to_arrow(),
-    ]
-    struct_array = pa.StructArray.from_arrays(
-        child_arrays,
-        ["masses", "intensities", "fragment_formulas", "fragment_errors_ppm"],
-    )
-
-    return pl.Series(
-        "cleaned",
-        struct_array,
-        dtype=pl.Struct(
-            {
-                "masses": pl.List(pl.Float64),
-                "intensities": pl.List(pl.Float64),
-                "fragment_formulas": pl.List(pl.List(pl.Array(pl.Int32, NUM_ELEMENTS))),
-                "fragment_errors_ppm": pl.List(pl.List(pl.Float64)),
-            }
-        ),
-        strict=False,
+    return pl.struct(
+        s_masses,
+        s_intensities,
+        s_formulas,
+        s_errors,
+        eager=True
     )
 
 def clean_and_normalize_spectra_known_precursor_parallel(
@@ -751,7 +732,7 @@ def clean_and_normalize_spectra_known_precursor_parallel(
             dtype=pl.Struct(
                 {
                     "masses_normalized": pl.List(pl.Float64),
-                    "intensities": pl.List(pl.Float64),
+                    "cleaned_intensities": pl.List(pl.Float64),
                     "fragment_formulas": pl.List(pl.Array(pl.Int32, NUM_ELEMENTS)),
                     "fragment_errors_ppm": pl.List(pl.Float64),
                 }
@@ -852,36 +833,18 @@ def clean_and_normalize_spectra_known_precursor_parallel(
 
     # Create child Series with explicit dtypes
     s_masses = pl.Series("masses_normalized", masses_norm_col, dtype=pl.List(pl.Float64))
-    s_intensities = pl.Series("intensities", intensities_col, dtype=pl.List(pl.Float64))
+    s_intensities = pl.Series("cleaned_intensities", intensities_col, dtype=pl.List(pl.Float64))
     s_formulas = pl.Series(
         "fragment_formulas",
         frag_formulas_col,
         dtype=pl.List(pl.Array(pl.Int32, NUM_ELEMENTS)),
     )
     s_errors = pl.Series("fragment_errors_ppm", frag_errors_col, dtype=pl.List(pl.Float64))
-
-    # Pack into a Struct via Arrow for consistent schema
-    child_arrays = [
-        s_masses.to_arrow(),
-        s_intensities.to_arrow(),
-        s_formulas.to_arrow(),
-        s_errors.to_arrow(),
-    ]
-    struct_array = pa.StructArray.from_arrays(
-        child_arrays,
-        ["masses_normalized", "intensities", "fragment_formulas", "fragment_errors_ppm"],
+    return pl.struct(
+        s_masses,
+        s_intensities,
+        s_formulas,
+        s_errors,
+        eager=True
     )
-
-    return pl.Series(
-        "cleaned_normalized",
-        struct_array,
-        dtype=pl.Struct(
-            {
-                "masses_normalized": pl.List(pl.Float64),
-                "intensities": pl.List(pl.Float64),
-                "fragment_formulas": pl.List(pl.Array(pl.Int32, NUM_ELEMENTS)),
-                "fragment_errors_ppm": pl.List(pl.Float64),
-            }
-        ),
-        strict=False,
-    )
+    

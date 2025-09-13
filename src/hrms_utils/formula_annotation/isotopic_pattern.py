@@ -279,8 +279,8 @@ def deduce_isotopic_pattern(
         if min_bounds[key] < 0:
             print(f"Warning: Negative lower bound for {key}.")
     #debug:
-    print(f"Using min bounds: {min_bounds}")
-    print(f"Using max bounds: {max_bounds}")
+    # print(f"Using min bounds: {min_bounds}")
+    # print(f"Using max bounds: {max_bounds}")
 
     ms1_mzs = ms1_mzs.to_numpy()
     ms1_intensities = ms1_intensities.to_numpy()

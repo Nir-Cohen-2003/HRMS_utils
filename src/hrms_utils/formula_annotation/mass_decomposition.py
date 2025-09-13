@@ -472,7 +472,7 @@ def clean_and_normalize_spectra_known_precursor(
     - pl.Series of Struct with fields:
         {
             "masses_normalized": pl.List(pl.Float64),
-            "intensities":       pl.List(pl.Float64),
+            "cleaned_intensities":       pl.List(pl.Float64),
             "fragment_formulas": pl.List(pl.Array(pl.Int32, NUM_ELEMENTS)),
             "fragment_errors_ppm": pl.List(pl.Float64),
         }
@@ -512,7 +512,6 @@ def clean_and_normalize_spectra_known_precursor(
         fragment_intensities_series=fragment_intensities_series,
         tolerance_ppm=tolerance_ppm,
         max_results=max_results,
-        # Expose C++ threshold as a Python argument to keep the contract explicit
         max_allowed_normalized_mass_error_ppm=max_allowed_normalized_mass_error_ppm,
     )
 
