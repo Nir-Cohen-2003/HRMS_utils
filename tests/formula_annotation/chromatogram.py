@@ -1,4 +1,4 @@
-from hrms_utils.io_adapters import get_chromatogram, annotate_chromatogram_with_formulas
+from hrms_utils.formats import get_chromatogram, annotate_chromatogram_with_formulas
 from hrms_utils.formula_annotation.mass_decomposition import NUM_ELEMENTS
 import polars as pl
 from pathlib import Path
