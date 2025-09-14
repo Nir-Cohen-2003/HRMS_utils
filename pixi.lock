@@ -2678,7 +2678,7 @@ packages:
   timestamp: 1737618390337
 - conda: .
   name: hrms_utils
-  version: 0.5.1
+  version: 0.6.0
   build: hbf21a9e_0
   subdir: linux-64
   depends:
@@ -2702,12 +2702,12 @@ packages:
   - python >=3.12
   - python_abi 3.13.* *_cp313
   input:
-    hash: 90b974dc7acec818772e26bbee1d948f90852224fa3fe8981e8837d00eb236ed
+    hash: 17c1f0bcaa1e17e7ffdb697249f7633fa0e1154c1a57acee234264184368f973
     globs:
     - pyproject.toml
 - conda: .
   name: hrms_utils
-  version: 0.5.1
+  version: 0.6.0
   build: hbf21a9e_0
   subdir: win-64
   depends:
@@ -2731,7 +2731,7 @@ packages:
   - python >=3.12
   - python_abi 3.13.* *_cp313
   input:
-    hash: 90b974dc7acec818772e26bbee1d948f90852224fa3fe8981e8837d00eb236ed
+    hash: 17c1f0bcaa1e17e7ffdb697249f7633fa0e1154c1a57acee234264184368f973
     globs:
     - pyproject.toml
 - conda: https://prefix.dev/conda-forge/noarch/humanize-4.13.0-pyhd8ed1ab_0.conda

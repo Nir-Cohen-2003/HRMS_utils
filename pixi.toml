@@ -7,7 +7,7 @@ platforms = ["linux-64","win-64"]
 preview = ["pixi-build"]
 [package]
 name = "hrms_utils"
-version = "0.5.2"
+version = "0.6.0"
 
 [dependencies]
 python = ">=3.12.0"
@@ -27,6 +27,7 @@ build-all = "python -m build --wheel --sdist"
 publish-testpypi = {cmd="twine upload --repository testpypi --skip-existing dist/*", depends-on = ["cibw-wheels"]}
 publish-pypi = {cmd="twine upload --repository pypi --skip-existing dist/*", depends-on = ["cibw-wheels"]}
 publish-prefix = {cmd="rattler-build upload prefix --channel nir-cohen"}
+publish-anaconda = {cmd="rattler-build upload anaconda --owner Nir_Cohen --channel main"}
 cibw-wheels = { cmd = "python -m cibuildwheel --output-dir dist", env = {CIBW_BUILD = "cp312-* cp313-*", CIBW_SKIP = "*musllinux* *-win32", CIBW_ARCHS_WINDOWS = "AMD64"}, depends-on=["clean_dist"]}
 clean_dist = "rm -rf dist || true"
 sdist = "python -m build --sdist"

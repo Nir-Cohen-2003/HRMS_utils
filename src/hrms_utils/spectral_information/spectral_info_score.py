@@ -46,39 +46,6 @@ def _make_fragments_unique(fragments: NDArray[np.floating], active_mask: NDArray
 
     return unique_fragments
 
-@njit(cache=True, fastmath=True)
-def _score_core(F: np.ndarray, num_points: int, bandwidth: float, alpha: float, rng_seed: int) -> float:
-    # F: (k, n) normalized fragments in [0,1]^n
-    k = F.shape[0]
-    n = F.shape[1]
-    if k == 0:
-        return 0.0
-
-    # Seed RNG compatible with Numba
-    np.random.seed(rng_seed)
-
-    inv2h2 = 1.0 / (2.0 * bandwidth * bandwidth)
-    total = 0.0
-    x = np.empty(n, dtype=np.float64)
-
-    for m in range(num_points):
-        # sample x ~ Uniform([0,1]^n)
-        for d in range(n):
-            x[d] = np.random.random()
-
-        # coverage c(x) = sum_j exp(-||x - f_j||^2 / (2h^2))
-        c = 0.0
-        for j in range(k):
-            s = 0.0
-            Fj = F[j]
-            for d in range(n):
-                t = x[d] - Fj[d]
-                s += t * t
-            c += np.exp(-s * inv2h2)
-
-        total += np.log1p(alpha * c)
-
-    return (total / num_points) * 1e2
 
 # New: vectorized batch scoring using numba parallel loop.
 @njit(parallel=True, cache=True, fastmath=True)
@@ -141,17 +108,30 @@ def _score_core_batch(
 
     return results
 
-def score_fragments_local_coverage(
-    precursor: NDArray[np.floating],
-    fragments: NDArray[np.floating],
-    *,
-    bandwidth: float = 0.12,   # kernel width (in normalized [0,1] space)
-    alpha: float = 1.0,        # scales log(1 + alpha * c)
-    num_points: int = 2048,    # Monte Carlo samples for the integral
-    rng_seed: int = 0,         # fixed sampling for exact monotonic comparisons
-    require_unique_fragments: bool = True
-) -> float:
+def spectral_info_polars(
+        precursors: pl.Series,
+        fragments: pl.Series,
+        *,
+        bandwidth: float = 0.12,
+        alpha: float = 1.0,
+        num_points: int = 2048,
+        rng_seed: int = 0,
+        require_unique_fragments: bool = True
+) -> pl.Series:
     """
+
+    This refactored wrapper performs per-row reshaping/normalization in Python,
+    concatenates all normalized fragment coordinates into a single flat array,
+    and then calls a single numba-jitted vectorized routine that computes scores
+    for the entire batch in parallel.
+
+    Expectations (no heavy assertions here — preparation is done proactively):
+      - precursors: Series of List(Float64)
+      - fragments: Series of List(List(Float64))
+    Returns:
+      - Series of Float64 scores
+
+    Algorithm:
     Kernelized local coverage score (monotone and submodular-like).
 
     Shapes:
@@ -168,92 +148,6 @@ def score_fragments_local_coverage(
 
     Score (approximated integral):
       - Score = mean_x log(1 + alpha * c(x)) over x ~ Uniform([0,1]^|A|).
-    """
-    precursor = np.asarray(precursor, dtype=float)
-
-    # Why: fail-fast and give actionable remediation to callers when shapes/dtypes are wrong.
-    assert precursor.ndim == 1, (
-        f"precursor must be a 1D array; got {precursor.ndim}D array. "
-        "Fix: supply a 1D sequence of positive precursor values (e.g. np.array([...]))."
-    )
-
-    # Convert fragments to numpy and validate shape consistently (fail-fast).
-    fragments = np.asarray(fragments, dtype=float)
-    assert fragments.ndim == 2, (
-        f"fragments must be a 2D array with shape (k, n); got ndim={fragments.ndim}. "
-        "Fix: provide fragments as an array-like of fragment vectors, e.g. list-of-lists."
-    )
-    assert fragments.shape[1] == precursor.shape[0], (
-        f"fragments second dimension must match precursor length (expected {precursor.shape[0]}, got {fragments.shape[1]}). "
-        "Fix: ensure each fragment has the same number of dimensions as the precursor."
-    )
-
-    # Why: precursor values < 0 are invalid for normalization; fail loudly with remediation.
-    assert np.all(precursor >= 0), (
-        "precursor entries must be non-negative. "
-        "Fix: remove or correct negative precursor values before calling this function."
-    )
-
-    # Select only dimensions with strictly positive precursor (active dims).
-    active_mask = precursor > 0.0
-    if not np.any(active_mask):
-        # No active dimensions -> no meaningful normalization/coverage
-        return 0.0
-
-    precursor_active = precursor[active_mask]
-    fragments_active = np.asarray(fragments)[:, active_mask]
-
-    k = fragments_active.shape[0]
-    if k == 0:
-        return 0.0
-
-    # Duplicate check after projecting to active dimensions only.
-    # Why: duplicates would make the score degenerate for set-like operations; fail-fast with guidance.
-    frag_check_arr = np.ascontiguousarray(fragments_active)
-
-    if require_unique_fragments:
-        assert _rows_unique(frag_check_arr), (
-            "Duplicate fragments detected after ignoring zero-precursor dimensions. "
-            "Fix: ensure each fragment is unique in the active dimensions (remove duplicates or perturb values)."
-        )
-    else:
-        fragments_active = _make_fragments_unique(fragments_active, active_mask)
-
-    # Normalize to [0,1]^|A| using only active dims (ensure C-contiguous float64 for Numba).
-    # Why: ignore dims with zero precursor to avoid division by zero and keep score invariant to them.
-    scale = (1.0 / precursor_active).astype(np.float64)
-    F = fragments_active.astype(np.float64, copy=False) * scale[None, :]
-    F = np.ascontiguousarray(F)
-
-    # If, after ignoring zero dims, there are 0 active dims, return 0.0.
-    if F.shape[1] == 0:
-        return 0.0
-
-    return _score_core(F, int(num_points), float(bandwidth), float(alpha), int(rng_seed))
-
-def spectral_info_polars(
-        precursors: pl.Series,
-        fragments: pl.Series,
-        *,
-        bandwidth: float = 0.12,
-        alpha: float = 1.0,
-        num_points: int = 2048,
-        rng_seed: int = 0,
-        require_unique_fragments: bool = True
-) -> pl.Series:
-    """
-    Polars wrapper for score_fragments_local_coverage.
-
-    This refactored wrapper performs per-row reshaping/normalization in Python,
-    concatenates all normalized fragment coordinates into a single flat array,
-    and then calls a single numba-jitted vectorized routine that computes scores
-    for the entire batch in parallel.
-
-    Expectations (no heavy assertions here — preparation is done proactively):
-      - precursors: Series of List(Float64)
-      - fragments: Series of List(List(Float64))
-    Returns:
-      - Series of Float64 scores
     """
     # Minimal input checks only (skip detailed assertions per request).
     if len(precursors) != len(fragments):
@@ -331,3 +225,274 @@ def spectral_info_polars(
 
     # Return polars Series
     return pl.Series(values=scores.tolist(), dtype=pl.Float64)
+
+def _build_scores_from_python_lists(
+    prec_array: np.ndarray,
+    frags_list: list,
+    *,
+    bandwidth: float,
+    alpha: float,
+    num_points: int,
+    rng_seed: int,
+    require_unique_fragments: bool,
+) -> np.ndarray:
+    """
+    Internal helper: given a numpy object-array of precursor lists and a list of fragment
+    row-lists per spectrum, produce scores via the numba batch kernel.
+    """
+    n_rows = len(prec_array)
+    concat_list: list[np.float64] = []
+    offsets = np.empty(n_rows, dtype=np.int64)
+    ks = np.empty(n_rows, dtype=np.int64)
+    dims = np.empty(n_rows, dtype=np.int64)
+
+    cur_offset = 0
+    for i in range(n_rows):
+        p_raw = prec_array[i]
+        f = frags_list[i]
+
+        if f is None or len(f) == 0:
+            offsets[i] = cur_offset
+            ks[i] = 0
+            dims[i] = 0
+            continue
+
+        p_arr = np.asarray(p_raw, dtype=float)
+        active_mask = p_arr > 0.0
+        n_active = int(active_mask.sum())
+        if n_active == 0:
+            offsets[i] = cur_offset
+            ks[i] = 0
+            dims[i] = 0
+            continue
+
+        # Project fragments to active dims
+        frag_arr = np.asarray([np.asarray(fi, dtype=float)[active_mask] for fi in f], dtype=float)
+        if frag_arr.size == 0 or frag_arr.ndim != 2:
+            offsets[i] = cur_offset
+            ks[i] = 0
+            dims[i] = 0
+            continue
+
+        if require_unique_fragments:
+            if not _rows_unique(np.ascontiguousarray(frag_arr)):
+                raise AssertionError(
+                    "Duplicate fragments detected after ignoring zero-precursor dimensions. "
+                    "Fix or set require_unique_fragments=False to drop duplicates."
+                )
+        else:
+            frag_arr = _make_fragments_unique(frag_arr, active_mask)
+
+        k_i = frag_arr.shape[0]
+        scale = (1.0 / p_arr[active_mask]).astype(np.float64)
+        F_i = (frag_arr.astype(np.float64, copy=False) * scale[None, :]).ravel()
+
+        offsets[i] = cur_offset
+        ks[i] = k_i
+        dims[i] = n_active
+
+        concat_list.extend(F_i.tolist())
+        cur_offset += F_i.size
+
+    if len(concat_list) == 0:
+        return np.zeros(n_rows, dtype=np.float64)
+
+    concat_F = np.asarray(concat_list, dtype=np.float64)
+    scores = _score_core_batch(
+        concat_F, offsets, ks, dims,
+        int(num_points), float(bandwidth), float(alpha), int(rng_seed)
+    )
+    return scores
+
+
+def spectral_info_search(
+    query_precursor: list[float] | NDArray[np.floating],
+    query_fragments: list[list[float]] | None,
+    library_precursor: list[float] | NDArray[np.floating],
+    library_fragments: list[list[float]] | None,
+    *,
+    bandwidth: float = 0.12,
+    alpha: float = 1.0,
+    num_points: int = 2048,
+    rng_seed: int = 0,
+    require_unique_fragments: bool = True,
+) -> tuple[float, float, float, float]:
+    """
+    Compute 4 values for a single query/library pair:
+      - query: info score on all query fragments
+      - library: info score on all library fragments
+      - query_extra: info score on fragments in query but not in library (set difference)
+      - library_extra: info score on fragments in library but not in query (set difference)
+    """
+    # Normalize inputs to arrays/lists
+    qp = np.asarray(query_precursor, dtype=float)
+    lp = np.asarray(library_precursor, dtype=float)
+    qf = query_fragments or []
+    lf = library_fragments or []
+
+    # Fast paths for empties
+    qf_arr = np.asarray([np.asarray(r, dtype=float) for r in qf], dtype=float) if len(qf) > 0 else np.empty((0, qp.size), dtype=float)
+    lf_arr = np.asarray([np.asarray(r, dtype=float) for r in lf], dtype=float) if len(lf) > 0 else np.empty((0, lp.size), dtype=float)
+
+    # Intersection of active dimensions for set difference
+    inter_len = min(qp.size, lp.size)
+    if inter_len == 0:
+        q_extra_rows = qf
+        l_extra_rows = lf
+    else:
+        q_mask = (qp[:inter_len] > 0.0)
+        l_mask = (lp[:inter_len] > 0.0)
+        inter_mask = q_mask & l_mask
+        if inter_mask.sum() == 0 or qf_arr.shape[0] == 0 or lf_arr.shape[0] == 0:
+            # No shared active dims or one side empty => all rows are extra on their side
+            q_extra_rows = qf
+            l_extra_rows = lf
+        else:
+            q_proj = qf_arr[:, :inter_len][:, inter_mask]
+            l_proj = lf_arr[:, :inter_len][:, inter_mask]
+
+            l_set = {tuple(row.tolist()) for row in l_proj}
+            q_set = {tuple(row.tolist()) for row in q_proj}
+
+            q_extra_rows = [qf[i] for i, row in enumerate(q_proj) if tuple(row.tolist()) not in l_set]
+            l_extra_rows = [lf[i] for i, row in enumerate(l_proj) if tuple(row.tolist()) not in q_set]
+
+    # Build batched scoring for the 3 lists (query_all, library_all, extras on each)
+    prec_array = np.array([qp], dtype=object)
+    lib_prec_array = np.array([lp], dtype=object)
+
+    q_scores = _build_scores_from_python_lists(
+        prec_array, [qf],
+        bandwidth=bandwidth, alpha=alpha, num_points=num_points, rng_seed=rng_seed,
+        require_unique_fragments=require_unique_fragments,
+    )
+    l_scores = _build_scores_from_python_lists(
+        lib_prec_array, [lf],
+        bandwidth=bandwidth, alpha=alpha, num_points=num_points, rng_seed=rng_seed,
+        require_unique_fragments=require_unique_fragments,
+    )
+    qx_scores = _build_scores_from_python_lists(
+        prec_array, [q_extra_rows],
+        bandwidth=bandwidth, alpha=alpha, num_points=num_points, rng_seed=rng_seed,
+        require_unique_fragments=require_unique_fragments,
+    )
+    lx_scores = _build_scores_from_python_lists(
+        lib_prec_array, [l_extra_rows],
+        bandwidth=bandwidth, alpha=alpha, num_points=num_points, rng_seed=rng_seed,
+        require_unique_fragments=require_unique_fragments,
+    )
+
+    return float(q_scores[0]), float(l_scores[0]), float(qx_scores[0]), float(lx_scores[0])
+
+
+def spectral_info_search_polars(
+    query_precursors: pl.Series,
+    query_fragments: pl.Series,
+    library_precursors: pl.Series,
+    library_fragments: pl.Series,
+    *,
+    bandwidth: float = 0.12,
+    alpha: float = 1.0,
+    num_points: int = 2048,
+    rng_seed: int = 0,
+    require_unique_fragments: bool = True,
+) -> pl.Series:
+    """
+    Vectorized wrapper over Polars:
+      - Takes series of query/library precursors and fragments
+      - Computes 4 scores per row: query, library, query_extra, library_extra
+      - Returns a Struct Series with those 4 fields.
+    """
+    if len(query_precursors) != len(query_fragments):
+        raise AssertionError("query_precursors and query_fragments must have same length")
+    if len(library_precursors) != len(library_fragments):
+        raise AssertionError("library_precursors and library_fragments must have same length")
+    if len(query_precursors) != len(library_precursors):
+        raise AssertionError("query and library must have the same number of rows")
+
+    n_rows = len(query_precursors)
+
+    qp_array = query_precursors.to_numpy()
+    qf_array = query_fragments.to_numpy()
+    lp_array = library_precursors.to_numpy()
+    lf_array = library_fragments.to_numpy()
+
+    # Prepare 4 fragment lists: q_all, l_all, q_extra, l_extra
+    q_all = [None] * n_rows
+    l_all = [None] * n_rows
+    q_extra = [None] * n_rows
+    l_extra = [None] * n_rows
+
+    for i in range(n_rows):
+        qp = np.asarray(qp_array[i], dtype=float)
+        lp = np.asarray(lp_array[i], dtype=float)
+
+        qf = qf_array[i]
+        lf = lf_array[i]
+
+        q_all[i] = [] if (qf is None) else [np.asarray(r, dtype=float).tolist() for r in qf]
+        l_all[i] = [] if (lf is None) else [np.asarray(r, dtype=float).tolist() for r in lf]
+
+        # Build arrays for difference
+        qf_arr = np.asarray([np.asarray(r, dtype=float) for r in qf], dtype=float) if (qf is not None and len(qf) > 0) else np.empty((0, qp.size), dtype=float)
+        lf_arr = np.asarray([np.asarray(r, dtype=float) for r in lf], dtype=float) if (lf is not None and len(lf) > 0) else np.empty((0, lp.size), dtype=float)
+
+        # Determine intersection of active dimensions
+        inter_len = min(qp.size, lp.size)
+        if inter_len == 0:
+            q_extra[i] = q_all[i]
+            l_extra[i] = l_all[i]
+            continue
+
+        q_mask = (qp[:inter_len] > 0.0)
+        l_mask = (lp[:inter_len] > 0.0)
+        inter_mask = q_mask & l_mask
+
+        if inter_mask.sum() == 0 or qf_arr.shape[0] == 0 or lf_arr.shape[0] == 0:
+            q_extra[i] = q_all[i]
+            l_extra[i] = l_all[i]
+            continue
+
+        q_proj = qf_arr[:, :inter_len][:, inter_mask]
+        l_proj = lf_arr[:, :inter_len][:, inter_mask]
+
+        l_set = {tuple(row.tolist()) for row in l_proj}
+        q_set = {tuple(row.tolist()) for row in q_proj}
+
+        q_extra_rows = [q_all[i][idx] for idx, row in enumerate(q_proj) if tuple(row.tolist()) not in l_set]
+        l_extra_rows = [l_all[i][idx] for idx, row in enumerate(l_proj) if tuple(row.tolist()) not in q_set]
+
+        q_extra[i] = q_extra_rows
+        l_extra[i] = l_extra_rows
+
+    # Build scores via batch kernel
+    qp_np = np.array([np.asarray(x, dtype=float) for x in qp_array], dtype=object)
+    lp_np = np.array([np.asarray(x, dtype=float) for x in lp_array], dtype=object)
+
+    q_scores = _build_scores_from_python_lists(
+        qp_np, q_all,
+        bandwidth=bandwidth, alpha=alpha, num_points=num_points, rng_seed=rng_seed,
+        require_unique_fragments=require_unique_fragments,
+    )
+    l_scores = _build_scores_from_python_lists(
+        lp_np, l_all,
+        bandwidth=bandwidth, alpha=alpha, num_points=num_points, rng_seed=rng_seed,
+        require_unique_fragments=require_unique_fragments,
+    )
+    qx_scores = _build_scores_from_python_lists(
+        qp_np, q_extra,
+        bandwidth=bandwidth, alpha=alpha, num_points=num_points, rng_seed=rng_seed,
+        require_unique_fragments=require_unique_fragments,
+    )
+    lx_scores = _build_scores_from_python_lists(
+        lp_np, l_extra,
+        bandwidth=bandwidth, alpha=alpha, num_points=num_points, rng_seed=rng_seed,
+        require_unique_fragments=require_unique_fragments,
+    )
+
+    s_query = pl.Series(values=q_scores.tolist(), dtype=pl.Float64, name="query")
+    s_library = pl.Series(values=l_scores.tolist(), dtype=pl.Float64, name="library")
+    s_query_extra = pl.Series(values=qx_scores.tolist(), dtype=pl.Float64, name="query_extra")
+    s_library_extra = pl.Series(values=lx_scores.tolist(), dtype=pl.Float64, name="library_extra")
+
+    return pl.struct([s_query, s_library, s_query_extra, s_library_extra])
