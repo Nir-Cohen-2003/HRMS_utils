@@ -34,3 +34,4 @@ src/hrms_utils/formula_annotation/mass_decomposition_impl/**.pyd
 tests/data/250515_006.txt
 **.nbi
 **.nbc
+**.parquet
