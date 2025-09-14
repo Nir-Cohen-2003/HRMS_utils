@@ -2,6 +2,8 @@ from .mass_decomposition import (
     decompose_mass,
     decompose_mass_per_bounds,
     decompose_spectra_known_precursor,
+    clean_spectra_known_precursor,
+    clean_and_normalize_spectra_known_precursor,
 )
 from .isotopic_pattern import (
     isotopic_pattern_config,

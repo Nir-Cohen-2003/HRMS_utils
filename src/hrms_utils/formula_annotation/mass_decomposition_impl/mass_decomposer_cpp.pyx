@@ -562,6 +562,8 @@ def decompose_spectra_known_precursor_parallel(
 
     # Return as Polars Series with explicit nested dtype
     return pl.Series(py_results, dtype=pl.List(pl.List(pl.Array(pl.Int32, NUM_ELEMENTS))))
+
+    
 def clean_spectra_known_precursor_parallel(
     precursor_formula_series: pl.Series,   # Series of pl.Array(int32, NUM_ELEMENTS)
     fragment_masses_series: pl.Series,     # Series of list[float]
