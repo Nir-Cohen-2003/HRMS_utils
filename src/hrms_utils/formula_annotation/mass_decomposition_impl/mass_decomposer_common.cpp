@@ -95,9 +95,7 @@ std::vector<Formula> MassDecomposer::decompose(double target_mass, const Decompo
                 continue;
             }
             results.push_back(result);
-            if (static_cast<int>(results.size()) >= params.max_results) break;
         }
-        if (static_cast<int>(results.size()) >= params.max_results) break;
     }
     return results;
 }

@@ -30,7 +30,6 @@ src/hrms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.cp
 src/hrms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.pyx
 src/hrms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_money_changing.cpp
 src/hrms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_parallel.cpp
-src/hrms_utils/formula_annotation/mass_decomposition_impl/python_impl.py
 src/hrms_utils/formula_annotation/mass_decomposition_impl/setup_bk.py
 src/hrms_utils/rdkit/__init__.py
 src/hrms_utils/rdkit/fingerprint.py

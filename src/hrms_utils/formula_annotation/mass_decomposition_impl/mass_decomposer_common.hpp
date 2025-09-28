@@ -111,7 +111,6 @@ struct DecompositionParams {
     double min_dbe;
     double max_dbe;
     // double max_hetero_ratio;
-    int max_results;
     Formula min_bounds;
     Formula max_bounds;
 };

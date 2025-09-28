@@ -81,7 +81,6 @@ cdef extern from "mass_decomposer_common.hpp":
         double min_dbe
         double max_dbe
         # double max_hetero_ratio
-        int max_results
         Formula_cpp min_bounds
         Formula_cpp max_bounds
 
@@ -202,7 +201,6 @@ cdef void _validate_bounds_array(np.ndarray arr, str name):
 cdef DecompositionParams _convert_params(
     double tolerance_ppm, double min_dbe, double max_dbe,
     # double max_hetero_ratio,
-    int max_results,
     np.ndarray min_bounds, np.ndarray max_bounds):
     """Convert Python parameters to C++ DecompositionParams."""
     _validate_bounds_array(min_bounds, "min_bounds")
@@ -213,7 +211,6 @@ cdef DecompositionParams _convert_params(
     params.min_dbe = min_dbe
     params.max_dbe = max_dbe
     # params.max_hetero_ratio = max_hetero_ratio
-    params.max_results = max_results
     params.min_bounds = _convert_numpy_to_formula(min_bounds)
     params.max_bounds = _convert_numpy_to_formula(max_bounds)
     return params
@@ -239,7 +236,6 @@ def decompose_mass_parallel(
     min_dbe: float = 0.0,
     max_dbe: float = 40.0,
     max_hetero_ratio: float = 100.0,
-    max_results: int = 100000
 ) -> pl.Series:
     target_masses = target_masses.to_numpy()
 
@@ -250,7 +246,7 @@ def decompose_mass_parallel(
     cdef vector[double] masses_vec
     masses_vec.assign(masses_ptr, masses_ptr + n_masses)
 
-    cdef DecompositionParams params = _convert_params(tolerance_ppm, min_dbe, max_dbe, max_results,min_bounds, max_bounds)
+    cdef DecompositionParams params = _convert_params(tolerance_ppm, min_dbe, max_dbe, min_bounds, max_bounds)
     cdef vector[vector[Formula_cpp]] all_results
     
     all_results = MassDecomposer.decompose_parallel(masses_vec, params)
@@ -312,7 +308,6 @@ def decompose_mass_parallel_verbose(
     min_dbe: float = 0.0,
     max_dbe: float = 40.0,
     max_hetero_ratio: float = 100.0,
-    max_results: int = 100000
 ) -> pl.Series:
     target_masses = target_masses.to_numpy()
 
@@ -336,7 +331,7 @@ def decompose_mass_parallel_verbose(
     cdef vector[double] masses_vec
     masses_vec.assign(masses_ptr, masses_ptr + n_masses)
 
-    cdef DecompositionParams params = _convert_params(tolerance_ppm, min_dbe, max_dbe, max_results, min_bounds, max_bounds)
+    cdef DecompositionParams params = _convert_params(tolerance_ppm, min_dbe, max_dbe, min_bounds, max_bounds)
     cdef vector[vector[FormulaWithString]] all_results = MassDecomposer.decompose_parallel_verbose(masses_vec, params)
 
     cdef size_t num_masses = all_results.size()
@@ -420,7 +415,6 @@ def decompose_mass_parallel_per_bounds(
     min_dbe: float = 0.0,
     max_dbe: float = 40.0,
     max_hetero_ratio: float = 100.0,
-    max_results: int = 100000
 ) -> pl.Series:
 
     # target_masses = target_masses.to_numpy()
@@ -443,9 +437,13 @@ def decompose_mass_parallel_per_bounds(
 
         # Create a dummy params object; min/max_bounds are ignored by the C++ function
     cdef np.ndarray dummy_bounds = np.zeros(NUM_ELEMENTS, dtype=np.int32)
-    cdef DecompositionParams params = _convert_params(tolerance_ppm, min_dbe, max_dbe,
-                                                     max_results,
-                                                     dummy_bounds, dummy_bounds)
+    cdef DecompositionParams params = _convert_params(
+        tolerance_ppm,
+        min_dbe,
+        max_dbe,
+        dummy_bounds,
+        dummy_bounds,
+    )
     
     # Efficiently populate C++ vectors from numpy arrays
     cdef vector[double] masses_vec
@@ -517,7 +515,6 @@ def decompose_mass_parallel_per_bounds_verbose(
     min_dbe: float = 0.0,
     max_dbe: float = 40.0,
     max_hetero_ratio: float = 100.0,
-    max_results: int = 100000
 ) -> pl.Series:
 
     cdef np.ndarray[double, ndim=1, mode="c"] contig_masses = np.ascontiguousarray(target_masses.to_numpy(), dtype=np.float64)
@@ -547,7 +544,6 @@ def decompose_mass_parallel_per_bounds_verbose(
         tolerance_ppm,
         min_dbe,
         max_dbe,
-        max_results,
         dummy_bounds,
         dummy_bounds,
     )
@@ -657,16 +653,18 @@ def decompose_spectra_parallel(
     tolerance_ppm: float = 5.0,
     min_dbe: float = 0.0,
     max_dbe: float = 40.0,
-    max_hetero_ratio: float = 100.0,
-    max_results: int = 100000
 ) -> list:
     # Convert iterable to list to allow checking for emptiness and getting length
     spectra_data_list = list(spectra_data)
     if not spectra_data_list:
         return []
-    cdef DecompositionParams params = _convert_params(tolerance_ppm, min_dbe, max_dbe,
-                                                     max_results,
-                                                     min_bounds, max_bounds)
+    cdef DecompositionParams params = _convert_params(
+        tolerance_ppm,
+        min_dbe,
+        max_dbe,
+        min_bounds,
+        max_bounds,
+    )
     cdef vector[Spectrum] spectra_vec
     spectra_vec.reserve(len(spectra_data_list))
     cdef Spectrum s
@@ -715,8 +713,6 @@ def decompose_spectra_parallel_per_bounds(
     tolerance_ppm: float = 5.0,
     min_dbe: float = 0.0,
     max_dbe: float = 40.0,
-    max_hetero_ratio: float = 100.0,
-    max_results: int = 100000
 ) -> list:
     # Convert iterable to list to allow checking for emptiness and getting length
     spectra_data_list = list(spectra_data)
@@ -728,9 +724,13 @@ def decompose_spectra_parallel_per_bounds(
     _validate_bounds_array(spectra_data_list[0]['max_bounds'], "max_bounds in spectra_data[0]")
 
     cdef np.ndarray dummy_bounds = np.zeros(NUM_ELEMENTS, dtype=np.int32)
-    cdef DecompositionParams params = _convert_params(tolerance_ppm, min_dbe, max_dbe,
-                                                     max_results,
-                                                     dummy_bounds, dummy_bounds)
+    cdef DecompositionParams params = _convert_params(
+        tolerance_ppm,
+        min_dbe,
+        max_dbe,
+        dummy_bounds,
+        dummy_bounds,
+    )
     cdef vector[SpectrumWithBounds] spectra_vec
     spectra_vec.reserve(len(spectra_data_list))
     cdef SpectrumWithBounds s
@@ -765,7 +765,6 @@ def decompose_spectra_known_precursor_parallel(
     precursor_formula_series: pl.Series,  # series of 1D arrays shape (NUM_ELEMENTS,), dtype=int32 (pl.Array)
     fragment_masses_series: pl.Series,    # series of lists[float], variable length per spectrum
     tolerance_ppm: float = 5.0,
-    max_results: int = 100000
 ) -> pl.Series:
     """
     Convert Polars Series to contiguous buffers and pass to C++ parallel routine.
@@ -797,9 +796,11 @@ def decompose_spectra_known_precursor_parallel(
     cdef np.ndarray min_bounds = np.zeros(NUM_ELEMENTS, dtype=np.int32)
     cdef np.ndarray max_bounds = np.zeros(NUM_ELEMENTS, dtype=np.int32)
     cdef DecompositionParams params = _convert_params(
-        tolerance_ppm, 0.0, 30.0,  # dbe range for fragments with known precursor
-        max_results,
-        min_bounds, max_bounds
+        tolerance_ppm,
+        0.0,
+        30.0,  # dbe range for fragments with known precursor
+        min_bounds,
+        max_bounds,
     )
 
     # Prepare C++ input vector<SpectrumWithKnownPrecursor>
@@ -864,7 +865,6 @@ def clean_spectra_known_precursor_parallel(
     fragment_masses_series: pl.Series,     # Series of list[float]
     fragment_intensities_series: pl.Series,# Series of list[float]
     tolerance_ppm: float = 5.0,
-    max_results: int = 100000
 ) -> pl.Series:
     """
     Parallel cleaner with known precursor.
@@ -897,7 +897,6 @@ def clean_spectra_known_precursor_parallel(
     cdef np.ndarray max_bounds = np.zeros(NUM_ELEMENTS, dtype=np.int32)
     cdef DecompositionParams params = _convert_params(
         tolerance_ppm, 0.0, 30.0,
-        max_results,
         min_bounds, max_bounds
     )
 
@@ -1066,8 +1065,7 @@ def clean_spectra_known_precursor_parallel_verbose(
     fragment_masses_series: pl.Series,
     fragment_intensities_series: pl.Series,
     tolerance_ppm: float = 5.0,
-    max_results: int = 100000
-) -> pl.Series:
+    ) -> pl.Series:
     cdef np.ndarray[np.int32_t, ndim=2, mode="c"] contig_precursors = np.ascontiguousarray(
         precursor_formula_series.to_numpy(), dtype=np.int32
     )
@@ -1088,7 +1086,6 @@ def clean_spectra_known_precursor_parallel_verbose(
     cdef np.ndarray max_bounds = np.zeros(NUM_ELEMENTS, dtype=np.int32)
     cdef DecompositionParams params = _convert_params(
         tolerance_ppm, 0.0, 30.0,
-        max_results,
         min_bounds,
         max_bounds,
     )
@@ -1276,8 +1273,7 @@ def decompose_spectra_known_precursor_parallel_verbose(
     precursor_formula_series: pl.Series,
     fragment_masses_series: pl.Series,
     tolerance_ppm: float = 5.0,
-    max_results: int = 100000
-) -> tuple[pl.Series, pl.Series]:
+    ) -> tuple[pl.Series, pl.Series]:
     cdef np.ndarray[np.int32_t, ndim=2, mode="c"] contig_precursors = np.ascontiguousarray(
         precursor_formula_series.to_numpy(), dtype=np.int32
     )
@@ -1304,7 +1300,6 @@ def decompose_spectra_known_precursor_parallel_verbose(
     cdef np.ndarray max_bounds = np.zeros(NUM_ELEMENTS, dtype=np.int32)
     cdef DecompositionParams params = _convert_params(
         tolerance_ppm, 0.0, 30.0,
-        max_results,
         min_bounds,
         max_bounds,
     )
@@ -1439,7 +1434,6 @@ def clean_and_normalize_spectra_known_precursor_parallel(
     fragment_masses_series: pl.Series,     # list[float] per spectrum
     fragment_intensities_series: pl.Series,# list[float] per spectrum
     tolerance_ppm: float = 5.0,
-    max_results: int = 100000,
     max_allowed_normalized_mass_error_ppm: float = 5.0
 ) -> pl.Series:
     """
@@ -1470,7 +1464,6 @@ def clean_and_normalize_spectra_known_precursor_parallel(
     cdef np.ndarray max_bounds = np.zeros(NUM_ELEMENTS, dtype=np.int32)
     cdef DecompositionParams params = _convert_params(
         tolerance_ppm, 0.0, 30.0,
-        max_results,
         min_bounds, max_bounds
     )
 
@@ -1612,7 +1605,6 @@ def clean_and_normalize_spectra_known_precursor_parallel_verbose(
     fragment_intensities_series: pl.Series,
     *,
     tolerance_ppm: float = 5.0,
-    max_results: int = 100000,
     max_allowed_normalized_mass_error_ppm: float = 5.0,
 ) -> pl.Series:
     """
@@ -1644,7 +1636,6 @@ def clean_and_normalize_spectra_known_precursor_parallel_verbose(
         tolerance_ppm,
         0.0,
         30.0,
-        max_results,
         min_bounds,
         max_bounds,
     )

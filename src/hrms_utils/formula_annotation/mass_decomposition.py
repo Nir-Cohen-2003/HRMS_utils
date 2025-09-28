@@ -32,7 +32,7 @@ def decompose_mass(
     min_dbe: float = 0.0,
     max_dbe: float = 40.0,
 
-    max_results: int = 100000,
+    
 ):
     """
     Wrapper for decompose_mass_parallel, fixed bounds only, with validation of input types.
@@ -94,8 +94,6 @@ def decompose_mass(
     assert tolerance_ppm > 0, f"tolerance_ppm should be a positive value, but got {tolerance_ppm}"
     assert isinstance(min_dbe, (float, int)), f"min_dbe should be a float or int, but got {type(min_dbe)}"
     assert isinstance(max_dbe, (float, int)), f"max_dbe should be a float or int, but got {type(max_dbe)}"
-    assert isinstance(max_results, int) and max_results > 0, f"max_results should be a positive integer, but got {max_results}"
-
     results = decompose_mass_parallel(
         target_masses=mass_series,
         min_bounds=min_bounds,
@@ -103,7 +101,6 @@ def decompose_mass(
         tolerance_ppm=tolerance_ppm,
         min_dbe=min_dbe,
         max_dbe=max_dbe,
-        max_results=max_results,
     )
     return results
 
@@ -114,8 +111,7 @@ def decompose_mass_verbose(
     tolerance_ppm: float = 5.0,
     min_dbe: float = 0.0,
     max_dbe: float = 40.0,
-    max_results: int = 100000,
-) -> Tuple[pl.Series, pl.Series]:
+    ) -> Tuple[pl.Series, pl.Series]:
     """Annotate masses and return both element counts and formatted formulas.
 
     Wrapper for decompose_mass_parallel_verbose with the same input validation
@@ -174,10 +170,6 @@ def decompose_mass_verbose(
     assert tolerance_ppm > 0, f"tolerance_ppm should be a positive value, but got {tolerance_ppm}"
     assert isinstance(min_dbe, (float, int)), f"min_dbe should be a float or int, but got {type(min_dbe)}"
     assert isinstance(max_dbe, (float, int)), f"max_dbe should be a float or int, but got {type(max_dbe)}"
-    assert isinstance(max_results, int) and max_results > 0, (
-        f"max_results should be a positive integer, but got {max_results}"
-    )
-
     return decompose_mass_parallel_verbose(
         target_masses=mass_series,
         min_bounds=min_bounds,
@@ -185,7 +177,6 @@ def decompose_mass_verbose(
         tolerance_ppm=tolerance_ppm,
         min_dbe=min_dbe,
         max_dbe=max_dbe,
-        max_results=max_results,
     )
 
 def decompose_mass_per_bounds(
@@ -195,7 +186,6 @@ def decompose_mass_per_bounds(
     tolerance_ppm: float = 5.0,
     min_dbe: float = 0.0,
     max_dbe: float = 40.0,  
-    max_results: int = 100000,
 ) -> pl.Series:
     """
     Return a Polars Series of possible formulas for the mass.
@@ -238,7 +228,7 @@ def decompose_mass_per_bounds(
     assert tolerance_ppm > 0, f"tolerance_ppm should be a positive value, but got {tolerance_ppm}"
     assert isinstance(min_dbe   , (float, int)), f"min_dbe should be a float or int, but got {type(min_dbe)}"
     assert isinstance(max_dbe   , (float, int)), f"max_dbe should be a float or int, but got {type(max_dbe)}"
-    assert isinstance(max_results, int) and max_results > 0, f"max_results should be a positive integer, but got {max_results}" 
+
 
 
     results = decompose_mass_parallel_per_bounds(
@@ -248,7 +238,6 @@ def decompose_mass_per_bounds(
         tolerance_ppm=tolerance_ppm,
         min_dbe=min_dbe,
         max_dbe=max_dbe,
-        max_results=max_results,
     )
     return results  
 
@@ -259,7 +248,6 @@ def decompose_mass_per_bounds_verbose(
     tolerance_ppm: float = 5.0,
     min_dbe: float = 0.0,
     max_dbe: float = 40.0,
-    max_results: int = 100000,
 ) -> Tuple[pl.Series, pl.Series]:
     """Per-row bounds variant that also reports formatted formula strings.
 
@@ -283,8 +271,6 @@ def decompose_mass_per_bounds_verbose(
         Minimum DBE.
     max_dbe : float
         Maximum DBE.
-    max_results : int
-        Upper bound on number of returned candidates per mass.
 
     Returns
     -------
@@ -303,7 +289,7 @@ def decompose_mass_per_bounds_verbose(
     assert tolerance_ppm > 0, f"tolerance_ppm should be a positive value, but got {tolerance_ppm}"
     assert isinstance(min_dbe   , (float, int)), f"min_dbe should be a float or int, but got {type(min_dbe)}"
     assert isinstance(max_dbe   , (float, int)), f"max_dbe should be a float or int, but got {type(max_dbe)}"
-    assert isinstance(max_results, int) and max_results > 0, f"max_results should be a positive integer, but got {max_results}" 
+
 
 
     return decompose_mass_parallel_per_bounds_verbose(
@@ -313,7 +299,6 @@ def decompose_mass_per_bounds_verbose(
         tolerance_ppm=tolerance_ppm,
         min_dbe=min_dbe,
         max_dbe=max_dbe,
-        max_results=max_results,
     )
                       
 def decompose_spectra(
@@ -324,7 +309,6 @@ def decompose_spectra(
     tolerance_ppm: float = 5.0,
     min_dbe: float = 0.0,
     max_dbe: float = 40.0,
-    max_results: int = 100000,
 ):
     """
     NOT IMPLEMENTED YET, DO NOT USE THIS FUNCTION.
@@ -389,7 +373,6 @@ def decompose_spectra(
             tolerance_ppm=tolerance_ppm,
             min_dbe=min_dbe,
             max_dbe=max_dbe,
-            max_results=max_results,
         )
     # Per-spectrum bounds
     elif isinstance(min_bounds, pl.Series) and isinstance(max_bounds, pl.Series):
@@ -412,7 +395,6 @@ def decompose_spectra(
             tolerance_ppm=tolerance_ppm,
             min_dbe=min_dbe,
             max_dbe=max_dbe,
-            max_results=max_results,
         )
     else:
         raise ValueError("min_bounds and max_bounds must both be either 1D numpy arrays or Polars Series of arrays.")
@@ -475,7 +457,6 @@ def decompose_spectra_known_precursor(
     precursor_formula_series: pl.Series,
     fragment_masses_series: pl.Series,
     tolerance_ppm: float = 5.0,
-    max_results: int = 100000,
 ):
     """
     Decomposes the fragments, when the precursor was already decomposed.
@@ -517,7 +498,6 @@ def decompose_spectra_known_precursor(
         precursor_formula_series,
         fragment_masses_series,
         tolerance_ppm=tolerance_ppm,
-        max_results=max_results,
     )
     return results
 
@@ -525,7 +505,6 @@ def decompose_spectra_known_precursor_verbose(
     precursor_formula_series: pl.Series,
     fragment_masses_series: pl.Series,
     tolerance_ppm: float = 5.0,
-    max_results: int = 100000,
 ) -> Tuple[pl.Series, pl.Series]:
     """Verbose decomposition that includes human-readable formulas for fragments.
 
@@ -542,8 +521,7 @@ def decompose_spectra_known_precursor_verbose(
         Series of per-spectrum fragment mass lists (dtype: pl.List(pl.Float64)).
     tolerance_ppm : float
         Mass tolerance in ppm for fragment annotation.
-    max_results : int
-        Upper bound on candidates returned per fragment / spectrum.
+
 
     Returns
     -------
@@ -571,7 +549,6 @@ def decompose_spectra_known_precursor_verbose(
         precursor_formula_series=precursor_formula_series,
         fragment_masses_series=fragment_masses_series,
         tolerance_ppm=tolerance_ppm,
-        max_results=max_results,
     )
 
 def clean_spectra_known_precursor(
@@ -580,7 +557,6 @@ def clean_spectra_known_precursor(
     fragment_intensities_series: pl.Series,
     *,
     tolerance_ppm: float = 5.0,
-    max_results: int = 100000,
 ) -> pl.Series:
     """
     Parallel cleaner for spectra with known precursor formulas.
@@ -604,7 +580,6 @@ def clean_spectra_known_precursor(
 
     Parameters:
         - tolerance_ppm (float): mass tolerance in ppm for fragment formula matching.
-        - max_results (int): an upper bound on results returned per spectrum to avoid memory blowup.
 
     Output:
         Returns a pl.Series with dtype pl.Struct containing, for each spectrum:
@@ -659,7 +634,6 @@ def clean_spectra_known_precursor(
         fragment_masses_series=fragment_masses_series,
         fragment_intensities_series=fragment_intensities_series,
         tolerance_ppm=tolerance_ppm,
-        max_results=max_results,
     )
 
 def clean_spectra_known_precursor_verbose(
@@ -668,7 +642,6 @@ def clean_spectra_known_precursor_verbose(
     fragment_intensities_series: pl.Series,
     *,
     tolerance_ppm: float = 5.0,
-    max_results: int = 100000,
 ) -> pl.Series:
     """Clean spectra and include formula strings per fragment.
 
@@ -686,8 +659,6 @@ def clean_spectra_known_precursor_verbose(
     ----------
     tolerance_ppm : float
         Mass tolerance in ppm.
-    max_results : int
-        Upper bound on the number of returned candidates to avoid memory blowup.
 
     Returns
     -------
@@ -733,7 +704,6 @@ def clean_spectra_known_precursor_verbose(
         fragment_masses_series=fragment_masses_series,
         fragment_intensities_series=fragment_intensities_series,
         tolerance_ppm=tolerance_ppm,
-        max_results=max_results,
     )
 
 def clean_and_normalize_spectra_known_precursor(
@@ -743,7 +713,6 @@ def clean_and_normalize_spectra_known_precursor(
     fragment_intensities_series: pl.Series,
     *,
     tolerance_ppm: float = 5.0,
-    max_results: int = 100000,
     max_allowed_normalized_mass_error_ppm: float = 5.0,
 ) -> pl.Series:
     """
@@ -801,7 +770,6 @@ def clean_and_normalize_spectra_known_precursor(
         fragment_masses_series=fragment_masses_series,
         fragment_intensities_series=fragment_intensities_series,
         tolerance_ppm=tolerance_ppm,
-        max_results=max_results,
         max_allowed_normalized_mass_error_ppm=max_allowed_normalized_mass_error_ppm,
     )
 
@@ -813,7 +781,6 @@ def clean_and_normalize_spectra_known_precursor_verbose(
     fragment_intensities_series: pl.Series,
     *,
     tolerance_ppm: float = 5.0,
-    max_results: int = 100000,
     max_allowed_normalized_mass_error_ppm: float = 5.0,
 ) -> pl.Series:
     """Verbose cleaner + normalizer that adds ``fragment_formulas_str`` output.
@@ -831,8 +798,6 @@ def clean_and_normalize_spectra_known_precursor_verbose(
     ----------
     tolerance_ppm : float
         Mass tolerance used for fragment matching.
-    max_results : int
-        Upper bound on number of candidates returned per spectrum.
     max_allowed_normalized_mass_error_ppm : float
         Maximum allowed mean mass error after normalization (safeguard).
 
@@ -883,9 +848,7 @@ def clean_and_normalize_spectra_known_precursor_verbose(
     ):
         raise ValueError("All input series must share the same length.")
 
-    assert isinstance(max_results, int) and max_results > 0, (
-        f"max_results should be a positive integer, but got {max_results}"
-    )
+
 
     return clean_and_normalize_spectra_known_precursor_parallel_verbose(
         precursor_formula_series=precursor_formula_series,
@@ -893,7 +856,6 @@ def clean_and_normalize_spectra_known_precursor_verbose(
         fragment_masses_series=fragment_masses_series,
         fragment_intensities_series=fragment_intensities_series,
         tolerance_ppm=tolerance_ppm,
-        max_results=max_results,
         max_allowed_normalized_mass_error_ppm=max_allowed_normalized_mass_error_ppm,
     )
 
