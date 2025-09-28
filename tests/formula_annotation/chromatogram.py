@@ -39,7 +39,7 @@ if __name__ == "__main__":
             fragment_mass_accuracy_ppm=5.0,
             isotopic_mass_accuracy_ppm=2.0,
             isotopic_intensity_relative_tolerance=0.05,
-            isotopic_intensity_absolute_tolerance=1e6,
+            isotopic_intensity_absolute_tolerance=2e5,
         )
         elapsed = timeit.default_timer() - start
         timings.append(elapsed)
@@ -96,16 +96,15 @@ if __name__ == "__main__":
         pl.col('decomposed_formulas').is_not_null()
     ).unique(subset=pl.col('Peak ID')).height}")
 
+    show_columns = [
+        "Peak ID", "Precursor_mz_MSDIAL", "Height", 
+        "decomposed_formulas", "decomposed_formulas_str",
+        "cleaned_spectrum_formulas", "cleaned_spectrum_formulas_str", "cleaned_fragment_errors_ppm", "cleaned_msms_mz"
+    ]
     # Show top-level columns including normalized masses and single-formula assignments
-    print(annotated_chromatogram.select([
-        "Peak ID", "Precursor_mz_MSDIAL", "decomposed_formulas",
-        "cleaned_msms_mz", "cleaned_msms_intensity", "cleaned_spectrum_formulas"
-    ]))
+    print(annotated_chromatogram.select(show_columns))
 
     # Compact preview with errors
-    print(annotated_chromatogram.head(1).select([
-        "Peak ID", "Precursor_mz_MSDIAL", "decomposed_formulas",
-        "cleaned_spectrum_formulas", "cleaned_fragment_errors_ppm", "cleaned_msms_mz"
-    ]).to_init_repr())
+    print(annotated_chromatogram.slice(offset=1, length=5).select(show_columns).to_init_repr())
 
     print(annotated_chromatogram.schema)

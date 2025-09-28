@@ -90,8 +90,8 @@ sqlalchemy = "*"
 # runtest = '''
 # python -c "import sys,os; p=sys.argv[1]; p=os.path.relpath(p,os.getcwd()); p=p[p.find('src/')+4:] if 'src/' in p else p; p=p[:-3] if p.endswith('.py') else p; p=p.replace('/', '.'); import runpy; runpy.run_module(p, run_name='__main__')"
 # '''
-mass_decomp = "python tests/formula_annotation/mass_decomposition.py"
-chromatogram = "python tests/formula_annotation/chromatogram.py"
+test_mass_decomp = "python tests/formula_annotation/mass_decomposition.py"
+test_chromatogram = "python tests/formula_annotation/chromatogram.py"
 test_mol = "python tests/rdkit/mol.py"
 test_info_score = "python tests/spectral_information.py"
 test_verbose_wrappers = "python -m pytest tests/formula_annotation/test_verbose_wrappers.py"

@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from typing import List, Tuple, Dict
 from numba import  jit
 from ..formula_annotation.isotopic_pattern import deduce_isotopic_pattern
-from ..formula_annotation.mass_decomposition import decompose_mass_per_bounds, clean_and_normalize_spectra_known_precursor, NUM_ELEMENTS
+from ..formula_annotation.mass_decomposition import decompose_mass_per_bounds_verbose, clean_and_normalize_spectra_known_precursor_verbose, NUM_ELEMENTS
 from ..formula_annotation.element_table import ELEMENT_INDEX, ELEMENT_MASSES
 
 PROTON_MASS = ELEMENT_MASSES[ELEMENT_INDEX['H']]
@@ -363,23 +363,27 @@ def annotate_chromatogram_with_formulas(
         pl.struct(
             ["non_ionized_mass", "min_bounds", "max_bounds"]
         ).map_batches(
-            lambda batch: decompose_mass_per_bounds(
+            lambda batch: decompose_mass_per_bounds_verbose(
                 batch.struct.field("non_ionized_mass"),
                 batch.struct.field("min_bounds"),
                 batch.struct.field("max_bounds"),
                 tolerance_ppm=precursor_mass_accuracy_ppm,
             ),
-            return_dtype=pl.List(pl.Array(inner=pl.Int32, shape=(NUM_ELEMENTS,)))
-        ).alias("decomposed_formulas")
-    ).drop(["bounds"])
-    
+            return_dtype=pl.Struct({
+                "decomposed_formulas": pl.List(pl.Array(inner=pl.Int32, shape=(NUM_ELEMENTS,))),
+                "decomposed_formulas_str": pl.List(pl.String),
+            })
+        ).alias("decomposed_formulas_struct")).with_columns(
+            pl.col("decomposed_formulas_struct").struct.unnest()
+        ).drop(["bounds", "decomposed_formulas_struct"])
+
     chromatogram = chromatogram.with_columns(pl.col("msms_m/z").sub(addcut_mass).alias("non_ionized_msms_m/z"))
-    chromatogram = chromatogram.explode("decomposed_formulas")
+    chromatogram = chromatogram.explode(["decomposed_formulas", "decomposed_formulas_str"])
     
     # Cleaning + normalization (updated API requires observed precursor mass series)
     chromatogram = chromatogram.with_columns(
         pl.struct(["decomposed_formulas", "non_ionized_mass", "non_ionized_msms_m/z", "msms_intensity"]).map_batches(
-            lambda batch: clean_and_normalize_spectra_known_precursor(
+            lambda batch: clean_and_normalize_spectra_known_precursor_verbose(
                 precursor_formula_series=batch.struct.field("decomposed_formulas"),
                 precursor_masses_series=batch.struct.field("non_ionized_mass"),
                 fragment_masses_series=batch.struct.field("non_ionized_msms_m/z"),
@@ -391,6 +395,7 @@ def annotate_chromatogram_with_formulas(
                 "masses_normalized": pl.List(pl.Float64),
                 "cleaned_intensities": pl.List(pl.Float64),
                 "fragment_formulas": pl.List(pl.Array(inner=pl.Int32, shape=(NUM_ELEMENTS,))),
+                "fragment_formulas_str": pl.List(pl.String),
                 "fragment_errors_ppm": pl.List(pl.Float64),
             }),
         ).alias("cleaned_spectra")
@@ -401,6 +406,7 @@ def annotate_chromatogram_with_formulas(
             "masses_normalized": "cleaned_msms_mz",
             "cleaned_intensities": "cleaned_msms_intensity",
             "fragment_formulas": "cleaned_spectrum_formulas",
+            "fragment_formulas_str": "cleaned_spectrum_formulas_str",
             "fragment_errors_ppm": "cleaned_fragment_errors_ppm",
         }
     ).drop(

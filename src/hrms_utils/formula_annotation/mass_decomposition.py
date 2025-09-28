@@ -118,9 +118,42 @@ def decompose_mass_verbose(
 ) -> Tuple[pl.Series, pl.Series]:
     """Annotate masses and return both element counts and formatted formulas.
 
-    Parameters mirror :func:`decompose_mass`. The return value is a tuple
-    ``(formula_series, formula_string_series)`` sharing the nested layout
-    ``List(Array(Int32, NUM_ELEMENTS))``.
+    Wrapper for decompose_mass_parallel_verbose with the same input validation
+    as :func:`decompose_mass`. This verbose variant returns two Polars Series
+    that share the same nested layout: for each input mass there may be zero
+    or more candidate formulas.
+
+    Parameters
+    ----------
+    mass_series : pl.Series
+        Series of target masses (dtype Float64).
+    min_bounds : np.ndarray(shape=(NUM_ELEMENTS,), dtype=int32)
+        Minimum element counts (uniform for all masses).
+    max_bounds : np.ndarray(shape=(NUM_ELEMENTS,), dtype=int32)
+        Maximum element counts (uniform for all masses).
+    tolerance_ppm : float
+        Mass tolerance in ppm.
+    min_dbe : float
+        Minimum degree of unsaturation (DBE).
+    max_dbe : float
+        Maximum degree of unsaturation (DBE).
+    max_results : int
+        Upper bound on number of returned candidates per mass.
+
+    Returns
+    -------
+    Tuple[pl.Series, pl.Series]
+        - formula_series: pl.Series where each row is a List(Array(Int32, NUM_ELEMENTS))
+          containing integer element counts for each candidate formula.
+        - formula_string_series: pl.Series where each row is a List(Utf8)
+          containing the human-readable string representation for each candidate
+          formula in the corresponding position of `formula_series`.
+
+    Notes
+    -----
+    - The two returned Series are aligned: element-count arrays at index i in
+      `formula_series` correspond to the formula strings at index i in
+      `formula_string_series`.
     """
     assert isinstance(mass_series, pl.Series), f"mass_series should be a Polars Series, but got {type(mass_series)}"
     assert mass_series.dtype == pl.Float64, f"mass_series should be of type Float64, but got {mass_series.dtype}"
@@ -228,22 +261,50 @@ def decompose_mass_per_bounds_verbose(
     max_dbe: float = 40.0,
     max_results: int = 100000,
 ) -> Tuple[pl.Series, pl.Series]:
-    """Per-row bounds variant that also reports formatted formula strings."""
+    """Per-row bounds variant that also reports formatted formula strings.
+
+    This function is the per-row-bounds (per-mass) verbose variant of
+    :func:`decompose_mass_per_bounds`. Inputs are validated to be Polars Series
+    of fixed-size int32 arrays (shape NUM_ELEMENTS). The function delegates
+    heavy computation to the compiled implementation and returns a tuple of
+    two aligned Series.
+
+    Parameters
+    ----------
+    mass_series : pl.Series
+        Series of target masses (dtype Float64).
+    min_bounds : pl.Series
+        Per-mass minimum element counts (dtype: List/Array of Int32, shape NUM_ELEMENTS).
+    max_bounds : pl.Series
+        Per-mass maximum element counts (dtype: List/Array of Int32, shape NUM_ELEMENTS).
+    tolerance_ppm : float
+        Mass tolerance in ppm.
+    min_dbe : float
+        Minimum DBE.
+    max_dbe : float
+        Maximum DBE.
+    max_results : int
+        Upper bound on number of returned candidates per mass.
+
+    Returns
+    -------
+    Tuple[pl.Series, pl.Series]
+        - formula_series: pl.Series of List(Array(Int32, NUM_ELEMENTS)) containing
+          candidate element counts for each mass.
+        - formula_string_series: pl.Series of List(Utf8) containing the
+          human-readable formula string for each candidate in the corresponding
+          position of `formula_series`.
+    """
     assert isinstance(mass_series, pl.Series), f"mass_series should be a Polars Series, but got {type(mass_series)}"
     assert mass_series.dtype == pl.Float64, f"mass_series should be of type Float64, but got {mass_series.dtype}"
-    assert isinstance(min_bounds, pl.Series) and min_bounds.dtype == pl.Array(pl.Int32, shape=(NUM_ELEMENTS,)), (
-        f"min_bounds should be a Polars Series of int32 arrays, but got {type(min_bounds)} with dtype {min_bounds.dtype}"
-    )
-    assert isinstance(max_bounds, pl.Series) and max_bounds.dtype == pl.Array(pl.Int32, shape=(NUM_ELEMENTS,)), (
-        f"max_bounds should be a Polars Series of int32 arrays, but got {type(max_bounds)} with dtype {max_bounds.dtype}"
-    )
+    assert isinstance(min_bounds, pl.Series) and min_bounds.dtype == pl.Array(pl.Int32,shape=(NUM_ELEMENTS,)), f"min_bounds should be a Polars Series of int32 arrays, but got {type(min_bounds)} with dtype {min_bounds.dtype}"
+    assert isinstance(max_bounds, pl.Series) and max_bounds.dtype == pl.Array(pl.Int32,shape=(NUM_ELEMENTS,)), f"max_bounds should be a Polars Series of int32 arrays, but got {type(max_bounds)} with dtype {max_bounds.dtype}"
     assert isinstance(tolerance_ppm, (float, int)), f"tolerance_ppm should be a float or int, but got {type(tolerance_ppm)}"
     assert tolerance_ppm > 0, f"tolerance_ppm should be a positive value, but got {tolerance_ppm}"
-    assert isinstance(min_dbe, (float, int)), f"min_dbe should be a float or int, but got {type(min_dbe)}"
-    assert isinstance(max_dbe, (float, int)), f"max_dbe should be a float or int, but got {type(max_dbe)}"
-    assert isinstance(max_results, int) and max_results > 0, (
-        f"max_results should be a positive integer, but got {max_results}"
-    )
+    assert isinstance(min_dbe   , (float, int)), f"min_dbe should be a float or int, but got {type(min_dbe)}"
+    assert isinstance(max_dbe   , (float, int)), f"max_dbe should be a float or int, but got {type(max_dbe)}"
+    assert isinstance(max_results, int) and max_results > 0, f"max_results should be a positive integer, but got {max_results}" 
+
 
     return decompose_mass_parallel_per_bounds_verbose(
         target_masses=mass_series,
@@ -466,7 +527,46 @@ def decompose_spectra_known_precursor_verbose(
     tolerance_ppm: float = 5.0,
     max_results: int = 100000,
 ) -> Tuple[pl.Series, pl.Series]:
-    """Verbose decomposition that includes human-readable formulas for fragments."""
+    """Verbose decomposition that includes human-readable formulas for fragments.
+
+    Decomposes fragments for spectra where the precursor formula is already known.
+    This verbose variant returns two aligned Series:
+      - a structural Series describing the decomposition results, and
+      - a Series of human-readable formula strings aligned with fragment formulas.
+
+    Parameters
+    ----------
+    precursor_formula_series : pl.Series
+        Series of precursor formulas (dtype: pl.Array(pl.Int32, NUM_ELEMENTS)).
+    fragment_masses_series : pl.Series
+        Series of per-spectrum fragment mass lists (dtype: pl.List(pl.Float64)).
+    tolerance_ppm : float
+        Mass tolerance in ppm for fragment annotation.
+    max_results : int
+        Upper bound on candidates returned per fragment / spectrum.
+
+    Returns
+    -------
+    Tuple[pl.Series, pl.Series]
+        - results_struct_series: pl.Series of Struct/List where each entry
+          contains keys such as:
+            {
+                "precursor": Array(Int32, NUM_ELEMENTS),
+                "precursor_mass": Float64,
+                "precursor_error_ppm": Float64,
+                "fragments": List(List(Array(Int32, NUM_ELEMENTS))),
+                "fragment_masses": List(List(Float64)),
+                "fragment_errors_ppm": List(List(Float64))
+            }
+        - results_formula_strings_series: pl.Series of List(List(Utf8)) where each
+          inner string corresponds to the candidate array in the `fragments` field
+          of the struct at the same position.
+
+    Notes
+    -----
+    - The two returned Series are aligned so that string representations can be
+      used directly for display or downstream reporting.
+    """
     return decompose_spectra_known_precursor_parallel_verbose(
         precursor_formula_series=precursor_formula_series,
         fragment_masses_series=fragment_masses_series,
@@ -570,7 +670,43 @@ def clean_spectra_known_precursor_verbose(
     tolerance_ppm: float = 5.0,
     max_results: int = 100000,
 ) -> pl.Series:
-    """Clean spectra and include formula strings per fragment."""
+    """Clean spectra and include formula strings per fragment.
+
+    Verbose variant of :func:`clean_spectra_known_precursor`. Performs the same
+    validation and cleaning but also returns human-readable formula strings
+    aligned with the fragment formulas.
+
+    Inputs (per-spectrum / row):
+        - precursor_formula_series : pl.Series of fixed-size int32 arrays
+            dtype: pl.Array(pl.Int32, NUM_ELEMENTS)
+        - fragment_masses_series : pl.Series of lists of floats (pl.List(pl.Float64))
+        - fragment_intensities_series : pl.Series of lists of floats (pl.List(pl.Float64))
+
+    Parameters
+    ----------
+    tolerance_ppm : float
+        Mass tolerance in ppm.
+    max_results : int
+        Upper bound on the number of returned candidates to avoid memory blowup.
+
+    Returns
+    -------
+    pl.Series
+        A Series of Struct for each spectrum containing:
+            {
+                "masses": pl.List(pl.Float64),
+                "intensities": pl.List(pl.Float64),
+                "fragment_formulas": pl.List(pl.List(pl.Array(pl.Int32, NUM_ELEMENTS))),
+                "fragment_errors_ppm": pl.List(pl.List(pl.Float64)),
+                "fragment_formulas_str": pl.List(pl.List(pl.Utf8)),  # human-readable strings aligned with fragment_formulas
+            }
+
+    Notes
+    -----
+    - Fails fast on mismatched lengths or invalid dtypes (explicit error messages).
+    - Intended for use in Polars map_batches / elementwise pipelines where each
+      row is a spectrum.
+    """
     assert isinstance(precursor_formula_series, pl.Series), "precursor_formula_series must be a Polars Series"
     assert isinstance(fragment_masses_series, pl.Series), "fragment_masses_series must be a Polars Series"
     assert isinstance(fragment_intensities_series, pl.Series), "fragment_intensities_series must be a Polars Series"
@@ -680,7 +816,45 @@ def clean_and_normalize_spectra_known_precursor_verbose(
     max_results: int = 100000,
     max_allowed_normalized_mass_error_ppm: float = 5.0,
 ) -> pl.Series:
-    """Verbose cleaner + normalizer that adds ``fragment_formulas_str`` output."""
+    """Verbose cleaner + normalizer that adds ``fragment_formulas_str`` output.
+
+    Performs the same steps as :func:`clean_and_normalize_spectra_known_precursor`
+    but includes human-readable formula strings for the selected fragment formulas.
+
+    Inputs (per-spectrum / row):
+    - precursor_formula_series: pl.Array(pl.Int32, NUM_ELEMENTS)
+    - precursor_masses_series: pl.Float64 (observed precursor mass)
+    - fragment_masses_series:   pl.List(pl.Float64)
+    - fragment_intensities_series: pl.List(pl.Float64)
+
+    Parameters
+    ----------
+    tolerance_ppm : float
+        Mass tolerance used for fragment matching.
+    max_results : int
+        Upper bound on number of candidates returned per spectrum.
+    max_allowed_normalized_mass_error_ppm : float
+        Maximum allowed mean mass error after normalization (safeguard).
+
+    Returns
+    -------
+    pl.Series
+        A Series of Struct for each spectrum containing:
+            {
+                "masses_normalized": pl.List(pl.Float64),
+                "cleaned_intensities": pl.List(pl.Float64),
+                "fragment_formulas": pl.List(pl.Array(pl.Int32, NUM_ELEMENTS)),
+                "fragment_errors_ppm": pl.List(pl.Float64),
+                "fragment_formulas_str": pl.List(pl.Utf8),  # strings aligned with fragment_formulas
+            }
+
+    Notes
+    -----
+    - The verbose output includes `fragment_formulas_str` which provides a
+      human-readable representation for the chosen fragment formula per fragment.
+    - The function fails fast on schema mismatches and delegates compute to the
+      compiled verbose implementation.
+    """
     assert isinstance(precursor_formula_series, pl.Series), "precursor_formula_series must be a Polars Series"
     assert isinstance(precursor_masses_series, pl.Series), "precursor_masses_series must be a Polars Series"
     assert isinstance(fragment_masses_series, pl.Series), "fragment_masses_series must be a Polars Series"

@@ -1,6 +1,6 @@
 Metadata-Version: 2.4
 Name: hrms_utils
-Version: 0.6.0
+Version: 0.6.1
 Requires-Python: >=3.12
 Requires-Dist: polars<2,>=1.33.0
 Requires-Dist: rdkit>=2024.0.0

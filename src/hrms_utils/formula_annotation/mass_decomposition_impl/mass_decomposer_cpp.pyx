@@ -313,7 +313,7 @@ def decompose_mass_parallel_verbose(
     max_dbe: float = 40.0,
     max_hetero_ratio: float = 100.0,
     max_results: int = 100000
-) -> tuple[pl.Series, pl.Series]:
+) -> pl.Series:
     target_masses = target_masses.to_numpy()
 
     cdef np.ndarray[double, ndim=1, mode="c"] contig_masses = np.ascontiguousarray(target_masses, dtype=np.float64)
@@ -408,9 +408,9 @@ def decompose_mass_parallel_verbose(
     string_offset_array = pa.array(offsets_array, type=pa.int32())
     string_list_array = pa.ListArray.from_arrays(string_offset_array, string_values_array)
 
-    formula_series = pl.Series("decomposed_formula", final_array)
-    string_series = pl.Series("decomposed_formula_str", string_list_array)
-    return formula_series, string_series
+    formula_series = pl.Series("decomposed_formulas", final_array)
+    string_series = pl.Series("decomposed_formulas_str", string_list_array)
+    return pl.struct(formula_series, string_series,eager=True)
 
 def decompose_mass_parallel_per_bounds(
     target_masses: pl.Series, # 1D array of target masses
@@ -518,7 +518,7 @@ def decompose_mass_parallel_per_bounds_verbose(
     max_dbe: float = 40.0,
     max_hetero_ratio: float = 100.0,
     max_results: int = 100000
-) -> tuple[pl.Series, pl.Series]:
+) -> pl.Series:
 
     cdef np.ndarray[double, ndim=1, mode="c"] contig_masses = np.ascontiguousarray(target_masses.to_numpy(), dtype=np.float64)
     cdef np.ndarray[np.int32_t, ndim=2, mode="c"] contig_min_bounds = np.ascontiguousarray(min_bounds_per_mass.to_numpy(), dtype=np.int32)
@@ -642,9 +642,9 @@ def decompose_mass_parallel_per_bounds_verbose(
     string_offset_array = pa.array(offsets_array, type=pa.int32())
     string_list_array = pa.ListArray.from_arrays(string_offset_array, string_values_array)
 
-    formula_series = pl.Series("decomposed_formula", final_array)
-    string_series = pl.Series("decomposed_formula_str", string_list_array)
-    return formula_series, string_series
+    formula_series = pl.Series("decomposed_formulas", final_array)
+    string_series = pl.Series("decomposed_formulas_str", string_list_array)
+    return pl.struct(formula_series, string_series, eager=True)
 
 #TODO: make this run. currently its too nested, but this is the actual output we want- 
 # for each spectrum, we want a list of possbile explanations, each consisting of a precursor formula and a list of fragment formulas, where each fragment can have several explanations! also we want the masses and errors.
