@@ -1,1 +1,2 @@
-from .spectral_info_score import spectral_info_polars, spectral_info_search_polars
+from .spectral_info_score import spectral_info_polars
+from .tree_spectral_info_score import tree_spectral_info_score_polars

@@ -228,7 +228,7 @@ def annotate_chromatogram_with_formulas(
     normalized_fragment_mass_accuracy_ppm: float = 4.0,
     isotopic_mass_accuracy_ppm: float = 2.0,
     isotopic_minimum_intensity: float = 5e4,
-    isotopic_intensity_absolute_tolerance: float = 1e6,
+    isotopic_intensity_absolute_tolerance: float = 2e5,
     isotopic_intensity_relative_tolerance: float = 0.1,
 ) -> pl.DataFrame:
     """

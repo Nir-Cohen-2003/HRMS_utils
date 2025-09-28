@@ -93,7 +93,7 @@ sqlalchemy = "*"
 test_mass_decomp = "python tests/formula_annotation/mass_decomposition.py"
 test_chromatogram = "python tests/formula_annotation/chromatogram.py"
 test_mol = "python tests/rdkit/mol.py"
-test_info_score = "python tests/spectral_information.py"
+test_info_score = "python tests/spectral_information/spectral_information.py"
 test_verbose_wrappers = "python -m pytest tests/formula_annotation/test_verbose_wrappers.py"
 [feature.testing.dependencies]
 hrms_utils = {path = "."}
