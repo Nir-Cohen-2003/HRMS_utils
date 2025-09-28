@@ -38,6 +38,47 @@ std::vector<std::vector<Formula>> MassDecomposer::decompose_masses_parallel_per_
     return all_results;
 }
 
+std::vector<std::vector<FormulaWithString> > MassDecomposer::decompose_parallel_verbose(
+    const std::vector<double>& target_masses,
+    const DecompositionParams& params) {
+    std::vector<std::vector<Formula> > base_results = decompose_parallel(target_masses, params);
+    std::vector<std::vector<FormulaWithString> > verbose_results(base_results.size());
+    for (std::size_t i = 0; i < base_results.size(); ++i) {
+        const std::vector<Formula>& formulas = base_results[i];
+        std::vector<FormulaWithString>& verbose_vec = verbose_results[i];
+        verbose_vec.reserve(formulas.size());
+        for (std::size_t j = 0; j < formulas.size(); ++j) {
+            const Formula& formula = formulas[j];
+            FormulaWithString entry;
+            entry.formula = formula;
+            entry.formula_string = formula_to_string(formula);
+            verbose_vec.push_back(entry);
+        }
+    }
+    return verbose_results;
+}
+
+std::vector<std::vector<FormulaWithString> > MassDecomposer::decompose_masses_parallel_per_bounds_verbose(
+    const std::vector<double>& target_masses,
+    const std::vector<std::pair<Formula, Formula> >& per_mass_bounds,
+    const DecompositionParams& params) {
+    std::vector<std::vector<Formula> > base_results = decompose_masses_parallel_per_bounds(target_masses, per_mass_bounds, params);
+    std::vector<std::vector<FormulaWithString> > verbose_results(base_results.size());
+    for (std::size_t i = 0; i < base_results.size(); ++i) {
+        const std::vector<Formula>& formulas = base_results[i];
+        std::vector<FormulaWithString>& verbose_vec = verbose_results[i];
+        verbose_vec.reserve(formulas.size());
+        for (std::size_t j = 0; j < formulas.size(); ++j) {
+            const Formula& formula = formulas[j];
+            FormulaWithString entry;
+            entry.formula = formula;
+            entry.formula_string = formula_to_string(formula);
+            verbose_vec.push_back(entry);
+        }
+    }
+    return verbose_results;
+}
+
 ProperSpectrumResults MassDecomposer::decompose_spectrum(
     double precursor_mass,
     const std::vector<double>& fragment_masses,
@@ -89,6 +130,37 @@ ProperSpectrumResults MassDecomposer::decompose_spectrum(
     return results;
 }
 
+ProperSpectrumResultsVerbose MassDecomposer::decompose_spectrum_verbose(
+    double precursor_mass,
+    const std::vector<double>& fragment_masses,
+    const DecompositionParams& params) {
+    ProperSpectrumResults base = decompose_spectrum(precursor_mass, fragment_masses, params);
+    ProperSpectrumResultsVerbose verbose;
+    verbose.decompositions.reserve(base.decompositions.size());
+    for (std::size_t i = 0; i < base.decompositions.size(); ++i) {
+        const SpectrumDecomposition& src = base.decompositions[i];
+        SpectrumDecompositionVerbose dst;
+        dst.precursor = src.precursor;
+        dst.precursor_string = formula_to_string(src.precursor);
+        dst.precursor_mass = src.precursor_mass;
+        dst.precursor_error_ppm = src.precursor_error_ppm;
+        dst.fragments = src.fragments;
+        dst.fragment_masses = src.fragment_masses;
+        dst.fragment_errors_ppm = src.fragment_errors_ppm;
+        dst.fragment_strings.resize(src.fragments.size());
+        for (std::size_t j = 0; j < src.fragments.size(); ++j) {
+            const std::vector<Formula>& fragment_formulas = src.fragments[j];
+            std::vector<std::string>& fragment_strings = dst.fragment_strings[j];
+            fragment_strings.reserve(fragment_formulas.size());
+            for (std::size_t k = 0; k < fragment_formulas.size(); ++k) {
+                fragment_strings.push_back(formula_to_string(fragment_formulas[k]));
+            }
+        }
+        verbose.decompositions.push_back(dst);
+    }
+    return verbose;
+}
+
 std::vector<ProperSpectrumResults> MassDecomposer::decompose_spectra_parallel(
     const std::vector<Spectrum>& spectra,
     const DecompositionParams& params) {
@@ -111,6 +183,40 @@ std::vector<ProperSpectrumResults> MassDecomposer::decompose_spectra_parallel(
     return all_results;
 }
 
+std::vector<ProperSpectrumResultsVerbose> MassDecomposer::decompose_spectra_parallel_verbose(
+    const std::vector<Spectrum>& spectra,
+    const DecompositionParams& params) {
+    std::vector<ProperSpectrumResults> base_results = decompose_spectra_parallel(spectra, params);
+    std::vector<ProperSpectrumResultsVerbose> verbose_results(base_results.size());
+    for (std::size_t i = 0; i < base_results.size(); ++i) {
+        const ProperSpectrumResults& base = base_results[i];
+        ProperSpectrumResultsVerbose& dst = verbose_results[i];
+        dst.decompositions.reserve(base.decompositions.size());
+        for (std::size_t j = 0; j < base.decompositions.size(); ++j) {
+            const SpectrumDecomposition& src = base.decompositions[j];
+            SpectrumDecompositionVerbose verbose_decomp;
+            verbose_decomp.precursor = src.precursor;
+            verbose_decomp.precursor_string = formula_to_string(src.precursor);
+            verbose_decomp.precursor_mass = src.precursor_mass;
+            verbose_decomp.precursor_error_ppm = src.precursor_error_ppm;
+            verbose_decomp.fragments = src.fragments;
+            verbose_decomp.fragment_masses = src.fragment_masses;
+            verbose_decomp.fragment_errors_ppm = src.fragment_errors_ppm;
+            verbose_decomp.fragment_strings.resize(src.fragments.size());
+            for (std::size_t k = 0; k < src.fragments.size(); ++k) {
+                const std::vector<Formula>& fragment_formulas = src.fragments[k];
+                std::vector<std::string>& fragment_strings = verbose_decomp.fragment_strings[k];
+                fragment_strings.reserve(fragment_formulas.size());
+                for (std::size_t m = 0; m < fragment_formulas.size(); ++m) {
+                    fragment_strings.push_back(formula_to_string(fragment_formulas[m]));
+                }
+            }
+            dst.decompositions.push_back(verbose_decomp);
+        }
+    }
+    return verbose_results;
+}
+
 std::vector<ProperSpectrumResults> MassDecomposer::decompose_spectra_parallel_per_bounds(
     const std::vector<SpectrumWithBounds>& spectra,
     const DecompositionParams& params) {
@@ -127,6 +233,40 @@ std::vector<ProperSpectrumResults> MassDecomposer::decompose_spectra_parallel_pe
     }
     
     return all_results;
+}
+
+std::vector<ProperSpectrumResultsVerbose> MassDecomposer::decompose_spectra_parallel_per_bounds_verbose(
+    const std::vector<SpectrumWithBounds>& spectra,
+    const DecompositionParams& params) {
+    std::vector<ProperSpectrumResults> base_results = decompose_spectra_parallel_per_bounds(spectra, params);
+    std::vector<ProperSpectrumResultsVerbose> verbose_results(base_results.size());
+    for (std::size_t i = 0; i < base_results.size(); ++i) {
+        const ProperSpectrumResults& base = base_results[i];
+        ProperSpectrumResultsVerbose& dst = verbose_results[i];
+        dst.decompositions.reserve(base.decompositions.size());
+        for (std::size_t j = 0; j < base.decompositions.size(); ++j) {
+            const SpectrumDecomposition& src = base.decompositions[j];
+            SpectrumDecompositionVerbose verbose_decomp;
+            verbose_decomp.precursor = src.precursor;
+            verbose_decomp.precursor_string = formula_to_string(src.precursor);
+            verbose_decomp.precursor_mass = src.precursor_mass;
+            verbose_decomp.precursor_error_ppm = src.precursor_error_ppm;
+            verbose_decomp.fragments = src.fragments;
+            verbose_decomp.fragment_masses = src.fragment_masses;
+            verbose_decomp.fragment_errors_ppm = src.fragment_errors_ppm;
+            verbose_decomp.fragment_strings.resize(src.fragments.size());
+            for (std::size_t k = 0; k < src.fragments.size(); ++k) {
+                const std::vector<Formula>& fragment_formulas = src.fragments[k];
+                std::vector<std::string>& fragment_strings = verbose_decomp.fragment_strings[k];
+                fragment_strings.reserve(fragment_formulas.size());
+                for (std::size_t m = 0; m < fragment_formulas.size(); ++m) {
+                    fragment_strings.push_back(formula_to_string(fragment_formulas[m]));
+                }
+            }
+            dst.decompositions.push_back(verbose_decomp);
+        }
+    }
+    return verbose_results;
 }
 
 std::vector<std::vector<Formula>> MassDecomposer::decompose_spectrum_known_precursor(
@@ -151,6 +291,27 @@ std::vector<std::vector<Formula>> MassDecomposer::decompose_spectrum_known_precu
     return fragment_results;
 }
 
+std::vector<std::vector<FormulaWithString> > MassDecomposer::decompose_spectrum_known_precursor_verbose(
+    const Formula& precursor_formula,
+    const std::vector<double>& fragment_masses,
+    const DecompositionParams& params) {
+    std::vector<std::vector<Formula> > base_results = decompose_spectrum_known_precursor(precursor_formula, fragment_masses, params);
+    std::vector<std::vector<FormulaWithString> > verbose_results(base_results.size());
+    for (std::size_t i = 0; i < base_results.size(); ++i) {
+        const std::vector<Formula>& formulas = base_results[i];
+        std::vector<FormulaWithString>& verbose_vec = verbose_results[i];
+        verbose_vec.reserve(formulas.size());
+        for (std::size_t j = 0; j < formulas.size(); ++j) {
+            const Formula& formula = formulas[j];
+            FormulaWithString entry;
+            entry.formula = formula;
+            entry.formula_string = formula_to_string(formula);
+            verbose_vec.push_back(entry);
+        }
+    }
+    return verbose_results;
+}
+
 std::vector<std::vector<std::vector<Formula>>> MassDecomposer::decompose_spectra_known_precursor_parallel(
     const std::vector<SpectrumWithKnownPrecursor>& spectra,
     const DecompositionParams& params) {
@@ -171,6 +332,31 @@ std::vector<std::vector<std::vector<Formula>>> MassDecomposer::decompose_spectra
     }
     
     return all_results;
+}
+
+std::vector<std::vector<std::vector<FormulaWithString> > > MassDecomposer::decompose_spectra_known_precursor_parallel_verbose(
+    const std::vector<SpectrumWithKnownPrecursor>& spectra,
+    const DecompositionParams& params) {
+    std::vector<std::vector<std::vector<Formula> > > base_results = decompose_spectra_known_precursor_parallel(spectra, params);
+    std::vector<std::vector<std::vector<FormulaWithString> > > verbose_results(base_results.size());
+    for (std::size_t i = 0; i < base_results.size(); ++i) {
+        const std::vector<std::vector<Formula> >& spectrum_formulas = base_results[i];
+        std::vector<std::vector<FormulaWithString> >& verbose_spectrum = verbose_results[i];
+        verbose_spectrum.resize(spectrum_formulas.size());
+        for (std::size_t j = 0; j < spectrum_formulas.size(); ++j) {
+            const std::vector<Formula>& fragment_formulas = spectrum_formulas[j];
+            std::vector<FormulaWithString>& verbose_fragment = verbose_spectrum[j];
+            verbose_fragment.reserve(fragment_formulas.size());
+            for (std::size_t k = 0; k < fragment_formulas.size(); ++k) {
+                const Formula& formula = fragment_formulas[k];
+                FormulaWithString entry;
+                entry.formula = formula;
+                entry.formula_string = formula_to_string(formula);
+                verbose_fragment.push_back(entry);
+            }
+        }
+    }
+    return verbose_results;
 }
 
 MassDecomposer::CleanedSpectrumResult MassDecomposer::clean_spectrum_known_precursor(
@@ -230,6 +416,34 @@ MassDecomposer::CleanedSpectrumResult MassDecomposer::clean_spectrum_known_precu
     return out;
 }
 
+MassDecomposer::CleanedSpectrumResultVerbose MassDecomposer::clean_spectrum_known_precursor_verbose(
+    const Formula& precursor_formula,
+    const std::vector<double>& fragment_masses,
+    const std::vector<double>& fragment_intensities,
+    const DecompositionParams& params) {
+    CleanedSpectrumResult base = clean_spectrum_known_precursor(
+        precursor_formula,
+        fragment_masses,
+        fragment_intensities,
+        params
+    );
+    CleanedSpectrumResultVerbose verbose;
+    verbose.masses = base.masses;
+    verbose.intensities = base.intensities;
+    verbose.fragment_formulas = base.fragment_formulas;
+    verbose.fragment_errors_ppm = base.fragment_errors_ppm;
+    verbose.fragment_formulas_strings.resize(base.fragment_formulas.size());
+    for (std::size_t i = 0; i < base.fragment_formulas.size(); ++i) {
+        const std::vector<Formula>& formulas = base.fragment_formulas[i];
+        std::vector<std::string>& strings = verbose.fragment_formulas_strings[i];
+        strings.reserve(formulas.size());
+        for (std::size_t j = 0; j < formulas.size(); ++j) {
+            strings.push_back(formula_to_string(formulas[j]));
+        }
+    }
+    return verbose;
+}
+
 std::vector<MassDecomposer::CleanedSpectrumResult> MassDecomposer::clean_spectra_known_precursor_parallel(
     const std::vector<MassDecomposer::CleanSpectrumWithKnownPrecursor>& spectra,
     const DecompositionParams& params) {
@@ -250,6 +464,33 @@ std::vector<MassDecomposer::CleanedSpectrumResult> MassDecomposer::clean_spectra
         }
     }
     return all_results;
+}
+
+std::vector<MassDecomposer::CleanedSpectrumResultVerbose>
+MassDecomposer::clean_spectra_known_precursor_parallel_verbose(
+    const std::vector<MassDecomposer::CleanSpectrumWithKnownPrecursor>& spectra,
+    const DecompositionParams& params) {
+    std::vector<CleanedSpectrumResult> base_results = clean_spectra_known_precursor_parallel(spectra, params);
+    std::vector<CleanedSpectrumResultVerbose> verbose_results(base_results.size());
+    for (std::size_t i = 0; i < base_results.size(); ++i) {
+        const CleanedSpectrumResult& base = base_results[i];
+        CleanedSpectrumResultVerbose verbose;
+        verbose.masses = base.masses;
+        verbose.intensities = base.intensities;
+        verbose.fragment_formulas = base.fragment_formulas;
+        verbose.fragment_errors_ppm = base.fragment_errors_ppm;
+        verbose.fragment_formulas_strings.resize(base.fragment_formulas.size());
+        for (std::size_t j = 0; j < base.fragment_formulas.size(); ++j) {
+            const std::vector<Formula>& formulas = base.fragment_formulas[j];
+            std::vector<std::string>& strings = verbose.fragment_formulas_strings[j];
+            strings.reserve(formulas.size());
+            for (std::size_t k = 0; k < formulas.size(); ++k) {
+                strings.push_back(formula_to_string(formulas[k]));
+            }
+        }
+        verbose_results[i] = verbose;
+    }
+    return verbose_results;
 }
 
 MassDecomposer::CleanedAndNormalizedSpectrumResult MassDecomposer::clean_and_normalize_spectrum_known_precursor(
@@ -450,6 +691,34 @@ MassDecomposer::CleanedAndNormalizedSpectrumResult MassDecomposer::clean_and_nor
     return out;
 }
 
+MassDecomposer::CleanedAndNormalizedSpectrumResultVerbose
+MassDecomposer::clean_and_normalize_spectrum_known_precursor_verbose(
+    const Formula& precursor_formula,
+    const std::vector<double>& fragment_masses,
+    const std::vector<double>& fragment_intensities,
+    double precursor_mass,
+    double max_allowed_normalized_mass_error_ppm,
+    const DecompositionParams& params) {
+    CleanedAndNormalizedSpectrumResult base = clean_and_normalize_spectrum_known_precursor(
+        precursor_formula,
+        fragment_masses,
+        fragment_intensities,
+        precursor_mass,
+        max_allowed_normalized_mass_error_ppm,
+        params
+    );
+    CleanedAndNormalizedSpectrumResultVerbose verbose;
+    verbose.masses_normalized = base.masses_normalized;
+    verbose.intensities = base.intensities;
+    verbose.fragment_formulas = base.fragment_formulas;
+    verbose.fragment_errors_ppm = base.fragment_errors_ppm;
+    verbose.fragment_formulas_strings.reserve(base.fragment_formulas.size());
+    for (std::size_t i = 0; i < base.fragment_formulas.size(); ++i) {
+        verbose.fragment_formulas_strings.push_back(formula_to_string(base.fragment_formulas[i]));
+    }
+    return verbose;
+}
+
 std::vector<MassDecomposer::CleanedAndNormalizedSpectrumResult>
 MassDecomposer::clean_and_normalize_spectra_known_precursor_parallel(
     const std::vector<MassDecomposer::CleanSpectrumWithKnownPrecursor>& spectra,
@@ -476,4 +745,26 @@ MassDecomposer::clean_and_normalize_spectra_known_precursor_parallel(
         }
     }
     return all_results;
+}
+
+std::vector<MassDecomposer::CleanedAndNormalizedSpectrumResultVerbose>
+MassDecomposer::clean_and_normalize_spectra_known_precursor_parallel_verbose(
+    const std::vector<MassDecomposer::CleanSpectrumWithKnownPrecursor>& spectra,
+    const DecompositionParams& params) {
+    std::vector<CleanedAndNormalizedSpectrumResult> base_results = clean_and_normalize_spectra_known_precursor_parallel(spectra, params);
+    std::vector<CleanedAndNormalizedSpectrumResultVerbose> verbose_results(base_results.size());
+    for (std::size_t i = 0; i < base_results.size(); ++i) {
+        const CleanedAndNormalizedSpectrumResult& base = base_results[i];
+        CleanedAndNormalizedSpectrumResultVerbose verbose;
+        verbose.masses_normalized = base.masses_normalized;
+        verbose.intensities = base.intensities;
+        verbose.fragment_formulas = base.fragment_formulas;
+        verbose.fragment_errors_ppm = base.fragment_errors_ppm;
+        verbose.fragment_formulas_strings.reserve(base.fragment_formulas.size());
+        for (std::size_t j = 0; j < base.fragment_formulas.size(); ++j) {
+            verbose.fragment_formulas_strings.push_back(formula_to_string(base.fragment_formulas[j]));
+        }
+        verbose_results[i] = verbose;
+    }
+    return verbose_results;
 }

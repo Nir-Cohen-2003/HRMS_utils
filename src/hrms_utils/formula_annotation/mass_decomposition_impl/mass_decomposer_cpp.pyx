@@ -34,6 +34,10 @@ cdef extern from "mass_decomposer_common.hpp":
         void fill(int) nogil
         int& operator[](size_t) nogil
 
+    cdef struct FormulaWithString:
+        Formula_cpp formula
+        string formula_string
+
     cdef struct Spectrum:
         double precursor_mass
         vector[double] fragment_masses
@@ -58,6 +62,19 @@ cdef extern from "mass_decomposer_common.hpp":
 
     cdef struct ProperSpectrumResults:
         vector[SpectrumDecomposition] decompositions
+
+    cdef struct SpectrumDecompositionVerbose:
+        Formula_cpp precursor
+        string precursor_string
+        vector[vector[Formula_cpp]] fragments
+        vector[vector[string] ] fragment_strings
+        double precursor_mass
+        double precursor_error_ppm
+        vector[vector[double]] fragment_masses
+        vector[vector[double]] fragment_errors_ppm
+
+    cdef struct ProperSpectrumResultsVerbose:
+        vector[SpectrumDecompositionVerbose] decompositions
     
     cdef struct DecompositionParams:
         double tolerance_ppm
@@ -82,6 +99,13 @@ cdef extern from "mass_decomposer_common.hpp":
         vector[vector[Formula_cpp]] fragment_formulas
         vector[vector[double]] fragment_errors_ppm
 
+    cdef cppclass CleanedSpectrumResultVerbose_cpp "MassDecomposer::CleanedSpectrumResultVerbose":
+        vector[double] masses
+        vector[double] intensities
+        vector[vector[Formula_cpp]] fragment_formulas
+        vector[vector[string] ] fragment_formulas_strings
+        vector[vector[double]] fragment_errors_ppm
+
     # New: result for single-formula-per-fragment, normalized masses
     cdef cppclass CleanedAndNormalizedSpectrumResult_cpp "MassDecomposer::CleanedAndNormalizedSpectrumResult":
         vector[double] masses_normalized
@@ -89,25 +113,51 @@ cdef extern from "mass_decomposer_common.hpp":
         vector[Formula_cpp] fragment_formulas
         vector[double] fragment_errors_ppm
 
+    cdef cppclass CleanedAndNormalizedSpectrumResultVerbose_cpp "MassDecomposer::CleanedAndNormalizedSpectrumResultVerbose":
+        vector[double] masses_normalized
+        vector[double] intensities
+        vector[Formula_cpp] fragment_formulas
+        vector[string] fragment_formulas_strings
+        vector[double] fragment_errors_ppm
+
     cdef cppclass MassDecomposer:
         MassDecomposer(const Formula_cpp&, const Formula_cpp&)
         vector[Formula_cpp] decompose(double, const DecompositionParams&)
+        vector[FormulaWithString] decompose_verbose(double, const DecompositionParams&)
         @staticmethod
         vector[vector[Formula_cpp]] decompose_parallel(const vector[double]&, const DecompositionParams&)
         @staticmethod
         vector[vector[Formula_cpp]] decompose_masses_parallel_per_bounds(const vector[double]&, const vector[pair[Formula_cpp, Formula_cpp]]&, const DecompositionParams&)
+        @staticmethod
+        vector[vector[FormulaWithString]] decompose_parallel_verbose(const vector[double]&, const DecompositionParams&)
+        @staticmethod
+        vector[vector[FormulaWithString]] decompose_masses_parallel_per_bounds_verbose(const vector[double]&, const vector[pair[Formula_cpp, Formula_cpp]]&, const DecompositionParams&)
         ProperSpectrumResults decompose_spectrum(double, const vector[double]&, const DecompositionParams&)
+        ProperSpectrumResultsVerbose decompose_spectrum_verbose(double, const vector[double]&, const DecompositionParams&)
         @staticmethod
         vector[ProperSpectrumResults] decompose_spectra_parallel(const vector[Spectrum]&, const DecompositionParams&)
         @staticmethod
         vector[ProperSpectrumResults] decompose_spectra_parallel_per_bounds(const vector[SpectrumWithBounds]&, const DecompositionParams&)
+        @staticmethod
+        vector[ProperSpectrumResultsVerbose] decompose_spectra_parallel_verbose(const vector[Spectrum]&, const DecompositionParams&)
+        @staticmethod
+        vector[ProperSpectrumResultsVerbose] decompose_spectra_parallel_per_bounds_verbose(const vector[SpectrumWithBounds]&, const DecompositionParams&)
         vector[vector[Formula_cpp]] decompose_spectrum_known_precursor(const Formula_cpp&, const vector[double]&, const DecompositionParams&)
+        vector[vector[FormulaWithString]] decompose_spectrum_known_precursor_verbose(const Formula_cpp&, const vector[double]&, const DecompositionParams&)
         @staticmethod
         vector[vector[vector[Formula_cpp]]] decompose_spectra_known_precursor_parallel(const vector[SpectrumWithKnownPrecursor]&, const DecompositionParams&)
         @staticmethod
+        vector[vector[vector[FormulaWithString]]] decompose_spectra_known_precursor_parallel_verbose(const vector[SpectrumWithKnownPrecursor]&, const DecompositionParams&)
+        @staticmethod
         vector[CleanedSpectrumResult_cpp] clean_spectra_known_precursor_parallel(const vector[CleanSpectrumWithKnownPrecursor_cpp]&, const DecompositionParams&)
+        CleanedSpectrumResultVerbose_cpp clean_spectrum_known_precursor_verbose(const Formula_cpp&, const vector[double]&, const vector[double]&, const DecompositionParams&)
+        @staticmethod
+        vector[CleanedSpectrumResultVerbose_cpp] clean_spectra_known_precursor_parallel_verbose(const vector[CleanSpectrumWithKnownPrecursor_cpp]&, const DecompositionParams&)
         @staticmethod
         vector[CleanedAndNormalizedSpectrumResult_cpp] clean_and_normalize_spectra_known_precursor_parallel(const vector[CleanSpectrumWithKnownPrecursor_cpp]&, const DecompositionParams&)
+        CleanedAndNormalizedSpectrumResultVerbose_cpp clean_and_normalize_spectrum_known_precursor_verbose(const Formula_cpp&, const vector[double]&, const vector[double]&, double, double, const DecompositionParams&)
+        @staticmethod
+        vector[CleanedAndNormalizedSpectrumResultVerbose_cpp] clean_and_normalize_spectra_known_precursor_parallel_verbose(const vector[CleanSpectrumWithKnownPrecursor_cpp]&, const DecompositionParams&)
 # Typedef for numpy arrays
 ctypedef np.int32_t F_DTYPE_t
 
@@ -254,6 +304,114 @@ def decompose_mass_parallel(
         data=final_array,
         schema={"decomposed_formula":pl.List(pl.Array(pl.Int32, NUM_ELEMENTS))})
 
+def decompose_mass_parallel_verbose(
+    target_masses: pl.Series,
+    min_bounds: np.ndarray,
+    max_bounds: np.ndarray,
+    tolerance_ppm: float = 5.0,
+    min_dbe: float = 0.0,
+    max_dbe: float = 40.0,
+    max_hetero_ratio: float = 100.0,
+    max_results: int = 100000
+) -> tuple[pl.Series, pl.Series]:
+    target_masses = target_masses.to_numpy()
+
+    cdef np.ndarray[double, ndim=1, mode="c"] contig_masses = np.ascontiguousarray(target_masses, dtype=np.float64)
+    cdef double* masses_ptr = &contig_masses[0]
+    cdef size_t n_masses = contig_masses.shape[0]
+
+    if n_masses == 0:
+        empty_formulas = pl.Series(
+            "decomposed_formula",
+            [],
+            dtype=pl.List(pl.Array(pl.Int32, NUM_ELEMENTS)),
+        )
+        empty_strings = pl.Series(
+            "decomposed_formula_str",
+            [],
+            dtype=pl.List(pl.Utf8),
+        )
+        return empty_formulas, empty_strings
+
+    cdef vector[double] masses_vec
+    masses_vec.assign(masses_ptr, masses_ptr + n_masses)
+
+    cdef DecompositionParams params = _convert_params(tolerance_ppm, min_dbe, max_dbe, max_results, min_bounds, max_bounds)
+    cdef vector[vector[FormulaWithString]] all_results = MassDecomposer.decompose_parallel_verbose(masses_vec, params)
+
+    cdef size_t num_masses = all_results.size()
+    cdef size_t total_formulas = 0
+    cdef size_t total_chars = 0
+    cdef size_t i, j
+
+    for i in range(num_masses):
+        total_formulas += all_results[i].size()
+        for j in range(all_results[i].size()):
+            total_chars += all_results[i][j].formula_string.size()
+
+    if total_formulas > 2147483647:
+        raise OverflowError("Number of formulas exceeds int32 limits for Arrow offsets")
+    if total_chars > 2147483647:
+        raise OverflowError("Total string length exceeds int32 limits for Arrow offsets")
+
+    cdef np.ndarray offsets_array = np.empty(num_masses + 1, dtype=np.int32)
+    cdef np.int32_t[::1] offsets_view = offsets_array
+    cdef np.ndarray flat_formulas_array = np.empty(total_formulas * NUM_ELEMENTS, dtype=np.int32)
+
+    cdef np.ndarray string_offsets_array = np.empty(total_formulas + 1, dtype=np.int32)
+    cdef np.int32_t[::1] string_offsets_view = string_offsets_array
+    cdef np.ndarray string_data_array = np.empty(total_chars, dtype=np.uint8)
+
+    cdef F_DTYPE_t* dst_base = <F_DTYPE_t*> np.PyArray_DATA(flat_formulas_array)
+    cdef unsigned char* string_data_ptr = <unsigned char*> np.PyArray_DATA(string_data_array)
+
+    cdef size_t formula_idx = 0
+    cdef size_t current_offset = 0
+    cdef size_t char_cursor = 0
+    cdef string formula_str
+    cdef size_t length
+
+    string_offsets_view[0] = 0
+
+    for i in range(num_masses):
+        offsets_view[i] = current_offset
+        for j in range(all_results[i].size()):
+            memcpy(
+                <void*> (dst_base + formula_idx * NUM_ELEMENTS),
+                <const void*> formula_data_const(all_results[i][j].formula),
+                FORMULA_NBYTES_C
+            )
+            formula_str = all_results[i][j].formula_string
+            length = formula_str.size()
+            if length > 0:
+                memcpy(
+                    <void*>(string_data_ptr + char_cursor),
+                    <const void*> formula_str.c_str(),
+                    length
+                )
+            char_cursor += length
+            formula_idx += 1
+            string_offsets_view[formula_idx] = <np.int32_t>char_cursor
+        current_offset += all_results[i].size()
+
+    offsets_view[num_masses] = total_formulas
+    string_offsets_view[total_formulas] = <np.int32_t>char_cursor
+
+    value_array = pa.array(flat_formulas_array, type=pa.int32())
+    offset_array = pa.array(offsets_array, type=pa.int32())
+    formula_list_array = pa.FixedSizeListArray.from_arrays(value_array, NUM_ELEMENTS)
+    final_array = pa.ListArray.from_arrays(offset_array, formula_list_array)
+
+    string_offsets_buffer = pa.py_buffer(string_offsets_array)
+    string_data_buffer = pa.py_buffer(string_data_array)
+    string_values_array = pa.Array.from_buffers(pa.utf8(), total_formulas, [None, string_offsets_buffer, string_data_buffer])
+    string_offset_array = pa.array(offsets_array, type=pa.int32())
+    string_list_array = pa.ListArray.from_arrays(string_offset_array, string_values_array)
+
+    formula_series = pl.Series("decomposed_formula", final_array)
+    string_series = pl.Series("decomposed_formula_str", string_list_array)
+    return formula_series, string_series
+
 def decompose_mass_parallel_per_bounds(
     target_masses: pl.Series, # 1D array of target masses
     min_bounds_per_mass: pl.Series, # series of 1D arrays of min bounds, each with shape (NUM_ELEMENTS,)
@@ -350,6 +508,143 @@ def decompose_mass_parallel_per_bounds(
     return pl.from_arrow(
         data=final_array,
         schema={"decomposed_formula": pl.List(pl.Array(pl.Int32, NUM_ELEMENTS))})
+
+def decompose_mass_parallel_per_bounds_verbose(
+    target_masses: pl.Series,
+    min_bounds_per_mass: pl.Series,
+    max_bounds_per_mass: pl.Series,
+    tolerance_ppm: float = 5.0,
+    min_dbe: float = 0.0,
+    max_dbe: float = 40.0,
+    max_hetero_ratio: float = 100.0,
+    max_results: int = 100000
+) -> tuple[pl.Series, pl.Series]:
+
+    cdef np.ndarray[double, ndim=1, mode="c"] contig_masses = np.ascontiguousarray(target_masses.to_numpy(), dtype=np.float64)
+    cdef np.ndarray[np.int32_t, ndim=2, mode="c"] contig_min_bounds = np.ascontiguousarray(min_bounds_per_mass.to_numpy(), dtype=np.int32)
+    cdef np.ndarray[np.int32_t, ndim=2, mode="c"] contig_max_bounds = np.ascontiguousarray(max_bounds_per_mass.to_numpy(), dtype=np.int32)
+
+    cdef int n_masses = contig_masses.shape[0]
+    if n_masses == 0:
+        empty_formulas = pl.Series(
+            "decomposed_formula",
+            [],
+            dtype=pl.List(pl.Array(pl.Int32, NUM_ELEMENTS)),
+        )
+        empty_strings = pl.Series(
+            "decomposed_formula_str",
+            [],
+            dtype=pl.List(pl.Utf8),
+        )
+        return empty_formulas, empty_strings
+    if contig_min_bounds.shape[0] != n_masses or contig_max_bounds.shape[0] != n_masses:
+        raise ValueError("Number of rows in min_bounds_per_mass and max_bounds_per_mass must match the number of target masses.")
+    if contig_min_bounds.shape[1] != NUM_ELEMENTS or contig_max_bounds.shape[1] != NUM_ELEMENTS:
+        raise ValueError(f"Number of columns in bounds arrays must be {NUM_ELEMENTS}.")
+
+    cdef np.ndarray dummy_bounds = np.zeros(NUM_ELEMENTS, dtype=np.int32)
+    cdef DecompositionParams params = _convert_params(
+        tolerance_ppm,
+        min_dbe,
+        max_dbe,
+        max_results,
+        dummy_bounds,
+        dummy_bounds,
+    )
+
+    cdef vector[double] masses_vec
+    cdef double* masses_ptr = &contig_masses[0]
+    masses_vec.assign(masses_ptr, masses_ptr + n_masses)
+
+    cdef vector[pair[Formula_cpp, Formula_cpp]] bounds_vec
+    bounds_vec.reserve(n_masses)
+
+    cdef np.int32_t* min_bounds_ptr = &contig_min_bounds[0, 0]
+    cdef np.int32_t* max_bounds_ptr = &contig_max_bounds[0, 0]
+    cdef size_t i
+    cdef Formula_cpp min_f, max_f
+    cdef size_t formula_size_bytes = NUM_ELEMENTS * sizeof(F_DTYPE_t)
+
+    for i in range(n_masses):
+        memcpy(<void*>&min_f[0], min_bounds_ptr + i * NUM_ELEMENTS, formula_size_bytes)
+        memcpy(<void*>&max_f[0], max_bounds_ptr + i * NUM_ELEMENTS, formula_size_bytes)
+        bounds_vec.push_back(pair[Formula_cpp, Formula_cpp](min_f, max_f))
+
+    cdef vector[vector[FormulaWithString]] all_results
+    all_results = MassDecomposer.decompose_masses_parallel_per_bounds_verbose(masses_vec, bounds_vec, params)
+
+    cdef size_t num_masses = all_results.size()
+    cdef size_t total_formulas = 0
+    cdef size_t total_chars = 0
+    cdef size_t j
+
+    for i in range(num_masses):
+        total_formulas += all_results[i].size()
+        for j in range(all_results[i].size()):
+            total_chars += all_results[i][j].formula_string.size()
+
+    if total_formulas > 2147483647:
+        raise OverflowError("Number of formulas exceeds int32 limits for Arrow offsets")
+    if total_chars > 2147483647:
+        raise OverflowError("Total string length exceeds int32 limits for Arrow offsets")
+
+    cdef np.ndarray offsets_array = np.empty(num_masses + 1, dtype=np.int32)
+    cdef np.int32_t[::1] offsets_view = offsets_array
+    cdef np.ndarray flat_formulas_array = np.empty(total_formulas * NUM_ELEMENTS, dtype=np.int32)
+
+    cdef np.ndarray string_offsets_array = np.empty(total_formulas + 1, dtype=np.int32)
+    cdef np.int32_t[::1] string_offsets_view = string_offsets_array
+    cdef np.ndarray string_data_array = np.empty(total_chars, dtype=np.uint8)
+
+    cdef F_DTYPE_t* dst_base = <F_DTYPE_t*> np.PyArray_DATA(flat_formulas_array)
+    cdef unsigned char* string_data_ptr = <unsigned char*> np.PyArray_DATA(string_data_array)
+
+    cdef size_t formula_idx = 0
+    cdef size_t current_offset = 0
+    cdef size_t char_cursor = 0
+    cdef string formula_str
+    cdef size_t length
+
+    string_offsets_view[0] = 0
+
+    for i in range(num_masses):
+        offsets_view[i] = current_offset
+        for j in range(all_results[i].size()):
+            memcpy(
+                <void*> (dst_base + formula_idx * NUM_ELEMENTS),
+                <const void*> formula_data_const(all_results[i][j].formula),
+                FORMULA_NBYTES_C
+            )
+            formula_str = all_results[i][j].formula_string
+            length = formula_str.size()
+            if length > 0:
+                memcpy(
+                    <void*>(string_data_ptr + char_cursor),
+                    <const void*> formula_str.c_str(),
+                    length
+                )
+            char_cursor += length
+            formula_idx += 1
+            string_offsets_view[formula_idx] = <np.int32_t>char_cursor
+        current_offset += all_results[i].size()
+
+    offsets_view[num_masses] = total_formulas
+    string_offsets_view[total_formulas] = <np.int32_t>char_cursor
+
+    value_array = pa.array(flat_formulas_array, type=pa.int32())
+    offset_array = pa.array(offsets_array, type=pa.int32())
+    formula_list_array = pa.FixedSizeListArray.from_arrays(value_array, NUM_ELEMENTS)
+    final_array = pa.ListArray.from_arrays(offset_array, formula_list_array)
+
+    string_offsets_buffer = pa.py_buffer(string_offsets_array)
+    string_data_buffer = pa.py_buffer(string_data_array)
+    string_values_array = pa.Array.from_buffers(pa.utf8(), total_formulas, [None, string_offsets_buffer, string_data_buffer])
+    string_offset_array = pa.array(offsets_array, type=pa.int32())
+    string_list_array = pa.ListArray.from_arrays(string_offset_array, string_values_array)
+
+    formula_series = pl.Series("decomposed_formula", final_array)
+    string_series = pl.Series("decomposed_formula_str", string_list_array)
+    return formula_series, string_series
 
 #TODO: make this run. currently its too nested, but this is the actual output we want- 
 # for each spectrum, we want a list of possbile explanations, each consisting of a precursor formula and a list of fragment formulas, where each fragment can have several explanations! also we want the masses and errors.
@@ -766,6 +1061,378 @@ def clean_spectra_known_precursor_parallel(
         eager=True
     )
 
+def clean_spectra_known_precursor_parallel_verbose(
+    precursor_formula_series: pl.Series,
+    fragment_masses_series: pl.Series,
+    fragment_intensities_series: pl.Series,
+    tolerance_ppm: float = 5.0,
+    max_results: int = 100000
+) -> pl.Series:
+    cdef np.ndarray[np.int32_t, ndim=2, mode="c"] contig_precursors = np.ascontiguousarray(
+        precursor_formula_series.to_numpy(), dtype=np.int32
+    )
+    cdef int n = <int>contig_precursors.shape[0]
+    if contig_precursors.shape[1] != NUM_ELEMENTS:
+        raise ValueError(f"Each precursor formula must have length {NUM_ELEMENTS} (got {contig_precursors.shape[1]}).")
+    if fragment_masses_series.len() != n or fragment_intensities_series.len() != n:
+        raise ValueError("fragment_masses_series and fragment_intensities_series lengths must match precursor_formula_series length.")
+    if n == 0:
+        s_masses = pl.Series("normalized_masses", [], dtype=pl.List(pl.Float64))
+        s_intens = pl.Series("cleaned_intensities", [], dtype=pl.List(pl.Float64))
+        s_frm = pl.Series("fragment_formulas", [], dtype=pl.List(pl.List(pl.Array(pl.Int32, NUM_ELEMENTS))))
+        s_frm_str = pl.Series("fragment_formulas_str", [], dtype=pl.List(pl.List(pl.Utf8)))
+        s_err = pl.Series("fragment_errors_ppm", [], dtype=pl.List(pl.List(pl.Float64)))
+        return pl.struct(s_masses, s_intens, s_frm, s_frm_str, s_err, eager=True)
+
+    cdef np.ndarray min_bounds = np.zeros(NUM_ELEMENTS, dtype=np.int32)
+    cdef np.ndarray max_bounds = np.zeros(NUM_ELEMENTS, dtype=np.int32)
+    cdef DecompositionParams params = _convert_params(
+        tolerance_ppm, 0.0, 30.0,
+        max_results,
+        min_bounds,
+        max_bounds,
+    )
+
+    frag_mass_lists = fragment_masses_series.to_list()
+    frag_int_lists = fragment_intensities_series.to_list()
+
+    cdef vector[CleanSpectrumWithKnownPrecursor_cpp] spectra_vec
+    spectra_vec.reserve(n)
+
+    cdef np.int32_t* prec_ptr = &contig_precursors[0, 0]
+    cdef size_t formula_size_bytes = NUM_ELEMENTS * sizeof(F_DTYPE_t)
+    cdef size_t i
+    cdef Formula_cpp prec
+    cdef CleanSpectrumWithKnownPrecursor_cpp s
+
+    cdef np.ndarray[double, ndim=1, mode="c"] mass_contig
+    cdef np.ndarray[double, ndim=1, mode="c"] inten_contig
+    cdef double* mptr
+    cdef double* iptr
+    cdef Py_ssize_t mlen, ilen
+
+    for i in range(n):
+        memcpy(<void*>&prec[0], <const void*>(prec_ptr + i * NUM_ELEMENTS), formula_size_bytes)
+        s.precursor_formula = prec
+
+        seq_m = frag_mass_lists[i] if frag_mass_lists[i] is not None else []
+        mass_contig = np.ascontiguousarray(seq_m, dtype=np.float64)
+        mlen = mass_contig.shape[0]
+        if mlen > 0:
+            mptr = &mass_contig[0]
+            s.fragment_masses.assign(mptr, mptr + mlen)
+        else:
+            s.fragment_masses.clear()
+
+        seq_i = frag_int_lists[i] if frag_int_lists[i] is not None else []
+        inten_contig = np.ascontiguousarray(seq_i, dtype=np.float64)
+        ilen = inten_contig.shape[0]
+        if ilen > 0:
+            iptr = &inten_contig[0]
+            s.fragment_intensities.assign(iptr, iptr + ilen)
+        else:
+            s.fragment_intensities.clear()
+
+        spectra_vec.push_back(s)
+
+    cdef vector[CleanedSpectrumResultVerbose_cpp] all_results
+    all_results = MassDecomposer.clean_spectra_known_precursor_parallel_verbose(spectra_vec, params)
+
+    cdef size_t n_specs = all_results.size()
+    cdef size_t total_frags = 0
+    cdef size_t total_formulas = 0
+    cdef size_t total_masses = 0
+    cdef size_t total_intens = 0
+    cdef size_t total_chars = 0
+    cdef size_t si, fj, fk
+
+    for si in range(n_specs):
+        total_frags += all_results[si].fragment_formulas.size()
+        total_masses += all_results[si].masses.size()
+        total_intens += all_results[si].intensities.size()
+        for fj in range(all_results[si].fragment_formulas.size()):
+            total_formulas += all_results[si].fragment_formulas[fj].size()
+            for fk in range(all_results[si].fragment_formulas_strings[fj].size()):
+                total_chars += all_results[si].fragment_formulas_strings[fj][fk].size()
+
+    if total_frags > 2147483647:
+        raise OverflowError("Number of fragments exceeds int32 limits for Arrow offsets")
+    if total_formulas > 2147483647:
+        raise OverflowError("Number of formulas exceeds int32 limits for Arrow offsets")
+    if total_chars > 2147483647:
+        raise OverflowError("Total string length exceeds int32 limits for Arrow offsets")
+
+    cdef np.ndarray offs_frags = np.empty(n_specs + 1, dtype=np.int32)
+    cdef np.int32_t[::1] offs_frags_v = offs_frags
+    cdef np.ndarray offs_formulas = np.empty(total_frags + 1, dtype=np.int32)
+    cdef np.int32_t[::1] offs_formulas_v = offs_formulas
+    cdef np.ndarray flat_masses = np.empty(total_masses, dtype=np.float64)
+    cdef double* masses_dst = <double*> np.PyArray_DATA(flat_masses)
+    cdef np.ndarray flat_intens = np.empty(total_intens, dtype=np.float64)
+    cdef double* intens_dst = <double*> np.PyArray_DATA(flat_intens)
+    cdef np.ndarray flat_formula_vals = np.empty(total_formulas * NUM_ELEMENTS, dtype=np.int32)
+    cdef F_DTYPE_t* fvals_dst = <F_DTYPE_t*> np.PyArray_DATA(flat_formula_vals)
+    cdef np.ndarray flat_errors = np.empty(total_formulas, dtype=np.float64)
+    cdef double* ferr_dst = <double*> np.PyArray_DATA(flat_errors)
+    cdef np.ndarray string_offsets_array = np.empty(total_formulas + 1, dtype=np.int32)
+    cdef np.int32_t[::1] string_offsets_view = string_offsets_array
+    cdef np.ndarray string_data_array = np.empty(total_chars, dtype=np.uint8)
+    cdef unsigned char* string_data_ptr = <unsigned char*> np.PyArray_DATA(string_data_array)
+
+    cdef size_t frag_cursor = 0
+    cdef size_t formula_cursor = 0
+    cdef size_t mass_cursor = 0
+    cdef size_t intens_cursor = 0
+    cdef size_t char_cursor = 0
+    cdef size_t n_mass_i = 0
+    cdef size_t n_int_i = 0
+    cdef size_t nf = 0
+    cdef size_t nk = 0
+    cdef size_t idx
+    cdef string formula_str
+    cdef size_t length
+
+    offs_frags_v[0] = 0
+    offs_formulas_v[0] = 0
+    string_offsets_view[0] = 0
+
+    for si in range(n_specs):
+        n_mass_i = all_results[si].masses.size()
+        for idx in range(n_mass_i):
+            masses_dst[mass_cursor + idx] = all_results[si].masses[idx]
+        mass_cursor += n_mass_i
+
+        n_int_i = all_results[si].intensities.size()
+        for idx in range(n_int_i):
+            intens_dst[intens_cursor + idx] = all_results[si].intensities[idx]
+        intens_cursor += n_int_i
+
+        nf = all_results[si].fragment_formulas.size()
+        for fj in range(nf):
+            offs_formulas_v[frag_cursor] = <np.int32_t>formula_cursor
+            nk = all_results[si].fragment_formulas[fj].size()
+            for fk in range(nk):
+                memcpy(
+                    <void*>(fvals_dst + (formula_cursor + fk) * NUM_ELEMENTS),
+                    <const void*> formula_data_const(all_results[si].fragment_formulas[fj][fk]),
+                    FORMULA_NBYTES_C,
+                )
+                ferr_dst[formula_cursor + fk] = all_results[si].fragment_errors_ppm[fj][fk]
+                formula_str = all_results[si].fragment_formulas_strings[fj][fk]
+                length = formula_str.size()
+                if length > 0:
+                    memcpy(
+                        <void*>(string_data_ptr + char_cursor),
+                        <const void*> formula_str.c_str(),
+                        length,
+                    )
+                char_cursor += length
+                string_offsets_view[formula_cursor + fk + 1] = <np.int32_t>char_cursor
+            formula_cursor += nk
+            offs_formulas_v[frag_cursor + 1] = <np.int32_t>formula_cursor
+            frag_cursor += 1
+        offs_frags_v[si + 1] = <np.int32_t>frag_cursor
+
+    string_offsets_view[formula_cursor] = <np.int32_t>char_cursor
+
+    value_masses = pa.array(flat_masses, type=pa.float64())
+    offs_frags_arr = pa.array(offs_frags, type=pa.int32())
+    masses_arr = pa.ListArray.from_arrays(offs_frags_arr, value_masses)
+
+    value_intens = pa.array(flat_intens, type=pa.float64())
+    intens_arr = pa.ListArray.from_arrays(offs_frags_arr, value_intens)
+
+    formula_values_arr = pa.array(flat_formula_vals, type=pa.int32())
+    fixed_formula_arr = pa.FixedSizeListArray.from_arrays(formula_values_arr, NUM_ELEMENTS)
+    offs_formulas_arr = pa.array(offs_formulas, type=pa.int32())
+    inner_formula_list = pa.ListArray.from_arrays(offs_formulas_arr, fixed_formula_arr)
+    outer_formula_list = pa.ListArray.from_arrays(offs_frags_arr, inner_formula_list)
+
+    error_values_arr = pa.array(flat_errors, type=pa.float64())
+    inner_error_list = pa.ListArray.from_arrays(offs_formulas_arr, error_values_arr)
+    outer_error_list = pa.ListArray.from_arrays(offs_frags_arr, inner_error_list)
+
+    string_offsets_buffer = pa.py_buffer(string_offsets_array)
+    string_data_buffer = pa.py_buffer(string_data_array)
+    string_values_array = pa.Array.from_buffers(pa.utf8(), total_formulas, [None, string_offsets_buffer, string_data_buffer])
+    inner_string_list = pa.ListArray.from_arrays(offs_formulas_arr, string_values_array)
+    outer_string_list = pa.ListArray.from_arrays(offs_frags_arr, inner_string_list)
+
+    s_masses = pl.Series("normalized_masses", masses_arr)
+    s_intensities = pl.Series("cleaned_intensities", intens_arr)
+    s_formulas = pl.Series("fragment_formulas", outer_formula_list)
+    s_formulas_str = pl.Series("fragment_formulas_str", outer_string_list)
+    s_errors = pl.Series("fragment_errors_ppm", outer_error_list)
+    return pl.struct(
+        s_masses,
+        s_intensities,
+        s_formulas,
+        s_formulas_str,
+        s_errors,
+        eager=True,
+    )
+
+def decompose_spectra_known_precursor_parallel_verbose(
+    precursor_formula_series: pl.Series,
+    fragment_masses_series: pl.Series,
+    tolerance_ppm: float = 5.0,
+    max_results: int = 100000
+) -> tuple[pl.Series, pl.Series]:
+    cdef np.ndarray[np.int32_t, ndim=2, mode="c"] contig_precursors = np.ascontiguousarray(
+        precursor_formula_series.to_numpy(), dtype=np.int32
+    )
+
+    cdef int n = <int>contig_precursors.shape[0]
+    if n == 0:
+        empty_formulas = pl.Series(
+            "fragment_formulas",
+            [],
+            dtype=pl.List(pl.List(pl.Array(pl.Int32, NUM_ELEMENTS))),
+        )
+        empty_strings = pl.Series(
+            "fragment_formulas_str",
+            [],
+            dtype=pl.List(pl.List(pl.Utf8)),
+        )
+        return empty_formulas, empty_strings
+    if contig_precursors.shape[1] != NUM_ELEMENTS:
+        raise ValueError(f"Each precursor formula must have length {NUM_ELEMENTS} (got {contig_precursors.shape[1]}).")
+    if fragment_masses_series.len() != n:
+        raise ValueError("fragment_masses_series length must match precursor_formula_series length.")
+
+    cdef np.ndarray min_bounds = np.zeros(NUM_ELEMENTS, dtype=np.int32)
+    cdef np.ndarray max_bounds = np.zeros(NUM_ELEMENTS, dtype=np.int32)
+    cdef DecompositionParams params = _convert_params(
+        tolerance_ppm, 0.0, 30.0,
+        max_results,
+        min_bounds,
+        max_bounds,
+    )
+
+    cdef vector[SpectrumWithKnownPrecursor] spectra_vec
+    spectra_vec.reserve(n)
+
+    cdef np.int32_t* prec_ptr = &contig_precursors[0, 0]
+    cdef size_t formula_size_bytes = NUM_ELEMENTS * sizeof(F_DTYPE_t)
+    cdef size_t i
+    cdef Formula_cpp prec
+
+    frag_lists = fragment_masses_series.to_list()
+
+    cdef SpectrumWithKnownPrecursor s
+    cdef np.ndarray[double, ndim=1, mode="c"] frag_contig
+    cdef double* fptr
+    cdef Py_ssize_t flen
+
+    for i in range(n):
+        memcpy(<void*>&prec[0], <const void*>(prec_ptr + i * NUM_ELEMENTS), formula_size_bytes)
+        s.precursor_formula = prec
+
+        seq = frag_lists[i] if frag_lists[i] is not None else []
+        frag_contig = np.ascontiguousarray(seq, dtype=np.float64)
+        flen = frag_contig.shape[0]
+        if flen > 0:
+            fptr = &frag_contig[0]
+            s.fragment_masses.assign(fptr, fptr + flen)
+        else:
+            s.fragment_masses.clear()
+
+        spectra_vec.push_back(s)
+
+    cdef vector[vector[vector[FormulaWithString]]] all_results
+    all_results = MassDecomposer.decompose_spectra_known_precursor_parallel_verbose(spectra_vec, params)
+
+    cdef size_t n_specs = all_results.size()
+    cdef size_t total_fragments = 0
+    cdef size_t total_formulas = 0
+    cdef size_t total_chars = 0
+    cdef size_t si, fj, fk
+
+    for si in range(n_specs):
+        total_fragments += all_results[si].size()
+        for fj in range(all_results[si].size()):
+            total_formulas += all_results[si][fj].size()
+            for fk in range(all_results[si][fj].size()):
+                total_chars += all_results[si][fj][fk].formula_string.size()
+
+    if total_fragments > 2147483647:
+        raise OverflowError("Number of fragments exceeds int32 limits for Arrow offsets")
+    if total_formulas > 2147483647:
+        raise OverflowError("Number of formulas exceeds int32 limits for Arrow offsets")
+    if total_chars > 2147483647:
+        raise OverflowError("Total string length exceeds int32 limits for Arrow offsets")
+
+    cdef np.ndarray offs_specs = np.empty(n_specs + 1, dtype=np.int32)
+    cdef np.int32_t[::1] offs_specs_view = offs_specs
+    cdef np.ndarray offs_frags = np.empty(total_fragments + 1, dtype=np.int32)
+    cdef np.int32_t[::1] offs_frags_view = offs_frags
+    cdef np.ndarray flat_formulas = np.empty(total_formulas * NUM_ELEMENTS, dtype=np.int32)
+    cdef F_DTYPE_t* dst_base = <F_DTYPE_t*> np.PyArray_DATA(flat_formulas)
+    cdef np.ndarray string_offsets_array = np.empty(total_formulas + 1, dtype=np.int32)
+    cdef np.int32_t[::1] string_offsets_view = string_offsets_array
+    cdef np.ndarray string_data_array = np.empty(total_chars, dtype=np.uint8)
+    cdef unsigned char* string_data_ptr = <unsigned char*> np.PyArray_DATA(string_data_array)
+
+    cdef size_t frag_cursor = 0
+    cdef size_t formula_cursor = 0
+    cdef size_t char_cursor = 0
+    cdef size_t nf = 0
+    cdef size_t nk = 0
+    cdef string formula_str
+    cdef size_t length
+
+    offs_specs_view[0] = 0
+    offs_frags_view[0] = 0
+    string_offsets_view[0] = 0
+
+    for si in range(n_specs):
+        nf = all_results[si].size()
+        for fj in range(nf):
+            offs_frags_view[frag_cursor] = <np.int32_t>formula_cursor
+            nk = all_results[si][fj].size()
+            if nk == 0:
+                string_offsets_view[formula_cursor] = <np.int32_t>char_cursor
+            for fk in range(nk):
+                memcpy(
+                    <void*>(dst_base + (formula_cursor + fk) * NUM_ELEMENTS),
+                    <const void*> formula_data_const(all_results[si][fj][fk].formula),
+                    FORMULA_NBYTES_C,
+                )
+                formula_str = all_results[si][fj][fk].formula_string
+                length = formula_str.size()
+                if length > 0:
+                    memcpy(
+                        <void*>(string_data_ptr + char_cursor),
+                        <const void*> formula_str.c_str(),
+                        length,
+                    )
+                char_cursor += length
+                string_offsets_view[formula_cursor + fk + 1] = <np.int32_t>char_cursor
+            formula_cursor += nk
+            offs_frags_view[frag_cursor + 1] = <np.int32_t>formula_cursor
+            frag_cursor += 1
+        offs_specs_view[si + 1] = <np.int32_t>frag_cursor
+
+    string_offsets_view[formula_cursor] = <np.int32_t>char_cursor
+
+    offs_specs_arr = pa.array(offs_specs, type=pa.int32())
+    offs_frags_arr = pa.array(offs_frags, type=pa.int32())
+
+    value_formulas = pa.array(flat_formulas, type=pa.int32())
+    fixed_formulas = pa.FixedSizeListArray.from_arrays(value_formulas, NUM_ELEMENTS)
+    inner_formulas = pa.ListArray.from_arrays(offs_frags_arr, fixed_formulas)
+    outer_formulas = pa.ListArray.from_arrays(offs_specs_arr, inner_formulas)
+
+    string_offsets_buffer = pa.py_buffer(string_offsets_array)
+    string_data_buffer = pa.py_buffer(string_data_array)
+    string_values = pa.Array.from_buffers(pa.utf8(), total_formulas, [None, string_offsets_buffer, string_data_buffer])
+    inner_strings = pa.ListArray.from_arrays(offs_frags_arr, string_values)
+    outer_strings = pa.ListArray.from_arrays(offs_specs_arr, inner_strings)
+
+    formula_series = pl.Series("fragment_formulas", outer_formulas)
+    string_series = pl.Series("fragment_formulas_str", outer_strings)
+    return formula_series, string_series
+
 def clean_and_normalize_spectra_known_precursor_parallel(
     precursor_formula_series: pl.Series,   # pl.Array(int32, NUM_ELEMENTS)
     precursor_masses_series: pl.Series,    # Float64 per spectrum (observed)
@@ -937,3 +1604,193 @@ def clean_and_normalize_spectra_known_precursor_parallel(
         s_errors,
         eager=True
     )
+
+def clean_and_normalize_spectra_known_precursor_parallel_verbose(
+    precursor_formula_series: pl.Series,
+    precursor_masses_series: pl.Series,
+    fragment_masses_series: pl.Series,
+    fragment_intensities_series: pl.Series,
+    *,
+    tolerance_ppm: float = 5.0,
+    max_results: int = 100000,
+    max_allowed_normalized_mass_error_ppm: float = 5.0,
+) -> pl.Series:
+    """
+    Verbose variant returning both numeric outputs and string representations for kept fragment formulas.
+    """
+    cdef np.ndarray[np.int32_t, ndim=2, mode="c"] contig_precursors = np.ascontiguousarray(
+        precursor_formula_series.to_numpy(), dtype=np.int32
+    )
+    cdef int n = <int>contig_precursors.shape[0]
+    if contig_precursors.shape[1] != NUM_ELEMENTS:
+        raise ValueError(f"Each precursor formula must have length {NUM_ELEMENTS} (got {contig_precursors.shape[1]}).")
+    if (
+        fragment_masses_series.len() != n
+        or fragment_intensities_series.len() != n
+        or precursor_masses_series.len() != n
+    ):
+        raise ValueError("All input series must have the same length.")
+    if n == 0:
+        s_masses = pl.Series("masses_normalized", [], dtype=pl.List(pl.Float64))
+        s_intens = pl.Series("cleaned_intensities", [], dtype=pl.List(pl.Float64))
+        s_frm = pl.Series("fragment_formulas", [], dtype=pl.List(pl.Array(pl.Int32, NUM_ELEMENTS)))
+        s_frm_str = pl.Series("fragment_formulas_str", [], dtype=pl.List(pl.Utf8))
+        s_err = pl.Series("fragment_errors_ppm", [], dtype=pl.List(pl.Float64))
+        return pl.struct(s_masses, s_intens, s_frm, s_frm_str, s_err, eager=True)
+
+    cdef np.ndarray min_bounds = np.zeros(NUM_ELEMENTS, dtype=np.int32)
+    cdef np.ndarray max_bounds = np.zeros(NUM_ELEMENTS, dtype=np.int32)
+    cdef DecompositionParams params = _convert_params(
+        tolerance_ppm,
+        0.0,
+        30.0,
+        max_results,
+        min_bounds,
+        max_bounds,
+    )
+
+    frag_mass_lists = fragment_masses_series.to_list()
+    frag_int_lists = fragment_intensities_series.to_list()
+    prec_mass_list = precursor_masses_series.to_list()
+
+    cdef vector[CleanSpectrumWithKnownPrecursor_cpp] spectra_vec
+    spectra_vec.reserve(n)
+
+    cdef np.int32_t* prec_ptr = &contig_precursors[0, 0]
+    cdef size_t formula_size_bytes = NUM_ELEMENTS * sizeof(F_DTYPE_t)
+    cdef size_t i
+    cdef Formula_cpp prec
+    cdef CleanSpectrumWithKnownPrecursor_cpp s
+
+    cdef np.ndarray[double, ndim=1, mode="c"] mass_contig
+    cdef np.ndarray[double, ndim=1, mode="c"] inten_contig
+    cdef double* mptr
+    cdef double* iptr
+    cdef Py_ssize_t mlen
+    cdef Py_ssize_t ilen
+
+    for i in range(n):
+        memcpy(<void*>&prec[0], <const void*>(prec_ptr + i * NUM_ELEMENTS), formula_size_bytes)
+        s.precursor_formula = prec
+        s.precursor_mass = <double>(prec_mass_list[i] if prec_mass_list[i] is not None else 0.0)
+        s.max_allowed_normalized_mass_error_ppm = <double>max_allowed_normalized_mass_error_ppm
+
+        seq_m = frag_mass_lists[i] if frag_mass_lists[i] is not None else []
+        mass_contig = np.ascontiguousarray(seq_m, dtype=np.float64)
+        mlen = mass_contig.shape[0]
+        if mlen > 0:
+            mptr = &mass_contig[0]
+            s.fragment_masses.assign(mptr, mptr + mlen)
+        else:
+            s.fragment_masses.clear()
+
+        seq_i = frag_int_lists[i] if frag_int_lists[i] is not None else []
+        inten_contig = np.ascontiguousarray(seq_i, dtype=np.float64)
+        ilen = inten_contig.shape[0]
+        if ilen > 0:
+            iptr = &inten_contig[0]
+            s.fragment_intensities.assign(iptr, iptr + ilen)
+        else:
+            s.fragment_intensities.clear()
+
+        spectra_vec.push_back(s)
+
+    cdef vector[CleanedAndNormalizedSpectrumResultVerbose_cpp] all_results
+    all_results = MassDecomposer.clean_and_normalize_spectra_known_precursor_parallel_verbose(spectra_vec, params)
+
+    cdef size_t n_specs = all_results.size()
+    cdef size_t total_kept = 0
+    cdef size_t total_chars = 0
+    cdef size_t si
+    cdef size_t k
+
+    for si in range(n_specs):
+        total_kept += all_results[si].fragment_formulas.size()
+        for k in range(all_results[si].fragment_formulas_strings.size()):
+            total_chars += all_results[si].fragment_formulas_strings[k].size()
+
+    if total_kept > 2147483647:
+        raise OverflowError("Number of kept fragments exceeds int32 limits for Arrow offsets")
+    if total_chars > 2147483647:
+        raise OverflowError("Total string length exceeds int32 limits for Arrow offsets")
+
+    cdef np.ndarray offs_specs = np.empty(n_specs + 1, dtype=np.int32)
+    cdef np.int32_t[::1] offs_specs_v = offs_specs
+    cdef np.ndarray flat_masses_norm = np.empty(total_kept, dtype=np.float64)
+    cdef double* mass_dst = <double*> np.PyArray_DATA(flat_masses_norm)
+    cdef np.ndarray flat_intens = np.empty(total_kept, dtype=np.float64)
+    cdef double* intens_dst = <double*> np.PyArray_DATA(flat_intens)
+    cdef np.ndarray flat_formula_vals = np.empty(max(total_kept, 1) * NUM_ELEMENTS, dtype=np.int32)
+    cdef F_DTYPE_t* fvals_dst = <F_DTYPE_t*> np.PyArray_DATA(flat_formula_vals)
+    cdef np.ndarray flat_errors = np.empty(total_kept, dtype=np.float64)
+    cdef double* ferr_dst = <double*> np.PyArray_DATA(flat_errors)
+    cdef np.ndarray string_offsets_array = np.empty(total_kept + 1, dtype=np.int32)
+    cdef np.int32_t[::1] string_offsets_view = string_offsets_array
+    cdef np.ndarray string_data_array = np.empty(total_chars, dtype=np.uint8)
+    cdef unsigned char* string_data_ptr = <unsigned char*> np.PyArray_DATA(string_data_array)
+
+    offs_specs_v[0] = 0
+    string_offsets_view[0] = 0
+
+    cdef size_t cursor = 0
+    cdef size_t char_cursor = 0
+    cdef string formula_str
+    cdef size_t length
+    cdef size_t cnt
+    for si in range(n_specs):
+        cnt = all_results[si].fragment_formulas.size()
+        for k in range(cnt):
+            mass_dst[cursor + k] = all_results[si].masses_normalized[k]
+            intens_dst[cursor + k] = all_results[si].intensities[k]
+            memcpy(
+                <void*>(fvals_dst + (cursor + k) * NUM_ELEMENTS),
+                <const void*> formula_data_const(all_results[si].fragment_formulas[k]),
+                FORMULA_NBYTES_C,
+            )
+            ferr_dst[cursor + k] = all_results[si].fragment_errors_ppm[k]
+
+            formula_str = all_results[si].fragment_formulas_strings[k]
+            length = formula_str.size()
+            if length > 0:
+                memcpy(
+                    <void*>(string_data_ptr + char_cursor),
+                    <const void*> formula_str.c_str(),
+                    length,
+                )
+            char_cursor += length
+            string_offsets_view[cursor + k + 1] = <np.int32_t>char_cursor
+
+        cursor += cnt
+        offs_specs_v[si + 1] = <np.int32_t>cursor
+
+    if total_kept == 0:
+        flat_formula_vals = np.empty(0, dtype=np.int32)
+
+    string_offsets_view[cursor] = <np.int32_t>char_cursor
+
+    offs_specs_arr = pa.array(offs_specs, type=pa.int32())
+
+    val_masses = pa.array(flat_masses_norm, type=pa.float64())
+    masses_arr = pa.ListArray.from_arrays(offs_specs_arr, val_masses)
+
+    val_intens = pa.array(flat_intens, type=pa.float64())
+    intens_arr = pa.ListArray.from_arrays(offs_specs_arr, val_intens)
+
+    val_formulas = pa.array(flat_formula_vals, type=pa.int32())
+    fixed_formulas = pa.FixedSizeListArray.from_arrays(val_formulas, NUM_ELEMENTS)
+    formulas_arr = pa.ListArray.from_arrays(offs_specs_arr, fixed_formulas)
+
+    val_errors = pa.array(flat_errors, type=pa.float64())
+    errors_arr = pa.ListArray.from_arrays(offs_specs_arr, val_errors)
+
+    string_offsets_buffer = pa.py_buffer(string_offsets_array)
+    string_data_buffer = pa.py_buffer(string_data_array)
+    string_values = pa.Array.from_buffers(pa.utf8(), total_kept, [None, string_offsets_buffer, string_data_buffer])
+    string_list = pa.ListArray.from_arrays(offs_specs_arr, string_values)
+
+    s_masses = pl.Series("masses_normalized", masses_arr)
+    s_intens = pl.Series("cleaned_intensities", intens_arr)
+    s_frm = pl.Series("fragment_formulas", formulas_arr)
+    s_frm_str = pl.Series("fragment_formulas_str", string_list)
+    s_err = pl.Series("fragment_errors_ppm", errors_arr)
+    return pl.struct(s_masses, s_intens, s_frm, s_frm_str, s_err, eager=True)

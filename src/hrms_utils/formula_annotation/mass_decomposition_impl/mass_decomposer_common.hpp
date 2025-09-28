@@ -51,6 +51,11 @@ namespace FormulaAnnotation {
 // Result structure for formulas
 using Formula = FormulaAnnotation::Formula;
 
+struct FormulaWithString {
+    Formula formula;
+    std::string formula_string;
+};
+
 // Spectrum structure for batch processing
 struct Spectrum {
     double precursor_mass;
@@ -83,6 +88,21 @@ struct SpectrumDecomposition {
 
 struct ProperSpectrumResults {
     std::vector<SpectrumDecomposition> decompositions;
+};
+
+struct SpectrumDecompositionVerbose {
+    Formula precursor;
+    std::string precursor_string;
+    std::vector<std::vector<Formula>> fragments;
+    std::vector<std::vector<std::string>> fragment_strings;
+    double precursor_mass;
+    double precursor_error_ppm;
+    std::vector<std::vector<double>> fragment_masses;
+    std::vector<std::vector<double>> fragment_errors_ppm;
+};
+
+struct ProperSpectrumResultsVerbose {
+    std::vector<SpectrumDecompositionVerbose> decompositions;
 };
 
 // Parameters structure for decomposition
@@ -135,16 +155,26 @@ public:
     MassDecomposer(const Formula& min_bounds, const Formula& max_bounds);
     ~MassDecomposer() = default;
     
+    static std::string formula_to_string(const Formula& formula);
+
     // Single mass decomposition
     std::vector<Formula> decompose(double target_mass, const DecompositionParams& params);
+    std::vector<FormulaWithString> decompose_verbose(double target_mass, const DecompositionParams& params);
     
     // Parallel mass decomposition (OpenMP)
     static std::vector<std::vector<Formula>> decompose_parallel(
         const std::vector<double>& target_masses, 
         const DecompositionParams& params);
+    static std::vector<std::vector<FormulaWithString>> decompose_parallel_verbose(
+        const std::vector<double>& target_masses,
+        const DecompositionParams& params);
     
     // New: Parallel mass decomposition with per-mass bounds
     static std::vector<std::vector<Formula>> decompose_masses_parallel_per_bounds(
+        const std::vector<double>& target_masses,
+        const std::vector<std::pair<Formula, Formula>>& per_mass_bounds,
+        const DecompositionParams& params);
+    static std::vector<std::vector<FormulaWithString>> decompose_masses_parallel_per_bounds_verbose(
         const std::vector<double>& target_masses,
         const std::vector<std::pair<Formula, Formula>>& per_mass_bounds,
         const DecompositionParams& params);
@@ -154,14 +184,24 @@ public:
         double precursor_mass,
         const std::vector<double>& fragment_masses,
         const DecompositionParams& params);
+    ProperSpectrumResultsVerbose decompose_spectrum_verbose(
+        double precursor_mass,
+        const std::vector<double>& fragment_masses,
+        const DecompositionParams& params);
     
     // Proper parallel spectrum decomposition - processes multiple spectra properly in parallel
     static std::vector<ProperSpectrumResults> decompose_spectra_parallel(
         const std::vector<Spectrum>& spectra,
         const DecompositionParams& params);
+    static std::vector<ProperSpectrumResultsVerbose> decompose_spectra_parallel_verbose(
+        const std::vector<Spectrum>& spectra,
+        const DecompositionParams& params);
 
     // New: Parallel spectrum decomposition with per-spectrum bounds
     static std::vector<ProperSpectrumResults> decompose_spectra_parallel_per_bounds(
+        const std::vector<SpectrumWithBounds>& spectra,
+        const DecompositionParams& params);
+    static std::vector<ProperSpectrumResultsVerbose> decompose_spectra_parallel_per_bounds_verbose(
         const std::vector<SpectrumWithBounds>& spectra,
         const DecompositionParams& params);
     
@@ -170,9 +210,16 @@ public:
         const Formula& precursor_formula,
         const std::vector<double>& fragment_masses,
         const DecompositionParams& params);
+    std::vector<std::vector<FormulaWithString>> decompose_spectrum_known_precursor_verbose(
+        const Formula& precursor_formula,
+        const std::vector<double>& fragment_masses,
+        const DecompositionParams& params);
     
     // Parallel known precursor spectrum decomposition - processes multiple spectra with different known precursor formulas
     static std::vector<std::vector<std::vector<Formula>>> decompose_spectra_known_precursor_parallel(
+        const std::vector<SpectrumWithKnownPrecursor>& spectra,
+        const DecompositionParams& params);
+    static std::vector<std::vector<std::vector<FormulaWithString>>> decompose_spectra_known_precursor_parallel_verbose(
         const std::vector<SpectrumWithKnownPrecursor>& spectra,
         const DecompositionParams& params);
 
@@ -193,9 +240,21 @@ public:
         std::vector<std::vector<Formula>> fragment_formulas;     // per kept fragment
         std::vector<std::vector<double>> fragment_errors_ppm;    // per kept fragment (aligned with formulas)
     };
+    struct CleanedSpectrumResultVerbose {
+        std::vector<double> masses;
+        std::vector<double> intensities;
+        std::vector<std::vector<Formula>> fragment_formulas;
+        std::vector<std::vector<std::string>> fragment_formulas_strings;
+        std::vector<std::vector<double>> fragment_errors_ppm;
+    };
 
     // New: clean a single spectrum with known precursor formula
     CleanedSpectrumResult clean_spectrum_known_precursor(
+        const Formula& precursor_formula,
+        const std::vector<double>& fragment_masses,
+        const std::vector<double>& fragment_intensities,
+        const DecompositionParams& params);
+    CleanedSpectrumResultVerbose clean_spectrum_known_precursor_verbose(
         const Formula& precursor_formula,
         const std::vector<double>& fragment_masses,
         const std::vector<double>& fragment_intensities,
@@ -205,6 +264,9 @@ public:
     static std::vector<CleanedSpectrumResult> clean_spectra_known_precursor_parallel(
         const std::vector<CleanSpectrumWithKnownPrecursor>& spectra,
         const DecompositionParams& params);
+    static std::vector<CleanedSpectrumResultVerbose> clean_spectra_known_precursor_parallel_verbose(
+        const std::vector<CleanSpectrumWithKnownPrecursor>& spectra,
+        const DecompositionParams& params);
 
     struct CleanedAndNormalizedSpectrumResult {
         std::vector<double> masses_normalized;          // one per kept fragment (target + final_mean_error)
@@ -212,7 +274,21 @@ public:
         std::vector<Formula> fragment_formulas;         // one per kept fragment
         std::vector<double> fragment_errors_ppm;        // one per kept fragment (after normalization)
     }; 
+    struct CleanedAndNormalizedSpectrumResultVerbose {
+        std::vector<double> masses_normalized;
+        std::vector<double> intensities;
+        std::vector<Formula> fragment_formulas;
+        std::vector<std::string> fragment_formulas_strings;
+        std::vector<double> fragment_errors_ppm;
+    };
     CleanedAndNormalizedSpectrumResult clean_and_normalize_spectrum_known_precursor(
+        const Formula& precursor_formula,
+        const std::vector<double>& fragment_masses,
+        const std::vector<double>& fragment_intensities,
+        double precursor_mass,
+        double max_allowed_normalized_mass_error_ppm,
+        const DecompositionParams& params);
+    CleanedAndNormalizedSpectrumResultVerbose clean_and_normalize_spectrum_known_precursor_verbose(
         const Formula& precursor_formula,
         const std::vector<double>& fragment_masses,
         const std::vector<double>& fragment_intensities,
@@ -222,6 +298,9 @@ public:
 
     // New: parallel cleaner + normalizer for many spectra
     static std::vector<CleanedAndNormalizedSpectrumResult> clean_and_normalize_spectra_known_precursor_parallel(
+        const std::vector<CleanSpectrumWithKnownPrecursor>& spectra,
+        const DecompositionParams& params);
+    static std::vector<CleanedAndNormalizedSpectrumResultVerbose> clean_and_normalize_spectra_known_precursor_parallel_verbose(
         const std::vector<CleanSpectrumWithKnownPrecursor>& spectra,
         const DecompositionParams& params);
 };

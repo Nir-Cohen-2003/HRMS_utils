@@ -1,20 +1,25 @@
-from .mass_decomposition_impl.mass_decomposer_cpp import (
-    decompose_mass_parallel,
-    decompose_mass_parallel_per_bounds,
-    decompose_spectra_parallel,
-    decompose_spectra_parallel_per_bounds,
-    decompose_spectra_known_precursor_parallel, 
-    get_num_elements,
-    clean_spectra_known_precursor_parallel,
-    clean_and_normalize_spectra_known_precursor_parallel,  # NEW
-)
-NUM_ELEMENTS = get_num_elements()
 import polars as pl
 import numpy as np
 from numpy.typing import NDArray
-from typing import Iterable
-from pathlib import Path
-from typing import List, Dict,Any
+from typing import Iterable, Tuple
+
+from .mass_decomposition_impl.mass_decomposer_cpp import (
+    clean_and_normalize_spectra_known_precursor_parallel,
+    clean_and_normalize_spectra_known_precursor_parallel_verbose,
+    clean_spectra_known_precursor_parallel,
+    clean_spectra_known_precursor_parallel_verbose,
+    decompose_mass_parallel,
+    decompose_mass_parallel_per_bounds,
+    decompose_mass_parallel_per_bounds_verbose,
+    decompose_mass_parallel_verbose,
+    decompose_spectra_parallel,
+    decompose_spectra_parallel_per_bounds,
+    decompose_spectra_known_precursor_parallel,
+    decompose_spectra_known_precursor_parallel_verbose,
+    get_num_elements,
+)
+
+NUM_ELEMENTS = get_num_elements()
 
 
 
@@ -102,6 +107,54 @@ def decompose_mass(
     )
     return results
 
+def decompose_mass_verbose(
+    mass_series: pl.Series,
+    min_bounds: NDArray[np.int32],
+    max_bounds: NDArray[np.int32],
+    tolerance_ppm: float = 5.0,
+    min_dbe: float = 0.0,
+    max_dbe: float = 40.0,
+    max_results: int = 100000,
+) -> Tuple[pl.Series, pl.Series]:
+    """Annotate masses and return both element counts and formatted formulas.
+
+    Parameters mirror :func:`decompose_mass`. The return value is a tuple
+    ``(formula_series, formula_string_series)`` sharing the nested layout
+    ``List(Array(Int32, NUM_ELEMENTS))``.
+    """
+    assert isinstance(mass_series, pl.Series), f"mass_series should be a Polars Series, but got {type(mass_series)}"
+    assert mass_series.dtype == pl.Float64, f"mass_series should be of type Float64, but got {mass_series.dtype}"
+    assert isinstance(min_bounds, np.ndarray) and min_bounds.ndim == 1, (
+        f"min_bounds should be a 1D numpy array, but got {type(min_bounds)} with shape {min_bounds.shape}"
+    )
+    assert isinstance(max_bounds, np.ndarray) and max_bounds.ndim == 1, (
+        f"max_bounds should be a 1D numpy array, but got {type(max_bounds)} with shape {max_bounds.shape}"
+    )
+    if min_bounds.shape[0] != max_bounds.shape[0]:
+        raise ValueError(
+            "min_bounds and max_bounds must have the same length for uniform bounds, "
+            f"but got lengths {min_bounds.shape[0]} and {max_bounds.shape[0]}."
+        )
+    assert min_bounds.dtype == np.int32, f"min_bounds should be of type int32, but got {min_bounds.dtype}"
+    assert max_bounds.dtype == np.int32, f"max_bounds should be of type int32, but got {max_bounds.dtype}"
+    assert isinstance(tolerance_ppm, (float, int)), f"tolerance_ppm should be a float or int, but got {type(tolerance_ppm)}"
+    assert tolerance_ppm > 0, f"tolerance_ppm should be a positive value, but got {tolerance_ppm}"
+    assert isinstance(min_dbe, (float, int)), f"min_dbe should be a float or int, but got {type(min_dbe)}"
+    assert isinstance(max_dbe, (float, int)), f"max_dbe should be a float or int, but got {type(max_dbe)}"
+    assert isinstance(max_results, int) and max_results > 0, (
+        f"max_results should be a positive integer, but got {max_results}"
+    )
+
+    return decompose_mass_parallel_verbose(
+        target_masses=mass_series,
+        min_bounds=min_bounds,
+        max_bounds=max_bounds,
+        tolerance_ppm=tolerance_ppm,
+        min_dbe=min_dbe,
+        max_dbe=max_dbe,
+        max_results=max_results,
+    )
+
 def decompose_mass_per_bounds(
     mass_series: pl.Series,
     min_bounds: pl.Series,
@@ -165,6 +218,42 @@ def decompose_mass_per_bounds(
         max_results=max_results,
     )
     return results  
+
+def decompose_mass_per_bounds_verbose(
+    mass_series: pl.Series,
+    min_bounds: pl.Series,
+    max_bounds: pl.Series,
+    tolerance_ppm: float = 5.0,
+    min_dbe: float = 0.0,
+    max_dbe: float = 40.0,
+    max_results: int = 100000,
+) -> Tuple[pl.Series, pl.Series]:
+    """Per-row bounds variant that also reports formatted formula strings."""
+    assert isinstance(mass_series, pl.Series), f"mass_series should be a Polars Series, but got {type(mass_series)}"
+    assert mass_series.dtype == pl.Float64, f"mass_series should be of type Float64, but got {mass_series.dtype}"
+    assert isinstance(min_bounds, pl.Series) and min_bounds.dtype == pl.Array(pl.Int32, shape=(NUM_ELEMENTS,)), (
+        f"min_bounds should be a Polars Series of int32 arrays, but got {type(min_bounds)} with dtype {min_bounds.dtype}"
+    )
+    assert isinstance(max_bounds, pl.Series) and max_bounds.dtype == pl.Array(pl.Int32, shape=(NUM_ELEMENTS,)), (
+        f"max_bounds should be a Polars Series of int32 arrays, but got {type(max_bounds)} with dtype {max_bounds.dtype}"
+    )
+    assert isinstance(tolerance_ppm, (float, int)), f"tolerance_ppm should be a float or int, but got {type(tolerance_ppm)}"
+    assert tolerance_ppm > 0, f"tolerance_ppm should be a positive value, but got {tolerance_ppm}"
+    assert isinstance(min_dbe, (float, int)), f"min_dbe should be a float or int, but got {type(min_dbe)}"
+    assert isinstance(max_dbe, (float, int)), f"max_dbe should be a float or int, but got {type(max_dbe)}"
+    assert isinstance(max_results, int) and max_results > 0, (
+        f"max_results should be a positive integer, but got {max_results}"
+    )
+
+    return decompose_mass_parallel_per_bounds_verbose(
+        target_masses=mass_series,
+        min_bounds_per_mass=min_bounds,
+        max_bounds_per_mass=max_bounds,
+        tolerance_ppm=tolerance_ppm,
+        min_dbe=min_dbe,
+        max_dbe=max_dbe,
+        max_results=max_results,
+    )
                       
 def decompose_spectra(
     precursor_mass_series: pl.Series,
@@ -371,6 +460,20 @@ def decompose_spectra_known_precursor(
     )
     return results
 
+def decompose_spectra_known_precursor_verbose(
+    precursor_formula_series: pl.Series,
+    fragment_masses_series: pl.Series,
+    tolerance_ppm: float = 5.0,
+    max_results: int = 100000,
+) -> Tuple[pl.Series, pl.Series]:
+    """Verbose decomposition that includes human-readable formulas for fragments."""
+    return decompose_spectra_known_precursor_parallel_verbose(
+        precursor_formula_series=precursor_formula_series,
+        fragment_masses_series=fragment_masses_series,
+        tolerance_ppm=tolerance_ppm,
+        max_results=max_results,
+    )
+
 def clean_spectra_known_precursor(
     precursor_formula_series: pl.Series,
     fragment_masses_series: pl.Series,
@@ -380,31 +483,44 @@ def clean_spectra_known_precursor(
     max_results: int = 100000,
 ) -> pl.Series:
     """
-    Parallel spectrum cleaning for known precursors.
+    Parallel cleaner for spectra with known precursor formulas.
 
-    Expects per-spectrum:
-    - precursor_formula_series: Series of fixed-size int32 arrays shaped (NUM_ELEMENTS,).
-      dtype must be pl.Array(pl.Int32, NUM_ELEMENTS).
-    - fragment_masses_series: Series of List[float] (Float64).
-    - fragment_intensities_series: Series of List[float] (Float64).
+    Purpose:
+        - Clean fragment lists for spectra where the precursor formula is already known.
+        - Delegate heavy computation to the C++/OpenMP implementation while performing
+          strict, fast validation of input schema here.
 
-    Returns:
-    - pl.Series with dtype:
-        pl.Struct({
-            "masses": pl.List(pl.Float64),
-            "intensities": pl.List(pl.Float64),
-            "fragment_formulas": pl.List(pl.List(pl.Array(pl.Int32, NUM_ELEMENTS))),
-            "fragment_errors_ppm": pl.List(pl.List(pl.Float64)),
-        })
-      Each row corresponds to one spectrum and contains the cleaned fragment set:
-      - masses: kept fragment masses
-      - intensities: corresponding intensities
-      - fragment_formulas: for each kept fragment, a list of candidate molecular formulas
-      - fragment_errors_ppm: for each kept fragment, the mass errors in ppm aligned with formulas
+    Input (per-spectrum / row):
+        - precursor_formula_series : pl.Series of fixed-size int32 arrays
+            dtype: pl.Array(pl.Int32, NUM_ELEMENTS)
+            shape: (NUM_ELEMENTS,)
+            Description: integer element counts for the precursor formula.
+        - fragment_masses_series : pl.Series of lists of floats
+            dtype: pl.List(pl.Float64)
+            Description: observed fragment m/z values for each spectrum.
+        - fragment_intensities_series : pl.Series of lists of floats
+            dtype: pl.List(pl.Float64)
+            Description: observed intensities aligned with fragment_masses_series.
+
+    Parameters:
+        - tolerance_ppm (float): mass tolerance in ppm for fragment formula matching.
+        - max_results (int): an upper bound on results returned per spectrum to avoid memory blowup.
+
+    Output:
+        Returns a pl.Series with dtype pl.Struct containing, for each spectrum:
+            {
+                "masses": pl.List(pl.Float64),                    # kept fragment masses
+                "intensities": pl.List(pl.Float64),               # corresponding intensities
+                "fragment_formulas": pl.List(pl.List(pl.Array(pl.Int32, NUM_ELEMENTS))),  # candidate formulas per fragment
+                "fragment_errors_ppm": pl.List(pl.List(pl.Float64)),                     # errors aligned with formulas
+            }
 
     Notes:
-    - Fails fast on mismatched series lengths or invalid dtypes.
-    - All heavy lifting is done in C++ with OpenMP; this wrapper is thin and explicit.
+        - Fails fast on mismatched lengths or invalid dtypes (explicit error messages).
+        - This wrapper verifies schema and delegates compute-intensive work to the
+          compiled implementation: clean_spectra_known_precursor_parallel.
+        - Designed to be used in Polars map_batches / elementwise pipelines where each
+          row represents a single spectrum.
 
     Example:
         cleaned = clean_spectra_known_precursor(
@@ -439,6 +555,44 @@ def clean_spectra_known_precursor(
 
     # Delegate to Cython/C++ implementation
     return clean_spectra_known_precursor_parallel(
+        precursor_formula_series=precursor_formula_series,
+        fragment_masses_series=fragment_masses_series,
+        fragment_intensities_series=fragment_intensities_series,
+        tolerance_ppm=tolerance_ppm,
+        max_results=max_results,
+    )
+
+def clean_spectra_known_precursor_verbose(
+    precursor_formula_series: pl.Series,
+    fragment_masses_series: pl.Series,
+    fragment_intensities_series: pl.Series,
+    *,
+    tolerance_ppm: float = 5.0,
+    max_results: int = 100000,
+) -> pl.Series:
+    """Clean spectra and include formula strings per fragment."""
+    assert isinstance(precursor_formula_series, pl.Series), "precursor_formula_series must be a Polars Series"
+    assert isinstance(fragment_masses_series, pl.Series), "fragment_masses_series must be a Polars Series"
+    assert isinstance(fragment_intensities_series, pl.Series), "fragment_intensities_series must be a Polars Series"
+
+    expected_arr = pl.Array(pl.Int32, NUM_ELEMENTS)
+    assert precursor_formula_series.dtype in (expected_arr, pl.Array(pl.Int32, shape=(NUM_ELEMENTS,))), (
+        f"precursor_formula_series.dtype must be pl.Array(pl.Int32, {NUM_ELEMENTS}), got {precursor_formula_series.dtype}"
+    )
+
+    expected_list = pl.List(pl.Float64)
+    assert fragment_masses_series.dtype == expected_list, (
+        f"fragment_masses_series.dtype must be List(Float64), got {fragment_masses_series.dtype}"
+    )
+    assert fragment_intensities_series.dtype == expected_list, (
+        f"fragment_intensities_series.dtype must be List(Float64), got {fragment_intensities_series.dtype}"
+    )
+
+    n = precursor_formula_series.len()
+    if fragment_masses_series.len() != n or fragment_intensities_series.len() != n:
+        raise ValueError("All input series must share the same length.")
+
+    return clean_spectra_known_precursor_parallel_verbose(
         precursor_formula_series=precursor_formula_series,
         fragment_masses_series=fragment_masses_series,
         fragment_intensities_series=fragment_intensities_series,
@@ -506,6 +660,60 @@ def clean_and_normalize_spectra_known_precursor(
         raise ValueError("All input series must have the same length (one entry per spectrum).")
 
     return clean_and_normalize_spectra_known_precursor_parallel(
+        precursor_formula_series=precursor_formula_series,
+        precursor_masses_series=precursor_masses_series,
+        fragment_masses_series=fragment_masses_series,
+        fragment_intensities_series=fragment_intensities_series,
+        tolerance_ppm=tolerance_ppm,
+        max_results=max_results,
+        max_allowed_normalized_mass_error_ppm=max_allowed_normalized_mass_error_ppm,
+    )
+
+
+def clean_and_normalize_spectra_known_precursor_verbose(
+    precursor_formula_series: pl.Series,
+    precursor_masses_series: pl.Series,
+    fragment_masses_series: pl.Series,
+    fragment_intensities_series: pl.Series,
+    *,
+    tolerance_ppm: float = 5.0,
+    max_results: int = 100000,
+    max_allowed_normalized_mass_error_ppm: float = 5.0,
+) -> pl.Series:
+    """Verbose cleaner + normalizer that adds ``fragment_formulas_str`` output."""
+    assert isinstance(precursor_formula_series, pl.Series), "precursor_formula_series must be a Polars Series"
+    assert isinstance(precursor_masses_series, pl.Series), "precursor_masses_series must be a Polars Series"
+    assert isinstance(fragment_masses_series, pl.Series), "fragment_masses_series must be a Polars Series"
+    assert isinstance(fragment_intensities_series, pl.Series), "fragment_intensities_series must be a Polars Series"
+
+    expected_arr = pl.Array(pl.Int32, NUM_ELEMENTS)
+    assert precursor_formula_series.dtype in (expected_arr, pl.Array(pl.Int32, shape=(NUM_ELEMENTS,))), (
+        f"precursor_formula_series.dtype must be pl.Array(pl.Int32, {NUM_ELEMENTS}), got {precursor_formula_series.dtype}"
+    )
+    assert precursor_masses_series.dtype == pl.Float64, (
+        f"precursor_masses_series.dtype must be Float64, got {precursor_masses_series.dtype}"
+    )
+    expected_list = pl.List(pl.Float64)
+    assert fragment_masses_series.dtype == expected_list, (
+        f"fragment_masses_series.dtype must be List(Float64), got {fragment_masses_series.dtype}"
+    )
+    assert fragment_intensities_series.dtype == expected_list, (
+        f"fragment_intensities_series.dtype must be List(Float64), got {fragment_intensities_series.dtype}"
+    )
+
+    n = precursor_formula_series.len()
+    if (
+        fragment_masses_series.len() != n
+        or fragment_intensities_series.len() != n
+        or precursor_masses_series.len() != n
+    ):
+        raise ValueError("All input series must share the same length.")
+
+    assert isinstance(max_results, int) and max_results > 0, (
+        f"max_results should be a positive integer, but got {max_results}"
+    )
+
+    return clean_and_normalize_spectra_known_precursor_parallel_verbose(
         precursor_formula_series=precursor_formula_series,
         precursor_masses_series=precursor_masses_series,
         fragment_masses_series=fragment_masses_series,

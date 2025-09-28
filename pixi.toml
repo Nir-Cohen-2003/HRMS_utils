@@ -7,7 +7,7 @@ platforms = ["linux-64","win-64"]
 preview = ["pixi-build"]
 [package]
 name = "hrms_utils"
-version = "0.6.0"
+version = "0.6.1"
 
 [dependencies]
 python = ">=3.12.0"
@@ -18,6 +18,7 @@ numpy = ">=1.20.0"
 rdkit = ">=2024.0.0"
 twine = "*"
 cibuildwheel = "*"
+
 [pypi-dependencies]
 build = "*"
 
@@ -93,12 +94,14 @@ mass_decomp = "python tests/formula_annotation/mass_decomposition.py"
 chromatogram = "python tests/formula_annotation/chromatogram.py"
 test_mol = "python tests/rdkit/mol.py"
 test_info_score = "python tests/spectral_information.py"
+test_verbose_wrappers = "python -m pytest tests/formula_annotation/test_verbose_wrappers.py"
 [feature.testing.dependencies]
 hrms_utils = {path = "."}
 polars = ">=1.33.0,<2"
 rdkit = ">=2024.0.0"
 numpy = ">=1.20.0,<2.3"
 numba = ">=0.61.0"
+pytest = ">=8.4.2,<9"
 ms_entropy = "*"
 scipy = "*"
 requests = "*"

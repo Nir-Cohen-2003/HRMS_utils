@@ -1,6 +1,41 @@
 #include "mass_decomposer_common.hpp"
 #include <stdexcept>
 
+std::string MassDecomposer::formula_to_string(const Formula& formula) {
+    static const std::array<int, FormulaAnnotation::NUM_ELEMENTS> order = {
+        FormulaAnnotation::C,
+        FormulaAnnotation::H,
+        FormulaAnnotation::B,
+        FormulaAnnotation::N,
+        FormulaAnnotation::O,
+        FormulaAnnotation::F,
+        FormulaAnnotation::Na,
+        FormulaAnnotation::Si,
+        FormulaAnnotation::P,
+        FormulaAnnotation::S,
+        FormulaAnnotation::Cl,
+        FormulaAnnotation::K,
+        FormulaAnnotation::As,
+        FormulaAnnotation::Br,
+        FormulaAnnotation::I
+    };
+
+    std::string out;
+    out.reserve(64);
+    for (int idx : order) {
+        const int count = formula[idx];
+        if (count <= 0) {
+            continue;
+        }
+        const char* symbol = FormulaAnnotation::element_symbol_at(idx);
+        out.append(symbol);
+        if (count > 1) {
+            out.append(std::to_string(count));
+        }
+    }
+    return out;
+}
+
 MassDecomposer::MassDecomposer(const Formula& min_bounds, const Formula& max_bounds)
     : min_bounds_(min_bounds), max_bounds_(max_bounds), 
       precision_(1.0 / 5963.337687), is_initialized_(false) {
@@ -65,4 +100,14 @@ std::vector<Formula> MassDecomposer::decompose(double target_mass, const Decompo
         if (static_cast<int>(results.size()) >= params.max_results) break;
     }
     return results;
+}
+
+std::vector<FormulaWithString> MassDecomposer::decompose_verbose(double target_mass, const DecompositionParams& params) {
+    const auto formulas = decompose(target_mass, params);
+    std::vector<FormulaWithString> verbose_results;
+    verbose_results.reserve(formulas.size());
+    for (const auto& formula : formulas) {
+        verbose_results.push_back(FormulaWithString{formula, formula_to_string(formula)});
+    }
+    return verbose_results;
 }
