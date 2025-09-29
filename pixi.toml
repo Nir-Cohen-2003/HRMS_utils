@@ -115,5 +115,10 @@ xlsxwriter = "*"
 connectorx = "*"
 sqlalchemy = "*"
 ipykernel = "*"
+plotly = ">=6.3.0,<7"
+nbformat = ">=5.10.4,<6"
+
+[feature.testing.pypi-dependencies]
+kaleido = ">=1.1.0, <2"
 
 

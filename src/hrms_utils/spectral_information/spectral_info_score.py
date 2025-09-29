@@ -72,7 +72,6 @@ def spectral_info_polars(
         alpha: float = 1.0,
         num_points: int = 2048,
         rng_seed: int = 0,
-        require_unique_fragments: bool = True
 ) -> pl.Series:
     """
     This refactored wrapper prepares data and calls a numba-jitted routine to compute scores in parallel.
@@ -147,19 +146,11 @@ def spectral_info_polars(
             dims[i] = 0
             continue
 
-        # Handle uniqueness on projected fragments using NumPy for correctness.
         if frag_arr.shape[0] > 1:
             unique_rows, first_indices = np.unique(frag_arr, axis=0, return_index=True)
-            if require_unique_fragments:
-                if unique_rows.shape[0] < frag_arr.shape[0]:
-                    raise AssertionError(
-                        f"Row {i}: Duplicate fragments detected after projection to active dimensions. "
-                        "Fix duplicates or set require_unique_fragments=False."
-                    )
-            else:
-                if unique_rows.shape[0] < frag_arr.shape[0]:
-                    order = np.argsort(first_indices)
-                    frag_arr = unique_rows[order]
+            if unique_rows.shape[0] < frag_arr.shape[0]:
+                order = np.argsort(first_indices)
+                frag_arr = unique_rows[order]
 
         k_i = frag_arr.shape[0]
         scale = (1.0 / p_arr[active_mask]).astype(np.float64)
