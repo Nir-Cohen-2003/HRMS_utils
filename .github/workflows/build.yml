@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  wheels:
+  build:
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest]
@@ -51,14 +51,23 @@ jobs:
         if: runner.os == 'Linux'
         run: pixi run sdist
 
-      - name: Upload artifacts
+      - name: Build conda package
+        run: pixi build
+
+      - name: Upload wheel artifacts
         uses: actions/upload-artifact@v4
         with:
           name: dist-${{ matrix.os }}
           path: dist/
 
+      - name: Upload conda artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: conda-${{ matrix.os }}
+          path: .pixi/build-output/**/*.conda
+
   publish-testpypi:
-    needs: wheels
+    needs: build
     runs-on: ubuntu-latest
     if: github.event_name == 'release'
     # Trusted Publishing environment registered in TestPyPI
@@ -86,3 +95,91 @@ jobs:
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           repository-url: https://test.pypi.org/legacy/
+
+  publish-pypi:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.event_name == 'release'
+    # Trusted Publishing environment registered in PyPI
+    environment: release
+    permissions:
+      id-token: write   # Mandatory for OIDC / Trusted Publishing
+      contents: read
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          pattern: dist-*
+          merge-multiple: true
+
+      - name: List collected files
+        run: ls -l dist
+
+      - name: Install twine (for validation only)
+        run: python -m pip install -U twine
+
+      - name: Verify distributions
+        run: twine check dist/*
+
+      - name: Publish package distributions to PyPI (Trusted Publishing)
+        uses: pypa/gh-action-pypi-publish@release/v1
+
+  publish-prefix:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.event_name == 'release'
+    environment: conda-prefix
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install pixi
+        run: |
+          curl -fsSL https://pixi.sh/install.sh | bash
+          echo "$HOME/.pixi/bin" >> $GITHUB_PATH
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: conda-packages
+          pattern: conda-*
+          merge-multiple: true
+
+      - name: List conda packages
+        run: ls -lR conda-packages
+
+      - name: Publish to prefix.dev
+        env:
+          PREFIX_API_KEY: ${{ secrets.PREFIX_API_KEY }}
+        run: |
+          for package in conda-packages/*.conda; do
+            pixi run publish-prefix "$package"
+          done
+
+  publish-anaconda:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.event_name == 'release'
+    environment: conda-anaconda
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install pixi
+        run: |
+          curl -fsSL https://pixi.sh/install.sh | bash
+          echo "$HOME/.pixi/bin" >> $GITHUB_PATH
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: conda-packages
+          pattern: conda-*
+          merge-multiple: true
+
+      - name: List conda packages
+        run: ls -lR conda-packages
+
+      - name: Publish to Anaconda.org
+        env:
+          ANACONDA_API_TOKEN: ${{ secrets.ANACONDA_API_TOKEN }}
+        run: |
+          for package in conda-packages/*.conda; do
+            pixi run publish-anaconda "$package"
+          done
