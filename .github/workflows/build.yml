@@ -64,7 +64,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: conda-${{ matrix.os }}
-          path: .pixi/build-output/**/*.conda
+          path: ./*.conda
 
   publish-testpypi:
     needs: build
@@ -141,19 +141,19 @@ jobs:
 
       - uses: actions/download-artifact@v4
         with:
-          path: conda-packages
+          path: .
           pattern: conda-*
           merge-multiple: true
 
       - name: List conda packages
-        run: ls -lR conda-packages
+        run: ls -l *.conda
 
       - name: Publish to prefix.dev
         env:
           PREFIX_API_KEY: ${{ secrets.PREFIX_API_KEY }}
         continue-on-error: true
         run: |
-          for package in conda-packages/*.conda; do
+          for package in *.conda; do
             pixi run publish-prefix "$package"
           done
 
@@ -172,18 +172,18 @@ jobs:
 
       - uses: actions/download-artifact@v4
         with:
-          path: conda-packages
+          path: .
           pattern: conda-*
           merge-multiple: true
 
       - name: List conda packages
-        run: ls -lR conda-packages
+        run: ls -l *.conda
 
       - name: Publish to Anaconda.org
         env:
           ANACONDA_API_TOKEN: ${{ secrets.ANACONDA_API_TOKEN }}
         continue-on-error: true
         run: |
-          for package in conda-packages/*.conda; do
+          for package in *.conda; do
             pixi run publish-anaconda "$package"
           done
