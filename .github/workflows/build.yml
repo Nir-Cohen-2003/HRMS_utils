@@ -70,7 +70,7 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     if: github.event_name == 'release'
-    # Trusted Publishing environment registered in TestPyPI
+    # Why: Trusted Publishing environment registered in TestPyPI
     environment: build package
     permissions:
       id-token: write   # Mandatory for OIDC / Trusted Publishing
@@ -101,7 +101,7 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     if: github.event_name == 'release'
-    # Trusted Publishing environment registered in PyPI
+    # Why: Trusted Publishing environment registered in PyPI
     environment: release
     permissions:
       id-token: write   # Mandatory for OIDC / Trusted Publishing
@@ -142,18 +142,19 @@ jobs:
       - name: Install rattler-build
         run: pixi global install rattler-build
 
+      # Why: Download conda packages from both Linux and Windows builds to publish all platform-specific packages
       - uses: actions/download-artifact@v4
         with:
-          path: .
+          path: conda-packages
           pattern: conda-*
           merge-multiple: true
 
       - name: List conda packages
-        run: ls -l *.conda
+        run: ls -l conda-packages/*.conda
 
       - name: Publish to prefix.dev
         run: |
-          for package in *.conda; do
+          for package in conda-packages/*.conda; do
             pixi run publish-prefix --api-key "${{ secrets.PREFIX_API_KEY }}" "$package"
           done
         continue-on-error: true
@@ -174,18 +175,19 @@ jobs:
       - name: Install rattler-build
         run: pixi global install rattler-build
 
+      # Why: Download conda packages from both Linux and Windows builds to publish all platform-specific packages
       - uses: actions/download-artifact@v4
         with:
-          path: .
+          path: conda-packages
           pattern: conda-*
           merge-multiple: true
 
       - name: List conda packages
-        run: ls -l *.conda
+        run: ls -l conda-packages/*.conda
 
       - name: Publish to Anaconda.org
         run: |
-          for package in *.conda; do
+          for package in conda-packages/*.conda; do
             pixi run publish-anaconda --api-key "${{ secrets.ANACONDA_API_TOKEN }}" "$package"
           done
         continue-on-error: true
