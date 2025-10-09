@@ -8,35 +8,23 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
-    strategy:
-      matrix:
-        os: [ubuntu-latest, windows-latest]
-    runs-on: ${{ matrix.os }}
+  build-and-publish-linux:
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install pixi (Linux)
-        if: runner.os == 'Linux'
+      - name: Install pixi
         run: |
           curl -fsSL https://pixi.sh/install.sh | bash
           echo "$HOME/.pixi/bin" >> $GITHUB_PATH
 
-      - name: Install pixi (Windows)
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: |
-            irm https://pixi.sh/install.ps1 | iex
-            echo "$HOME\.pixi\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-
-      - name: Ensure Docker (Linux)
-        if: runner.os == 'Linux'
+      - name: Ensure Docker
         run: |
           if ! command -v docker >/dev/null 2>&1; then
             sudo apt-get update
             sudo apt-get install -y docker.io
           fi
-          # Start docker if not already running
+          # Why: Start docker if not already running for cibuildwheel container builds
           (sudo systemctl start docker 2>/dev/null || sudo service docker start 2>/dev/null || true)
           docker --version
           docker info || true
@@ -47,8 +35,7 @@ jobs:
       - name: Build wheels with cibuildwheel
         run: pixi run cibw-wheels
 
-      - name: Build sdist (only on Linux)
-        if: runner.os == 'Linux'
+      - name: Build sdist
         run: pixi run sdist
 
       - name: Build conda package
@@ -57,137 +44,118 @@ jobs:
       - name: Upload wheel artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: dist-${{ matrix.os }}
+          name: dist-linux
           path: dist/
 
       - name: Upload conda artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: conda-${{ matrix.os }}
+          name: conda-linux
           path: ./*.conda
 
-  publish-testpypi:
-    needs: build
-    runs-on: ubuntu-latest
-    if: github.event_name == 'release'
-    # Why: Trusted Publishing environment registered in TestPyPI
-    environment: build package
-    permissions:
-      id-token: write   # Mandatory for OIDC / Trusted Publishing
-      contents: read
-    steps:
-      - uses: actions/download-artifact@v4
-        with:
-          path: dist
-          pattern: dist-*
-          merge-multiple: true
-
-      - name: List collected files
-        run: ls -l dist
-
-      - name: Install twine (for validation only)
-        run: python -m pip install -U twine
-
-      - name: Verify distributions
-        run: twine check dist/*
-
-      - name: Publish package distributions to TestPyPI (Trusted Publishing)
+      - name: Publish to TestPyPI (Trusted Publishing)
+        if: github.event_name == 'release'
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           repository-url: https://test.pypi.org/legacy/
         continue-on-error: true
 
-  publish-pypi:
-    needs: build
-    runs-on: ubuntu-latest
-    if: github.event_name == 'release'
-    # Why: Trusted Publishing environment registered in PyPI
-    environment: release
-    permissions:
-      id-token: write   # Mandatory for OIDC / Trusted Publishing
-      contents: read
-    steps:
-      - uses: actions/download-artifact@v4
-        with:
-          path: dist
-          pattern: dist-*
-          merge-multiple: true
-
-      - name: List collected files
-        run: ls -l dist
-
-      - name: Install twine (for validation only)
-        run: python -m pip install -U twine
-
-      - name: Verify distributions
-        run: twine check dist/*
-
-      - name: Publish package distributions to PyPI (Trusted Publishing)
+      - name: Publish to PyPI (Trusted Publishing)
+        if: github.event_name == 'release'
         uses: pypa/gh-action-pypi-publish@release/v1
         continue-on-error: true
 
-  publish-prefix:
-    needs: build
-    runs-on: ubuntu-latest
-    if: github.event_name == 'release'
-    environment: conda-prefix
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install pixi
-        run: |
-          curl -fsSL https://pixi.sh/install.sh | bash
-          echo "$HOME/.pixi/bin" >> $GITHUB_PATH
-
       - name: Install rattler-build
+        if: github.event_name == 'release'
         run: pixi global install rattler-build
 
-      # Why: Download conda packages from both Linux and Windows builds to publish all platform-specific packages
-      - uses: actions/download-artifact@v4
-        with:
-          path: conda-packages
-          pattern: conda-*
-          merge-multiple: true
-
       - name: List conda packages
-        run: ls -l conda-packages/*.conda
+        if: github.event_name == 'release'
+        run: ls -l ./*.conda
 
       - name: Publish to prefix.dev
+        if: github.event_name == 'release'
         run: |
-          for package in conda-packages/*.conda; do
+          for package in ./*.conda; do
             pixi run publish-prefix --api-key "${{ secrets.PREFIX_API_KEY }}" "$package"
           done
         continue-on-error: true
 
-  publish-anaconda:
-    needs: build
-    runs-on: ubuntu-latest
-    if: github.event_name == 'release'
-    environment: conda-anaconda
+      - name: Publish to Anaconda.org
+        if: github.event_name == 'release'
+        run: |
+          for package in ./*.conda; do
+            pixi run publish-anaconda --api-key "${{ secrets.ANACONDA_API_KEY }}" "$package"
+          done
+        continue-on-error: true
+
+  build-and-publish-windows:
+    runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
 
       - name: Install pixi
+        shell: pwsh
         run: |
-          curl -fsSL https://pixi.sh/install.sh | bash
-          echo "$HOME/.pixi/bin" >> $GITHUB_PATH
+          irm https://pixi.sh/install.ps1 | iex
+          echo "$HOME\.pixi\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+      - name: Show pixi version
+        run: pixi --version
+
+      - name: Build wheels with cibuildwheel
+        run: pixi run cibw-wheels
+
+      - name: Build conda package
+        run: pixi build
+
+      - name: Upload wheel artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist-windows
+          path: dist/
+
+      - name: Upload conda artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: conda-windows
+          path: ./*.conda
+
+      - name: Publish to TestPyPI (Trusted Publishing)
+        if: github.event_name == 'release'
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
+        continue-on-error: true
+
+      - name: Publish to PyPI (Trusted Publishing)
+        if: github.event_name == 'release'
+        uses: pypa/gh-action-pypi-publish@release/v1
+        continue-on-error: true
 
       - name: Install rattler-build
+        if: github.event_name == 'release'
         run: pixi global install rattler-build
 
-      # Why: Download conda packages from both Linux and Windows builds to publish all platform-specific packages
-      - uses: actions/download-artifact@v4
-        with:
-          path: conda-packages
-          pattern: conda-*
-          merge-multiple: true
-
       - name: List conda packages
-        run: ls -l conda-packages/*.conda
+        if: github.event_name == 'release'
+        shell: pwsh
+        run: Get-ChildItem -Path . -Filter *.conda | Format-Table Name, Length
+
+      - name: Publish to prefix.dev
+        if: github.event_name == 'release'
+        shell: pwsh
+        run: |
+          Get-ChildItem -Path . -Filter *.conda | ForEach-Object {
+            pixi run publish-prefix --api-key "${{ secrets.PREFIX_API_KEY }}" $_.FullName
+          }
+        continue-on-error: true
 
       - name: Publish to Anaconda.org
+        if: github.event_name == 'release'
+        shell: pwsh
         run: |
-          for package in conda-packages/*.conda; do
-            pixi run publish-anaconda --api-key "${{ secrets.ANACONDA_API_TOKEN }}" "$package"
-          done
+          Get-ChildItem -Path . -Filter *.conda | ForEach-Object {
+            pixi run publish-anaconda --api-key "${{ secrets.ANACONDA_API_KEY }}" $_.FullName
+          }
         continue-on-error: true

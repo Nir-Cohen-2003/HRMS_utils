@@ -217,8 +217,6 @@ def subtract_blank_frame(
     return cleaned_sample_df
 
 
-PROTON_MASS = ELEMENT_MASSES[ELEMENT_INDEX['H']]
-
 def annotate_chromatogram_with_formulas(
     chromatogram: pl.DataFrame,
     addcut_mass: float = PROTON_MASS,
