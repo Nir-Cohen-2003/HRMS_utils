@@ -48,9 +48,10 @@ backend = { name = "pixi-build-python", version = ">=0.1.0",channels = [
 ]}
 [package.build.config]
 noarch = false
-
+[workspace.build-variants]
+python = ["3.12", "3.13"]
 [package.build-dependencies]
-python = ">=3.12.0"
+python = "*"
 pip = "*"
 numpy = ">=1.20.0,<2.3"
 setuptools = ">=68.0.0"
@@ -59,7 +60,7 @@ cxx-compiler = "*"
 pyarrow = ">=12.0.0" # might not be needed, but i do call it in the cython code
 
 [package.host-dependencies] 
-python = ">=3.12.0"
+python = "*"
 pip = "*"
 numpy = ">=1.20.0"
 setuptools = ">=68.0.0"
