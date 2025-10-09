@@ -154,7 +154,7 @@ jobs:
       - name: Publish to prefix.dev
         run: |
           for package in *.conda; do
-            pixi run publish-prefix --token "${{ secrets.PREFIX_API_KEY }}" "$package"
+            pixi run publish-prefix --api-key "${{ secrets.PREFIX_API_KEY }}" "$package"
           done
         continue-on-error: true
 
@@ -184,10 +184,8 @@ jobs:
         run: ls -l *.conda
 
       - name: Publish to Anaconda.org
-        env:
-          ANACONDA_API_TOKEN: ${{ secrets.ANACONDA_API_TOKEN }}
-        continue-on-error: true
         run: |
           for package in *.conda; do
-            pixi run publish-anaconda "$package"
+            pixi run publish-anaconda --api-key "${{ secrets.ANACONDA_API_TOKEN }}" "$package"
           done
+        continue-on-error: true
