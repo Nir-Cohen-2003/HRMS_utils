@@ -129,7 +129,7 @@ private:
         int min_count;
         int max_count;
     };
-    
+    mutable std::vector<int> temp_counts_;
     std::vector<Weight> weights_;
     std::vector<std::vector<long long>> ert_;
     double precision_;
@@ -147,7 +147,7 @@ private:
     void compute_errors();
     std::pair<long long, long long> integer_bound(double mass_from, double mass_to) const;
     bool decomposable(int i, long long m, long long a1) const;
-    bool decomposable_fast(int i, long long m) const; // Fast check for decomposability
+    inline bool decomposable_fast(int i, long long m, long long remainder) const; // Fast check for decomposability
     std::vector<Formula> integer_decompose(long long mass) const;
     
 public:

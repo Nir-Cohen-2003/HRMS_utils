@@ -129,40 +129,63 @@ bool MassDecomposer::decomposable(int i, long long m, long long a1) const {
     return ert_[m % a1][i] <= m;
 }
 
-inline bool MassDecomposer::decomposable_fast(int i, long long m) const {
+inline bool MassDecomposer::decomposable_fast(int i, long long m, long long remainder) const {
     if (m < 0) return false;
-    return ert_[m % weights_[0].integer_mass][i] <= m;
+    return ert_[remainder][i] <= m;
 }
+
 
 std::vector<Formula> MassDecomposer::integer_decompose(long long mass) const {
     std::vector<Formula> results;
+    // Optimization: Pre-allocate space to avoid reallocations.
+    results.reserve(100);
+
     int k = static_cast<int>(weights_.size()) - 1;
     if (k < 0) return results;
-    
-    long long a = weights_[0].integer_mass;
+
+    // Optimization (Task 4): Cache weight masses on the stack for faster access.
+    long long* weight_masses = (long long*)alloca(weights_.size() * sizeof(long long));
+    for (size_t j = 0; j < weights_.size(); ++j) {
+        weight_masses[j] = weights_[j].integer_mass;
+    }
+
+    long long a = weight_masses[0];
     if (a <= 0) return results;
 
-    std::vector<int> c(k + 1, 0);
+    // Optimization (Task 2): Reuse a class member buffer instead of allocating a new vector.
+    if (temp_counts_.size() < k + 1) {
+        temp_counts_.resize(k + 1);
+    }
+    std::fill(temp_counts_.begin(), temp_counts_.begin() + k + 1, 0);
+    int* c = temp_counts_.data();
+
     int i = k;
     long long m = mass;
-    
+
     while (i <= k) {
-        if (!decomposable_fast(i, m)) {  
-            while (i <= k && !decomposable_fast(i, m)) {
-                m += c[i] * weights_[i].integer_mass;
+        // Optimization (Task 1): Calculate the remainder once before the check.
+        long long remainder = m % a;
+        if (!decomposable_fast(i, m, remainder)) {
+            while (i <= k) {
+                // 'm' changes, so we must recompute the remainder before the next check.
+                if (decomposable_fast(i, m, m % a)) break;
+
+                m += c[i] * weight_masses[i]; // Use cached mass
                 c[i] = 0;
                 i++;
             }
-            
+
             if (i <= k) {
-                m -= weights_[i].integer_mass;
+                m -= weight_masses[i]; // Use cached mass
                 c[i]++;
             }
         } else {
-            while (i > 0 && decomposable_fast(i-1, m)) {
+            while (i > 0) {
+                // Remainder is unchanged here, so we can reuse it.
+                if (!decomposable_fast(i - 1, m, remainder)) break;
                 i--;
             }
-            
+
             if (i == 0) {
                 if (a > 0) {
                     c[0] = static_cast<int>(m / a);
@@ -178,7 +201,7 @@ std::vector<Formula> MassDecomposer::integer_decompose(long long mass) const {
                         break;
                     }
                 }
-                
+
                 if (valid_formula) {
                     Formula res{}; // Initialize with zeros
                     for (int j = 0; j <= k; ++j) {
@@ -188,19 +211,19 @@ std::vector<Formula> MassDecomposer::integer_decompose(long long mass) const {
                 }
                 i++;
             }
-            
+
             while (i <= k && c[i] >= weights_[i].max_count) {
-                m += c[i] * weights_[i].integer_mass;
+                m += c[i] * weight_masses[i]; // Use cached mass
                 c[i] = 0;
                 i++;
             }
 
             if (i <= k) {
-                m -= weights_[i].integer_mass;
+                m -= weight_masses[i]; // Use cached mass
                 c[i]++;
             }
         }
     }
-    
+
     return results;
 }
