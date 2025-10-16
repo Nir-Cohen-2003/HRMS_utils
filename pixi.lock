@@ -2722,8 +2722,8 @@ packages:
   timestamp: 1737618390337
 - conda: .
   name: hrms_utils
-  version: 0.6.2
-  build: hbf21a9e_0
+  version: 0.6.3
+  build: py313h70e8fdf_0
   subdir: linux-64
   depends:
   - polars >=1.33.0,<2
@@ -2743,16 +2743,16 @@ packages:
   - xlsxwriter
   - connectorx
   - sqlalchemy
-  - python
+  - python >=3.12
   - python_abi 3.13.* *_cp313
   input:
-    hash: 34b19fc13af5709a3a7f84fabd26c0e539cf43493477b385ee23aac55e40db7a
+    hash: 223fec4df7ebb69921b361d48746c6a5df23d9a567f16a24a1a087acdd534f88
     globs:
     - pyproject.toml
 - conda: .
   name: hrms_utils
-  version: 0.6.2
-  build: hbf21a9e_0
+  version: 0.6.3
+  build: py313h70e8fdf_0
   subdir: win-64
   depends:
   - polars >=1.33.0,<2
@@ -2772,10 +2772,10 @@ packages:
   - xlsxwriter
   - connectorx
   - sqlalchemy
-  - python
+  - python >=3.12
   - python_abi 3.13.* *_cp313
   input:
-    hash: 34b19fc13af5709a3a7f84fabd26c0e539cf43493477b385ee23aac55e40db7a
+    hash: 223fec4df7ebb69921b361d48746c6a5df23d9a567f16a24a1a087acdd534f88
     globs:
     - pyproject.toml
 - conda: https://prefix.dev/conda-forge/noarch/humanize-4.13.0-pyhd8ed1ab_0.conda

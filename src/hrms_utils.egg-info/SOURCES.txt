@@ -2,11 +2,6 @@ MANIFEST.in
 README.md
 pyproject.toml
 setup.py
-src/hrms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_common.cpp
-src/hrms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_common.hpp
-src/hrms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_cpp.cpp
-src/hrms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_money_changing.cpp
-src/hrms_utils/formula_annotation/mass_decomposition_impl/mass_decomposer_parallel.cpp
 src/hrms_utils/__init__.py
 src/hrms_utils.egg-info/PKG-INFO
 src/hrms_utils.egg-info/SOURCES.txt
@@ -41,5 +36,5 @@ src/hrms_utils/rdkit/fingerprint.py
 src/hrms_utils/rdkit/fragmentation.py
 src/hrms_utils/rdkit/mol.py
 src/hrms_utils/spectral_information/__init__.py
-src/hrms_utils/spectral_information/spectral_info_score.py
+src/hrms_utils/spectral_information/space_spectral_info_score.py
 src/hrms_utils/spectral_information/tree_spectral_info_score.py
