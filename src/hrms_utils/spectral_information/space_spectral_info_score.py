@@ -4,17 +4,16 @@ from numba import njit, prange
 import polars as pl
 
 
-@njit(parallel=True, cache=True, fastmath=True)
+@njit(parallel=True, fastmath=True)
 def _score_core_batch(
-    concat_F: np.ndarray,    # 1D array of all normalized fragment coordinates concatenated
-    offsets: np.ndarray,     # start index in concat_F for each spectrum (int64)
-    ks: np.ndarray,          # number of fragments per spectrum (int64)
-    dims: np.ndarray,        # active-dimension count per spectrum (int64)
-    num_points: int,
+    concat_F: NDArray,    # 1D array of all normalized fragment coordinates concatenated
+    offsets: NDArray,     # start index in concat_F for each spectrum (int64)
+    ks: NDArray,          # number of fragments per spectrum (int64)
+    dims: NDArray,        # active-dimension count per spectrum (int64)
     bandwidth: float,
     alpha: float,
-    rng_seed: int
-) -> np.ndarray:
+    sampling_width: float
+) -> NDArray:
     """
     Compute scores for a batch of spectra. Each spectrum i has:
       - k = ks[i] fragments
@@ -22,7 +21,7 @@ def _score_core_batch(
       - data located in concat_F[offsets[i] : offsets[i] + k * n] laid out row-major (k rows of length n)
 
     Why: a single numba-jitted parallel loop avoids Python-level per-row overhead and lets
-    the Monte Carlo sampling be performed in native code across the batch.
+    the uniform grid sampling be performed in native code across the batch.
     """
     N = ks.shape[0]
     results = np.empty(N, dtype=np.float64)
@@ -40,13 +39,19 @@ def _score_core_batch(
         total = 0.0
         x = np.empty(n, dtype=np.float64)
 
-        # deterministic per-spectrum RNG: offset seed by index for reproducibility
-        np.random.seed(rng_seed + i)
+        num_grid_points_per_dim = int(1.0 / sampling_width)
+        if num_grid_points_per_dim <= 0:
+            results[i] = 0.0
+            continue
 
-        for m in range(num_points):
-            # sample x ~ Uniform([0,1]^n)
+        coord_indices = np.zeros(n, dtype=np.int32)
+        num_points = 0
+
+        while True:
+            num_points += 1
+            # get x from coord_indices
             for d in range(n):
-                x[d] = np.random.random()
+                x[d] = (coord_indices[d] + 0.5) * sampling_width
 
             # coverage c(x) = sum_j exp(-||x - f_j||^2 / (2h^2))
             c = 0.0
@@ -60,7 +65,21 @@ def _score_core_batch(
 
             total += np.log1p(alpha * c)
 
-        results[i] = (total / num_points) * 1e2
+            # increment coord_indices
+            d_inc = 0
+            while d_inc < n:
+                coord_indices[d_inc] += 1
+                if coord_indices[d_inc] < num_grid_points_per_dim:
+                    break
+                coord_indices[d_inc] = 0
+                d_inc += 1
+            if d_inc == n:
+                break
+        
+        if num_points > 0:
+            results[i] = (total / num_points) * 1e2
+        else:
+            results[i] = 0.0
 
     return results
 
@@ -70,8 +89,7 @@ def spectral_info_polars(
         *,
         bandwidth: float = 0.12,
         alpha: float = 1.0,
-        num_points: int = 2048,
-        rng_seed: int = 0,
+        sampling_width: float = 0.1,
 ) -> pl.Series:
     """
     This refactored wrapper prepares data and calls a numba-jitted routine to compute scores in parallel.
@@ -94,7 +112,7 @@ def spectral_info_polars(
       - c(x) = sum_j exp(-||x - f_j||^2 / (2 h^2)), with h=bandwidth.
 
     Score (approximated integral):
-      - Score = mean_x log(1 + alpha * c(x)) over x ~ Uniform([0,1]^|A|).
+      - Score = mean_x log(1 + alpha * c(x)) over a uniform grid on [0,1]^|A|.
     """
     if len(precursors) != len(fragments):
         raise AssertionError("precursors and fragments must have same length")
@@ -173,10 +191,9 @@ def spectral_info_polars(
         offsets, 
         ks, 
         dims, 
-        int(num_points), 
         float(bandwidth), 
         float(alpha), 
-        int(rng_seed)
+        float(sampling_width)
     )
 
     return pl.Series(values=scores.tolist(), dtype=pl.Float64)
