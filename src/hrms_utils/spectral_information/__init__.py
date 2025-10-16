@@ -1,2 +1,2 @@
-from .space_spectral_info_score import spectral_info_polars
-from .tree_spectral_info_score import tree_spectral_info_score_polars
+# from .space_spectral_info_score import spectral_info_polars
+from .tree_spectral_info_score import tree_spectral_info_score_polars as spectral_info_score_polars

@@ -52,7 +52,8 @@ def _tree_score_core_batch(
     offsets: np.ndarray,
     formula_counts: np.ndarray,
     dims: np.ndarray,
-    distance_metric: int
+    distance_metric: int,
+    ignore_hydrogens: bool
 ) -> np.ndarray:
     """
     Core batch implementation for tree-based spectral information score.
@@ -61,6 +62,14 @@ def _tree_score_core_batch(
     """
     num_spectra = len(formula_counts)
     scores = np.zeros(num_spectra, dtype=np.float64)
+    
+    # Why: select distance function once outside the parallel loop for efficiency
+    if distance_metric == 0:
+        distance_function = _l1_distance
+    elif distance_metric == 1:
+        distance_function = _l2_distance
+    else:
+        distance_function = _cosine_distance
 
     for i in prange(num_spectra):
         k = formula_counts[i]
@@ -73,24 +82,55 @@ def _tree_score_core_batch(
         total_score = 0.0
 
         norm_formulas = concat_norm_formulas[spectrum_offset : spectrum_offset + k * n].reshape(k, n)
+        
+        # Why: when ignoring hydrogens, fragments may become identical after dropping H column
+        # We need to track unique fragments to avoid processing duplicates
+        if ignore_hydrogens and n > 1:
+            # Skip first column (hydrogen) for comparison
+            unique_mask = np.ones(k, dtype=np.bool_)
+            for j in range(k):
+                if not unique_mask[j]:
+                    continue
+                for l in range(j + 1, k):
+                    if unique_mask[l]:
+                        # Compare all elements except first (hydrogen)
+                        is_same = True
+                        for idx in range(1, n):
+                            if abs(norm_formulas[j, idx] - norm_formulas[l, idx]) > 1e-12:
+                                is_same = False
+                                break
+                        if is_same:
+                            unique_mask[l] = False  # Why: mark duplicate for exclusion
+        else:
+            unique_mask = np.ones(k, dtype=np.bool_)
 
         for j in range(k):
+            if not unique_mask[j]:
+                continue
+                
             node_A_norm = norm_formulas[j]
+            
+            # Why: extract comparison slice based on ignore_hydrogens flag
+            if ignore_hydrogens and n > 1:
+                node_A_compare = node_A_norm[1:]  # Skip hydrogen
+            else:
+                node_A_compare = node_A_norm
+                
             min_dist = np.inf
 
             for l in range(k):
-                if j == l:
+                if j == l or not unique_mask[l]:
                     continue
 
                 node_B_norm = norm_formulas[l]
+                
+                if ignore_hydrogens and n > 1:
+                    node_B_compare = node_B_norm[1:]  # Skip hydrogen
+                else:
+                    node_B_compare = node_B_norm
 
-                if _is_superformula(node_B_norm, node_A_norm):
-                    if distance_metric == 0:
-                        dist = _l1_distance(node_A_norm, node_B_norm)
-                    elif distance_metric == 1:
-                        dist = _l2_distance(node_A_norm, node_B_norm)
-                    else:
-                        dist = _cosine_distance(node_A_norm, node_B_norm)
+                if _is_superformula(node_B_compare, node_A_compare):
+                    dist = distance_function(node_A_compare, node_B_compare)
 
                     if dist < min_dist:
                         min_dist = dist
@@ -109,6 +149,7 @@ def _tree_score_core_batch(
                 if scaled_dist >= 1.0:
                     scaled_dist = 1.0 - 1e-12  # Why: keep entropy term finite and positive.
 
+                # Why: M is computed on full formula (including H) regardless of comparison mode
                 M = np.sum(node_A_norm)
                 if M > 0.0:
                     total_score += -scaled_dist * np.log(scaled_dist) * M
@@ -125,7 +166,8 @@ def tree_spectral_info_score_polars(
     precursors: pl.Series,
     fragments: pl.Series,
     *,
-    distance_metric: str = "l2"
+    distance_metric: str = "l2",
+    ignore_hydrogens: bool = True
 ) -> pl.Series:
     """
     Calculates a tree-based spectral information score for each spectrum in a Polars DataFrame.
@@ -139,6 +181,8 @@ def tree_spectral_info_score_polars(
         fragments: A Polars Series of fragment formulas (List[List[Float64]]).
         distance_metric: The distance metric for comparing normalized formulas.
                          One of 'l1', 'l2', or 'cosine'. Defaults to 'l2'.
+        ignore_hydrogens: If True, ignores the first element (hydrogen) when comparing formulas.
+                          This can cause fragments to become identical. Defaults to True.
 
     Returns:
         A Polars Series of Float64 scores, one for each input spectrum.
@@ -222,7 +266,8 @@ def tree_spectral_info_score_polars(
         offsets,
         formula_counts,
         dims,
-        dist_metric_int
+        dist_metric_int,
+        ignore_hydrogens
     )
     np.nan_to_num(scores, copy=False, nan=0.0, posinf=0.0, neginf=0.0)  # Why: downstream consumers expect finite scores.
 
