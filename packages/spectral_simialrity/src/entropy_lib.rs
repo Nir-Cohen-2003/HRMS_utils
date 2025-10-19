@@ -1,7 +1,6 @@
 use polars::prelude::*;
 use pyo3::prelude::*;
-use pyo3_polars::derive::polars_function;
-use pyo3_polars::{PyDataFrame, PySeries};
+use pyo3_polars::polars_function;
 use rayon::prelude::*;
 
 // Keep the Peak and Spectrum structs from the previous version
@@ -283,6 +282,6 @@ fn calculate_similarity_struct(inputs: &[Series]) -> PolarsResult<Series> {
 // --- Python Module Definition ---
 #[pymodule]
 fn spectral_similarity(_py: Python, m: &PyModule) -> PyResult<()> {
-    m.add_function(wrap_pyfunction!(calculate_similarity_struct, m)?)?;
+    m.add_wrapped(wrap_pyfunction!(calculate_similarity_struct))?;
     Ok(())
 }
