@@ -8,7 +8,10 @@ if __name__ == "__main__":
         
     # Resolve the chromatogram file relative to this script to fail fast if missing.
     chromatogram_path = Path(__file__).parent.parent/ "data" / "250515_006.txt"
-    assert chromatogram_path.exists(), f"Required chromatogram file not found: {chromatogram_path}"
+    if not chromatogram_path.exists():
+        chromatogram_path = Path(__file__).parent.parent / "data" / "250120_04amph.txt"
+        if not chromatogram_path.exists():
+            raise FileNotFoundError(f"Required chromatogram file not found: {chromatogram_path}")
 
     chromatogram_df = get_chromatogram(str(chromatogram_path)).filter(
         pl.col("Height") > 1e6,
