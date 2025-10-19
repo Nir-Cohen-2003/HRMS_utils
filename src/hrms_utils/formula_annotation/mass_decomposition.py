@@ -111,13 +111,13 @@ def decompose_mass_verbose(
     tolerance_ppm: float = 5.0,
     min_dbe: float = 0.0,
     max_dbe: float = 40.0,
-    ) -> Tuple[pl.Series, pl.Series]:
+) -> pl.Series:
     """Annotate masses and return both element counts and formatted formulas.
 
     Wrapper for decompose_mass_parallel_verbose with the same input validation
-    as :func:`decompose_mass`. This verbose variant returns two Polars Series
-    that share the same nested layout: for each input mass there may be zero
-    or more candidate formulas.
+    as :func:`decompose_mass`. This verbose variant returns a Polars Series of
+    Struct type with two fields that share the same nested layout: for each 
+    input mass there may be zero or more candidate formulas.
 
     Parameters
     ----------
@@ -133,23 +133,22 @@ def decompose_mass_verbose(
         Minimum degree of unsaturation (DBE).
     max_dbe : float
         Maximum degree of unsaturation (DBE).
-    max_results : int
-        Upper bound on number of returned candidates per mass.
 
     Returns
     -------
-    Tuple[pl.Series, pl.Series]
-        - formula_series: pl.Series where each row is a List(Array(Int32, NUM_ELEMENTS))
-          containing integer element counts for each candidate formula.
-        - formula_string_series: pl.Series where each row is a List(Utf8)
-          containing the human-readable string representation for each candidate
-          formula in the corresponding position of `formula_series`.
+    pl.Series
+        A Series of Struct with fields:
+            - decomposed_formulas: List(Array(Int32, NUM_ELEMENTS))
+              Integer element counts for each candidate formula.
+            - decomposed_formulas_str: List(Utf8)
+              Human-readable string representation for each candidate formula
+              in the corresponding position of decomposed_formulas.
 
     Notes
     -----
-    - The two returned Series are aligned: element-count arrays at index i in
-      `formula_series` correspond to the formula strings at index i in
-      `formula_string_series`.
+    - The two struct fields are aligned: element-count arrays at index i in
+      decomposed_formulas correspond to the formula strings at index i in
+      decomposed_formulas_str.
     """
     assert isinstance(mass_series, pl.Series), f"mass_series should be a Polars Series, but got {type(mass_series)}"
     assert mass_series.dtype == pl.Float64, f"mass_series should be of type Float64, but got {mass_series.dtype}"
@@ -248,14 +247,14 @@ def decompose_mass_per_bounds_verbose(
     tolerance_ppm: float = 5.0,
     min_dbe: float = 0.0,
     max_dbe: float = 40.0,
-) -> Tuple[pl.Series, pl.Series]:
+) -> pl.Series:
     """Per-row bounds variant that also reports formatted formula strings.
 
     This function is the per-row-bounds (per-mass) verbose variant of
     :func:`decompose_mass_per_bounds`. Inputs are validated to be Polars Series
     of fixed-size int32 arrays (shape NUM_ELEMENTS). The function delegates
-    heavy computation to the compiled implementation and returns a tuple of
-    two aligned Series.
+    heavy computation to the compiled implementation and returns a Struct Series
+    with two aligned fields.
 
     Parameters
     ----------
@@ -274,12 +273,13 @@ def decompose_mass_per_bounds_verbose(
 
     Returns
     -------
-    Tuple[pl.Series, pl.Series]
-        - formula_series: pl.Series of List(Array(Int32, NUM_ELEMENTS)) containing
-          candidate element counts for each mass.
-        - formula_string_series: pl.Series of List(Utf8) containing the
-          human-readable formula string for each candidate in the corresponding
-          position of `formula_series`.
+    pl.Series
+        A Series of Struct with fields:
+            - decomposed_formulas: List(Array(Int32, NUM_ELEMENTS))
+              Candidate element counts for each mass.
+            - decomposed_formulas_str: List(Utf8)
+              Human-readable formula string for each candidate in the 
+              corresponding position of decomposed_formulas.
     """
     assert isinstance(mass_series, pl.Series), f"mass_series should be a Polars Series, but got {type(mass_series)}"
     assert mass_series.dtype == pl.Float64, f"mass_series should be of type Float64, but got {mass_series.dtype}"
@@ -290,8 +290,6 @@ def decompose_mass_per_bounds_verbose(
     assert isinstance(min_dbe   , (float, int)), f"min_dbe should be a float or int, but got {type(min_dbe)}"
     assert isinstance(max_dbe   , (float, int)), f"max_dbe should be a float or int, but got {type(max_dbe)}"
 
-
-
     return decompose_mass_parallel_per_bounds_verbose(
         target_masses=mass_series,
         min_bounds_per_mass=min_bounds,
@@ -300,7 +298,7 @@ def decompose_mass_per_bounds_verbose(
         min_dbe=min_dbe,
         max_dbe=max_dbe,
     )
-                      
+
 def decompose_spectra(
     precursor_mass_series: pl.Series,
     fragment_masses_series: pl.Series,
@@ -509,9 +507,8 @@ def decompose_spectra_known_precursor_verbose(
     """Verbose decomposition that includes human-readable formulas for fragments.
 
     Decomposes fragments for spectra where the precursor formula is already known.
-    This verbose variant returns two aligned Series:
-      - a structural Series describing the decomposition results, and
-      - a Series of human-readable formula strings aligned with fragment formulas.
+    This verbose variant returns a Struct Series with aligned fields describing
+    both the structural decomposition results and human-readable formula strings.
 
     Parameters
     ----------
@@ -521,7 +518,6 @@ def decompose_spectra_known_precursor_verbose(
         Series of per-spectrum fragment mass lists (dtype: pl.List(pl.Float64)).
     tolerance_ppm : float
         Mass tolerance in ppm for fragment annotation.
-
 
     Returns
     -------
