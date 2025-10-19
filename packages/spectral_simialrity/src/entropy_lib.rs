@@ -1,6 +1,6 @@
 use polars::prelude::*;
 use pyo3::prelude::*;
-use pyo3_polars::polars_function;
+use pyo3_polars::derive::polars_expr;
 use rayon::prelude::*;
 
 // Keep the Peak and Spectrum structs from the previous version
@@ -221,7 +221,7 @@ pub fn calculate_entropy_similarity(
 
 // --- Polars Plugin Function ---
 
-#[polars_function(output_type=Float32)]
+#[polars_expr(output_type=Float32)]
 fn calculate_similarity_struct(inputs: &[Series]) -> PolarsResult<Series> {
     let struct_series = &inputs[0];
     let ca: &StructChunked = struct_series.struct_()?;
@@ -276,12 +276,4 @@ fn calculate_similarity_struct(inputs: &[Series]) -> PolarsResult<Series> {
         .collect();
 
     Ok(out.into_series())
-}
-
-
-// --- Python Module Definition ---
-#[pymodule]
-fn spectral_similarity(_py: Python, m: &PyModule) -> PyResult<()> {
-    m.add_wrapped(wrap_pyfunction!(calculate_similarity_struct))?;
-    Ok(())
 }
