@@ -1,12 +1,12 @@
 [package]
-name = "hrms_utils"
+name = "spectral_similarity"
 version = "0.7.0"
-# edition = "2025"
+edition = "2021"
 
 [lib]
-name = "hrms_utils"
+name = "spectral_similarity"
 crate-type = ["cdylib"]
-path = "src/hrms_utils/spectral_search/rust_impl/entropy_lib.rs"
+path = "src/entropy_lib.rs"
 
 [dependencies]
 pyo3 = { version = "0.25.0", features = ["extension-module"] }

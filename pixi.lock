@@ -106,6 +106,7 @@ environments:
       - conda: https://prefix.dev/conda-forge/linux-64/libzlib-1.3.1-hb9d3cd8_2.conda
       - conda: https://prefix.dev/conda-forge/noarch/markdown-it-py-4.0.0-pyhd8ed1ab_0.conda
       - conda: https://prefix.dev/conda-forge/linux-64/matplotlib-base-3.10.6-py312he3d6523_1.conda
+      - conda: https://prefix.dev/conda-forge/linux-64/maturin-1.9.6-py310hf7d6592_0.conda
       - conda: https://prefix.dev/conda-forge/noarch/mdurl-0.1.2-pyhd8ed1ab_1.conda
       - conda: https://prefix.dev/conda-forge/noarch/more-itertools-10.8.0-pyhd8ed1ab_0.conda
       - conda: https://prefix.dev/conda-forge/noarch/munkres-1.1.4-pyhd8ed1ab_1.conda
@@ -114,7 +115,7 @@ environments:
       - conda: https://prefix.dev/conda-forge/linux-64/numpy-2.3.3-py312h33ff503_0.conda
       - conda: https://prefix.dev/conda-forge/linux-64/openjpeg-2.5.3-h55fea9a_1.conda
       - conda: https://prefix.dev/conda-forge/linux-64/openldap-2.6.10-he970967_0.conda
-      - conda: https://prefix.dev/conda-forge/linux-64/openssl-3.5.2-h26f9b46_0.conda
+      - conda: https://prefix.dev/conda-forge/linux-64/openssl-3.5.4-h26f9b46_0.conda
       - conda: https://prefix.dev/conda-forge/noarch/packaging-25.0-pyh29332c3_1.conda
       - conda: https://prefix.dev/conda-forge/linux-64/pandas-2.3.2-py312hf79963d_0.conda
       - conda: https://prefix.dev/conda-forge/linux-64/pcre2-10.46-h1321c63_0.conda
@@ -259,6 +260,7 @@ environments:
       - conda: https://prefix.dev/conda-forge/win-64/llvm-openmp-20.1.8-hfa2b4ca_2.conda
       - conda: https://prefix.dev/conda-forge/noarch/markdown-it-py-4.0.0-pyhd8ed1ab_0.conda
       - conda: https://prefix.dev/conda-forge/win-64/matplotlib-base-3.10.6-py312h0ebf65c_1.conda
+      - conda: https://prefix.dev/conda-forge/win-64/maturin-1.9.6-py310h194dfaf_0.conda
       - conda: https://prefix.dev/conda-forge/noarch/mdurl-0.1.2-pyhd8ed1ab_1.conda
       - conda: https://prefix.dev/conda-forge/win-64/mkl-2024.2.2-h57928b3_16.conda
       - conda: https://prefix.dev/conda-forge/noarch/more-itertools-10.8.0-pyhd8ed1ab_0.conda
@@ -508,6 +510,7 @@ environments:
       - conda: https://prefix.dev/conda-forge/noarch/markdown-it-py-4.0.0-pyhd8ed1ab_0.conda
       - conda: https://prefix.dev/conda-forge/linux-64/matplotlib-base-3.10.6-py313h683a580_1.conda
       - conda: https://prefix.dev/conda-forge/noarch/matplotlib-inline-0.1.7-pyhd8ed1ab_1.conda
+      - conda: https://prefix.dev/conda-forge/linux-64/maturin-1.9.6-py310hf7d6592_0.conda
       - conda: https://prefix.dev/conda-forge/noarch/mdurl-0.1.2-pyhd8ed1ab_1.conda
       - conda: https://prefix.dev/conda-forge/noarch/more-itertools-10.8.0-pyhd8ed1ab_0.conda
       - conda: https://prefix.dev/conda-forge/linux-64/ms_entropy-1.3.4-py313h29aa505_1.conda
@@ -525,7 +528,7 @@ environments:
       - conda: https://prefix.dev/conda-forge/linux-64/openjpeg-2.5.3-h55fea9a_1.conda
       - conda: https://prefix.dev/conda-forge/linux-64/openldap-2.6.10-he970967_0.conda
       - conda: https://prefix.dev/conda-forge/linux-64/openpyxl-3.1.5-py313ha4be090_2.conda
-      - conda: https://prefix.dev/conda-forge/linux-64/openssl-3.5.2-h26f9b46_0.conda
+      - conda: https://prefix.dev/conda-forge/linux-64/openssl-3.5.4-h26f9b46_0.conda
       - conda: https://prefix.dev/conda-forge/linux-64/orc-2.2.0-h1bc01a4_0.conda
       - conda: https://prefix.dev/conda-forge/noarch/packaging-25.0-pyh29332c3_1.conda
       - conda: https://prefix.dev/conda-forge/linux-64/pandas-2.3.2-py313h08cd8bf_0.conda
@@ -625,7 +628,7 @@ environments:
       - conda: https://prefix.dev/conda-forge/linux-64/zstandard-0.24.0-py313h736c1ce_1.conda
       - conda: https://prefix.dev/conda-forge/linux-64/zstd-1.5.7-hb8e6e7a_2.conda
       - conda: .
-        subdir: linux-64
+        build: py313hf70daa8_0
       - pypi: https://files.pythonhosted.org/packages/71/7b/63d73f4e911ad0c91dcfe53c56e2c9651d739302951f73fac216ea0477a4/choreographer-1.1.1-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/5a/bf/10b009e3b96a803f25af126951bc167402354d765006a94d11ba46a2f667/kaleido-1.1.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/bc/df/e51691ab004d74fa25b751527d041ad1b4d84ee86cbcb8630ab0d7d5188e/logistro-1.1.0-py3-none-any.whl
@@ -788,6 +791,7 @@ environments:
       - conda: https://prefix.dev/conda-forge/noarch/markdown-it-py-4.0.0-pyhd8ed1ab_0.conda
       - conda: https://prefix.dev/conda-forge/win-64/matplotlib-base-3.10.6-py313he1ded55_1.conda
       - conda: https://prefix.dev/conda-forge/noarch/matplotlib-inline-0.1.7-pyhd8ed1ab_1.conda
+      - conda: https://prefix.dev/conda-forge/win-64/maturin-1.9.6-py310h194dfaf_0.conda
       - conda: https://prefix.dev/conda-forge/noarch/mdurl-0.1.2-pyhd8ed1ab_1.conda
       - conda: https://prefix.dev/conda-forge/win-64/mkl-2024.2.2-h57928b3_16.conda
       - conda: https://prefix.dev/conda-forge/noarch/more-itertools-10.8.0-pyhd8ed1ab_0.conda
@@ -900,7 +904,7 @@ environments:
       - conda: https://prefix.dev/conda-forge/win-64/zstandard-0.24.0-py313hcdcf24b_1.conda
       - conda: https://prefix.dev/conda-forge/win-64/zstd-1.5.7-hbeecb71_2.conda
       - conda: .
-        subdir: win-64
+        build: py313h8ca1927_0
       - pypi: https://files.pythonhosted.org/packages/71/7b/63d73f4e911ad0c91dcfe53c56e2c9651d739302951f73fac216ea0477a4/choreographer-1.1.1-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/5a/bf/10b009e3b96a803f25af126951bc167402354d765006a94d11ba46a2f667/kaleido-1.1.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/bc/df/e51691ab004d74fa25b751527d041ad1b4d84ee86cbcb8630ab0d7d5188e/logistro-1.1.0-py3-none-any.whl
@@ -2814,39 +2818,11 @@ packages:
   timestamp: 1737618390337
 - conda: .
   name: hrms_utils
-  version: 0.6.3
-  build: py313h70e8fdf_0
-  subdir: linux-64
-  depends:
-  - polars >=1.33.0,<2
-  - rdkit >=2024.0.0
-  - numpy >=1.20.0
-  - numpy >=1.23,<3
-  - numba >=0.61.0
-  - ms_entropy
-  - scipy
-  - requests
-  - aiohttp
-  - pyarrow
-  - pandas
-  - python-calamine
-  - openpyxl
-  - xlsx2csv
-  - xlsxwriter
-  - connectorx
-  - sqlalchemy
-  - python >=3.12
-  - python_abi 3.13.* *_cp313
-  input:
-    hash: 223fec4df7ebb69921b361d48746c6a5df23d9a567f16a24a1a087acdd534f88
-    globs:
-    - pyproject.toml
-- conda: .
-  name: hrms_utils
-  version: 0.6.3
-  build: py313h70e8fdf_0
+  version: 0.7.0
+  build: py313h8ca1927_0
   subdir: win-64
   depends:
+  - python
   - polars >=1.33.0,<2
   - rdkit >=2024.0.0
   - numpy >=1.20.0
@@ -2864,12 +2840,50 @@ packages:
   - xlsxwriter
   - connectorx
   - sqlalchemy
-  - python >=3.12
+  - vc >=14.1,<15
+  - vc14_runtime >=14.16.27033
   - python_abi 3.13.* *_cp313
+  license: MIT
   input:
-    hash: 223fec4df7ebb69921b361d48746c6a5df23d9a567f16a24a1a087acdd534f88
+    hash: a50ca4adc05d22df56492a6e24635a924c1c3cd0bb6973fdb5c725da5bd4576e
     globs:
-    - pyproject.toml
+    - recipe/recipe.yaml
+    - recipe/variants.yaml
+- conda: .
+  name: hrms_utils
+  version: 0.7.0
+  build: py313hf70daa8_0
+  subdir: linux-64
+  depends:
+  - python
+  - polars >=1.33.0,<2
+  - rdkit >=2024.0.0
+  - numpy >=1.20.0
+  - numpy >=1.23,<3
+  - numba >=0.61.0
+  - ms_entropy
+  - scipy
+  - requests
+  - aiohttp
+  - pyarrow
+  - pandas
+  - python-calamine
+  - openpyxl
+  - xlsx2csv
+  - xlsxwriter
+  - connectorx
+  - sqlalchemy
+  - libstdcxx >=15
+  - libgcc >=15
+  - python_abi 3.13.* *_cp313
+  constrains:
+  - __glibc >=2.17
+  license: MIT
+  input:
+    hash: a50ca4adc05d22df56492a6e24635a924c1c3cd0bb6973fdb5c725da5bd4576e
+    globs:
+    - recipe/recipe.yaml
+    - recipe/variants.yaml
 - conda: https://prefix.dev/conda-forge/noarch/humanize-4.13.0-pyhd8ed1ab_0.conda
   sha256: 93f73896f9546e10241b07105148a9fe1d3c48914bfd03e98b4f7513959ada03
   md5: a42090530cf45654f8b37c7aab5e027b
@@ -5461,6 +5475,43 @@ packages:
   - pkg:pypi/matplotlib-inline?source=hash-mapping
   size: 14467
   timestamp: 1733417051523
+- conda: https://prefix.dev/conda-forge/linux-64/maturin-1.9.6-py310hf7d6592_0.conda
+  noarch: python
+  sha256: 8a178e6f6c360102ea648b6097e8cd1f2beeb1e0975c5b4b15c057f9b96e069f
+  md5: 896ebf8ae1f31a90cf1bcc5fd3a219ab
+  depends:
+  - python
+  - tomli >=1.1.0
+  - libgcc >=14
+  - __glibc >=2.17,<3.0.a0
+  - openssl >=3.5.4,<4.0a0
+  constrains:
+  - __glibc >=2.17
+  license: MIT
+  license_family: MIT
+  purls:
+  - pkg:pypi/maturin?source=hash-mapping
+  size: 7132663
+  timestamp: 1759889711754
+- conda: https://prefix.dev/conda-forge/win-64/maturin-1.9.6-py310h194dfaf_0.conda
+  noarch: python
+  sha256: 81198e8cc883c0d4ff23b2eb447eb622df67787cef11f2173199095232722a47
+  md5: 4cba1cdad6e7a183b4a2636ac209f72e
+  depends:
+  - python
+  - tomli >=1.1.0
+  - vc >=14.3,<15
+  - vc14_runtime >=14.44.35208
+  - ucrt >=10.0.20348.0
+  - vc >=14.3,<15
+  - vc14_runtime >=14.44.35208
+  - ucrt >=10.0.20348.0
+  license: MIT
+  license_family: MIT
+  purls:
+  - pkg:pypi/maturin?source=hash-mapping
+  size: 6420131
+  timestamp: 1759889734565
 - conda: https://prefix.dev/conda-forge/noarch/mdurl-0.1.2-pyhd8ed1ab_1.conda
   sha256: 78c1bbe1723449c52b7a9df1af2ee5f005209f67e40b6e1d3c7619127c43b1c7
   md5: 592132998493b3ff25fd7479396e8351
@@ -5892,9 +5943,9 @@ packages:
   - pkg:pypi/openpyxl?source=hash-mapping
   size: 484414
   timestamp: 1757332242459
-- conda: https://prefix.dev/conda-forge/linux-64/openssl-3.5.2-h26f9b46_0.conda
-  sha256: c9f54d4e8212f313be7b02eb962d0cb13a8dae015683a403d3accd4add3e520e
-  md5: ffffb341206dd0dab0c36053c048d621
+- conda: https://prefix.dev/conda-forge/linux-64/openssl-3.5.4-h26f9b46_0.conda
+  sha256: e807f3bad09bdf4075dbb4168619e14b0c0360bacb2e12ef18641a834c8c5549
+  md5: 14edad12b59ccbfa3910d42c72adc2a0
   depends:
   - __glibc >=2.17,<3.0.a0
   - ca-certificates
@@ -5902,8 +5953,8 @@ packages:
   license: Apache-2.0
   license_family: Apache
   purls: []
-  size: 3128847
-  timestamp: 1754465526100
+  size: 3119624
+  timestamp: 1759324353651
 - conda: https://prefix.dev/conda-forge/win-64/openssl-3.5.2-h725018a_0.conda
   sha256: 2413f3b4606018aea23acfa2af3c4c46af786739ab4020422e9f0c2aec75321b
   md5: 150d3920b420a27c0848acca158f94dc

@@ -282,7 +282,7 @@ fn calculate_similarity_struct(inputs: &[Series]) -> PolarsResult<Series> {
 
 // --- Python Module Definition ---
 #[pymodule]
-fn ms_entropy_polars(_py: Python, m: &PyModule) -> PyResult<()> {
+fn spectral_similarity(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(calculate_similarity_struct, m)?)?;
     Ok(())
 }
