@@ -326,7 +326,7 @@ def decompose_mass_parallel_verbose(
             [],
             dtype=pl.List(pl.Utf8),
         )
-        return empty_formulas, empty_strings
+        return pl.struct(empty_formulas, empty_strings, eager=True)
 
     cdef vector[double] masses_vec
     masses_vec.assign(masses_ptr, masses_ptr + n_masses)
@@ -533,7 +533,7 @@ def decompose_mass_parallel_per_bounds_verbose(
             [],
             dtype=pl.List(pl.Utf8),
         )
-        return empty_formulas, empty_strings
+        return pl.struct(empty_formulas, empty_strings, eager=True)
     if contig_min_bounds.shape[0] != n_masses or contig_max_bounds.shape[0] != n_masses:
         raise ValueError("Number of rows in min_bounds_per_mass and max_bounds_per_mass must match the number of target masses.")
     if contig_min_bounds.shape[1] != NUM_ELEMENTS or contig_max_bounds.shape[1] != NUM_ELEMENTS:
@@ -1273,7 +1273,7 @@ def decompose_spectra_known_precursor_parallel_verbose(
     precursor_formula_series: pl.Series,
     fragment_masses_series: pl.Series,
     tolerance_ppm: float = 5.0,
-    ) -> tuple[pl.Series, pl.Series]:
+    ) -> pl.Series:
     cdef np.ndarray[np.int32_t, ndim=2, mode="c"] contig_precursors = np.ascontiguousarray(
         precursor_formula_series.to_numpy(), dtype=np.int32
     )
@@ -1290,7 +1290,7 @@ def decompose_spectra_known_precursor_parallel_verbose(
             [],
             dtype=pl.List(pl.List(pl.Utf8)),
         )
-        return empty_formulas, empty_strings
+        return pl.struct(empty_formulas, empty_strings, eager=True)
     if contig_precursors.shape[1] != NUM_ELEMENTS:
         raise ValueError(f"Each precursor formula must have length {NUM_ELEMENTS} (got {contig_precursors.shape[1]}).")
     if fragment_masses_series.len() != n:
@@ -1426,7 +1426,7 @@ def decompose_spectra_known_precursor_parallel_verbose(
 
     formula_series = pl.Series("fragment_formulas", outer_formulas)
     string_series = pl.Series("fragment_formulas_str", outer_strings)
-    return formula_series, string_series
+    return pl.struct(formula_series, string_series, eager=True)
 
 def clean_and_normalize_spectra_known_precursor_parallel(
     precursor_formula_series: pl.Series,   # pl.Array(int32, NUM_ELEMENTS)
