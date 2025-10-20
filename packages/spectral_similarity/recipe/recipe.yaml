@@ -1,5 +1,6 @@
 context:
   version: "0.1.0"
+  python_min: "3.9"
 
 package:
   name: spectral_similarity
@@ -10,18 +11,21 @@ source:
   use_gitignore: true
 
 build:
-  script: bash recipe/build.sh
+  script: pip install . -v --no-deps
+  python:
+    version_independent: true
 
 requirements:
   build:
     - ${{ compiler('rust') }}
     - cargo-bundle-licenses
+  host:
+    - python      ${{ python_min }}.*
+    - python-abi3 ${{ python_min }}.*
     - maturin
     - pip
-  host:
-    - python
   run:
-    - python
+    - python >=${{ python_min }}
 
 tests:
   - script:

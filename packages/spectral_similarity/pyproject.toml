@@ -1,14 +1,13 @@
 [build-system]
-requires = ["maturin>=1.0,<2.0", "polars>=1.3.0"]
+requires = ["maturin>=1.0,<2.0", "polars>=1.34.0"]
 build-backend = "maturin"
 
 [project]
-name = "spectral-similarity"
+name = "spectral_similarity"
 requires-python = ">=3.9"
 classifiers = [
   "Programming Language :: Rust",
   "Programming Language :: Python :: Implementation :: CPython",
-  "Programming Language :: Python :: Implementation :: PyPy",
 ]
 dynamic = ["version"]
 

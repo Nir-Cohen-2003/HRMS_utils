@@ -1,7 +1,9 @@
 #!/bin/bash
 
+rm -rf dist build .eggs *.egg-info
+
 cargo-bundle-licenses --format yaml --output $SRC_DIR/THIRDPARTY.yml
 
-maturin build --release -o dist --strip
+$PYTHON -m build -w -n -x
 
-pip install --prefix=$PREFIX dist/*.whl --no-deps
+$PYTHON -m pip install --no-deps dist/*.whl
