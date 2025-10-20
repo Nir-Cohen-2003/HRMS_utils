@@ -30,4 +30,6 @@ testing = {features = ["testing"], solve-group = "testing"}
 test = "python tests/test_spectral_similarity.py"
 [feature.testing.dependencies]
 polars = ">=1.33.0,<2"
-spectral_similarity = {path = "."}
+# spectral_similarity = {path = "."}
+[feature.testing.pypi-dependencies]
+spectral_similarity = {path = "./spectral_similarity-0.1.0-cp38-abi3-linux_x86_64.whl"}
