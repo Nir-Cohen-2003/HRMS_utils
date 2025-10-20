@@ -277,3 +277,8 @@ fn calculate_similarity_struct(inputs: &[Series]) -> PolarsResult<Series> {
 
     Ok(out.into_series())
 }
+
+// #[pymodule]
+// fn spectral_similarity(_py: Python<'_>, _m: &PyModule) -> PyResult<()> {
+//     Ok(())
+// }
