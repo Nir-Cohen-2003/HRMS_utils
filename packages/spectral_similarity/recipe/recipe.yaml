@@ -9,8 +9,8 @@ source:
   path: ..
   use_gitignore: true
 
-# build:
-#   script: bash recipe/build.sh
+build:
+  script: bash recipe/build.sh
 
 requirements:
   build:
