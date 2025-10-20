@@ -282,7 +282,6 @@ fn calculate_similarity_struct(inputs: &[Series]) -> PolarsResult<Series> {
 #[pymodule]
 fn _internal(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add("__version__", env!("CARGO_PKG_VERSION"))?;
-    m.add_function(wrap_pyfunction!(calculate_similarity_struct, m)?)?;
     Ok(())
 }
 
