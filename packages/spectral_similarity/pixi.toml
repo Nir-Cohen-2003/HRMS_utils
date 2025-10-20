@@ -27,9 +27,13 @@ default = {features = [], solve-group = "default"}
 testing = {features = ["testing"], solve-group = "testing"}
 
 [feature.testing.tasks]
-test = "python tests/test_spectral_similarity.py"
+test = " python tests/test_spectral_similarity.py"
 [feature.testing.dependencies]
 polars = ">=1.33.0,<2"
-# spectral_similarity = {path = "."}
-[feature.testing.pypi-dependencies]
-spectral_similarity = {path = "./spectral_similarity-0.1.0-cp38-abi3-linux_x86_64.whl"}
+python = ">=3.8"
+pip = ">=23.0"
+spectral_similarity = {path = "."}
+# spectral_similarity = "*"
+# spectral_similarity = {path = "./spectral_similarity-0.1.0-hb0f4dca_0.conda"}
+# [feature.testing.pypi-dependencies]
+# spectral_similarity = {path = "./spectral_similarity-0.1.0-cp38-abi3-linux_x86_64.whl"}
