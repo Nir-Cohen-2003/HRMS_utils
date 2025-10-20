@@ -1,6 +1,7 @@
 use polars::prelude::*;
 use pyo3::prelude::*;
 use pyo3_polars::derive::polars_expr;
+use pyo3_polars::PolarsAllocator;
 use rayon::prelude::*;
 
 // Keep the Peak and Spectrum structs from the previous version
@@ -278,7 +279,12 @@ fn calculate_similarity_struct(inputs: &[Series]) -> PolarsResult<Series> {
     Ok(out.into_series())
 }
 
-// #[pymodule]
-// fn spectral_similarity(_py: Python<'_>, _m: &PyModule) -> PyResult<()> {
-//     Ok(())
-// }
+#[pymodule]
+fn _internal(m: &Bound<'_, PyModule>) -> PyResult<()> {
+    m.add("__version__", env!("CARGO_PKG_VERSION"))?;
+    m.add_function(wrap_pyfunction!(calculate_similarity_struct, m)?)?;
+    Ok(())
+}
+
+#[global_allocator]
+static ALLOC: PolarsAllocator = PolarsAllocator::new();
