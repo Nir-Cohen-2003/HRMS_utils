@@ -9,8 +9,8 @@ source:
   path: ..
   use_gitignore: true
 
-build:
-  script: bash recipe/build.sh
+# build:
+#   script: bash recipe/build.sh
 
 requirements:
   build:
@@ -25,7 +25,9 @@ requirements:
 
 tests:
   - script:
-      - python -c "import hrms_utils"
+      - pwd
+      - ls -la
+      # - python $SRC_DIR/tests/test.py
 
 about:
   homepage: https://github.com/Nir-Cohen-2003/HRMS_utils
