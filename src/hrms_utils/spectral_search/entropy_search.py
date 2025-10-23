@@ -1,9 +1,9 @@
 import polars as pl
 import numpy as np
 from ms_entropy import calculate_entropy_similarity
+from spectral_similarity import calculate_similarity
 
-
-def entropy_score_polars(
+def entropy_score_polars_external(
         spec1_mz: pl.Series, spec1_intensity: pl.Series,
         spec2_mz: pl.Series, spec2_intensity: pl.Series,
         ms2_mass_tolerance: float, noise_threshold: float) -> pl.Series:
@@ -76,4 +76,3 @@ def entropy_score_polars(
     
     # Why: Return as Polars Series with explicit Float64 dtype for consistency
     return pl.Series(similarities, dtype=pl.Float64)
-

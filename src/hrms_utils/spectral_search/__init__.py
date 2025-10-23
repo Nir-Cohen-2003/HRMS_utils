@@ -1,1 +1,1 @@
-from .entropy_search import entropy_score_polars
+from .entropy_search import entropy_score_polars_external

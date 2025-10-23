@@ -43,13 +43,15 @@ impl Spectrum {
 // --- Keep the core spectral entropy functions (clean_spectrum, centroid_spectrum, etc.) ---
 // --- They remain largely the same as in the previous example ---
 
+const MASS_THRESHOLD_FOR_PPM: f32 = 200.0;
+
 /// Cleans a spectrum with the given parameters. (Identical to previous version)
 pub fn clean_spectrum(
     peaks: &[Peak],
     min_mz: Option<f32>,
     max_mz: Option<f32>,
     noise_threshold: Option<f32>,
-    min_ms2_difference_in_da: f32,
+    ms2_tolerance_in_ppm: f32,
     max_peak_num: Option<usize>,
     normalize_intensity: bool,
 ) -> Spectrum {
@@ -63,8 +65,8 @@ pub fn clean_spectrum(
     });
 
     // 2. Centroid the spectrum
-    if min_ms2_difference_in_da > 0.0 {
-        centroid_spectrum(&mut cleaned_peaks, min_ms2_difference_in_da);
+    if ms2_tolerance_in_ppm > 0.0 {
+        centroid_spectrum(&mut cleaned_peaks, ms2_tolerance_in_ppm);
     }
 
     // 3. Remove noise
@@ -101,7 +103,7 @@ pub fn clean_spectrum(
     Spectrum::new(cleaned_peaks)
 }
 
-fn centroid_spectrum(peaks: &mut Vec<Peak>, tolerance: f32) {
+fn centroid_spectrum(peaks: &mut Vec<Peak>, tolerance_in_ppm: f32) {
      if peaks.len() <= 1 {
         return;
     }
@@ -111,6 +113,14 @@ fn centroid_spectrum(peaks: &mut Vec<Peak>, tolerance: f32) {
     let mut i = 0;
     while i < peaks.len() {
         let current_peak = &peaks[i];
+        let mass = current_peak.mz;
+        
+        let tolerance = if mass < MASS_THRESHOLD_FOR_PPM {
+            tolerance_in_ppm * 1e-6 * MASS_THRESHOLD_FOR_PPM
+        } else {
+            tolerance_in_ppm * 1e-6 * mass
+        };
+
         let mut group_end = i + 1;
         while group_end < peaks.len() && peaks[group_end].mz - current_peak.mz < tolerance {
             group_end += 1;
@@ -175,16 +185,22 @@ pub fn apply_weight_to_intensity(spectrum: &mut Spectrum) {
 pub fn calculate_unweighted_entropy_similarity(
     spec_a: &Spectrum,
     spec_b: &Spectrum,
-    ms2_tolerance_in_da: f32,
+    ms2_tolerance_in_ppm: f32,
 ) -> f32 {
     let mut a = 0;
     let mut b = 0;
     let mut similarity = 0.0;
 
     while a < spec_a.peaks.len() && b < spec_b.peaks.len() {
+        let mass = spec_a.peaks[a].mz;
+        let tolerance = if mass < MASS_THRESHOLD_FOR_PPM {
+            ms2_tolerance_in_ppm * 1e-6 * MASS_THRESHOLD_FOR_PPM
+        } else {
+            ms2_tolerance_in_ppm * 1e-6 * mass
+        };
         let mass_diff = spec_a.peaks[a].mz - spec_b.peaks[b].mz;
-        if mass_diff < -ms2_tolerance_in_da { a += 1; }
-        else if mass_diff > ms2_tolerance_in_da { b += 1; }
+        if mass_diff < -tolerance { a += 1; }
+        else if mass_diff > tolerance { b += 1; }
         else {
             let intensity_a = spec_a.peaks[a].intensity;
             let intensity_b = spec_b.peaks[b].intensity;
@@ -202,12 +218,13 @@ pub fn calculate_unweighted_entropy_similarity(
 pub fn calculate_entropy_similarity(
     spec_a: &Spectrum,
     spec_b: &Spectrum,
-    ms2_tolerance_in_da: f32,
+    ms2_tolerance_in_ppm: f32,
     clean_spectra_first: bool,
+    noise_threshold: Option<f32>,
 ) -> f32 {
     let (mut a, mut b) = if clean_spectra_first {
-        let cleaned_a = clean_spectrum(&spec_a.peaks, None, None, Some(0.01), 2.0 * ms2_tolerance_in_da, None, true);
-        let cleaned_b = clean_spectrum(&spec_b.peaks, None, None, Some(0.01), 2.0 * ms2_tolerance_in_da, None, true);
+        let cleaned_a = clean_spectrum(&spec_a.peaks, None, None, noise_threshold, 2.0 * ms2_tolerance_in_ppm, None, true);
+        let cleaned_b = clean_spectrum(&spec_b.peaks, None, None, noise_threshold, 2.0 * ms2_tolerance_in_ppm, None, true);
         (cleaned_a, cleaned_b)
     } else {
         (spec_a.clone(), spec_b.clone()) // Clone if not cleaning to avoid modifying originals if passed by ref elsewhere
@@ -216,14 +233,22 @@ pub fn calculate_entropy_similarity(
     if a.peaks.is_empty() || b.peaks.is_empty() { return 0.0; }
     apply_weight_to_intensity(&mut a);
     apply_weight_to_intensity(&mut b);
-    calculate_unweighted_entropy_similarity(&a, &b, ms2_tolerance_in_da)
+    calculate_unweighted_entropy_similarity(&a, &b, ms2_tolerance_in_ppm)
 }
 
 
 // --- Polars Plugin Function ---
 
+#[derive(serde::Deserialize, Debug, Default)]
+#[serde(default)]
+struct SimilarityKwargs {
+    ms2_tolerance_in_ppm: Option<f32>,
+    clean_spectra_first: Option<bool>,
+    noise_threshold: Option<f32>,
+}
+
 #[polars_expr(output_type=Float32)]
-fn calculate_similarity_struct(inputs: &[Series]) -> PolarsResult<Series> {
+fn calculate_similarity_struct(inputs: &[Series], kwargs: SimilarityKwargs) -> PolarsResult<Series> {
     let struct_series = &inputs[0];
     let ca: &StructChunked = struct_series.struct_()?;
 
@@ -246,8 +271,9 @@ fn calculate_similarity_struct(inputs: &[Series]) -> PolarsResult<Series> {
     let int2_vec: Vec<Option<Series>> = int2_list.into_iter().collect();
 
     // Parameters (you might want to pass these as arguments to the polars_function)
-    let ms2_tolerance_in_da: f32 = 0.02;
-    let clean_spectra_first: bool = true;
+    let ms2_tolerance_in_ppm = kwargs.ms2_tolerance_in_ppm.unwrap_or(5.0);
+    let clean_spectra_first = kwargs.clean_spectra_first.unwrap_or(true);
+    let noise_threshold = kwargs.noise_threshold;
 
     // Parallel calculation using rayon
     let out: Float32Chunked = mz1_vec
@@ -266,8 +292,9 @@ fn calculate_similarity_struct(inputs: &[Series]) -> PolarsResult<Series> {
                     let similarity = calculate_entropy_similarity(
                         &spec1,
                         &spec2,
-                        ms2_tolerance_in_da,
+                        ms2_tolerance_in_ppm,
                         clean_spectra_first,
+                        noise_threshold,
                     );
                     Some(similarity)
                 }

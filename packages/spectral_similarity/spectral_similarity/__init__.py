@@ -13,7 +13,12 @@ if TYPE_CHECKING:
 
 LIB = Path(__file__).parent
 
-def calculate_similarity(spectra: pl.Expr) -> pl.Expr:
+def calculate_similarity(
+    spectra: pl.Expr,
+    ms2_tolerance_in_ppm: float | None = None,
+    clean_spectra_first: bool | None = None,
+    noise_threshold: float | None = 0.001,
+) -> pl.Expr:
     """
     Calculate spectral similarity between two spectra.
     takes a struct with fields:
@@ -22,9 +27,17 @@ def calculate_similarity(spectra: pl.Expr) -> pl.Expr:
     - mz2: List[Float32]
     - intensities2: List[Float32]
     """
-    return pl.plugins.register_plugin_function(
+    kwargs = {
+        "ms2_tolerance_in_ppm": ms2_tolerance_in_ppm,
+        "clean_spectra_first": clean_spectra_first,
+        "noise_threshold": noise_threshold,
+    }
+    kwargs = {k: v for k, v in kwargs.items() if v is not None}
+
+    return register_plugin_function(
         args=[spectra],
         plugin_path=LIB,
         function_name="calculate_similarity_struct",
         is_elementwise=True,
+        kwargs=kwargs,
     )
