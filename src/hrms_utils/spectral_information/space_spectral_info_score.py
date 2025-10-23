@@ -28,7 +28,7 @@ def _score_core_batch(
 
     inv2h2 = 1.0 / (2.0 * bandwidth * bandwidth)
 
-    for i in prange(N):
+    for i in prange(N): #type: ignore
         k = int(ks[i])
         n = int(dims[i])
         if k == 0 or n == 0:

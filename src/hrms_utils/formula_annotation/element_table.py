@@ -110,3 +110,14 @@ def validate_formula_array(arr):
         raise ValueError("Formula array contains negative element counts")
     return True
 
+ADDUCT_MASSES = {
+    "[M+H]+": 1.007276,
+    "[M+Na]+": 22.989218,
+    "[M+NH4]+": 18.03382,
+    "[M+K]+": 38.963158,
+    "[M-H]-": -1.007276,
+    "[M+Cl]-": 34.969402,
+    "[M+FA-H]-": 44.998201,
+    "[M+CHO2]-": 44.998201,
+    "[M-H2O-H]-": 19.01839,
+}

@@ -14,24 +14,24 @@ import polars as pl
 # ##############################################################################
 
 @njit(fastmath=True)
-def _l1_distance(a: NDArray[np.floating], b: NDArray[np.floating]) -> np.floating:
+def _l1_distance(a: NDArray[np.floating], b: NDArray[np.floating]) -> np.float64:
     """Computes L1 (Manhattan) distance between two vectors."""
-    return np.sum(np.abs(a - b))
+    return np.sum(np.abs(a - b), dtype=np.float64)
 
 @njit(fastmath=True)
-def _l2_distance(a: NDArray[np.floating], b: NDArray[np.floating]) -> np.floating:
+def _l2_distance(a: NDArray[np.floating], b: NDArray[np.floating]) -> np.float64:
     """Computes L2 (Euclidean) distance between two vectors."""
-    return np.sqrt(np.sum((a - b)**2))
+    return np.sqrt(np.sum((a - b)**2), dtype=np.float64)
 
 @njit(fastmath=True)
-def _cosine_distance(a: NDArray[np.floating], b: NDArray[np.floating]) -> np.floating:
+def _cosine_distance(a: NDArray[np.floating], b: NDArray[np.floating]) -> np.float64:
     """Computes cosine distance between two vectors."""
     dot_product = np.sum(a * b)
-    norm_a = np.sqrt(np.sum(a**2))
-    norm_b = np.sqrt(np.sum(b**2))
+    norm_a = np.sqrt(np.sum(a**2,dtype=np.float64))
+    norm_b = np.sqrt(np.sum(b**2,dtype=np.float64))
     if norm_a == 0.0 or norm_b == 0.0:
-        return 1.0
-    return 1.0 - (dot_product / (norm_a * norm_b))
+        return np.float64(1.0)
+    return np.float64(1.0 - (dot_product / (norm_a * norm_b)))
 
 @njit(cache=True, fastmath=True)
 def _is_superformula(super_formula: NDArray[np.floating], sub_formula: NDArray[np.floating]) -> bool:
@@ -71,7 +71,7 @@ def _tree_score_core_batch(
     else:
         distance_function = _cosine_distance
 
-    for i in prange(num_spectra):
+    for i in prange(num_spectra): #type: ignore
         k = formula_counts[i]
         n = dims[i]
 

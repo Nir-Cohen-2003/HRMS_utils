@@ -12,10 +12,10 @@ def eliminate_water(smiles:str) -> str:
     can_eliminate = mol.GetSubstructMatch(eliminateable_hydroxide)
     if not can_eliminate:
         # print(f"Cannot eliminate water from {smiles}")
-        return None
-    water_elimiantion_smarts = "[C;h:1]-[C:2]-[OH]>>[C:1]=[C:2]"
-    # water_elimiantion_smarts = "[C!H0:1][C:2][O:3]>>[C:1]=[C:2].[O:3]"  # both work
-    water_elimination = rdChemReactions.ReactionFromSmarts(water_elimiantion_smarts)
+        return ""
+    water_elimination_smarts = "[C;h:1]-[C:2]-[OH]>>[C:1]=[C:2]"
+    # water_elimination_smarts = "[C!H0:1][C:2][O:3]>>[C:1]=[C:2].[O:3]"  # both work
+    water_elimination = rdChemReactions.ReactionFromSmarts(water_elimination_smarts)
 
 
     mol = Chem.MolFromSmiles(smiles)
@@ -23,18 +23,19 @@ def eliminate_water(smiles:str) -> str:
 
     if len(res) == 0:
         # print(f"No product found for {smiles}")
-        return None
+        return ""
     elif len(res) > 1:
         # print(f"More than one product found for {smiles}")
         return "multiple products"
     elif len(res)==1:
         product = res[0][0]
         rdmolops.RemoveStereochemistry(product)
-        MolStandardize.rdMolStandardize.CanonicalTautomer(product)
+        MolStandardize.rdMolStandardize.CanonicalTautomer(product) # type: ignore
         return Chem.MolToSmiles(product)
+    return ""
 
 
-def elimiante_ammonia(smiles:str) -> str:
+def eliminate_ammonia(smiles:str) -> str:
     mol = Chem.MolFromSmiles(smiles)
     rdmolops.RemoveStereochemistry(mol) # in place operation
 
@@ -42,26 +43,27 @@ def elimiante_ammonia(smiles:str) -> str:
     can_eliminate = mol.GetSubstructMatch(eliminateable_NH2)
     if not can_eliminate:
         # print(f"Cannot eliminate water from {smiles}")
-        return None
+        return ""
     ammonia_elimination_smarts = "[C;h:1]-[C:2]-[NH2]>>[C:1]=[C:2]"
-    # water_elimiantion_smarts = "[C!H0:1][C:2][O:3]>>[C:1]=[C:2].[O:3]"  # both work
-    ammonia_elimiantion = rdChemReactions.ReactionFromSmarts(ammonia_elimination_smarts)
+    # water_elimination_smarts = "[C!H0:1][C:2][O:3]>>[C:1]=[C:2].[O:3]"  # both work
+    ammonia_elimination = rdChemReactions.ReactionFromSmarts(ammonia_elimination_smarts)
 
 
     mol = Chem.MolFromSmiles(smiles)
-    res = ammonia_elimiantion.RunReactants((mol,))
+    res = ammonia_elimination.RunReactants((mol,))
 
     if len(res) == 0:
         # print(f"No product found for {smiles}")
-        return None
+        return ""
     elif len(res) > 1:
         # print(f"More than one product found for {smiles}")
         return "multiple products"
     elif len(res)==1:
         product = res[0][0]
         rdmolops.RemoveStereochemistry(product)
-        MolStandardize.rdMolStandardize.CanonicalTautomer(product)
+        MolStandardize.rdMolStandardize.CanonicalTautomer(product) # type: ignore
         return Chem.MolToSmiles(product)
+    return ""
 
 if __name__ == "__main__":
     smiles = ["OCC", "Oc1ccccc1", "CC(N)C(O)c1ccccc1","C(O)CC(O)c1ccccc1"]

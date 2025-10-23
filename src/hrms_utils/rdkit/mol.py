@@ -5,7 +5,7 @@ from rdkit import Chem
 from rdkit import RDLogger
 import polars as pl
 
-RDLogger.DisableLog('rdApp.*')
+RDLogger.DisableLog('rdApp.*') # type: ignore
 
 def sanitize_smiles_polars(smiles: pl.Series, batch_size: int = 10000) -> pl.Series:
     sanitized = sanitize_smiles(smiles, batch_size)
@@ -20,7 +20,7 @@ def sanitize_smiles(smiles: Iterable[str], batch_size: int = 10000) -> List[str]
 
 
 def _sanitize_smiles_batch(smiles: List[str]) -> List[str]:
-    RDLogger.DisableLog('rdApp.*')
+    RDLogger.DisableLog('rdApp.*') # type: ignore
 
     sanitized: list[str] = []
     for s in smiles:
@@ -52,7 +52,7 @@ def inchi_to_smiles_list(inchi_list: List[str], batch_size: int = 10000) -> List
 
 def _inchi_to_smiles_batch(inchi_list: List[str]) -> List[str]:
     """Convert a list of InChI strings to SMILES."""
-    RDLogger.DisableLog('rdApp.*')
+    RDLogger.DisableLog('rdApp.*') # type: ignore
 
     smiles_list = []
     for inchi in inchi_list:
@@ -84,7 +84,7 @@ def smiles_to_inchi_list(smiles_list: List[str], batch_size: int = 10000) -> Lis
 
 def _smiles_to_inchi_batch(smiles_list: List[str]) -> List[str]:
     """Convert a list of SMILES strings to InChI."""
-    RDLogger.DisableLog('rdApp.*')
+    RDLogger.DisableLog('rdApp.*') # type: ignore
 
     inchi_list = []
     for smiles in smiles_list:
@@ -117,7 +117,7 @@ def smiles_to_inchikey_list(smiles_list: List[str], batch_size: int = 10000) -> 
 
 def _smiles_to_inchikey_batch(smiles_list: List[str]) -> List[str]:
     """Convert a list of SMILES strings to InChIKey."""
-    RDLogger.DisableLog('rdApp.*')
+    RDLogger.DisableLog('rdApp.*') # type: ignore
 
     inchikey_list = []
     for smiles in smiles_list:

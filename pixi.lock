@@ -2861,7 +2861,7 @@ packages:
   - python >=3.12
   - python_abi 3.13.* *_cp313
   input:
-    hash: 688ee3c5e642b10b85dd6431f4fdc1de332aa4a3481a9973b8e355521f263a9d
+    hash: 1332b68ff239cc36c36c272918ddee5db9d289aa6b80821aeb9b235d779cc76a
     globs:
     - pyproject.toml
 - conda: .
@@ -2891,7 +2891,7 @@ packages:
   - python >=3.12
   - python_abi 3.13.* *_cp313
   input:
-    hash: 688ee3c5e642b10b85dd6431f4fdc1de332aa4a3481a9973b8e355521f263a9d
+    hash: 1332b68ff239cc36c36c272918ddee5db9d289aa6b80821aeb9b235d779cc76a
     globs:
     - pyproject.toml
 - conda: https://prefix.dev/conda-forge/noarch/humanize-4.14.0-pyhd8ed1ab_0.conda
@@ -7897,7 +7897,7 @@ packages:
   timestamp: 1733244175724
 - conda: ./packages/spectral_similarity
   name: spectral_similarity
-  version: 0.1.0
+  version: 0.2.0
   build: pyh4616a5c_0
   subdir: noarch
   depends:
@@ -7905,7 +7905,7 @@ packages:
   - python >=3.9
   - python *
   input:
-    hash: 4809bfb3ef0a774b63d4800d58d3cbf0105c8d753cd3c3dcd5ca10349c63523c
+    hash: cefc052bd2a12983f12f4cb5af5916d63a1671605de0d8a65df5e35b6d9f1610
     globs:
     - pyproject.toml
 - conda: https://prefix.dev/conda-forge/linux-64/sqlalchemy-2.0.44-py313h07c4f96_0.conda

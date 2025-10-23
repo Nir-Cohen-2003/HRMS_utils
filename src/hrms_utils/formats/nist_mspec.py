@@ -1,7 +1,9 @@
 import re
 import polars as pl
 import numpy as np
-from ..formula_annotation.utils import formula_fits_mass, format_formula_string_to_array,  get_precursor_ion_formula_array, num_elements
+from ..formula_annotation.utils import formula_fits_mass, format_formula_string_to_array,  get_precursor_ion_formula_array
+from ..formula_annotation.element_table import ADDCUT_MASSES
+from ..formula_annotation.mass_decomposition import clean_and_normalize_spectra_known_precursor_verbose, NUM_ELEMENTS
 from pathlib import Path 
 from scipy.stats import linregress
 
@@ -30,11 +32,11 @@ def read_MSPEC_file(path: Path | str) -> pl.DataFrame:
     with open(path, 'r') as file:
         file_contents = file.read()
     
-    data = _get_non_spectrum_data(file_contents)
-    spectra = _get_spectra(file_contents)
+    data = _read_file(file_contents)
+    
+    data = _annotate_spectra(data)
 
-    data = pl.concat([data, spectra], how='horizontal')
-    data = _add_num_clean_peaks(data)
+    # data = _add_num_clean_peaks(data)
     data = _add_precursor_type_indicators(data)
 
     data = _add_base_peak_mz_fraction_and_diff(data)
@@ -44,80 +46,10 @@ def read_MSPEC_file(path: Path | str) -> pl.DataFrame:
 
 
 
-def _get_spectra(file_contents: str) -> pl.DataFrame:
-    ''' gets spectra via regex and some numpy operations'''
-    entries = _split_entries(file_contents)
-    results = []
-    for entry in entries:
-        results.append(_get_entry_spectrum_and_formula(entry))
-    #note - when stroing and reading the data, we get a flat list.
-    try:
-        results = list(zip(*results))
-        spectra = pl.DataFrame(results,schema={
-            'raw_spectrum_mz': pl.List(pl.Float64),
-            'raw_spectrum_intensity': pl.List(pl.Float64),
-            'normalized_spectrum_mz': pl.List(pl.Float64),
-            'clean_spectrum_mz': pl.List(pl.Float64),
-            'clean_spectrum_intensity': pl.List(pl.Float64),
-            'clean_spectrum_formula':pl.List(pl.String),
-            'clean_spectrum_formula_array':pl.List(pl.Array(pl.Int64,num_elements))})
-
-        return spectra
-    except Exception as e:
-        print('Error in writing the data. The error is:', e)
-        return
-
-def _get_entry_spectrum_and_formula(entry: str) -> tuple:
-    '''
-    extracts teh spcetrum and the formula from the entry, if it is singly charged and fits the mass.
-    does not return the formulas or formula array if the formula doesn't fit the mass or the entry is multiply charged.
-    '''
-    entry_raw_mz = []
-    entry_raw_intensity = []
-    possible_formulas = []
-
-    entry_clean_mz = []
-    entry_clean_intensity = []
-    entry_clean_formulas = []
-    entry_clean_formulas_array = []
-
+def _read_file(file_contents: str) -> pl.DataFrame:
     mz_intensity_pattern = r'(\d+\.\d+)\s(\d+(\.\d+)?)'
-    formula_pattern = r'(\s"(.*?)((([A-Z][a-z]?\d*)|[+-]|\d)+)=?p[/+-])?'
-    unknown_pattern = r'(\s"\?)?'
-    precursor_pattern = r'(\s"p/)?'
-    pattern = mz_intensity_pattern + formula_pattern + unknown_pattern + precursor_pattern
-    #pattern = r'(\d+\.\d+)\s(\d+(\.\d+)?)'+r'(\s"(.*?)((([A-Z][a-z]?\d*)|[+-]|\d)+)=?p[/+-])?'+r'(\s"\?)?'+r'(\s"p/)?'
-    entry_raw_fragments = re.findall(pattern, entry)
-    for i in range(len(entry_raw_fragments)):
-        entry_raw_mz.append(entry_raw_fragments[i][0])
-        entry_raw_intensity.append(entry_raw_fragments[i][1])
-        possible_formulas.append(entry_raw_fragments[i][5])
-    
-    entry_raw_mz = np.array(entry_raw_mz, dtype=np.float64).flatten()
-    entry_raw_intensity = np.array(entry_raw_intensity, dtype=np.float64).flatten()
+    Collision_energy_ev_pattern = r'(\d+)e*V*v*$'
 
-    possible_mz_diff = re.search(r'[Mm]z_diff=(-?\d+\.\d+)', entry)
-    if possible_mz_diff is not None:
-        mz_normalization_coefficient= 1.0 + float(possible_mz_diff.group(1))*1e-6
-    else:   
-        mz_normalization_coefficient = 1
-    entry_normalized_mz = np.round(np.divide(entry_raw_mz, mz_normalization_coefficient), 4)
-    
-    for i in range(len(entry_raw_fragments)):
-        if 'p' in entry_raw_fragments[i][9]: # if it's the molecular ion
-            entry_clean_mz.append(entry_normalized_mz[i])
-            entry_clean_intensity.append(entry_raw_intensity[i])
-            entry_clean_formulas.append('Mol')
-            entry_clean_formulas_array.append(get_precursor_ion_formula_array(entry))
-        elif formula_fits_mass(possible_formulas[i], entry_normalized_mz[i]): # this will probably give false for any multiply charged ion
-            entry_clean_mz.append(entry_normalized_mz[i])
-            entry_clean_intensity.append(entry_raw_intensity[i])
-            entry_clean_formulas.append(possible_formulas[i])
-            formula_array = format_formula_string_to_array(possible_formulas[i])
-            entry_clean_formulas_array.append(formula_array)
-    return (entry_raw_mz, entry_raw_intensity, entry_normalized_mz, entry_clean_mz, entry_clean_intensity, entry_clean_formulas, entry_clean_formulas_array)
-
-def _get_non_spectrum_data(file_contents: str) -> pl.DataFrame:
     entries = _split_entries(file_contents)
     data = pl.DataFrame(entries, schema={'raw': pl.String})
     data = data.with_columns(
@@ -148,11 +80,10 @@ def _get_non_spectrum_data(file_contents: str) -> pl.DataFrame:
         pl.col('raw').str.extract(pattern=r'Peptide_mods: (.+)').alias('Peptide_mods'),
         pl.col('raw').str.extract(pattern=r'InChI: (.+)').alias('inchi'),
         pl.col('raw').str.extract(pattern=r'SMILES: (.+)').alias('smiles'),
-
-    )
-    data = data.drop('raw')
-    Collision_energy_ev_pattern = r'(\d+)e*V*v*$'
-    data = data.with_columns(
+        pl.col('raw').str.extract(pattern=mz_intensity_pattern).alias('mz_intensity')
+    ).drop(
+        'raw'
+    ).with_columns(
         pl.col('InChIKey').str.extract(r'(.+?)-').alias('base_InChIKey'),
         pl.col("NIST_ID").str.to_integer(),
         pl.col("DB_ID").str.to_integer(),
@@ -162,11 +93,54 @@ def _get_non_spectrum_data(file_contents: str) -> pl.DataFrame:
         pl.col('mz_diff').cast(pl.Float64),
         pl.col('Collision_energy_raw').str.extract(r'NCE=(\d+)').str.to_integer().alias('Collision_energy_NCE'),
         pl.col('Collision_energy_raw').str.extract(Collision_energy_ev_pattern).str.to_integer().alias('Collision_energy_ev'),
-        pl.col('Formula').map_elements(format_formula_string_to_array,return_dtype=pl.List(pl.Int64)).list.to_array(width=num_elements).alias('Formula_array'))
+        pl.col('Formula').map_elements(format_formula_string_to_array,return_dtype=pl.List(pl.Int64)).list.to_array(width=num_elements).alias('Formula_array'),
+        pl.col('mz_intensity').str.split_exact(' ',1).struct.rename_fields(names=['raw_spectrum_mz','raw_spectrum_intensity']).struct.unnest()
+        )
     return data
 
+def _annotate_spectra(data: pl.DataFrame) -> pl.DataFrame:
+    # Determine addcut_mass based on Precursor_type
+    adduct_mapping = pl.Series(name="Precursor_type", values=list(ADDCUT_MASSES.keys()))
+    adduct_masses = pl.Series(name="addcut_mass", values=list(ADDCUT_MASSES.values()))
+    adduct_df = pl.DataFrame({"Precursor_type": adduct_mapping, "addcut_mass": adduct_masses})
 
+    data = data.join(adduct_df, on="Precursor_type", how="left")
+    data = data.with_columns(
+        pl.col("addcut_mass").fill_null(0.0) # Default to 0.0 if no adduct mass is found
+    )
 
+    # Calculate non_ionized_mass
+    data = data.with_columns(
+        (pl.col("PrecursorMZ") - pl.col("addcut_mass")).alias("non_ionized_mass")
+    )
+
+    # Prepare fragment masses by subtracting addcut_mass
+    data = data.with_columns(
+        (pl.col("raw_spectrum_mz").list.eval(pl.element() - pl.col("addcut_mass"))).alias("non_ionized_raw_spectrum_mz")
+    )
+
+    # Call clean_and_normalize_spectra_known_precursor_verbose
+    data = data.with_columns(
+        clean_and_normalize_spectra_known_precursor_verbose(
+            precursor_formula_series=pl.col("Formula_array").list.to_array(width=NUM_ELEMENTS),
+            precursor_masses_series=pl.col("non_ionized_mass"),
+            fragment_masses_series=pl.col("non_ionized_raw_spectrum_mz"),
+            fragment_intensities_series=pl.col("raw_spectrum_intensity"),
+            tolerance_ppm=5.0,
+            max_allowed_normalized_mass_error_ppm=5.0,
+        ).alias("cleaned_normalized_spectra")
+    )
+
+    # Extract results and add addcut_mass back to normalized masses
+    data = data.with_columns(
+        pl.col("cleaned_normalized_spectra").struct.field("masses_normalized").list.eval(pl.element() + pl.col("addcut_mass")).alias("cleaned_normalized_mz"),
+        pl.col("cleaned_normalized_spectra").struct.field("cleaned_intensities").alias("cleaned_normalized_intensity"),
+        pl.col("cleaned_normalized_spectra").struct.field("fragment_formulas").alias("cleaned_fragment_formulas"),
+        pl.col("cleaned_normalized_spectra").struct.field("fragment_errors_ppm").alias("cleaned_fragment_errors_ppm"),
+        pl.col("cleaned_normalized_spectra").struct.field("fragment_formulas_str").alias("cleaned_fragment_formulas_str"),
+    ).drop("cleaned_normalized_spectra", "non_ionized_mass", "non_ionized_raw_spectrum_mz", "addcut_mass")
+
+    return data
 def _add_num_clean_peaks(data: pl.DataFrame | pl.LazyFrame) -> pl.DataFrame |  pl.LazyFrame:
     data = data.with_columns(pl.col('clean_spectrum_mz').list.len().alias('num_clean_peaks'))
     return data
