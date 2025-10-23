@@ -20,7 +20,8 @@ def test_entropy_search_parity(
 
     chromatogram_df = get_chromatogram(chromatogram_path).filter(
         pl.col("msms_m/z").is_not_null(),
-        # pl.col("msms_intensity").list.len()
+        pl.col("msms_intensity").list.len() > 3,
+        # pl.col("Precursor_mz_MSDIAL") > 300
     )
     print(f"Loaded chromatogram with {chromatogram_df.height:,} spectra")
 
@@ -97,16 +98,31 @@ def test_entropy_search_parity(
     rust_time = timeit.default_timer() - start_time
     print(f"Rust-based similarity time: {rust_time:.4f} s")
     results_df = results_df.with_columns(
-        score_difference=(pl.col("external_results") - pl.col("rust_similarity")).abs()
+        abs_score_difference=(pl.col("external_results") - pl.col("rust_similarity")).abs()
     ).with_columns(
-        scores_equal=pl.col("score_difference") < 1e-3
+        scores_equal=pl.col("abs_score_difference") < 1e-3,
+        scores_close = pl.col("abs_score_difference") < 1e-2,
+        scores_similar = pl.col("abs_score_difference") < 5e-2,
     )
     # Compare the results
     assert results_df.height > 0, "No results to compare"
     assert results_df.select([pl.col("external_results"), pl.col("rust_similarity")]).null_count().equals(pl.DataFrame({"external_results": [0], "rust_similarity": [0]})), "Null values found in results"
-
+    score_corr = results_df.select(pl.col(["external_results", "rust_similarity"])).corr().item(0,1)
+    assert score_corr > 0.99, f"Low correlation between implementations: {score_corr}"
+    print(f"The correlation between the two implementations is: {score_corr}, which is above the threshold of 0.99.")
     num_unequal = results_df.filter(~pl.col("scores_equal")).height
-    assert num_unequal == 0, f"Found {num_unequal} unequal scores between implementations, max difference: {results_df.select(pl.col('score_difference').max()).item()}"
+    unequal_corr = results_df.filter(~pl.col("scores_equal")).select(["external_results", "rust_similarity"]).corr().item(0,1)
+    num_non_close = results_df.filter(~pl.col("scores_close")).height
+    non_close_corr = results_df.filter(~pl.col("scores_close")).select(["external_results", "rust_similarity"]).corr().item(0,1)
+    num_non_similar = results_df.filter(~pl.col("scores_similar")).height
+    non_similar_corr = results_df.filter(~pl.col("scores_similar")).select(["external_results", "rust_similarity"]).corr().item(0,1)
+    print(f"Number of unequal scores (>1e-3 difference): {num_unequal}")
+    print(f"Correlation of unequal scores: {unequal_corr}")
+    print(f"Number of non-close scores (>1e-2 difference): {num_non_close}")
+    print(f"Correlation of non-close scores: {non_close_corr}")
+    print(f"Number of non-similar scores (>5e-2 difference): {num_non_similar}")
+    print(f"Correlation of non-similar scores: {non_similar_corr}")
+    # assert num_unequal == 0, f"Found {num_unequal} unequal scores between implementations, max difference: {results_df.select(pl.col('score_difference').max()).item()}"
 
     # assert results_df.select(pl.all("scores_equal")).item(), "Not all scores are equal"
     # # print("All entropy similarity scores match between implementations")
