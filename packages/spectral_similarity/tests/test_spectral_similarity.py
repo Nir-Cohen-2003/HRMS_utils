@@ -43,8 +43,57 @@ def test_calculate_similarity():
 
     assert "similarity" in result.columns, "similarity column should be present in result dataframe"
     assert result["similarity"][0] is not None, "similarity value should not be None"
-    # Why: For identical spectra, cosine similarity should be 1.0
     assert abs(result["similarity"][0] - 1.0) < 1e-6, f"Expected similarity of 1.0 for identical spectra, got {result['similarity'][0]}"
+
+    # Test with different tolerance
+    df2 = pl.DataFrame(
+        {
+            "spectra": [
+                {
+                    "mz1": [100.0, 200.0, 300.0],
+                    "intensities1": [1.0, 1.0, 1.0],
+                    "mz2": [100.0003, 200.0, 300.0], # diff 0.0003 Da
+                    "intensities2": [1.0, 1.0, 1.0],
+                }
+            ]
+        },
+        schema={"spectra": pl.Struct({"mz1": pl.List(pl.Float32), "intensities1": pl.List(pl.Float32), "mz2": pl.List(pl.Float32), "intensities2": pl.List(pl.Float32)})}
+    )
+
+    # default tolerance is 5ppm. At 100Da, it is 5 * 1e-6 * 200 = 0.001 Da. 0.0003 < 0.001, so it should match.
+    result2_default = df2.with_columns(similarity=calculate_similarity(pl.col("spectra")))
+    assert abs(result2_default["similarity"][0] - 1.0) < 1e-3
+
+    # 1ppm tolerance. At 100Da, it is 1 * 1e-6 * 200 = 0.0002 Da. 0.0003 > 0.0002, so it should not match fully.
+    result2_1ppm = df2.with_columns(similarity=calculate_similarity(pl.col("spectra"), ms2_tolerance_in_ppm=1.0))
+    assert result2_1ppm["similarity"][0] < 1.0
+
+    # Test with noise_threshold
+    df3 = pl.DataFrame(
+        {
+            "spectra": [
+                {
+                    "mz1": [100.0, 200.0, 300.0, 400.0],
+                    "intensities1": [1.0, 1.0, 1.0, 0.0005], # max intensity is 1.0
+                    "mz2": [100.0, 200.0, 300.0],
+                    "intensities2": [1.0, 1.0, 1.0],
+                }
+            ]
+        },
+        schema={"spectra": pl.Struct({"mz1": pl.List(pl.Float32), "intensities1": pl.List(pl.Float32), "mz2": pl.List(pl.Float32), "intensities2": pl.List(pl.Float32)})}
+    )
+
+    # with default noise_threshold=0.001, the peak at 400.0 (intensity 0.0005) should be removed.
+    # noise_level = 0.001 * 1.0 = 0.001. 0.0005 < 0.001.
+    # So spec1 becomes identical to spec2. Similarity should be 1.0
+    result3_default_noise = df3.with_columns(similarity=calculate_similarity(pl.col("spectra")))
+    assert abs(result3_default_noise["similarity"][0] - 1.0) < 1e-3
+
+    # with noise_threshold=0.0001, the peak at 400.0 should NOT be removed.
+    # noise_level = 0.0001 * 1.0 = 0.0001. 0.0005 > 0.0001.
+    # So spec1 is different from spec2. Similarity should be less than 1.0
+    result3_low_noise = df3.with_columns(similarity=calculate_similarity(pl.col("spectra"), noise_threshold=0.0001))
+    assert result3_low_noise["similarity"][0] < 1.0
 
 if __name__ == "__main__":
     test_calculate_similarity()

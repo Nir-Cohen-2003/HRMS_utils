@@ -2,6 +2,7 @@
 channels = [
   "https://prefix.dev/pixi-build-backends",
   "https://prefix.dev/conda-forge",
+  "https://prefix.dev/nir-cohen"
 ]
 platforms = ["linux-64","win-64"]
 preview = ["pixi-build"]
@@ -73,7 +74,7 @@ rdkit = ">=2024.0.0"
 numpy = ">=1.20.0"
 numba = ">=0.61.0"
 ms_entropy = "*"
-spectral_similarity = {path = "./packages/spectral_similarity"}
+spectral_similarity = "*"
 scipy = "*"
 requests = "*"
 aiohttp = "*"
@@ -88,13 +89,11 @@ connectorx = "*"
 sqlalchemy = "*"
 
 [feature.testing.tasks]
-# runtest = '''
-# python -c "import sys,os; p=sys.argv[1]; p=os.path.relpath(p,os.getcwd()); p=p[p.find('src/')+4:] if 'src/' in p else p; p=p[:-3] if p.endswith('.py') else p; p=p.replace('/', '.'); import runpy; runpy.run_module(p, run_name='__main__')"
-# '''
 test_mass_decomp = "python tests/formula_annotation/mass_decomposition.py"
 test_chromatogram = "python tests/formula_annotation/chromatogram.py"
 test_mol = "python tests/rdkit/mol.py"
-test_info_score = "python tests/spectral_information/spectral_information.py"
+test_info_score = "python tests/spectral/spectral_information.py"
+test_entropy = "python tests/spectral/entropy_search.py"
 test_verbose_wrappers = "python -m pytest tests/formula_annotation/test_verbose_wrappers.py"
 [feature.testing.dependencies]
 hrms_utils = {path = "."}
@@ -104,6 +103,7 @@ numpy = ">=1.20.0,<2.3"
 numba = ">=0.61.0"
 pytest = ">=8.4.2,<9"
 ms_entropy = "*"
+spectral_similarity = {path = "./packages/spectral_similarity"}
 scipy = "*"
 requests = "*"
 aiohttp = "*"

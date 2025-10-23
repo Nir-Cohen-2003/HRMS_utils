@@ -38,3 +38,5 @@ src/hrms_utils/rdkit/mol.py
 src/hrms_utils/spectral_information/__init__.py
 src/hrms_utils/spectral_information/space_spectral_info_score.py
 src/hrms_utils/spectral_information/tree_spectral_info_score.py
+src/hrms_utils/spectral_search/__init__.py
+src/hrms_utils/spectral_search/entropy_search.py
