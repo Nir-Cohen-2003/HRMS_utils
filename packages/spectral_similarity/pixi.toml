@@ -38,6 +38,8 @@ polars = ">=1.33.0,<2"
 python = ">=3.8"
 pip = ">=23.0"
 spectral_similarity = {path = "."}
+[feature.testing.pypi-dependencies]
+ms-entropy= ">=1.3.9"
 # spectral_similarity = "*"
 # spectral_similarity = {path = "./spectral_similarity-0.1.0-hb0f4dca_0.conda"}
 # [feature.testing.pypi-dependencies]

@@ -45,7 +45,7 @@ impl Spectrum {
 
 const MASS_THRESHOLD_FOR_PPM: f32 = 200.0;
 
-/// Cleans a spectrum with the given parameters. (Identical to previous version)
+/// Cleans a spectrum with the given parameters.
 pub fn clean_spectrum(
     peaks: &[Peak],
     min_mz: Option<f32>,
@@ -60,13 +60,16 @@ pub fn clean_spectrum(
     // 1. Remove empty peaks and filter by mz
     cleaned_peaks.retain(|p| {
         p.intensity > 0.0
-            && p.mz > min_mz.unwrap_or(0.0)
-            && p.mz < max_mz.unwrap_or(f32::MAX)
+            && p.mz >= min_mz.unwrap_or(0.0)
+            && p.mz <= max_mz.unwrap_or(f32::MAX)
     });
+    cleaned_peaks.sort_by(|a, b| a.mz.partial_cmp(&b.mz).unwrap());
 
-    // 2. Centroid the spectrum
+    // 2. Centroid the spectrum (C-like iterative approach)
     if ms2_tolerance_in_ppm > 0.0 {
-        centroid_spectrum(&mut cleaned_peaks, ms2_tolerance_in_ppm);
+        while need_centroid(&cleaned_peaks, ms2_tolerance_in_ppm) {
+            centroid_spectrum(&mut cleaned_peaks, ms2_tolerance_in_ppm);
+        }
     }
 
     // 3. Remove noise
@@ -84,6 +87,12 @@ pub fn clean_spectrum(
             cleaned_peaks.truncate(n);
         }
     }
+    
+    // This step is needed if noise removal or top-k creates zero-intensity peaks, but Rust's retain/truncate avoids this.
+    // However, to match the C code flow, we ensure it's sorted by mz before normalization.
+    cleaned_peaks.retain(|p| p.intensity > 0.0);
+    cleaned_peaks.sort_by(|a, b| a.mz.partial_cmp(&b.mz).unwrap());
+
 
     // 5. Normalize intensity
     if normalize_intensity {
@@ -93,56 +102,107 @@ pub fn clean_spectrum(
                 p.intensity /= sum_intensity;
             }
         } else {
-             // Handle case where sum is zero after cleaning/filtering
             cleaned_peaks.clear();
         }
     }
 
+    // Final sort by m/z, which should already be the case but ensures correctness.
     cleaned_peaks.sort_by(|a, b| a.mz.partial_cmp(&b.mz).unwrap());
 
     Spectrum::new(cleaned_peaks)
 }
 
-fn centroid_spectrum(peaks: &mut Vec<Peak>, tolerance_in_ppm: f32) {
-     if peaks.len() <= 1 {
+/// Checks if a spectrum needs centroiding based on C's logic.
+/// Assumes peaks are sorted by mz.
+fn need_centroid(peaks: &[Peak], ms2_tolerance_in_ppm: f32) -> bool {
+    if peaks.len() < 2 || ms2_tolerance_in_ppm <= 0.0 {
+        return false;
+    }
+    for i in 0..(peaks.len() - 1) {
+        // C code: min_ms2_difference_in_da = spectrum_2d[i + 1][0] * min_ms2_difference_in_ppm * 1e-6;
+        let tolerance = peaks[i + 1].mz * ms2_tolerance_in_ppm * 1e-6;
+        if peaks[i + 1].mz - peaks[i].mz <= tolerance {
+            return true;
+        }
+    }
+    false
+}
+
+
+/// Centroids a spectrum using the logic from the C code.
+fn centroid_spectrum(peaks: &mut Vec<Peak>, ms2_tolerance_in_ppm: f32) {
+    if peaks.is_empty() {
         return;
     }
-    peaks.sort_by(|a, b| a.mz.partial_cmp(&b.mz).unwrap());
 
-    let mut merged_peaks = Vec::with_capacity(peaks.len());
-    let mut i = 0;
-    while i < peaks.len() {
-        let current_peak = &peaks[i];
-        let mass = current_peak.mz;
-        
-        let tolerance = if mass < MASS_THRESHOLD_FOR_PPM {
-            tolerance_in_ppm * 1e-6 * MASS_THRESHOLD_FOR_PPM
+    // The calling loop ensures the spectrum is sorted by m/z.
+
+    // 1. Create an argsort of the spectrum by intensity, descending.
+    let mut argsort: Vec<usize> = (0..peaks.len()).collect();
+    argsort.sort_by(|&a, &b| peaks[b].intensity.partial_cmp(&peaks[a].intensity).unwrap_or(std::cmp::Ordering::Equal));
+
+    for i in 0..argsort.len() {
+        let idx = argsort[i];
+
+        if peaks[idx].intensity <= 0.0 {
+            continue; // Already merged
+        }
+
+        let current_peak_mz = peaks[idx].mz;
+
+        // 2. Determine tolerance based on C code's logic
+        let (mz_delta_allowed_left, mz_delta_allowed_right) = if ms2_tolerance_in_ppm > 0.0 {
+            let left = current_peak_mz * ms2_tolerance_in_ppm * 1e-6;
+            let right = current_peak_mz * ms2_tolerance_in_ppm / (1e6 - ms2_tolerance_in_ppm);
+            (left, right)
         } else {
-            tolerance_in_ppm * 1e-6 * mass
+            (0.0, 0.0) // No DA tolerance parameter in Rust version
         };
 
-        let mut group_end = i + 1;
-        while group_end < peaks.len() && peaks[group_end].mz - current_peak.mz < tolerance {
-            group_end += 1;
+        // 3. Find left and right bounds for merging in the m/z sorted array.
+        let mut idx_left = idx;
+        while idx_left > 0 && (current_peak_mz - peaks[idx_left - 1].mz) <= mz_delta_allowed_left {
+            idx_left -= 1;
         }
 
-        if group_end > i + 1 { // If there's more than one peak in the group
-            let (sum_intensity, weighted_sum_mz) = peaks[i..group_end]
-                .iter()
-                .fold((0.0, 0.0), |(s_i, s_mz), p| {
-                    (s_i + p.intensity, s_mz + p.intensity * p.mz)
-                });
+        let mut idx_right = idx;
+        while idx_right < peaks.len() - 1 && (peaks[idx_right + 1].mz - current_peak_mz) <= mz_delta_allowed_right {
+            idx_right += 1;
+        }
 
-            if sum_intensity > 0.0 {
-                 merged_peaks.push(Peak { mz: weighted_sum_mz / sum_intensity, intensity: sum_intensity });
+        // 4. Merge peaks in the window [idx_left, idx_right]
+        // Only merge if there's more than one peak to merge with the current one.
+        let mut merge_candidates = 0;
+        for j in idx_left..=idx_right {
+            if peaks[j].intensity > 0.0 {
+                merge_candidates += 1;
             }
-            i = group_end; // Skip merged peaks
-        } else {
-            merged_peaks.push(current_peak.clone());
-            i += 1;
+        }
+
+        if merge_candidates > 1 {
+            let mut intensity_sum = 0.0;
+            let mut intensity_weighted_sum = 0.0;
+
+            for j in idx_left..=idx_right {
+                if peaks[j].intensity > 0.0 {
+                    intensity_sum += peaks[j].intensity;
+                    intensity_weighted_sum += peaks[j].intensity * peaks[j].mz;
+                    peaks[j].intensity = 0.0; // Mark as merged
+                }
+            }
+
+            // Write the new peak into the output spectrum at the original high-intensity peak's position
+            if intensity_sum > 0.0 {
+                peaks[idx].mz = intensity_weighted_sum / intensity_sum;
+                peaks[idx].intensity = intensity_sum;
+            }
         }
     }
-     *peaks = merged_peaks;
+
+    // Remove the zeroed-out peaks
+    peaks.retain(|p| p.intensity > 0.0);
+    // Re-sort by m/z as m/z values have changed
+    peaks.sort_by(|a, b| a.mz.partial_cmp(&b.mz).unwrap());
 }
 
 
@@ -154,7 +214,7 @@ pub fn calculate_spectral_entropy(spectrum: &Spectrum) -> f32 {
     spectrum.peaks.iter().map(|p| {
         if p.intensity > 0.0 {
             let intensity = p.intensity / sum_intensity;
-            -intensity * intensity.log2()
+            -intensity * intensity.ln()
         } else { 0.0 }
     }).sum()
 }
