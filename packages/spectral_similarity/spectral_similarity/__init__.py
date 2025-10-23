@@ -16,6 +16,11 @@ LIB = Path(__file__).parent
 def calculate_similarity(spectra: pl.Expr) -> pl.Expr:
     """
     Calculate spectral similarity between two spectra.
+    takes a struct with fields:
+    - mz1: List[Float32]
+    - intensities1: List[Float32]
+    - mz2: List[Float32]
+    - intensities2: List[Float32]
     """
     return pl.plugins.register_plugin_function(
         args=[spectra],
