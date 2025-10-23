@@ -128,12 +128,12 @@ environments:
       - conda: https://prefix.dev/conda-forge/linux-64/rust-1.90.0-h53717f1_0.conda
       - conda: https://prefix.dev/conda-forge/noarch/rust-std-x86_64-unknown-linux-gnu-1.90.0-h2c6d0dc_0.conda
       - conda: https://prefix.dev/conda-forge/noarch/setuptools-80.9.0-pyhff2d567_0.conda
-      - conda: https://prefix.dev/nir-cohen/linux-64/spectral_similarity-0.1.0-hb0f4dca_0.conda
       - conda: https://prefix.dev/conda-forge/noarch/sysroot_linux-64-2.28-h4ee821c_8.conda
       - conda: https://prefix.dev/conda-forge/linux-64/tk-8.6.13-noxft_hd72426e_102.conda
       - conda: https://prefix.dev/conda-forge/noarch/tomli-2.2.1-pyhe01879c_2.conda
       - conda: https://prefix.dev/conda-forge/noarch/tzdata-2025b-h78e105d_0.conda
       - conda: https://prefix.dev/conda-forge/noarch/wheel-0.45.1-pyhd8ed1ab_1.conda
+      - conda: .
 packages:
 - conda: https://prefix.dev/conda-forge/linux-64/_libgcc_mutex-0.1-conda_forge.tar.bz2
   sha256: fe51de6107f9edc7aa4f786a70f4a883943bc9d39b3bb7307c04c41410990726
@@ -879,19 +879,18 @@ packages:
   license_family: MIT
   size: 748788
   timestamp: 1748804951958
-- conda: https://prefix.dev/nir-cohen/linux-64/spectral_similarity-0.1.0-hb0f4dca_0.conda
-  noarch: python
-  sha256: 707b7c76c76b6d8f0f1b50fd104be2447ffdcd41d53011fc99917e2dfbcd0c28
+- conda: .
+  name: spectral_similarity
+  version: 0.1.0
+  build: pyh4616a5c_0
+  subdir: noarch
   depends:
   - python >=3.9
-  - python_abi 3.9.* *_cp39
-  - _python_abi3_support 1.*
-  - cpython >=3.9
-  constrains:
-  - __glibc >=2.17
-  license: MIT
-  size: 4992537
-  timestamp: 1760960601360
+  - python *
+  input:
+    hash: 7f9f9fddf3d11e57f543879afeb195f8b6e0e1c75dc964ed2894731d68cb0710
+    globs:
+    - pyproject.toml
 - conda: https://prefix.dev/conda-forge/noarch/sysroot_linux-64-2.28-h4ee821c_8.conda
   sha256: 0053c17ffbd9f8af1a7f864995d70121c292e317804120be4667f37c92805426
   md5: 1bad93f0aa428d618875ef3a588a889e
