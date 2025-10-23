@@ -13,7 +13,7 @@ if TYPE_CHECKING:
 
 LIB = Path(__file__).parent
 
-def calculate_similarity(
+def entropy_similarity(
     spectra: pl.Expr,
     ms2_tolerance_in_ppm: float | None = None,
     clean_spectra_first: bool | None = None,

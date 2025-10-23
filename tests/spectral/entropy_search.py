@@ -1,12 +1,11 @@
 import polars as pl
 from pathlib import Path
-import numpy as np
 import timeit
 import sys
 
-from hrms_utils.formats.msdial import get_chromatogram
-from hrms_utils.spectral_search.entropy_search import entropy_score_polars_external
-from spectral_similarity import calculate_similarity
+from hrms_utils.formats import get_chromatogram
+from hrms_utils.spectral_search import entropy_score_polars_external
+from spectral_similarity import entropy_similarity
 
 
 def test_entropy_search_parity(
@@ -87,7 +86,7 @@ def test_entropy_search_parity(
     start_time = timeit.default_timer()
     
     results_df = results_df.with_columns(
-        rust_similarity=calculate_similarity(
+        rust_similarity=entropy_similarity(
             pl.col("struct_col"),
             ms2_tolerance_in_ppm=ms2_ppm_tolerance,
             noise_threshold=noise_threshold,

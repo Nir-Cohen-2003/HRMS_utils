@@ -95,6 +95,8 @@ test_mol = "python tests/rdkit/mol.py"
 test_info_score = "python tests/spectral/spectral_information.py"
 test_entropy = "python tests/spectral/entropy_search.py"
 test_verbose_wrappers = "python -m pytest tests/formula_annotation/test_verbose_wrappers.py"
+
+# test_all = 
 [feature.testing.dependencies]
 hrms_utils = {path = "."}
 polars = ">=1.33.0,<2"

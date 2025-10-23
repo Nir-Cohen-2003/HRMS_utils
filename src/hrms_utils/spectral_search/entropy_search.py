@@ -1,7 +1,6 @@
 import polars as pl
 import numpy as np
 from ms_entropy import calculate_entropy_similarity
-from spectral_similarity import calculate_similarity
 
 def entropy_score_polars_external(
         spec1_mz: pl.Series, spec1_intensity: pl.Series,
