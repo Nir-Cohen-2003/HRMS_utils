@@ -50,11 +50,11 @@ backend = { name = "pixi-build-python", version = "*",channels = [
 [package.build.config]
 noarch = false
 [workspace.build-variants]
-python = ["3.12", "3.13"]
+python = ["3.12", "3.13","3.14"]
 [package.build-dependencies]
 python = "*"
 pip = "*"
-numpy = ">=1.20.0,<2.3"
+numpy = ">=1.20.0,<3.0"
 setuptools = ">=68.0.0"
 cython = ">=3.0.0"
 cxx-compiler = "*"

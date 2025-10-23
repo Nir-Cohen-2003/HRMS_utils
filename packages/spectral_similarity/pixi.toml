@@ -1,10 +1,10 @@
 [workspace]
 channels = ["https://prefix.dev/conda-forge","https://prefix.dev/nir-cohen"]
-platforms = ["linux-64"]
+platforms = ["linux-64","win-64"]
 preview = ["pixi-build"]
 [package]
 name = "spectral_similarity"
-version = "0.1.0"
+version = "0.2.0"
 description = "A rust package for spectral similarity"
 authors = []
 
@@ -23,10 +23,10 @@ maturin = ">=1.0"
 
 [package.host-dependencies] 
 maturin = ">=1.0,<2.0"
-# [package.build-dependencies] 
-# polars = ">=1.34.0"
+
 [package.run-dependencies]
 polars = ">=1.34.0"
+
 [environments]
 default = {features = [], solve-group = "default"}
 testing = {features = ["testing"], solve-group = "testing"}
@@ -35,12 +35,6 @@ testing = {features = ["testing"], solve-group = "testing"}
 test = "python tests/test_spectral_similarity.py"
 [feature.testing.dependencies]
 polars = ">=1.33.0,<2"
-python = ">=3.8"
+python = ">=3.9"
 pip = ">=23.0"
 spectral_similarity = {path = "."}
-[feature.testing.pypi-dependencies]
-ms-entropy= ">=1.3.9"
-# spectral_similarity = "*"
-# spectral_similarity = {path = "./spectral_similarity-0.1.0-hb0f4dca_0.conda"}
-# [feature.testing.pypi-dependencies]
-# spectral_similarity = {path = "./spectral_similarity-0.1.0-cp38-abi3-linux_x86_64.whl"}

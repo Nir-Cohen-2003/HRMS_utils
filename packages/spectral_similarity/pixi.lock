@@ -835,7 +835,7 @@ packages:
   timestamp: 1758350135017
 - conda: .
   name: spectral_similarity
-  version: 0.1.0
+  version: 0.2.0
   build: pyh4616a5c_0
   subdir: noarch
   depends:
@@ -843,7 +843,7 @@ packages:
   - python >=3.9
   - python *
   input:
-    hash: cfbb5c392c92621dbe88eb5ccba555ed79fdf34b0e8fc4da44b5bbcc69a6a827
+    hash: ef516f136e9e903652b4960b5e5e5430b7d7894ed5b5d591417e76674713befd
     globs:
     - pyproject.toml
 - conda: https://prefix.dev/conda-forge/noarch/sysroot_linux-64-2.28-h4ee821c_8.conda
