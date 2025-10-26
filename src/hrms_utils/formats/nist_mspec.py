@@ -1,11 +1,14 @@
 import re
 import polars as pl
 import numpy as np
-from ..formula_annotation.utils import formula_fits_mass, format_formula_string_to_array,  get_precursor_ion_formula_array
+from typing import TypeVar
+from ..formula_annotation.utils import formula_fits_mass, format_formula_string_to_array,  get_precursor_ion_formula_array, num_elements
 from ..formula_annotation.element_table import ADDCUT_MASSES
 from ..formula_annotation.mass_decomposition import clean_and_normalize_spectra_known_precursor_verbose, NUM_ELEMENTS
 from pathlib import Path 
 from scipy.stats import linregress
+
+T = TypeVar('T', pl.DataFrame, pl.LazyFrame)
 
 
 def create_nist_dataframe(named_file_list: list[tuple[str|Path, str]]) -> pl.DataFrame:
@@ -28,19 +31,19 @@ def create_nist_dataframe(named_file_list: list[tuple[str|Path, str]]) -> pl.Dat
     combined_df = pl.concat(dataframes, how='vertical')
     return combined_df
 
-def read_MSPEC_file(path: Path | str) -> pl.DataFrame:
+def read_MSPEC_file(path: Path | str, annotation_tolerance_ppm: float = 5.0, annotation_max_allowed_normalized_mass_error_ppm: float = 10.0, molecular_ion_tolerance_ppm: float = 10.0) -> pl.DataFrame:
     with open(path, 'r') as file:
         file_contents = file.read()
     
     data = _read_file(file_contents)
     
-    data = _annotate_spectra(data)
+    data = _annotate_spectra(data, annotation_tolerance_ppm, annotation_max_allowed_normalized_mass_error_ppm)
 
     # data = _add_num_clean_peaks(data)
     data = _add_precursor_type_indicators(data)
 
     data = _add_base_peak_mz_fraction_and_diff(data)
-    data = _add_Mol_intensity_to_clean_spectrum(data)
+    data = _add_molecular_ion_info(data, molecular_ion_tolerance_ppm)
 
     return data
 
@@ -98,13 +101,17 @@ def _read_file(file_contents: str) -> pl.DataFrame:
         )
     return data
 
-def _annotate_spectra(data: pl.DataFrame) -> pl.DataFrame:
+def _annotate_spectra(data: T, tolerance_ppm: float, max_allowed_normalized_mass_error_ppm: float) -> T:
     # Determine addcut_mass based on Precursor_type
     adduct_mapping = pl.Series(name="Precursor_type", values=list(ADDCUT_MASSES.keys()))
     adduct_masses = pl.Series(name="addcut_mass", values=list(ADDCUT_MASSES.values()))
     adduct_df = pl.DataFrame({"Precursor_type": adduct_mapping, "addcut_mass": adduct_masses})
 
-    data = data.join(adduct_df, on="Precursor_type", how="left")
+    if isinstance(data, pl.LazyFrame):
+        data = data.join(adduct_df.lazy(), on="Precursor_type", how="left")
+    else:
+        data = data.join(adduct_df, on="Precursor_type", how="left")
+
     data = data.with_columns(
         pl.col("addcut_mass").fill_null(0.0) # Default to 0.0 if no adduct mass is found
     )
@@ -126,8 +133,8 @@ def _annotate_spectra(data: pl.DataFrame) -> pl.DataFrame:
             precursor_masses_series=pl.col("non_ionized_mass"),
             fragment_masses_series=pl.col("non_ionized_raw_spectrum_mz"),
             fragment_intensities_series=pl.col("raw_spectrum_intensity"),
-            tolerance_ppm=5.0,
-            max_allowed_normalized_mass_error_ppm=5.0,
+            tolerance_ppm=tolerance_ppm,
+            max_allowed_normalized_mass_error_ppm=max_allowed_normalized_mass_error_ppm,
         ).alias("cleaned_normalized_spectra")
     )
 
@@ -141,12 +148,9 @@ def _annotate_spectra(data: pl.DataFrame) -> pl.DataFrame:
     ).drop("cleaned_normalized_spectra", "non_ionized_mass", "non_ionized_raw_spectrum_mz", "addcut_mass")
 
     return data
-def _add_num_clean_peaks(data: pl.DataFrame | pl.LazyFrame) -> pl.DataFrame |  pl.LazyFrame:
-    data = data.with_columns(pl.col('clean_spectrum_mz').list.len().alias('num_clean_peaks'))
-    return data
 
 
-def _add_precursor_type_indicators(data: pl.DataFrame | pl.LazyFrame) -> pl.DataFrame |  pl.LazyFrame:
+def _add_precursor_type_indicators(data: T) -> T:
     fragment_pattern = r'-\d*'+  r'((H(\d+|[A-Z]|[a-z]))|([A-G]|[I-Z])[a-z]?\d*)'+ r'(([A-Z][a-z]?\d*))*'
 
     data = data.with_columns(
@@ -163,23 +167,46 @@ def _add_precursor_type_indicators(data: pl.DataFrame | pl.LazyFrame) -> pl.Data
 
     return data
 
-# returns the intensity of the molecular ion if found, -1 if not found, -2 if the biggest mz value in not the molecular ion
-def _add_Mol_intensity_to_clean_spectrum(NIST: pl.DataFrame) -> pl.DataFrame:
-    NIST = NIST.with_columns(
-        pl.when(pl.col('clean_spectrum_formula').list.contains("Mol"))
-        .then
-        (
-        pl.when(pl.col('clean_spectrum_formula').list.last().eq("Mol"))
-        .then(pl.col('clean_spectrum_intensity').list.last())
-        .otherwise(-2)
+def _add_molecular_ion_info(NIST: T, tolerance_ppm: float = 10.0) -> T:
+    was_lazy = isinstance(NIST, pl.LazyFrame)
+    
+    if was_lazy:
+        lazy_frame = NIST
+    else:
+        lazy_frame = NIST.lazy()
+
+    lazy_frame = lazy_frame.with_row_index(name="index")
+
+    molecular_ion_info = (
+        lazy_frame.explode(["cleaned_normalized_mz", "cleaned_normalized_intensity"])
+        .filter(pl.col("cleaned_normalized_mz").is_close(pl.col("PrecursorMZ"), rel_tol=tolerance_ppm * 1e-6, abs_tol=200.0*tolerance_ppm * 1e-6))
+        .sort("cleaned_normalized_intensity", descending=True)
+        .group_by("index")
+        .agg(
+            pl.col("cleaned_normalized_mz")
+            .sort_by("cleaned_normalized_intensity", descending=True)
+            .first()
+            .alias("molecular_ion_mz"),
+            pl.col("cleaned_normalized_intensity")
+            .sort(descending=True)
+            .first()
+            .alias("molecular_ion_intensity"),
         )
-        .otherwise(-1)
-        .alias('molecular_ion_intensity')
     )
-    return NIST
+
+    lazy_frame = lazy_frame.join(
+        molecular_ion_info,
+        on="index",
+        how="left"
+    ).drop("index")
+
+    if was_lazy:
+        return lazy_frame
+    else:
+        return lazy_frame.collect(engine="streaming")
 
 
-def _add_base_peak_mz_fraction_and_diff(NIST: pl.DataFrame) -> pl.DataFrame:
+def _add_base_peak_mz_fraction_and_diff(NIST: T) -> T:
     NIST = NIST.with_columns(
         pl.col('raw_spectrum_mz').list.get(pl.col('raw_spectrum_intensity').list.arg_max()).alias('base_peak_mz'))
     NIST= NIST.with_columns(   
@@ -204,33 +231,58 @@ def _split_entries(file_contents: str) -> list:
     return entries
 
 
-def _add_inchi_SMILES_from_pubchem(NIST: pl.DataFrame, pubchem_path: str | Path) -> pl.DataFrame:
-    if 'InChI' in NIST.schema.names():
+def _add_inchi_SMILES_from_pubchem(NIST: T, pubchem_path: str | Path) -> T:
+    if 'InChI' in NIST.columns:
         raise Warning("InChI column already exists in NIST schema")
-    NIST_lf = NIST.select(['NIST_ID','InChIKey']).lazy()
+
+    was_lazy = isinstance(NIST, pl.LazyFrame)
+    
+    if was_lazy:
+        print("Alert: Collecting a LazyFrame in _add_inchi_SMILES_from_pubchem to add InChI and SMILES.")
+        NIST_df = NIST.collect()
+    else:
+        NIST_df = NIST
+
+    NIST_lf = NIST_df.select(['NIST_ID','InChIKey']).lazy()
+    
     pubchem = pl.scan_parquet(pubchem_path,low_memory=True).rename(
         {'CID':'pubchem_CID',
          'SMILES:':'CanonicalSMILES',}
          ,strict=False)
     combined = NIST_lf.join(pubchem, left_on='InChIKey', right_on='InChIKey', how='left')
     combined = combined.unique(subset=['NIST_ID'],keep='any')
+    
     combined = combined.collect(streaming=True)
     
-    if 'InChI' not in combined.schema.names():
+    if 'InChI' not in combined.columns:
         raise ValueError("InChI column was not written for some reason")
-    combined = combined.drop('InChIKey').join(NIST, on='NIST_ID', how='right',coalesce=True)
-    return combined
+        
+    result = combined.drop('InChIKey').join(NIST_df, on='NIST_ID', how='right', coalesce=True)
 
-def _add_estimated_ev(NIST: pl.LazyFrame | pl.DataFrame) -> pl.DataFrame :
-    NIST_temp = NIST.select(
+    if was_lazy:
+        return result.lazy()
+    else:
+        return result
+
+def _add_estimated_ev(NIST: T) -> T:
+    was_lazy = isinstance(NIST, pl.LazyFrame)
+
+    if was_lazy:
+        lazy_frame = NIST
+    else:
+        lazy_frame = NIST.lazy()
+
+    NIST_temp = lazy_frame.select(
         ['NIST_ID','Collision_energy_NCE','Collision_energy_ev',
          'PrecursorMZ',
          'Precursor_type', 'Instrument_type','Instrument',]
         )
     
-    if isinstance(NIST_temp,pl.LazyFrame):
-        NIST_temp = NIST_temp.collect()
+    if was_lazy:
+        print("Alert: Collecting a LazyFrame in _add_estimated_ev to estimate collision energy.")
     
+    NIST_temp = NIST_temp.collect()
+
     NIST_temp = NIST_temp.filter(
         pl.col('Instrument_type').str.contains('HCD')
     )
@@ -258,13 +310,20 @@ def _add_estimated_ev(NIST: pl.LazyFrame | pl.DataFrame) -> pl.DataFrame :
         instrument_data = _add_estimated_ev_per_split(instrument_data,slope=slope,intercept=intercept)
         instrument_dfs.append(instrument_data)
 
+    if not instrument_dfs:
+        return NIST
+
     NIST_ev = pl.concat(instrument_dfs,how='vertical')
     NIST_ev = NIST_ev.select(['NIST_ID','Collision_energy_ev_estimated'])
-    NIST = NIST.join(NIST_ev, on='NIST_ID', how='left')
+    
+    result_frame = lazy_frame.join(NIST_ev.lazy(), on='NIST_ID', how='left')
 
-    return NIST
+    if was_lazy:
+        return result_frame
+    else:
+        return result_frame.collect()
 
-def _add_estimated_ev_per_split(split:pl.LazyFrame | pl.DataFrame,slope,intercept) -> pl.LazyFrame | pl.DataFrame:
+def _add_estimated_ev_per_split(split:T,slope,intercept) -> T:
     split = split.with_columns(
         pl.col('Collision_energy_NCE').mul(pl.col('PrecursorMZ')).mul(slope).add(intercept)
         .alias('Collision_energy_ev_estimated')
