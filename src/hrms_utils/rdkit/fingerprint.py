@@ -1,11 +1,11 @@
 import dataclasses
 from dataclasses import dataclass
 from typing import List, Literal, Dict, Any, Optional, Union, Iterable
-from itertools import chain
+from itertools import chain, batched
 from concurrent.futures import ProcessPoolExecutor  # Added ProcessPoolExecutor import
 import functools  # Added functools import
 from rdkit import DataStructs, Chem
-from rdkit.Chem import AllChem, MACCSkeys, MolFromSmiles
+from rdkit.Chem import AllChem, MACCSkeys, MolFromSmiles, rdFingerprintGenerator
 from rdkit import RDLogger
 from numpy.typing import NDArray
 import numpy as np
@@ -31,7 +31,7 @@ class FingerprintParams:
     # Note: fpSize is ignored for 'maccs' (fixed size 167).
     fpSize: int = 2048
     # Morgan specific
-    radius: Optional[int] = 2
+    radius: Optional[int] = None  # Default radius will be set in __post_init__
     useBondTypes: Optional[bool] = True
     # RDKit specific
     minPath: Optional[int] = 1
@@ -52,18 +52,30 @@ class FingerprintParams:
     def __post_init__(self):
         # Ensure radius is set for morgan if not provided
         if self.fp_type == 'morgan' and self.radius is None:
-            self.radius = 4  # Default Morgan radius
+            self.radius = 2  # Default Morgan radius
         if self.fp_type == 'maccs':
             # MACCS keys have a fixed size of 167 bits
             self.fpSize = 167
 
     @classmethod
-    def from_dict(cls, env: Dict[str, Any]):
-        """Creates FingerprintParams instance from a dictionary, ignoring extra keys."""
-        # Use inspect to get field names for robustness
-        valid_keys = {f.name for f in dataclasses.fields(cls)}
-        filtered_dict = {k: v for k, v in env.items() if k in valid_keys}
-        return cls(**filtered_dict)
+    def from_dict(cls, env: Dict[str, Any] | None | "FingerprintParams" = None):
+        """
+        Creates a FingerprintParams instance from:
+        - a dict (extra keys ignored),
+        - an existing FingerprintParams instance (returned as-is),
+        - or None (returns default instance).
+        """
+        if env is None:
+            return cls()
+        # If already an instance of the dataclass, return it directly
+        if isinstance(env, cls):
+            return env
+        # If a dict, filter unknown keys and construct
+        if isinstance(env, dict):
+            valid_keys = {f.name for f in dataclasses.fields(cls)}
+            filtered_dict = {k: v for k, v in env.items() if k in valid_keys}
+            return cls(**filtered_dict)
+        raise TypeError(f"from_dict expects a dict, {cls.__name__} instance, or None; got {type(env)}")
     
     def __eq__(self, other):
         """
@@ -127,7 +139,7 @@ def get_fp_polars(smiles: Iterable[str], fp_params: Union[FingerprintParams, Dic
     return pl.Series(fps)
 
 
-def get_fp_list(smiles: Iterable[str], fp_params: Union[FingerprintParams, Dict[str, Any]] = FingerprintParams(), batch_size: int = 10000) -> List[NDArray]:
+def get_fp_list(smiles: Iterable[str], fp_params: FingerprintParams | Dict[str, Any] = FingerprintParams(), batch_size: int = 10000) -> List[NDArray]:
     """
     Generates fingerprints for a list of SMILES in parallel batches.
 
@@ -145,11 +157,6 @@ def get_fp_list(smiles: Iterable[str], fp_params: Union[FingerprintParams, Dict[
     else:
         params_obj = fp_params
 
-    # Ensure Python 3.12+ for batched, otherwise provide alternative or raise error
-    try:
-        from itertools import batched
-    except ImportError:
-        raise ImportError("itertools.batched requires Python 3.12+. Please update Python or use an alternative batching method.")
 
     batches = list(batched(smiles, batch_size))
     # Pass the validated FingerprintParams object to the batch function using partial
@@ -193,7 +200,7 @@ def _get_fp_batch(smiles: List[str], fp_params: FingerprintParams) -> List[NDArr
                 'includeChirality': fp_params.includeChirality  # Morgan supports chirality too
             }
             morgan_args = {k: v for k, v in morgan_args.items() if v is not None}
-            fpgen = Chem.GetMorganGenerator(**morgan_args)
+            fpgen = rdFingerprintGenerator.GetMorganGenerator(**morgan_args)
         case 'rdkit':
             rdkit_args = {
                 'minPath': fp_params.minPath,
@@ -203,7 +210,7 @@ def _get_fp_batch(smiles: List[str], fp_params: FingerprintParams) -> List[NDArr
                 # RDKit FP doesn't typically use includeChirality in generator
             }
             rdkit_args = {k: v for k, v in rdkit_args.items() if v is not None}
-            fpgen = Chem.GetRDKitFPGenerator(**rdkit_args)
+            fpgen = rdFingerprintGenerator.GetRDKitFPGenerator(**rdkit_args)
         case 'atompair':
             atompair_args = {
                 'minDistance': fp_params.minDistance,
@@ -212,7 +219,7 @@ def _get_fp_batch(smiles: List[str], fp_params: FingerprintParams) -> List[NDArr
                 'use2D': fp_params.use2D,
             }
             atompair_args = {k: v for k, v in atompair_args.items() if v is not None}
-            fpgen = Chem.GetAtomPairGenerator(**atompair_args)
+            fpgen = rdFingerprintGenerator.GetAtomPairGenerator(**atompair_args)
             if fp_params.fp_method == 'GetFingerprint':
                 method_kwargs['fpSize'] = fp_params.fpSize
                 method_kwargs['countSimulation'] = fp_params.countSimulation_AP
@@ -222,7 +229,7 @@ def _get_fp_batch(smiles: List[str], fp_params: FingerprintParams) -> List[NDArr
                 'includeChirality': fp_params.includeChirality,
             }
             torsion_args = {k: v for k, v in torsion_args.items() if v is not None}
-            fpgen = Chem.GetTopologicalTorsionGenerator(**torsion_args)
+            fpgen = rdFingerprintGenerator.GetTopologicalTorsionGenerator(**torsion_args) 
             if fp_params.fp_method == 'GetFingerprint':
                 method_kwargs['fpSize'] = fp_params.fpSize
                 method_kwargs['countSimulation'] = fp_params.countSimulation_TT
@@ -255,7 +262,7 @@ def _get_fp_batch(smiles: List[str], fp_params: FingerprintParams) -> List[NDArr
                 # Generate the fingerprint
                 match fp_params.fp_type:
                     case 'maccs':
-                        fp = MACCSkeys.GenMACCSKeys(mol)
+                        fp = MACCSkeys.GenMACCSKeys(mol) # type: ignore[unresolved-attribute]
                     case _ if fp_method_func is not None:  # Use generator method for other types
                         fp = fp_method_func(mol, **method_kwargs)
                     case _:
