@@ -282,14 +282,14 @@ def deduce_isotopic_pattern(
     # print(f"Using min bounds: {min_bounds}")
     # print(f"Using max bounds: {max_bounds}")
 
-    ms1_mzs = ms1_mzs.to_numpy()
-    ms1_intensities = ms1_intensities.to_numpy()
+    ms1_mzs_arr = ms1_mzs.to_numpy()
+    ms1_intensities_arr = ms1_intensities.to_numpy()
     deduced_bounds = [None] * len(precursor_mzs)
     for i in range(len(precursor_mzs)):
         result = deduce_isotopic_pattern_inner(
             precursor_mz=precursor_mzs[i],
-            ms1_mzs=ms1_mzs[i],
-            ms1_intensities=ms1_intensities[i],
+            ms1_mzs=ms1_mzs_arr[i],
+            ms1_intensities=ms1_intensities_arr[i],
             ms1_mass_tolerance_ppm=ms1_mass_tolerance_ppm,
             isotopic_mass_tolerance_ppm=isotopic_mass_tolerance_ppm,
             minimum_intensity=minimum_intensity,

@@ -3,7 +3,7 @@ import numpy as np
 from numpy.typing import NDArray
 from typing import Iterable, Tuple
 
-from .mass_decomposition_impl.mass_decomposer_cpp import (
+from .mass_decomposition_impl.mass_decomposer_cpp import ( #type: ignore[unresolved-import]
     clean_and_normalize_spectra_known_precursor_parallel,
     clean_and_normalize_spectra_known_precursor_parallel_verbose,
     clean_spectra_known_precursor_parallel,

@@ -3,7 +3,8 @@ import numpy as np
 import polars as pl
 import math
 from functools import lru_cache
-from typing import TypeVar, overload
+from typing import TypeVar, overload, cast
+
 from .element_table import (
     NUM_ELEMENTS,
     ELEMENTS,
@@ -108,6 +109,7 @@ def formula_to_array(df: pl.DataFrame, input_col_name: str, output_col_name: str
 def formula_to_array(df: pl.LazyFrame, input_col_name: str, output_col_name: str) -> pl.LazyFrame: ...
 
 def formula_to_array(df: T, input_col_name: str, output_col_name: str) -> T:
+   
     regex_expressions = []
     for i, element in enumerate(ELEMENT_SYMBOLS):
         regex = ELEMENT_REGEXES[i]
@@ -122,12 +124,22 @@ def formula_to_array(df: T, input_col_name: str, output_col_name: str) -> T:
             .otherwise(0)
             .alias(element)
         )
-    df = df.with_columns(*regex_expressions)
-    df = df.with_columns(
+    if isinstance(df, pl.DataFrame):
+        lf = df.lazy()
+        eager = True
+    elif isinstance(df, pl.LazyFrame):
+        lf = df
+        eager = False
+    else:
+        raise TypeError(f"In function 'formula_to_array', df must be a Polars DataFrame or LazyFrame, got {type(df)}")
+    result = lf.with_columns(*regex_expressions)
+    result = result.with_columns(
         pl.concat_list([pl.col(e) for e in ELEMENT_SYMBOLS]).list.to_array(NUM_ELEMENTS).alias(output_col_name)
     )
-    df = df.drop(list(ELEMENT_SYMBOLS))
-    return df
+    result = result.drop(list(ELEMENT_SYMBOLS))
+    if eager:
+        result = result.collect(engine="streaming")
+    return cast(T, result) # this simply tells the type checker that result is of type T, which we know. the eager check above ensures we return the correct type.
 
 if __name__ == '__main__':
     main_df = pl.DataFrame({
