@@ -4,7 +4,7 @@ from ..rdkit.mol import sanitize_smiles_polars
 import requests
 import shutil
 from rdkit import Chem
-from rdkit.Chem import Descriptors
+from rdkit.Chem.Descriptors import ExactMolWt # type: ignore[unresolved-import]
 import numpy as np
 from typing import Optional
 from pathlib import Path
@@ -47,7 +47,7 @@ def extract_pubchem_inchi(input_path: str | Path, output_path: str | Path):
         )
 
         # Collect the data using streaming
-        data = lf.collect(streaming=True)
+        data = lf.collect(engine="streaming")
 
         # Write the result to Parquet
         data.write_parquet(output_path)
@@ -90,7 +90,7 @@ def extract_pubchem_smiles(input_path: str | Path, output_path: str | Path):
         )
 
         # Collect the data using streaming
-        data = lf.collect(streaming=True)
+        data = lf.collect(engine="streaming")
 
         # Apply canonicalization after collecting
         # Note: map_elements can be slower on very large data compared to pure Polars expressions
@@ -138,7 +138,7 @@ def extract_pubchem_mass(input_path: str | Path, output_path: str | Path):
         )
         
         # Collect the data using streaming
-        data = lf.collect(streaming=True)
+        data = lf.collect(engine="streaming")
         
         # Write the result to Parquet
         data.write_parquet(output_path)
@@ -169,7 +169,7 @@ def get_mass_from_smiles(smiles:str):
     mol = Chem.MolFromSmiles(smiles)
     if mol is None:
         return None
-    return Descriptors.ExactMolWt(mol)
+    return ExactMolWt(mol)
 get_mass_from_smiles_batch = np.vectorize(get_mass_from_smiles)
 
 def get_pubchem_isomers_by_mass(
@@ -229,7 +229,7 @@ def get_pubchem_isomers_by_formula(
         pubchem_isomers = pubchem_isomers.filter(pl.col('base_inchikey') != compound_base_inchikey)
     if num_isomers is not None:
         pubchem_isomers = pubchem_isomers.head(num_isomers)
-    return pubchem_isomers.collect()
+    return pubchem_isomers.collect(engine="streaming")
 
 if __name__ == '__main__':
     start = time()

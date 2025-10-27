@@ -1,7 +1,7 @@
 import re
 import polars as pl
 import numpy as np
-from typing import TypeVar
+from typing import TypeVar, cast, Dict,Iterable
 from ..formula_annotation.utils import formula_fits_mass, format_formula_string_to_array,  get_precursor_ion_formula_array, num_elements
 from ..formula_annotation.element_table import ADDCUT_MASSES
 from ..formula_annotation.mass_decomposition import clean_and_normalize_spectra_known_precursor_verbose, NUM_ELEMENTS
@@ -235,15 +235,7 @@ def _add_inchi_SMILES_from_pubchem(NIST: T, pubchem_path: str | Path) -> T:
     if 'InChI' in NIST.columns:
         raise Warning("InChI column already exists in NIST schema")
 
-    was_lazy = isinstance(NIST, pl.LazyFrame)
-    
-    if was_lazy:
-        print("Alert: Collecting a LazyFrame in _add_inchi_SMILES_from_pubchem to add InChI and SMILES.")
-        NIST_df = NIST.collect()
-    else:
-        NIST_df = NIST
-
-    NIST_lf = NIST_df.select(['NIST_ID','InChIKey']).lazy()
+    NIST_lf = NIST.select(['NIST_ID','InChIKey']).lazy()
     
     pubchem = pl.scan_parquet(pubchem_path,low_memory=True).rename(
         {'CID':'pubchem_CID',
@@ -252,97 +244,19 @@ def _add_inchi_SMILES_from_pubchem(NIST: T, pubchem_path: str | Path) -> T:
     combined = NIST_lf.join(pubchem, left_on='InChIKey', right_on='InChIKey', how='left')
     combined = combined.unique(subset=['NIST_ID'],keep='any')
     
-    combined = combined.collect(streaming=True)
+    # combined_df = combined.collect(streaming=True)
     
-    if 'InChI' not in combined.columns:
-        raise ValueError("InChI column was not written for some reason")
+    # if 'InChI' not in combined_df.columns:
+    #     raise ValueError("InChI column was not written for some reason")
         
-    result = combined.drop('InChIKey').join(NIST_df, on='NIST_ID', how='right', coalesce=True)
+    result = combined.drop('InChIKey').join(NIST_lf, on='NIST_ID', how='right', coalesce=True)
 
-    if was_lazy:
-        return result.lazy()
-    else:
+    if isinstance(NIST, pl.DataFrame):
+        return result.collect(engine="streaming")
+    elif isinstance(NIST, pl.LazyFrame):
         return result
-
-def _add_estimated_ev(NIST: T) -> T:
-    was_lazy = isinstance(NIST, pl.LazyFrame)
-
-    if was_lazy:
-        lazy_frame = NIST
     else:
-        lazy_frame = NIST.lazy()
-
-    NIST_temp = lazy_frame.select(
-        ['NIST_ID','Collision_energy_NCE','Collision_energy_ev',
-         'PrecursorMZ',
-         'Precursor_type', 'Instrument_type','Instrument',]
-        )
-    
-    if was_lazy:
-        print("Alert: Collecting a LazyFrame in _add_estimated_ev to estimate collision energy.")
-    
-    NIST_temp = NIST_temp.collect()
-
-    NIST_temp = NIST_temp.filter(
-        pl.col('Instrument_type').str.contains('HCD')
-    )
-    
-    NIST_with_ev_and_NCE = NIST_temp.filter(
-        pl.col('Collision_energy_NCE').is_not_null() & 
-        pl.col('Collision_energy_ev').is_not_null())
-    
-    NIST_with_ev_and_NCE = NIST_with_ev_and_NCE.with_columns(
-        pl.col('Collision_energy_NCE').mul(pl.col('PrecursorMZ')).alias('Collision_energy_ev_estimated_no_coefficient')
-        ).select(
-            ['Collision_energy_ev_estimated_no_coefficient','Collision_energy_ev',
-             'Instrument']
-            )
-    
-    instrument_dfs = []
-    for instrument in ['Elite','Velos','Fusion']:
-        instrument_data = NIST_with_ev_and_NCE.filter(pl.col('Instrument').str.contains(instrument))
-        if instrument_data.height == 0:
-            print('no data for '+instrument)
-            continue
-        instrument_relation = get_energy_relation(instrument_data)
-        slope , intercept = instrument_relation['slope'],instrument_relation['intercept']
-        instrument_data = NIST_temp.filter(pl.col('Instrument').str.contains(instrument))
-        instrument_data = _add_estimated_ev_per_split(instrument_data,slope=slope,intercept=intercept)
-        instrument_dfs.append(instrument_data)
-
-    if not instrument_dfs:
-        return NIST
-
-    NIST_ev = pl.concat(instrument_dfs,how='vertical')
-    NIST_ev = NIST_ev.select(['NIST_ID','Collision_energy_ev_estimated'])
-    
-    result_frame = lazy_frame.join(NIST_ev.lazy(), on='NIST_ID', how='left')
-
-    if was_lazy:
-        return result_frame
-    else:
-        return result_frame.collect()
-
-def _add_estimated_ev_per_split(split:T,slope,intercept) -> T:
-    split = split.with_columns(
-        pl.col('Collision_energy_NCE').mul(pl.col('PrecursorMZ')).mul(slope).add(intercept)
-        .alias('Collision_energy_ev_estimated')
-    )
-    return split
-
-def get_energy_relation(NIST_with_ev_and_NCE: pl.DataFrame):
-    NIST_with_ev_and_NCE = NIST_with_ev_and_NCE.sort('Collision_energy_ev').with_columns(pl.col('Collision_energy_ev').cast(pl.Float64))
-    NIST_energies_x = NIST_with_ev_and_NCE.select(
-        ['Collision_energy_ev_estimated_no_coefficient']
-        ).to_numpy().flatten()
-    NIST_energies_y  = NIST_with_ev_and_NCE.select(
-        ['Collision_energy_ev']
-        ).to_numpy().flatten()
-
-    result = linregress(NIST_energies_x, NIST_energies_y)
-    slope, intercept, r_value,  = result.slope, result.intercept, result.rvalue
-
-    return {'slope':slope, 'intercept':intercept,'r_value': r_value}
+        raise TypeError(f"In function '_add_inchi_SMILES_from_pubchem', NIST must be a Polars DataFrame or LazyFrame, got {type(NIST)}")
 
 if __name__ == "__main__":
     # Example usage

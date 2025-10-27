@@ -103,10 +103,10 @@ def clean_formula_string_to_array(formula: str) -> np.ndarray:
 
 T = TypeVar("T", pl.DataFrame, pl.LazyFrame)
 
-@overload
-def formula_to_array(df: pl.DataFrame, input_col_name: str, output_col_name: str) -> pl.DataFrame: ...
-@overload
-def formula_to_array(df: pl.LazyFrame, input_col_name: str, output_col_name: str) -> pl.LazyFrame: ...
+# @overload
+# def formula_to_array(df: pl.DataFrame, input_col_name: str, output_col_name: str) -> pl.DataFrame: ...
+# @overload
+# def formula_to_array(df: pl.LazyFrame, input_col_name: str, output_col_name: str) -> pl.LazyFrame: ...
 
 def formula_to_array(df: T, input_col_name: str, output_col_name: str) -> T:
    
