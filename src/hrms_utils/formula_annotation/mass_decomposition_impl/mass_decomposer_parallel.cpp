@@ -660,22 +660,42 @@ MassDecomposer::CleanedAndNormalizedSpectrumResult MassDecomposer::clean_and_nor
     tmp_fragment_errors_ppm.reserve(n);
     tmp_err_after_norm_ppm_abs.reserve(n);
 
-    for (size_t i = 0; i < n; ++i) {
-        if (!keep[i]) continue;
+    // Check if the fit is valid. If not, use "nothing" normalization.
+    if (!std::isfinite(a) || !std::isfinite(b)) {
+        for (size_t i = 0; i < n; ++i) {
+            if (!keep[i]) continue;
 
-        const double target = fragment_masses[i];
-        const double correction = a + b * target; // additive + multiplicative (via mass term)
-        const double normalized_mass = target + correction;
+            const double target = fragment_masses[i];
+            const double normalized_mass = target; // "Nothing" normalization
 
-        const double err_after_norm = chosen_error_unscaled[i] - correction; // calc - normalized
-        const double denom_report = std::max(normalized_mass, 200.0); // ppm denom
-        const double ppm_after_norm = (err_after_norm * 1e6) / denom_report;
+            const double err_after_norm = chosen_error_unscaled[i]; // No correction applied
+            const double denom_report = std::max(normalized_mass, 200.0);
+            const double ppm_after_norm = (err_after_norm * 1e6) / denom_report;
 
-        tmp_masses_normalized.push_back(normalized_mass);
-        tmp_intensities.push_back(fragment_intensities[i]);
-        tmp_fragment_formulas.push_back(chosen_formula[i]);
-        tmp_fragment_errors_ppm.push_back(ppm_after_norm);
-        tmp_err_after_norm_ppm_abs.push_back(std::abs(ppm_after_norm));
+            tmp_masses_normalized.push_back(normalized_mass);
+            tmp_intensities.push_back(fragment_intensities[i]);
+            tmp_fragment_formulas.push_back(chosen_formula[i]);
+            tmp_fragment_errors_ppm.push_back(ppm_after_norm);
+            tmp_err_after_norm_ppm_abs.push_back(std::abs(ppm_after_norm));
+        }
+    } else {
+        for (size_t i = 0; i < n; ++i) {
+            if (!keep[i]) continue;
+
+            const double target = fragment_masses[i];
+            const double correction = a + b * target; // additive + multiplicative (via mass term)
+            const double normalized_mass = target + correction;
+
+            const double err_after_norm = chosen_error_unscaled[i] - correction; // calc - normalized
+            const double denom_report = std::max(normalized_mass, 200.0); // ppm denom
+            const double ppm_after_norm = (err_after_norm * 1e6) / denom_report;
+
+            tmp_masses_normalized.push_back(normalized_mass);
+            tmp_intensities.push_back(fragment_intensities[i]);
+            tmp_fragment_formulas.push_back(chosen_formula[i]);
+            tmp_fragment_errors_ppm.push_back(ppm_after_norm);
+            tmp_err_after_norm_ppm_abs.push_back(std::abs(ppm_after_norm));
+        }
     }
 
     // Apply final filtering based on absolute normalized ppm threshold.

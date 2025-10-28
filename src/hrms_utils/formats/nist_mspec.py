@@ -1,6 +1,7 @@
 import re
 import polars as pl
-import numpy as np
+# import numpy as np
+import polars.selectors as plcs
 from typing import TypeVar, cast, Dict,Iterable
 from ..formula_annotation.utils import formula_fits_mass, format_formula_string_to_array,  get_precursor_ion_formula_array, num_elements
 from ..formula_annotation.element_table import ADDUCT_MASSES
@@ -36,7 +37,7 @@ def read_MSPEC_file(path: Path | str, raw_fragment_tolerance_ppm: float = 5.0, n
         file_contents = file.read()
     
     data = _read_file(file_contents)
-
+    data = _annotate_and_filter_metadata(data)
     data = _annotate_spectra(
         data, 
         raw_fragment_tolerance_ppm=raw_fragment_tolerance_ppm, 
@@ -48,44 +49,44 @@ def read_MSPEC_file(path: Path | str, raw_fragment_tolerance_ppm: float = 5.0, n
     data = _add_base_peak_mz_fraction_and_diff(data)
     data = _add_molecular_ion_info(data, molecular_ion_tolerance_ppm)
 
-    return data
+    return data.collect(engine='streaming')
 
 
 
-def _read_file(file_contents: str) -> pl.DataFrame:
+def _read_file(file_contents: str):
     mz_intensity_pattern = r'(\d+\.\d+)\s(\d+(\.\d+)?)'
-    Collision_energy_ev_pattern = r'(\d+)e*V*v*$'
+    # Collision_energy_ev_pattern = r'(\d+)e*V*v*$'
 
     entries = _split_entries(file_contents)
-    data = pl.DataFrame(entries, schema={'raw': pl.String})
+    data = pl.DataFrame(entries, schema={'raw': pl.String}).lazy()
     data = data.with_columns(
-        pl.col('raw').str.extract(pattern=r'Name: (.+)',group_index=1).alias('Name'),
-        pl.col('raw').str.extract(pattern=r'NIST#: (\d+)',group_index=1).alias('NIST_ID'),
-        pl.col('raw').str.extract(pattern=r'DB#: (\d+)',group_index=1).alias('DB_ID'),
-        pl.col('raw').str.extract(pattern=r'Instrument_type: (.+)',group_index=1).alias('Instrument_type'),
-        pl.col('raw').str.extract(pattern=r'Instrument: (.+)',group_index=1).alias('Instrument'),
-        pl.col('raw').str.extract(pattern=r'Spectrum_type: (.+)',group_index=1).alias('Spectrum_type'),
-        pl.col('raw').str.extract(pattern=r'Collision_gas: (.+)',group_index=1).alias('Collision_gas'),
-        pl.col('raw').str.extract(pattern=r'Collision_energy: (.+)',group_index=1).alias('Collision_energy_raw'),
-        pl.col('raw').str.extract(pattern=r'Ionization: (.+)',group_index=1).alias('Ionization'),
-        pl.col('raw').str.extract(pattern=r'Ion_mode: ([P,N])',group_index=1).alias('Ion_mode'),
-        pl.col('raw').str.extract(pattern=r'Precursor_type: (.+)',group_index=1).alias('Precursor_type'),
-        pl.col('raw').str.extract(pattern=r'PrecursorMZ: (\d+\.?\d*)',group_index=1).alias('PrecursorMZ'),
-        pl.col('raw').str.extract(pattern=r'MW: (\d+)',group_index=1).alias('MW'),
-        pl.col('raw').str.extract(pattern=r'Formula: (.+)',group_index=1).alias('Formula'),
-        pl.col('raw').str.extract(pattern=r'Num Peaks: (\d+)',group_index=1).alias('Num_Peaks'),
-        pl.col('raw').str.extract(pattern=r'\nCAS#: ([0-9,-]+)',group_index=1).alias('CAS'),
-        pl.col('raw').str.extract(pattern=r'\nRelated_CAS#: ([0-9,-]+)',group_index=1).alias('Related_CAS'),
-        pl.col('raw').str.extract(pattern=r'\nInChIKey: (.+)',group_index=1).alias('InChIKey'),
-        pl.col('raw').str.extract(pattern=r'\nExactMass: (\d+\.\d+)',group_index=1).alias('ExactMass'),
-        pl.col('raw').str.extract(pattern=r'[Mm]z_diff=(-?\d+\.\d+)',group_index=1).alias('mz_diff'),
-        pl.col('raw').str.extract_all(pattern=r'Synon: (.+)')
-        .list.eval(pl.element().str.extract(pattern=r'Synon: (.+)',group_index=1))
+        pl.col('raw').str.extract(pattern=r'(?i)Name: (.+)',group_index=1).alias('Name'),
+        pl.col('raw').str.extract(pattern=r'(?i)NIST#: (\d+)',group_index=1).alias('NIST_ID'),
+        pl.col('raw').str.extract(pattern=r'(?i)DB#: (\d+)',group_index=1).alias('DB_ID'),
+        pl.col('raw').str.extract(pattern=r'(?i)Instrument_?type: (.+)',group_index=1).alias('Instrument_type'),
+        pl.col('raw').str.extract(pattern=r'(?i)Instrument: (.+)',group_index=1).alias('Instrument'),
+        pl.col('raw').str.extract(pattern=r'(?i)(?:Spectrum_type|MSLEVEL): (?:MS)?(\d+)', group_index=1).str.to_integer().alias('MSLEVEL'), # extract the numeric MS level
+        pl.col('raw').str.extract(pattern=r'(?i)Collision_gas: (.+)',group_index=1).alias('Collision_gas'),
+        pl.col('raw').str.extract(pattern=r'(?i)Collision_?energy: (.+)',group_index=1).alias('Collision_energy_raw'),
+        pl.col('raw').str.extract(pattern=r'(?i)Ionization: (.+)',group_index=1).alias('Ionization'),
+        pl.col('raw').str.extract(pattern=r'(?i)Ion_?mode: (p|n)',group_index=1).alias('Ion_mode'), # works for P,N, and negative/postivie in any capitalization
+        pl.col('raw').str.extract(pattern=r'(?i)Precursor_?type: (.+)',group_index=1).alias('Precursor_type'),
+        pl.col('raw').str.extract(pattern=r'(?i)PrecursorMZ: (\d+\.?\d*)',group_index=1).alias('PrecursorMZ'),
+        pl.col('raw').str.extract(pattern=r'(?i)MW: (\d+)',group_index=1).alias('MW'),
+        pl.col('raw').str.extract(pattern=r'(?i)Formula: (.+)',group_index=1).alias('Formula'),
+        pl.col('raw').str.extract(pattern=r'(?i)Num Peaks: (\d+)',group_index=1).alias('Num_Peaks'),
+        pl.col('raw').str.extract(pattern=r'(?i)\nCAS#: ([0-9,-]+)',group_index=1).alias('CAS'),
+        pl.col('raw').str.extract(pattern=r'(?i)\nRelated_CAS#: ([0-9,-]+)',group_index=1).alias('Related_CAS'),
+        pl.col('raw').str.extract(pattern=r'(?i)\nInChIKey: (.+)',group_index=1).alias('InChIKey'),
+        pl.col('raw').str.extract(pattern=r'(?i)\nExactMass: (\d+\.\d+)',group_index=1).alias('ExactMass'),
+        pl.col('raw').str.extract(pattern=r'(?i)[Mm]z_diff=(-?\d+\.\d+)',group_index=1).alias('mz_diff'),
+        pl.col('raw').str.extract_all(pattern=r'(?i)Synon: (.+)')
+        .list.eval(pl.element().str.extract(pattern=r'(?i)Synon: (.+)',group_index=1))
         .alias('Synonyms'),
-        pl.col('raw').str.extract(pattern=r'Peptide_sequence: (.+)').alias('Peptide_sequence'),
-        pl.col('raw').str.extract(pattern=r'Peptide_mods: (.+)').alias('Peptide_mods'),
-        pl.col('raw').str.extract(pattern=r'InChI: (.+)').alias('inchi'),
-        pl.col('raw').str.extract(pattern=r'SMILES: (.+)').alias('smiles'),
+        pl.col('raw').str.extract(pattern=r'(?i)Peptide_sequence: (.+)').alias('Peptide_sequence'),
+        pl.col('raw').str.extract(pattern=r'(?i)Peptide_mods: (.+)').alias('Peptide_mods'),
+        pl.col('raw').str.extract(pattern=r'(?i)InChI: (.+)').alias('inchi'),
+        pl.col('raw').str.extract(pattern=r'(?i)SMILES: (.+)').alias('smiles'),
         pl.col('raw').str.extract_all(pattern=mz_intensity_pattern).alias('mz_intensity')
     ).drop(
         'raw'
@@ -94,16 +95,52 @@ def _read_file(file_contents: str) -> pl.DataFrame:
         pl.col("NIST_ID").str.to_integer(),
         pl.col("DB_ID").str.to_integer(),
         pl.col("MW").str.to_integer(),
+        pl.col("Ion_mode").str.to_uppercase(),
         pl.col("Num_Peaks").str.to_integer(),
         pl.col("PrecursorMZ").cast(pl.Float64),
         pl.col('mz_diff').cast(pl.Float64),
-        pl.col('Collision_energy_raw').str.extract(r'NCE=(\d+)').str.to_integer().alias('Collision_energy_NCE'),
-        pl.col('Collision_energy_raw').str.extract(Collision_energy_ev_pattern).str.to_integer().alias('Collision_energy_ev'),
+        # extract numeric collision energies allowing integers or floats
+        pl.col('Collision_energy_raw').str.extract(r'(?i)NCE=([0-9]+(?:\.[0-9]+)?)', group_index=1).cast(pl.Float64).alias('Collision_energy_NCE'),
+        pl.col('Collision_energy_raw').str.extract(r'([0-9]+(?:\.[0-9]+)?)e*V*v*$', group_index=1).cast(pl.Float64).alias('Collision_energy_ev'),
+        pl.col('Collision_energy_raw').str.strip_chars("[]").str.split(by=",").list.eval(
+            pl.element().str.extract(pattern=r'([0-9]+(?:\.[0-9]+)?)')
+        ).cast(
+            pl.List(pl.Float64)
+        ).alias("collision_energy_list"),
         pl.col('Formula').map_elements(format_formula_string_to_array,return_dtype=pl.List(pl.Int32)).list.to_array(width=num_elements).alias('Formula_array'),
         pl.col('mz_intensity').list.eval(pl.element().str.split(by=' ').list.get(index=0).cast(pl.Float64)).alias('raw_spectrum_mz'),
         pl.col('mz_intensity').list.eval(pl.element().str.split(by=' ').list.get(index=1).cast(pl.Float64)).alias('raw_spectrum_intensity')
+    ).with_columns(
+        pl.col("collision_energy_list").list.len().ge(1).alias("multiple_collision_energies"),
+        pl.col("collision_energy_list").list.mean().alias("collision_energy_mean")
     )
     return data
+
+def _annotate_and_filter_metadata(data:T)-> T:
+    '''filters out entries with missing or invalid metadata, low resolution spectra etc'''
+    instrument_data_columns= plcs.by_name(['Instrument', 'Instrument_type',  'Ionization'])
+
+    data = cast(T,data.filter(
+       pl.all_horizontal(instrument_data_columns.str.contains(r'(?i)QQ').not_()), # ioniuzation migth incldue instrument type info, and we don't want triple quads since they are low res. sometimes triple quad is also written with only 2 Qs, but nothign else should be havign 2 Qs next to each other
+        
+    ).with_columns(
+        pl.any_horizontal(instrument_data_columns.str.contains(r'(?i)LC')).alias("is_LC"), # 
+        pl.any_horizontal(
+        instrument_data_columns.str.contains(r'(?i)orbi(?:trap)?|HCD') |
+            (
+                instrument_data_columns.str.contains(r'(?i)FT') &
+                instrument_data_columns.str.contains(r'(?i)ICR').not_() & 
+                instrument_data_columns.str.contains(r'(?i)TOF').not_()
+            )
+        ).alias("is_orbitrap"),
+        pl.any_horizontal(instrument_data_columns.str.contains(r'(?i)TOF')).alias("is_TOF"),
+    )
+    )
+    
+    
+
+    return data
+
 
 def _annotate_spectra(data: T, raw_fragment_tolerance_ppm: float, normalized_fragment_tolerance_ppm: float) -> T:
     # Determine adduct_mass based on Precursor_type
@@ -178,29 +215,16 @@ def _add_precursor_type_indicators(data: T) -> T:
 
 def _add_molecular_ion_info(NIST: T, tolerance_ppm: float = 10.0) -> T:
     lazy_frame = NIST.lazy()
-    lazy_frame = lazy_frame.with_row_index(name="index")
-    molecular_ion_info = (
-        lazy_frame.explode(["cleaned_normalized_mz", "cleaned_normalized_intensity"])
-        .filter(pl.col("cleaned_normalized_mz").is_close(pl.col("PrecursorMZ"), rel_tol=tolerance_ppm * 1e-6, abs_tol=200.0*tolerance_ppm * 1e-6))
-        .sort("cleaned_normalized_intensity", descending=True)
-        .group_by("index")
-        .agg(
-            pl.col("cleaned_normalized_mz")
-            .sort_by("cleaned_normalized_intensity", descending=True)
-            .first()
-            .alias("molecular_ion_mz"),
-            pl.col("cleaned_normalized_intensity")
-            .sort(descending=True)
-            .first()
-            .alias("molecular_ion_intensity"),
+    lazy_frame = lazy_frame.with_columns(
+        molecular_ion_intensity=pl.when(
+            pl.col('cleaned_normalized_mz').list.last().is_close(
+            pl.col('PrecursorMZ'), 
+            rel_tol=tolerance_ppm*1e-6, abs_tol=200.*tolerance_ppm*1e-6)
+            )
+        .then(pl.col('cleaned_normalized_intensity').list.last())
+        .otherwise(None)
         )
-    )
 
-    lazy_frame = lazy_frame.join(
-        molecular_ion_info,
-        on="index",
-        how="left"
-    ).drop("index")
 
     if isinstance(NIST, pl.LazyFrame):
         return cast(T, lazy_frame)
