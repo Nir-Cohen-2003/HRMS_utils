@@ -4,7 +4,7 @@ import numpy as np
 from typing import TypeVar, cast, Dict,Iterable
 from ..formula_annotation.utils import formula_fits_mass, format_formula_string_to_array,  get_precursor_ion_formula_array, num_elements
 from ..formula_annotation.element_table import ADDUCT_MASSES
-from ..formula_annotation.mass_decomposition import clean_and_normalize_spectra_known_precursor_verbose, NUM_ELEMENTS
+from ..formula_annotation.mass_decomposition import clean_and_normalize_spectra_known_precursor_verbose
 from pathlib import Path 
 from scipy.stats import linregress
 
@@ -31,13 +31,16 @@ def create_nist_dataframe(named_file_list: list[tuple[str|Path, str]]) -> pl.Dat
     combined_df = pl.concat(dataframes, how='vertical')
     return combined_df
 
-def read_MSPEC_file(path: Path | str, annotation_tolerance_ppm: float = 5.0, annotation_max_allowed_normalized_mass_error_ppm: float = 10.0, molecular_ion_tolerance_ppm: float = 10.0) -> pl.DataFrame:
+def read_MSPEC_file(path: Path | str, raw_fragment_tolerance_ppm: float = 5.0, normalized_fragment_tolerance_ppm: float = 10.0, molecular_ion_tolerance_ppm: float = 10.0) -> pl.DataFrame:
     with open(path, 'r') as file:
         file_contents = file.read()
     
     data = _read_file(file_contents)
-    
-    data = _annotate_spectra(data, annotation_tolerance_ppm, annotation_max_allowed_normalized_mass_error_ppm)
+
+    data = _annotate_spectra(
+        data, 
+        raw_fragment_tolerance_ppm=raw_fragment_tolerance_ppm, 
+        normalized_fragment_tolerance_ppm=normalized_fragment_tolerance_ppm)
 
     # data = _add_num_clean_peaks(data)
     data = _add_precursor_type_indicators(data)
@@ -83,7 +86,7 @@ def _read_file(file_contents: str) -> pl.DataFrame:
         pl.col('raw').str.extract(pattern=r'Peptide_mods: (.+)').alias('Peptide_mods'),
         pl.col('raw').str.extract(pattern=r'InChI: (.+)').alias('inchi'),
         pl.col('raw').str.extract(pattern=r'SMILES: (.+)').alias('smiles'),
-        pl.col('raw').str.extract(pattern=mz_intensity_pattern).alias('mz_intensity')
+        pl.col('raw').str.extract_all(pattern=mz_intensity_pattern).alias('mz_intensity')
     ).drop(
         'raw'
     ).with_columns(
@@ -96,15 +99,16 @@ def _read_file(file_contents: str) -> pl.DataFrame:
         pl.col('mz_diff').cast(pl.Float64),
         pl.col('Collision_energy_raw').str.extract(r'NCE=(\d+)').str.to_integer().alias('Collision_energy_NCE'),
         pl.col('Collision_energy_raw').str.extract(Collision_energy_ev_pattern).str.to_integer().alias('Collision_energy_ev'),
-        pl.col('Formula').map_elements(format_formula_string_to_array,return_dtype=pl.List(pl.Int64)).list.to_array(width=num_elements).alias('Formula_array'),
-        pl.col('mz_intensity').str.split_exact(' ',1).struct.rename_fields(names=['raw_spectrum_mz','raw_spectrum_intensity']).struct.unnest()
-        )
+        pl.col('Formula').map_elements(format_formula_string_to_array,return_dtype=pl.List(pl.Int32)).list.to_array(width=num_elements).alias('Formula_array'),
+        pl.col('mz_intensity').list.eval(pl.element().str.split(by=' ').list.get(index=0).cast(pl.Float64)).alias('raw_spectrum_mz'),
+        pl.col('mz_intensity').list.eval(pl.element().str.split(by=' ').list.get(index=1).cast(pl.Float64)).alias('raw_spectrum_intensity')
+    )
     return data
 
-def _annotate_spectra(data: T, tolerance_ppm: float, max_allowed_normalized_mass_error_ppm: float) -> T:
+def _annotate_spectra(data: T, raw_fragment_tolerance_ppm: float, normalized_fragment_tolerance_ppm: float) -> T:
     # Determine adduct_mass based on Precursor_type
-    adduct_mapping = pl.Series(name="Precursor_type", values=list(ADDUCT_MASSES.keys()))
-    adduct_masses = pl.Series(name="adduct_mass", values=list(ADDUCT_MASSES.values()))
+    adduct_mapping = pl.Series(name="Precursor_type", values=list(ADDUCT_MASSES.keys()), dtype=pl.String)
+    adduct_masses = pl.Series(name="adduct_mass", values=list(ADDUCT_MASSES.values()), dtype=pl.Float64)
     adduct_df = pl.DataFrame({"Precursor_type": adduct_mapping, "adduct_mass": adduct_masses})
 
     if isinstance(data, pl.LazyFrame):
@@ -116,16 +120,16 @@ def _annotate_spectra(data: T, tolerance_ppm: float, max_allowed_normalized_mass
         data_frame = cast(T,data_df)
     else:
         raise TypeError(f"In function '_annotate_spectra', data must be a Polars DataFrame or LazyFrame, got {type(data)}")
-    
+    # print(data_frame.schema)
     return cast(T,data_frame.with_columns(
         pl.col("adduct_mass").fill_null(0.0) # Default to 0.0 if no adduct mass is found
     ).with_columns(# Calculate non_ionized_mass
-        (pl.col("PrecursorMZ") - pl.col("adduct_mass")).alias("non_ionized_mass")
+        (pl.col("PrecursorMZ").sub(pl.col("adduct_mass"))).alias("non_ionized_mass")
     ).with_columns( # Prepare fragment masses by subtracting adduct_mass
-        (pl.col("raw_spectrum_mz").list.eval(pl.element() - pl.col("adduct_mass"))).alias("non_ionized_raw_spectrum_mz")
+        pl.col("raw_spectrum_mz").sub(pl.col("adduct_mass")).alias("non_ionized_raw_spectrum_mz")
     ).with_columns( # Call clean_and_normalize_spectra_known_precursor_verbose
         pl.struct([
-            pl.col("Formula_array").list.to_array(width=NUM_ELEMENTS),
+            pl.col("Formula_array"),
             pl.col("non_ionized_mass"),
             pl.col("non_ionized_raw_spectrum_mz"),
             pl.col("raw_spectrum_intensity")
@@ -135,20 +139,20 @@ def _annotate_spectra(data: T, tolerance_ppm: float, max_allowed_normalized_mass
                 precursor_masses_series=batch.struct.field("non_ionized_mass"),
                 fragment_masses_series=batch.struct.field("non_ionized_raw_spectrum_mz"),
                 fragment_intensities_series=batch.struct.field("raw_spectrum_intensity"),
-                tolerance_ppm=tolerance_ppm,
-                max_allowed_normalized_mass_error_ppm=max_allowed_normalized_mass_error_ppm,
+                tolerance_ppm=raw_fragment_tolerance_ppm,
+                max_allowed_normalized_mass_error_ppm=normalized_fragment_tolerance_ppm,
             ),
             return_dtype=pl.Struct({
                 "masses_normalized": pl.List(pl.Float64),
                 "cleaned_intensities": pl.List(pl.Float64),
-                "fragment_formulas": pl.List(pl.List(pl.Int64)),
-                "fragment_errors_ppm": pl.List(pl.Float64),
+                "fragment_formulas": pl.List(pl.Array(inner=pl.Int32,shape=(num_elements,))),
                 "fragment_formulas_str": pl.List(pl.String),
+                "fragment_errors_ppm": pl.List(pl.Float64),
             }),
             is_elementwise=True
         ).alias("cleaned_normalized_spectra")
-    ).with_columns( # Extract results and add addcut_mass back to normalized masses
-        pl.col("cleaned_normalized_spectra").struct.field("masses_normalized").list.eval(pl.element() + pl.col("addcut_mass")).alias("cleaned_normalized_mz"),
+    ).with_columns( # Extract results and add adduct_mass back to normalized masses
+        pl.col("cleaned_normalized_spectra").struct.field("masses_normalized").add(pl.col("adduct_mass")).alias("cleaned_normalized_mz"),
         pl.col("cleaned_normalized_spectra").struct.field("cleaned_intensities").alias("cleaned_normalized_intensity"),
         pl.col("cleaned_normalized_spectra").struct.field("fragment_formulas").alias("cleaned_fragment_formulas"),
         pl.col("cleaned_normalized_spectra").struct.field("fragment_errors_ppm").alias("cleaned_fragment_errors_ppm"),

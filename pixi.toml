@@ -91,6 +91,8 @@ sqlalchemy = "*"
 [feature.testing.tasks]
 check_all = "pyrefly check ./src/hrms_utils"
 check_nist_mspec = "pyrefly check ./src/hrms_utils/formats/nist_mspec.py"
+
+test_nist_mspec = "python tests/formats/test_nist_mspec.py"
 test_mass_decomp = "python tests/formula_annotation/mass_decomposition.py"
 test_chromatogram = "python tests/formula_annotation/chromatogram.py"
 test_mol = "python tests/rdkit/mol.py"
