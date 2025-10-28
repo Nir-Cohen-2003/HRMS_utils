@@ -82,14 +82,21 @@ def run_mspec_reader_profile(msp_file_path: Path):
         count = spectra_df.filter((pl.col("Instrument") == "NOT FOUND") & (pl.col("Instrument_type") == "NOT FOUND") & (pl.col("Ionization") == "NOT FOUND")).height
         print(f"  - Rows with 'Instrument', 'Instrument_type', AND 'Ionization' as 'NOT FOUND': {count}")
     # print how many are orbi, tof or other
-    if all(col in spectra_df.columns for col in ["is_orbitrap", "is_TOF"]):
-        orbi_count = spectra_df.filter(pl.col("is_orbitrap")).height
-        tof_count = spectra_df.filter(pl.col("is_TOF")).height
-        other_count = spectra_df.filter((pl.col("is_orbitrap").not_()) & (pl.col("is_TOF").not_())).height
-        print("\nInstrument type counts:")
-        print(f"  - Orbitrap: {orbi_count}")
-        print(f"  - TOF: {tof_count}")
-        print(f"  - Other: {other_count}")
+    orbi_count = spectra_df.filter(pl.col("is_orbitrap")).height
+    tof_count = spectra_df.filter(pl.col("is_TOF")).height
+    other_count = spectra_df.filter((pl.col("is_orbitrap").not_()) & (pl.col("is_TOF").not_())).height
+    print("\nInstrument type counts:")
+    print(f"  - Orbitrap: {orbi_count}")
+    print(f"  - TOF: {tof_count}")
+    print(f"  - Other: {other_count}")
+    # print how many of the orbi, TOF are ESI
+    esi_orbi_count = spectra_df.filter(pl.col("is_ESI") & pl.col("is_orbitrap")).height
+    esi_tof_count = spectra_df.filter(pl.col("is_ESI") & pl.col("is_TOF")).height
+    esi_other_count = spectra_df.filter(pl.col("is_ESI") & (pl.col("is_orbitrap").not_()) & (pl.col("is_TOF").not_())).height
+    print("\nESI counts by instrument type:")
+    print(f"  - ESI Orbitrap: {esi_orbi_count}")
+    print(f"  - ESI TOF: {esi_tof_count}")
+    print(f"  - ESI Other: {esi_other_count}")
 
 if __name__ == "__main__":
     # Make data_dir relative to this test file's location (resolve to absolute path)

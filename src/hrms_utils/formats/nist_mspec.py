@@ -134,6 +134,7 @@ def _annotate_and_filter_metadata(data:T)-> T:
             )
         ).alias("is_orbitrap"),
         pl.any_horizontal(instrument_data_columns.str.contains(r'(?i)TOF')).alias("is_TOF"),
+        pl.any_horizontal(instrument_data_columns.str.contains(r'(?i)ESI|LC')).alias("is_ESI"), # LC is usually coupled with ESI
     )
     )
     
