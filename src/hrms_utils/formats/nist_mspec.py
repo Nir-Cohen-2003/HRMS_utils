@@ -3,7 +3,7 @@ import polars as pl
 import numpy as np
 from typing import TypeVar, cast, Dict,Iterable
 from ..formula_annotation.utils import formula_fits_mass, format_formula_string_to_array,  get_precursor_ion_formula_array, num_elements
-from ..formula_annotation.element_table import ADDCUT_MASSES
+from ..formula_annotation.element_table import ADDUCT_MASSES
 from ..formula_annotation.mass_decomposition import clean_and_normalize_spectra_known_precursor_verbose, NUM_ELEMENTS
 from pathlib import Path 
 from scipy.stats import linregress
@@ -102,81 +102,79 @@ def _read_file(file_contents: str) -> pl.DataFrame:
     return data
 
 def _annotate_spectra(data: T, tolerance_ppm: float, max_allowed_normalized_mass_error_ppm: float) -> T:
-    # Determine addcut_mass based on Precursor_type
-    adduct_mapping = pl.Series(name="Precursor_type", values=list(ADDCUT_MASSES.keys()))
-    adduct_masses = pl.Series(name="addcut_mass", values=list(ADDCUT_MASSES.values()))
-    adduct_df = pl.DataFrame({"Precursor_type": adduct_mapping, "addcut_mass": adduct_masses})
+    # Determine adduct_mass based on Precursor_type
+    adduct_mapping = pl.Series(name="Precursor_type", values=list(ADDUCT_MASSES.keys()))
+    adduct_masses = pl.Series(name="adduct_mass", values=list(ADDUCT_MASSES.values()))
+    adduct_df = pl.DataFrame({"Precursor_type": adduct_mapping, "adduct_mass": adduct_masses})
 
     if isinstance(data, pl.LazyFrame):
-        data = data.join(adduct_df.lazy(), on="Precursor_type", how="left")
+        adduct_lf = adduct_df.lazy()
+        data_lf = data.join(adduct_lf, on="Precursor_type", how="left")
+        data_frame = cast(T,data_lf)
+    elif isinstance(data, pl.DataFrame):
+        data_df = data.join(adduct_df, on="Precursor_type", how="left")
+        data_frame = cast(T,data_df)
     else:
-        data = data.join(adduct_df, on="Precursor_type", how="left")
-
-    data = data.with_columns(
-        pl.col("addcut_mass").fill_null(0.0) # Default to 0.0 if no adduct mass is found
-    )
-
-    # Calculate non_ionized_mass
-    data = data.with_columns(
-        (pl.col("PrecursorMZ") - pl.col("addcut_mass")).alias("non_ionized_mass")
-    )
-
-    # Prepare fragment masses by subtracting addcut_mass
-    data = data.with_columns(
-        (pl.col("raw_spectrum_mz").list.eval(pl.element() - pl.col("addcut_mass"))).alias("non_ionized_raw_spectrum_mz")
-    )
-
-    # Call clean_and_normalize_spectra_known_precursor_verbose
-    data = data.with_columns(
-        clean_and_normalize_spectra_known_precursor_verbose(
-            precursor_formula_series=pl.col("Formula_array").list.to_array(width=NUM_ELEMENTS),
-            precursor_masses_series=pl.col("non_ionized_mass"),
-            fragment_masses_series=pl.col("non_ionized_raw_spectrum_mz"),
-            fragment_intensities_series=pl.col("raw_spectrum_intensity"),
-            tolerance_ppm=tolerance_ppm,
-            max_allowed_normalized_mass_error_ppm=max_allowed_normalized_mass_error_ppm,
+        raise TypeError(f"In function '_annotate_spectra', data must be a Polars DataFrame or LazyFrame, got {type(data)}")
+    
+    return cast(T,data_frame.with_columns(
+        pl.col("adduct_mass").fill_null(0.0) # Default to 0.0 if no adduct mass is found
+    ).with_columns(# Calculate non_ionized_mass
+        (pl.col("PrecursorMZ") - pl.col("adduct_mass")).alias("non_ionized_mass")
+    ).with_columns( # Prepare fragment masses by subtracting adduct_mass
+        (pl.col("raw_spectrum_mz").list.eval(pl.element() - pl.col("adduct_mass"))).alias("non_ionized_raw_spectrum_mz")
+    ).with_columns( # Call clean_and_normalize_spectra_known_precursor_verbose
+        pl.struct([
+            pl.col("Formula_array").list.to_array(width=NUM_ELEMENTS),
+            pl.col("non_ionized_mass"),
+            pl.col("non_ionized_raw_spectrum_mz"),
+            pl.col("raw_spectrum_intensity")
+        ]).map_batches(
+            function = lambda batch: clean_and_normalize_spectra_known_precursor_verbose(
+                precursor_formula_series=batch.struct.field("Formula_array"),
+                precursor_masses_series=batch.struct.field("non_ionized_mass"),
+                fragment_masses_series=batch.struct.field("non_ionized_raw_spectrum_mz"),
+                fragment_intensities_series=batch.struct.field("raw_spectrum_intensity"),
+                tolerance_ppm=tolerance_ppm,
+                max_allowed_normalized_mass_error_ppm=max_allowed_normalized_mass_error_ppm,
+            ),
+            return_dtype=pl.Struct({
+                "masses_normalized": pl.List(pl.Float64),
+                "cleaned_intensities": pl.List(pl.Float64),
+                "fragment_formulas": pl.List(pl.List(pl.Int64)),
+                "fragment_errors_ppm": pl.List(pl.Float64),
+                "fragment_formulas_str": pl.List(pl.String),
+            }),
+            is_elementwise=True
         ).alias("cleaned_normalized_spectra")
-    )
-
-    # Extract results and add addcut_mass back to normalized masses
-    data = data.with_columns(
+    ).with_columns( # Extract results and add addcut_mass back to normalized masses
         pl.col("cleaned_normalized_spectra").struct.field("masses_normalized").list.eval(pl.element() + pl.col("addcut_mass")).alias("cleaned_normalized_mz"),
         pl.col("cleaned_normalized_spectra").struct.field("cleaned_intensities").alias("cleaned_normalized_intensity"),
         pl.col("cleaned_normalized_spectra").struct.field("fragment_formulas").alias("cleaned_fragment_formulas"),
         pl.col("cleaned_normalized_spectra").struct.field("fragment_errors_ppm").alias("cleaned_fragment_errors_ppm"),
         pl.col("cleaned_normalized_spectra").struct.field("fragment_formulas_str").alias("cleaned_fragment_formulas_str"),
-    ).drop("cleaned_normalized_spectra", "non_ionized_mass", "non_ionized_raw_spectrum_mz", "addcut_mass")
-
-    return data
-
+    ).drop("cleaned_normalized_spectra", "non_ionized_mass", "non_ionized_raw_spectrum_mz", "adduct_mass")
+    )
 
 def _add_precursor_type_indicators(data: T) -> T:
     fragment_pattern = r'-\d*'+  r'((H(\d+|[A-Z]|[a-z]))|([A-G]|[I-Z])[a-z]?\d*)'+ r'(([A-Z][a-z]?\d*))*'
 
-    data = data.with_columns(
+    return cast(T,data.with_columns(
         pl.col('Precursor_type').str.contains('i').alias('Isotope'),
         pl.col('Precursor_type').str.contains('Cat').alias('Cation'),
         pl.col('Precursor_type').str.contains('[0-9]M').alias('Multimer'),
         pl.col('Precursor_type').str.contains('][0-9]').alias('MultiCharge'),
-        pl.col('Precursor_type').str.contains(fragment_pattern).alias('Fragment'))
-    data = data.with_columns(
+        pl.col('Precursor_type').str.contains(fragment_pattern).alias('Fragment')
+        ).with_columns(
         (pl.col('Isotope') | pl.col('Cation') | pl.col('Multimer') | pl.col('MultiCharge') | pl.col('Fragment') |
          pl.col('Precursor_type').str.contains('M').not_() # there are some that are [123.1234]+, all of the m with single occurance, which are probably not clean
          ).not_().alias('clean_precursor'))
+    )
 
-
-    return data
 
 def _add_molecular_ion_info(NIST: T, tolerance_ppm: float = 10.0) -> T:
-    was_lazy = isinstance(NIST, pl.LazyFrame)
-    
-    if was_lazy:
-        lazy_frame = NIST
-    else:
-        lazy_frame = NIST.lazy()
-
+    lazy_frame = NIST.lazy()
     lazy_frame = lazy_frame.with_row_index(name="index")
-
     molecular_ion_info = (
         lazy_frame.explode(["cleaned_normalized_mz", "cleaned_normalized_intensity"])
         .filter(pl.col("cleaned_normalized_mz").is_close(pl.col("PrecursorMZ"), rel_tol=tolerance_ppm * 1e-6, abs_tol=200.0*tolerance_ppm * 1e-6))
@@ -200,20 +198,22 @@ def _add_molecular_ion_info(NIST: T, tolerance_ppm: float = 10.0) -> T:
         how="left"
     ).drop("index")
 
-    if was_lazy:
-        return lazy_frame
+    if isinstance(NIST, pl.LazyFrame):
+        return cast(T, lazy_frame)
+    elif isinstance(NIST, pl.DataFrame):
+        return cast(T, lazy_frame.collect(engine="streaming"))
     else:
-        return lazy_frame.collect(engine="streaming")
+        raise TypeError(f"In function '_add_molecular_ion_info', NIST must be a Polars DataFrame or LazyFrame, got {type(NIST)}")
 
 
 def _add_base_peak_mz_fraction_and_diff(NIST: T) -> T:
-    NIST = NIST.with_columns(
-        pl.col('raw_spectrum_mz').list.get(pl.col('raw_spectrum_intensity').list.arg_max()).alias('base_peak_mz'))
-    NIST= NIST.with_columns(   
+    return cast(T, NIST.with_columns(
+        pl.col('raw_spectrum_mz').list.get(pl.col('raw_spectrum_intensity').list.arg_max()).alias('base_peak_mz')
+        ).with_columns(   
         pl.col('base_peak_mz').truediv(pl.col('PrecursorMZ')).round(3).alias('base_peak_div_precursor_mz'),
         pl.col('PrecursorMZ').sub(pl.col('base_peak_mz')).round(3).alias('precursor_minus_base_peak_mz')
-    )
-    return NIST
+    ))
+
 
 
 def _find_missing_pattern_sections(file_contents, pattern):
@@ -252,9 +252,9 @@ def _add_inchi_SMILES_from_pubchem(NIST: T, pubchem_path: str | Path) -> T:
     result = combined.drop('InChIKey').join(NIST_lf, on='NIST_ID', how='right', coalesce=True)
 
     if isinstance(NIST, pl.DataFrame):
-        return result.collect(engine="streaming")
+        return cast(T, result.collect(engine="streaming"))
     elif isinstance(NIST, pl.LazyFrame):
-        return result
+        return cast(T, result)
     else:
         raise TypeError(f"In function '_add_inchi_SMILES_from_pubchem', NIST must be a Polars DataFrame or LazyFrame, got {type(NIST)}")
 
