@@ -33,7 +33,7 @@ def create_nist_dataframe(named_file_list: list[tuple[str|Path, str]]) -> pl.Dat
     combined_df = pl.concat(dataframes, how='vertical')
     return combined_df
 
-def read_MSPEC_file(path: Path | str, raw_fragment_tolerance_ppm: float = 5.0, normalized_fragment_tolerance_ppm: float = 10.0, molecular_ion_tolerance_ppm: float = 10.0) -> pl.DataFrame:
+def read_MSPEC_file(path: Path | str, raw_fragment_tolerance_ppm: float = 10.0, normalized_fragment_tolerance_ppm: float = 5.0, molecular_ion_tolerance_ppm: float = 5.0) -> pl.DataFrame:
     with open(path, 'r') as file:
         file_contents = file.read()
     
@@ -187,6 +187,7 @@ def _annotate_spectra(data: T, raw_fragment_tolerance_ppm: float, normalized_fra
                 fragment_intensities_series=batch.struct.field("raw_spectrum_intensity"),
                 tolerance_ppm=raw_fragment_tolerance_ppm,
                 max_allowed_normalized_mass_error_ppm=normalized_fragment_tolerance_ppm,
+                dbe_mode="half_integer"
             ),
             return_dtype=pl.Struct({
                 "masses_normalized": pl.List(pl.Float64),

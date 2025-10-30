@@ -1,7 +1,7 @@
 import polars as pl
 import numpy as np
 from numpy.typing import NDArray
-from typing import Iterable, Tuple
+from typing import Iterable, Tuple, Literal
 
 from .mass_decomposition_impl.mass_decomposer_cpp import ( #type: ignore[unresolved-import]
     clean_and_normalize_spectra_known_precursor_parallel,
@@ -31,7 +31,7 @@ def decompose_mass(
     tolerance_ppm: float = 5.0,
     min_dbe: float = 0.0,
     max_dbe: float = 40.0,
-    dbe_mode: str = "integer",
+    dbe_mode: Literal["integer","half_integer", "any"]="integer",
 ) -> pl.Series:
     """
     Wrapper for decompose_mass_parallel, fixed bounds only, with validation of input types.
@@ -111,7 +111,7 @@ def decompose_mass_verbose(
     tolerance_ppm: float = 5.0,
     min_dbe: float = 0.0,
     max_dbe: float = 40.0,
-    dbe_mode: str = "integer",
+    dbe_mode: Literal["integer","half_integer", "any"]="integer",
 ) -> pl.Series:
     """Annotate masses and return both element counts and formatted formulas.
 
@@ -187,7 +187,7 @@ def decompose_mass_per_bounds(
     tolerance_ppm: float = 5.0,
     min_dbe: float = 0.0,
     max_dbe: float = 40.0,  
-    dbe_mode: str = "integer",
+    dbe_mode: Literal["integer","half_integer", "any"]="integer",
 ) -> pl.Series:
     """
     Return a Polars Series of possible formulas for the mass.
@@ -251,7 +251,7 @@ def decompose_mass_per_bounds_verbose(
     tolerance_ppm: float = 5.0,
     min_dbe: float = 0.0,
     max_dbe: float = 40.0,
-    dbe_mode: str = "integer",
+    dbe_mode: Literal["integer","half_integer", "any"]="integer",
 ) -> pl.Series:
     """Per-row bounds variant that also reports formatted formula strings.
 
@@ -463,7 +463,7 @@ def decompose_spectra_known_precursor(
     tolerance_ppm: float = 5.0,
     min_dbe: float = 0.0,
     max_dbe: float = 30.0,
-    dbe_mode: str = "integer",
+    dbe_mode: Literal["integer","half_integer", "any"]="integer",
 ):
     """
     Decomposes the fragments, when the precursor was already decomposed.
@@ -517,7 +517,7 @@ def decompose_spectra_known_precursor_verbose(
     tolerance_ppm: float = 5.0,
     min_dbe: float = 0.0,
     max_dbe: float = 30.0,
-    dbe_mode: str = "integer",
+    dbe_mode: Literal["integer","half_integer", "any"]="integer",
 ) -> Tuple[pl.Series, pl.Series]:
     """Verbose decomposition that includes human-readable formulas for fragments.
 
@@ -573,7 +573,7 @@ def clean_spectra_known_precursor(
     tolerance_ppm: float = 5.0,
     min_dbe: float = 0.0,
     max_dbe: float = 30.0,
-    dbe_mode: str = "integer",
+    dbe_mode: Literal["integer","half_integer", "any"]="integer",
 ) -> pl.Series:
     """
     Parallel cleaner for spectra with known precursor formulas.
@@ -664,7 +664,7 @@ def clean_spectra_known_precursor_verbose(
     tolerance_ppm: float = 5.0,
     min_dbe: float = 0.0,
     max_dbe: float = 30.0,
-    dbe_mode: str = "integer",
+    dbe_mode: Literal["integer","half_integer", "any"]="integer",
 ) -> pl.Series:
     """Clean spectra and include formula strings per fragment.
 
@@ -742,7 +742,7 @@ def clean_and_normalize_spectra_known_precursor(
     max_allowed_normalized_mass_error_ppm: float = 5.0,
     min_dbe: float = 0.0,
     max_dbe: float = 30.0,
-    dbe_mode: str = "integer",
+    dbe_mode: Literal["integer","half_integer", "any"]="integer",
 ) -> pl.Series:
     """
     Parallel cleaner for spectra with known precursor that:
@@ -816,7 +816,7 @@ def clean_and_normalize_spectra_known_precursor_verbose(
     max_allowed_normalized_mass_error_ppm: float = 5.0,
     min_dbe: float = 0.0,
     max_dbe: float = 30.0,
-    dbe_mode: str = "integer",
+    dbe_mode: Literal["integer","half_integer", "any"]="integer",
 ) -> pl.Series:
     """Verbose cleaner + normalizer that adds ``fragment_formulas_str`` output.
 
