@@ -1,4 +1,1 @@
-1. in the inteligent cleaning of spectrum, after removing peaks that are below the normalized mass accuracy threshold, check if any options got in.
-2. seems like using the c++ version of rdkit is pretty complicated, at least when trying to build a wheel (since on conda we can use cmake+ librdkit-dev+ boost if needed, like in the faster mces repo). think well about how we should proceed, since this might be much faster but much more complicated. postpone it until it becomes a bottleneck.
-3. move the nist mspec converter use the mass decomposition and spectral cleaning.
-4. add the same for the mgf
+1. in mass decomposition, for sodium the "subtract the addcut mass then decompose the neutralized masses" doesn't work, since it can easily lose the sodium atom and have a proton instead

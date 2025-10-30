@@ -31,9 +31,8 @@ def decompose_mass(
     tolerance_ppm: float = 5.0,
     min_dbe: float = 0.0,
     max_dbe: float = 40.0,
-
-    
-):
+    dbe_mode: str = "integer",
+) -> pl.Series:
     """
     Wrapper for decompose_mass_parallel, fixed bounds only, with validation of input types.
 
@@ -101,6 +100,7 @@ def decompose_mass(
         tolerance_ppm=tolerance_ppm,
         min_dbe=min_dbe,
         max_dbe=max_dbe,
+        dbe_mode=dbe_mode,
     )
     return results
 
@@ -111,6 +111,7 @@ def decompose_mass_verbose(
     tolerance_ppm: float = 5.0,
     min_dbe: float = 0.0,
     max_dbe: float = 40.0,
+    dbe_mode: str = "integer",
 ) -> pl.Series:
     """Annotate masses and return both element counts and formatted formulas.
 
@@ -176,6 +177,7 @@ def decompose_mass_verbose(
         tolerance_ppm=tolerance_ppm,
         min_dbe=min_dbe,
         max_dbe=max_dbe,
+        dbe_mode=dbe_mode,
     )
 
 def decompose_mass_per_bounds(
@@ -185,6 +187,7 @@ def decompose_mass_per_bounds(
     tolerance_ppm: float = 5.0,
     min_dbe: float = 0.0,
     max_dbe: float = 40.0,  
+    dbe_mode: str = "integer",
 ) -> pl.Series:
     """
     Return a Polars Series of possible formulas for the mass.
@@ -237,6 +240,7 @@ def decompose_mass_per_bounds(
         tolerance_ppm=tolerance_ppm,
         min_dbe=min_dbe,
         max_dbe=max_dbe,
+        dbe_mode=dbe_mode,
     )
     return results  
 
@@ -247,6 +251,7 @@ def decompose_mass_per_bounds_verbose(
     tolerance_ppm: float = 5.0,
     min_dbe: float = 0.0,
     max_dbe: float = 40.0,
+    dbe_mode: str = "integer",
 ) -> pl.Series:
     """Per-row bounds variant that also reports formatted formula strings.
 
@@ -297,6 +302,7 @@ def decompose_mass_per_bounds_verbose(
         tolerance_ppm=tolerance_ppm,
         min_dbe=min_dbe,
         max_dbe=max_dbe,
+        dbe_mode=dbe_mode,
     )
 
 def decompose_spectra(
@@ -455,6 +461,9 @@ def decompose_spectra_known_precursor(
     precursor_formula_series: pl.Series,
     fragment_masses_series: pl.Series,
     tolerance_ppm: float = 5.0,
+    min_dbe: float = 0.0,
+    max_dbe: float = 30.0,
+    dbe_mode: str = "integer",
 ):
     """
     Decomposes the fragments, when the precursor was already decomposed.
@@ -496,6 +505,9 @@ def decompose_spectra_known_precursor(
         precursor_formula_series,
         fragment_masses_series,
         tolerance_ppm=tolerance_ppm,
+        min_dbe=min_dbe,
+        max_dbe=max_dbe,
+        dbe_mode=dbe_mode,
     )
     return results
 
@@ -503,6 +515,9 @@ def decompose_spectra_known_precursor_verbose(
     precursor_formula_series: pl.Series,
     fragment_masses_series: pl.Series,
     tolerance_ppm: float = 5.0,
+    min_dbe: float = 0.0,
+    max_dbe: float = 30.0,
+    dbe_mode: str = "integer",
 ) -> Tuple[pl.Series, pl.Series]:
     """Verbose decomposition that includes human-readable formulas for fragments.
 
@@ -545,6 +560,9 @@ def decompose_spectra_known_precursor_verbose(
         precursor_formula_series=precursor_formula_series,
         fragment_masses_series=fragment_masses_series,
         tolerance_ppm=tolerance_ppm,
+        min_dbe=min_dbe,
+        max_dbe=max_dbe,
+        dbe_mode=dbe_mode,
     )
 
 def clean_spectra_known_precursor(
@@ -553,6 +571,9 @@ def clean_spectra_known_precursor(
     fragment_intensities_series: pl.Series,
     *,
     tolerance_ppm: float = 5.0,
+    min_dbe: float = 0.0,
+    max_dbe: float = 30.0,
+    dbe_mode: str = "integer",
 ) -> pl.Series:
     """
     Parallel cleaner for spectra with known precursor formulas.
@@ -630,6 +651,9 @@ def clean_spectra_known_precursor(
         fragment_masses_series=fragment_masses_series,
         fragment_intensities_series=fragment_intensities_series,
         tolerance_ppm=tolerance_ppm,
+        min_dbe=min_dbe,
+        max_dbe=max_dbe,
+        dbe_mode=dbe_mode,
     )
 
 def clean_spectra_known_precursor_verbose(
@@ -638,6 +662,9 @@ def clean_spectra_known_precursor_verbose(
     fragment_intensities_series: pl.Series,
     *,
     tolerance_ppm: float = 5.0,
+    min_dbe: float = 0.0,
+    max_dbe: float = 30.0,
+    dbe_mode: str = "integer",
 ) -> pl.Series:
     """Clean spectra and include formula strings per fragment.
 
@@ -700,6 +727,9 @@ def clean_spectra_known_precursor_verbose(
         fragment_masses_series=fragment_masses_series,
         fragment_intensities_series=fragment_intensities_series,
         tolerance_ppm=tolerance_ppm,
+        min_dbe=min_dbe,
+        max_dbe=max_dbe,
+        dbe_mode=dbe_mode,
     )
 
 def clean_and_normalize_spectra_known_precursor(
@@ -710,6 +740,9 @@ def clean_and_normalize_spectra_known_precursor(
     *,
     tolerance_ppm: float = 5.0,
     max_allowed_normalized_mass_error_ppm: float = 5.0,
+    min_dbe: float = 0.0,
+    max_dbe: float = 30.0,
+    dbe_mode: str = "integer",
 ) -> pl.Series:
     """
     Parallel cleaner for spectra with known precursor that:
@@ -767,6 +800,9 @@ def clean_and_normalize_spectra_known_precursor(
         fragment_intensities_series=fragment_intensities_series,
         tolerance_ppm=tolerance_ppm,
         max_allowed_normalized_mass_error_ppm=max_allowed_normalized_mass_error_ppm,
+        min_dbe=min_dbe,
+        max_dbe=max_dbe,
+        dbe_mode=dbe_mode,
     )
 
 
@@ -778,6 +814,9 @@ def clean_and_normalize_spectra_known_precursor_verbose(
     *,
     tolerance_ppm: float = 5.0,
     max_allowed_normalized_mass_error_ppm: float = 5.0,
+    min_dbe: float = 0.0,
+    max_dbe: float = 30.0,
+    dbe_mode: str = "integer",
 ) -> pl.Series:
     """Verbose cleaner + normalizer that adds ``fragment_formulas_str`` output.
 
@@ -853,6 +892,9 @@ def clean_and_normalize_spectra_known_precursor_verbose(
         fragment_intensities_series=fragment_intensities_series,
         tolerance_ppm=tolerance_ppm,
         max_allowed_normalized_mass_error_ppm=max_allowed_normalized_mass_error_ppm,
+        min_dbe=min_dbe,
+        max_dbe=max_dbe,
+        dbe_mode=dbe_mode,
     )
 
 

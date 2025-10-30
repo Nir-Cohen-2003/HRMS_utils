@@ -104,22 +104,22 @@ void MassDecomposer::compute_errors() {
     max_error_ = 0.0;
     for (const auto& weight : weights_) {
         if (weight.mass == 0) continue;
-        double error = (precision_ * weight.integer_mass - weight.mass) / weight.mass;
+        mass_t error = (precision_ * weight.integer_mass - weight.mass) / weight.mass;
         if (error < min_error_) min_error_ = error;
         if (error > max_error_) max_error_ = error;
     }
 }
 
-std::pair<long long, long long> MassDecomposer::integer_bound(double mass_from, double mass_to) const {
-    double from_d = std::ceil((1 + min_error_) * mass_from / precision_);
-    double to_d = std::floor((1 + max_error_) * mass_to / precision_);
+std::pair<long long, long long> MassDecomposer::integer_bound(mass_t mass_from, mass_t mass_to) const {
+    mass_t from_d = std::ceil((1 + min_error_) * mass_from / precision_);
+    mass_t to_d = std::floor((1 + max_error_) * mass_to / precision_);
     
     if (from_d > LLONG_MAX || to_d > LLONG_MAX) {
         throw std::runtime_error("Mass too large for 64-bit integer space.");
     }
     
-    long long start = static_cast<long long>(std::max(0.0, from_d));
-    long long end = static_cast<long long>(std::max(static_cast<double>(start), to_d));
+    long long start = static_cast<long long>(std::max((mass_t)0.0, from_d));
+    long long end = static_cast<long long>(std::max(static_cast<mass_t>(start), to_d));
     return {start, end};
 }
 

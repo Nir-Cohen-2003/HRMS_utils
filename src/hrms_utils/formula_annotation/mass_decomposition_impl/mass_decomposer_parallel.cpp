@@ -2,7 +2,7 @@
 #include <omp.h>
 
 std::vector<std::vector<Formula>> MassDecomposer::decompose_parallel(
-    const std::vector<double>& target_masses, 
+    const std::vector<mass_t>& target_masses, 
     const DecompositionParams& params) {
     
     int n_masses = static_cast<int>(target_masses.size());
@@ -22,7 +22,7 @@ std::vector<std::vector<Formula>> MassDecomposer::decompose_parallel(
 }
 
 std::vector<std::vector<Formula>> MassDecomposer::decompose_masses_parallel_per_bounds(
-    const std::vector<double>& target_masses,
+    const std::vector<mass_t>& target_masses,
     const std::vector<std::pair<Formula, Formula>>& per_mass_bounds,
     const DecompositionParams& params) {
 
@@ -39,7 +39,7 @@ std::vector<std::vector<Formula>> MassDecomposer::decompose_masses_parallel_per_
 }
 
 std::vector<std::vector<FormulaWithString> > MassDecomposer::decompose_parallel_verbose(
-    const std::vector<double>& target_masses,
+    const std::vector<mass_t>& target_masses,
     const DecompositionParams& params) {
     std::vector<std::vector<Formula> > base_results = decompose_parallel(target_masses, params);
     std::vector<std::vector<FormulaWithString> > verbose_results(base_results.size());
@@ -59,7 +59,7 @@ std::vector<std::vector<FormulaWithString> > MassDecomposer::decompose_parallel_
 }
 
 std::vector<std::vector<FormulaWithString> > MassDecomposer::decompose_masses_parallel_per_bounds_verbose(
-    const std::vector<double>& target_masses,
+    const std::vector<mass_t>& target_masses,
     const std::vector<std::pair<Formula, Formula> >& per_mass_bounds,
     const DecompositionParams& params) {
     std::vector<std::vector<Formula> > base_results = decompose_masses_parallel_per_bounds(target_masses, per_mass_bounds, params);
@@ -80,8 +80,8 @@ std::vector<std::vector<FormulaWithString> > MassDecomposer::decompose_masses_pa
 }
 
 ProperSpectrumResults MassDecomposer::decompose_spectrum(
-    double precursor_mass,
-    const std::vector<double>& fragment_masses,
+    mass_t precursor_mass,
+    const std::vector<mass_t>& fragment_masses,
     const DecompositionParams& params) {
     ProperSpectrumResults results;
 
@@ -110,15 +110,14 @@ ProperSpectrumResults MassDecomposer::decompose_spectrum(
 
         // Populate masses & errors with filtering (same logic as before)
         for (size_t j = 0; j < fragment_solutions.size(); ++j) {
-            double target_mass = fragment_masses[j];
-            // double allowed_error = std::max(target_mass, 200.0) * params.tolerance_ppm / 1e6;
+            mass_t target_mass = fragment_masses[j];
 
             for (const auto& frag_formula : fragment_solutions[j]) {
-                double calc_mass = 0.0;
+                mass_t calc_mass = 0.0;
                 for (int k = 0; k < FormulaAnnotation::NUM_ELEMENTS; ++k) {
                     calc_mass += frag_formula[k] * FormulaAnnotation::ATOMIC_MASSES[k];
                 }
-                double error = calc_mass - target_mass;
+                mass_t error = calc_mass - target_mass;
                 decomp.fragment_masses[j].push_back(calc_mass);
                 decomp.fragment_errors_ppm[j].push_back(error);
             }
@@ -131,8 +130,8 @@ ProperSpectrumResults MassDecomposer::decompose_spectrum(
 }
 
 ProperSpectrumResultsVerbose MassDecomposer::decompose_spectrum_verbose(
-    double precursor_mass,
-    const std::vector<double>& fragment_masses,
+    mass_t precursor_mass,
+    const std::vector<mass_t>& fragment_masses,
     const DecompositionParams& params) {
     ProperSpectrumResults base = decompose_spectrum(precursor_mass, fragment_masses, params);
     ProperSpectrumResultsVerbose verbose;
@@ -271,7 +270,7 @@ std::vector<ProperSpectrumResultsVerbose> MassDecomposer::decompose_spectra_para
 
 std::vector<std::vector<Formula>> MassDecomposer::decompose_spectrum_known_precursor(
     const Formula& precursor_formula,
-    const std::vector<double>& fragment_masses,
+    const std::vector<mass_t>& fragment_masses,
     const DecompositionParams& params) {
     
     std::vector<std::vector<Formula>> fragment_results;
@@ -293,7 +292,7 @@ std::vector<std::vector<Formula>> MassDecomposer::decompose_spectrum_known_precu
 
 std::vector<std::vector<FormulaWithString> > MassDecomposer::decompose_spectrum_known_precursor_verbose(
     const Formula& precursor_formula,
-    const std::vector<double>& fragment_masses,
+    const std::vector<mass_t>& fragment_masses,
     const DecompositionParams& params) {
     std::vector<std::vector<Formula> > base_results = decompose_spectrum_known_precursor(precursor_formula, fragment_masses, params);
     std::vector<std::vector<FormulaWithString> > verbose_results(base_results.size());
@@ -361,8 +360,8 @@ std::vector<std::vector<std::vector<FormulaWithString> > > MassDecomposer::decom
 
 MassDecomposer::CleanedSpectrumResult MassDecomposer::clean_spectrum_known_precursor(
     const Formula& precursor_formula,
-    const std::vector<double>& fragment_masses,
-    const std::vector<double>& fragment_intensities,
+    const std::vector<mass_t>& fragment_masses,
+    const std::vector<mass_t>& fragment_intensities,
     const DecompositionParams& params) {
 
     MassDecomposer::CleanedSpectrumResult out;
@@ -382,27 +381,27 @@ MassDecomposer::CleanedSpectrumResult MassDecomposer::clean_spectrum_known_precu
     out.fragment_errors_ppm.reserve(n);
 
     for (size_t i = 0; i < n; ++i) {
-        const double target = fragment_masses[i];
-        const double denom_allowed = std::max(target, 200.0);            // filtering
+        const mass_t target = fragment_masses[i];
+        const mass_t denom_allowed = std::max(target, (mass_t)200.0);            // filtering
 
         const auto& formulas = fragment_solutions[i];
         if (formulas.empty()) {
             continue; // drop fragment with no formulas
         }
 
-        std::vector<double> errors_ppm;
+        std::vector<mass_t> errors_ppm;
         errors_ppm.reserve(formulas.size());
 
         // Recompute error for reporting in ppm using the actual target mass
-        const double denom_report = (target != 0.0) ? target : denom_allowed;
+        const mass_t denom_report = (target != 0.0) ? target : denom_allowed;
 
         for (const auto& f : formulas) {
-            double calc_mass = 0.0;
+            mass_t calc_mass = 0.0;
             for (int k = 0; k < FormulaAnnotation::NUM_ELEMENTS; ++k) {
                 calc_mass += f[k] * FormulaAnnotation::ATOMIC_MASSES[k];
             }
-            const double error = calc_mass - target;
-            const double ppm = error * 1e6 / denom_report; // report relative to actual mass
+            const mass_t error = calc_mass - target;
+            const mass_t ppm = error * 1e6 / denom_report; // report relative to actual mass
             errors_ppm.push_back(ppm);
         }
 
@@ -418,8 +417,8 @@ MassDecomposer::CleanedSpectrumResult MassDecomposer::clean_spectrum_known_precu
 
 MassDecomposer::CleanedSpectrumResultVerbose MassDecomposer::clean_spectrum_known_precursor_verbose(
     const Formula& precursor_formula,
-    const std::vector<double>& fragment_masses,
-    const std::vector<double>& fragment_intensities,
+    const std::vector<mass_t>& fragment_masses,
+    const std::vector<mass_t>& fragment_intensities,
     const DecompositionParams& params) {
     CleanedSpectrumResult base = clean_spectrum_known_precursor(
         precursor_formula,
@@ -495,10 +494,10 @@ MassDecomposer::clean_spectra_known_precursor_parallel_verbose(
 
 MassDecomposer::CleanedAndNormalizedSpectrumResult MassDecomposer::clean_and_normalize_spectrum_known_precursor(
     const Formula& precursor_formula,
-    const std::vector<double>& fragment_masses,
-    const std::vector<double>& fragment_intensities,
-    double precursor_mass,
-    double max_allowed_normalized_mass_error_ppm,
+    const std::vector<mass_t>& fragment_masses,
+    const std::vector<mass_t>& fragment_intensities,
+    mass_t precursor_mass,
+    mass_t max_allowed_normalized_mass_error_ppm,
     const DecompositionParams& params) {
 
 
@@ -517,11 +516,11 @@ MassDecomposer::CleanedAndNormalizedSpectrumResult MassDecomposer::clean_and_nor
     // Selection bookkeeping
     std::vector<bool> keep(n, false);
     std::vector<Formula> chosen_formula(n);
-    std::vector<double> chosen_error_unscaled(n, 0.0); // calc_mass - target_mass
+    std::vector<mass_t> chosen_error_unscaled(n, 0.0); // calc_mass - target_mass
 
     // Helper: compute molecular mass for a formula
     auto compute_mass_for = [](const Formula& f) {
-        double m = 0.0;
+        mass_t m = 0.0;
         for (int k = 0; k < FormulaAnnotation::NUM_ELEMENTS; ++k) {
             m += f[k] * FormulaAnnotation::ATOMIC_MASSES[k];
         }
@@ -529,17 +528,17 @@ MassDecomposer::CleanedAndNormalizedSpectrumResult MassDecomposer::clean_and_nor
     };
 
     // Compute precursor modeled mass and error once; will be used as an extra calibration point.
-    const double precursor_calc_mass = compute_mass_for(precursor_formula);
-    const double precursor_err = precursor_calc_mass - precursor_mass;
+    const mass_t precursor_calc_mass = compute_mass_for(precursor_formula);
+    const mass_t precursor_err = precursor_calc_mass - precursor_mass;
 
     // 1) Initial weighted linear fit err ~ a + b * mass using single-option fragments only.
     //    Weight = fragment mass. Rationale: higher mass fragments tend to have lower relative ppm.
-    double Sw = 0.0, Sx = 0.0, Sy = 0.0, Sxx = 0.0, Sxy = 0.0;
+    mass_t Sw = 0.0, Sx = 0.0, Sy = 0.0, Sxx = 0.0, Sxy = 0.0;
 
     // Include the precursor as an additional calibration point in the initial fit.
     // Why: improves stability when few single-option fragments exist.
     if (precursor_mass > 0.0) {
-        const double w_prec = precursor_mass;
+        const mass_t w_prec = precursor_mass;
         Sw  += w_prec;
         Sx  += w_prec * precursor_mass;
         Sy  += w_prec * precursor_err;
@@ -550,10 +549,10 @@ MassDecomposer::CleanedAndNormalizedSpectrumResult MassDecomposer::clean_and_nor
     for (size_t i = 0; i < n; ++i) {
         const auto& formulas = fragment_solutions[i];
         if (formulas.size() == 1) {
-            const double target = fragment_masses[i];
-            const double calc_mass = compute_mass_for(formulas[0]);
-            const double err = calc_mass - target;
-            const double w = target; // mass-weight
+            const mass_t target = fragment_masses[i];
+            const mass_t calc_mass = compute_mass_for(formulas[0]);
+            const mass_t err = calc_mass - target;
+            const mass_t w = target; // mass-weight
 
             chosen_formula[i] = formulas[0];
             chosen_error_unscaled[i] = err;
@@ -569,9 +568,9 @@ MassDecomposer::CleanedAndNormalizedSpectrumResult MassDecomposer::clean_and_nor
         }
     }
 
-    auto finalize_fit = [](double Sw, double Sx, double Sy, double Sxx, double Sxy) {
-        double a = 0.0, b = 0.0;
-        const double denom = Sw * Sxx - Sx * Sx;
+    auto finalize_fit = [](mass_t Sw, mass_t Sx, mass_t Sy, mass_t Sxx, mass_t Sxy) {
+        mass_t a = 0.0, b = 0.0;
+        const mass_t denom = Sw * Sxx - Sx * Sx;
         if (Sw > 0.0 && std::abs(denom) > 1e-12) {
             b = (Sw * Sxy - Sx * Sy) / denom;
             a = (Sy - b * Sx) / Sw;
@@ -583,7 +582,7 @@ MassDecomposer::CleanedAndNormalizedSpectrumResult MassDecomposer::clean_and_nor
             a = 0.0;
             b = 0.0;
         }
-        return std::pair<double,double>(a, b);
+        return std::pair<mass_t,mass_t>(a, b);
     };
 
     auto [a, b] = finalize_fit(Sw, Sx, Sy, Sxx, Sxy);
@@ -594,17 +593,17 @@ MassDecomposer::CleanedAndNormalizedSpectrumResult MassDecomposer::clean_and_nor
         const auto& formulas = fragment_solutions[i];
         if (formulas.empty() || keep[i]) continue;
 
-        const double target = fragment_masses[i];
-        const double model = a + b * target;
+        const mass_t target = fragment_masses[i];
+        const mass_t model = a + b * target;
 
-        double best_abs = std::numeric_limits<double>::infinity();
+        mass_t best_abs = std::numeric_limits<mass_t>::infinity();
         int best_idx = -1;
-        double best_err = 0.0;
+        mass_t best_err = 0.0;
 
         for (int c = 0; c < static_cast<int>(formulas.size()); ++c) {
-            const double calc_mass = compute_mass_for(formulas[c]);
-            const double err = calc_mass - target;
-            const double dev = std::abs(err - model); // abs vs squared yields same argmin
+            const mass_t calc_mass = compute_mass_for(formulas[c]);
+            const mass_t err = calc_mass - target;
+            const mass_t dev = std::abs(err - model); // abs vs squared yields same argmin
             if (dev < best_abs) {
                 best_abs = dev;
                 best_idx = c;
@@ -624,7 +623,7 @@ MassDecomposer::CleanedAndNormalizedSpectrumResult MassDecomposer::clean_and_nor
 
     // Include the precursor as a calibration point in the refit as well.
     if (precursor_mass > 0.0) {
-        const double w_prec = precursor_mass;
+        const mass_t w_prec = precursor_mass;
         Sw  += w_prec;
         Sx  += w_prec * precursor_mass;
         Sy  += w_prec * precursor_err;
@@ -634,9 +633,9 @@ MassDecomposer::CleanedAndNormalizedSpectrumResult MassDecomposer::clean_and_nor
 
     for (size_t i = 0; i < n; ++i) {
         if (!keep[i]) continue;
-        const double target = fragment_masses[i];
-        const double err = chosen_error_unscaled[i];
-        const double w = target; // mass-weight
+        const mass_t target = fragment_masses[i];
+        const mass_t err = chosen_error_unscaled[i];
+        const mass_t w = target; // mass-weight
         if (w > 0.0) {
             Sw  += w;
             Sx  += w * target;
@@ -648,11 +647,11 @@ MassDecomposer::CleanedAndNormalizedSpectrumResult MassDecomposer::clean_and_nor
     std::tie(a, b) = finalize_fit(Sw, Sx, Sy, Sxx, Sxy);
 
     // 4) Compute normalized results for all kept fragments, then filter by max_allowed_normalized_mass_error_ppm.
-    std::vector<double> tmp_masses_normalized;
-    std::vector<double> tmp_intensities;
+    std::vector<mass_t> tmp_masses_normalized;
+    std::vector<mass_t> tmp_intensities;
     std::vector<Formula> tmp_fragment_formulas;
-    std::vector<double> tmp_fragment_errors_ppm;
-    std::vector<double> tmp_err_after_norm_ppm_abs; // for thresholding (ppm)
+    std::vector<mass_t> tmp_fragment_errors_ppm;
+    std::vector<mass_t> tmp_err_after_norm_ppm_abs; // for thresholding (ppm)
 
     tmp_masses_normalized.reserve(n);
     tmp_intensities.reserve(n);
@@ -665,12 +664,12 @@ MassDecomposer::CleanedAndNormalizedSpectrumResult MassDecomposer::clean_and_nor
         for (size_t i = 0; i < n; ++i) {
             if (!keep[i]) continue;
 
-            const double target = fragment_masses[i];
-            const double normalized_mass = target; // "Nothing" normalization
+            const mass_t target = fragment_masses[i];
+            const mass_t normalized_mass = target; // "Nothing" normalization
 
-            const double err_after_norm = chosen_error_unscaled[i]; // No correction applied
-            const double denom_report = std::max(normalized_mass, 200.0);
-            const double ppm_after_norm = (err_after_norm * 1e6) / denom_report;
+            const mass_t err_after_norm = chosen_error_unscaled[i]; // No correction applied
+            const mass_t denom_report = std::max(normalized_mass, (mass_t)200.0);
+            const mass_t ppm_after_norm = (err_after_norm * 1e6) / denom_report;
 
             tmp_masses_normalized.push_back(normalized_mass);
             tmp_intensities.push_back(fragment_intensities[i]);
@@ -682,13 +681,13 @@ MassDecomposer::CleanedAndNormalizedSpectrumResult MassDecomposer::clean_and_nor
         for (size_t i = 0; i < n; ++i) {
             if (!keep[i]) continue;
 
-            const double target = fragment_masses[i];
-            const double correction = a + b * target; // additive + multiplicative (via mass term)
-            const double normalized_mass = target + correction;
+            const mass_t target = fragment_masses[i];
+            const mass_t correction = a + b * target; // additive + multiplicative (via mass term)
+            const mass_t normalized_mass = target + correction;
 
-            const double err_after_norm = chosen_error_unscaled[i] - correction; // calc - normalized
-            const double denom_report = std::max(normalized_mass, 200.0); // ppm denom
-            const double ppm_after_norm = (err_after_norm * 1e6) / denom_report;
+            const mass_t err_after_norm = chosen_error_unscaled[i] - correction; // calc - normalized
+            const mass_t denom_report = std::max(normalized_mass, (mass_t)200.0); // ppm denom
+            const mass_t ppm_after_norm = (err_after_norm * 1e6) / denom_report;
 
             tmp_masses_normalized.push_back(normalized_mass);
             tmp_intensities.push_back(fragment_intensities[i]);
@@ -714,10 +713,10 @@ MassDecomposer::CleanedAndNormalizedSpectrumResult MassDecomposer::clean_and_nor
 MassDecomposer::CleanedAndNormalizedSpectrumResultVerbose
 MassDecomposer::clean_and_normalize_spectrum_known_precursor_verbose(
     const Formula& precursor_formula,
-    const std::vector<double>& fragment_masses,
-    const std::vector<double>& fragment_intensities,
-    double precursor_mass,
-    double max_allowed_normalized_mass_error_ppm,
+    const std::vector<mass_t>& fragment_masses,
+    const std::vector<mass_t>& fragment_intensities,
+    mass_t precursor_mass,
+    mass_t max_allowed_normalized_mass_error_ppm,
     const DecompositionParams& params) {
     CleanedAndNormalizedSpectrumResult base = clean_and_normalize_spectrum_known_precursor(
         precursor_formula,

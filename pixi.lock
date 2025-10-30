@@ -7897,7 +7897,7 @@ packages:
   timestamp: 1733244175724
 - conda: ./packages/spectral_similarity
   name: spectral_similarity
-  version: 0.2.0
+  version: 0.3.0
   build: pyh4616a5c_0
   subdir: noarch
   depends:
@@ -7905,7 +7905,7 @@ packages:
   - python >=3.9
   - python *
   input:
-    hash: cefc052bd2a12983f12f4cb5af5916d63a1671605de0d8a65df5e35b6d9f1610
+    hash: 33999a3ec1fcf53db07b2d435e8062e803bb46707eeb21f467a9fc46a6a3b994
     globs:
     - pyproject.toml
 - conda: https://prefix.dev/conda-forge/linux-64/sqlalchemy-2.0.44-py313h07c4f96_0.conda
