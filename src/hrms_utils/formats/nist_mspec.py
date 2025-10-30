@@ -6,6 +6,7 @@ from typing import TypeVar, cast, Dict,Iterable
 from ..formula_annotation.utils import formula_fits_mass, format_formula_string_to_array,  get_precursor_ion_formula_array, num_elements
 from ..formula_annotation.element_table import ADDUCT_MASSES
 from ..formula_annotation.mass_decomposition import clean_and_normalize_spectra_known_precursor_verbose
+import spectral_similarity 
 from pathlib import Path 
 from scipy.stats import linregress
 
@@ -127,11 +128,13 @@ def _annotate_and_filter_metadata(data:T)-> T:
         pl.any_horizontal(instrument_data_columns.str.contains(r'(?i)LC')).alias("is_LC"), # 
         pl.any_horizontal(
         instrument_data_columns.str.contains(r'(?i)orbi(?:trap)?|HCD') |
+        instrument_data_columns.str.contains(r'(?i)thermo') |
             (
                 instrument_data_columns.str.contains(r'(?i)FT') &
                 instrument_data_columns.str.contains(r'(?i)ICR').not_() & 
                 instrument_data_columns.str.contains(r'(?i)TOF').not_()
             )
+
         ).alias("is_orbitrap"),
         pl.any_horizontal(instrument_data_columns.str.contains(r'(?i)TOF')).alias("is_TOF"),
         pl.any_horizontal(instrument_data_columns.str.contains(r'(?i)ESI|LC')).alias("is_ESI"), # LC is usually coupled with ESI
@@ -159,8 +162,13 @@ def _annotate_spectra(data: T, raw_fragment_tolerance_ppm: float, normalized_fra
     else:
         raise TypeError(f"In function '_annotate_spectra', data must be a Polars DataFrame or LazyFrame, got {type(data)}")
     # print(data_frame.schema)
-    return cast(T,data_frame.with_columns(
-        pl.col("adduct_mass").fill_null(0.0) # Default to 0.0 if no adduct mass is found
+    # make sure there are no nulls in adduct_mass
+    # assert data_frame.filter(pl.col("adduct_mass").is_null()).height == 0, "Some entries have null adduct_mass after joining. Check Precursor_type values."
+    return cast(T,
+    data_frame.with_columns(
+        pl.col("adduct_mass").fill_null(
+            pl.when(pl.col("Ion_mode") == "P").then(1.007276).otherwise(-1.007276)
+        ) # Default to 0.0 if no adduct mass is found
     ).with_columns(# Calculate non_ionized_mass
         (pl.col("PrecursorMZ").sub(pl.col("adduct_mass"))).alias("non_ionized_mass")
     ).with_columns( # Prepare fragment masses by subtracting adduct_mass
@@ -195,7 +203,15 @@ def _annotate_spectra(data: T, raw_fragment_tolerance_ppm: float, normalized_fra
         pl.col("cleaned_normalized_spectra").struct.field("fragment_formulas").alias("cleaned_fragment_formulas"),
         pl.col("cleaned_normalized_spectra").struct.field("fragment_errors_ppm").alias("cleaned_fragment_errors_ppm"),
         pl.col("cleaned_normalized_spectra").struct.field("fragment_formulas_str").alias("cleaned_fragment_formulas_str"),
-    ).drop("cleaned_normalized_spectra", "non_ionized_mass", "non_ionized_raw_spectrum_mz", "adduct_mass")
+    ).drop(
+        "cleaned_normalized_spectra", "non_ionized_mass", "non_ionized_raw_spectrum_mz", "adduct_mass"
+    ).with_columns(
+         pl.struct([
+            pl.col("cleaned_normalized_mz").alias("mz1"),
+            pl.col("cleaned_normalized_intensity").alias("intensities1"),
+            pl.col("raw_spectrum_mz").alias("mz2"),
+            pl.col("raw_spectrum_intensity").alias("intensities2")
+        ]).spectral.entropy_similarity(ms2_tolerance_in_ppm=10.0,clean_spectra_first=False).alias("entropy_similarity"))
     )
 
 def _add_precursor_type_indicators(data: T) -> T:

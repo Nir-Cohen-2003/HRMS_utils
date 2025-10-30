@@ -55,7 +55,7 @@ def run_mspec_reader_profile(msp_file_path: Path):
         print(f"  - {col}: {count} unique values, values: {spectra_df[col].unique().to_list()}")
     
     # Always print values for specific columns (USER-CONFIGURABLE)
-    always_print_cols = ["Instrument", "Instrument_type", "Ionization", "Ion_mode", "MSLEVEL"]
+    always_print_cols = ["Instrument", "Instrument_type", "Ionization", "Ion_mode", "MSLEVEL", "Precursor_type"]
     print("\nAlways printed columns:")
     for col in always_print_cols:
         if col in spectra_df.columns:
@@ -97,6 +97,20 @@ def run_mspec_reader_profile(msp_file_path: Path):
     print(f"  - ESI Orbitrap: {esi_orbi_count}")
     print(f"  - ESI TOF: {esi_tof_count}")
     print(f"  - ESI Other: {esi_other_count}")
+
+    # print teh distribution of "entropy_similarity" column if it exists
+    if "entropy_similarity" in spectra_df.columns:
+        print("\n'entropy_similarity' column statistics, for clean precursors only:")
+        entropy_stats = spectra_df.filter(pl.col("clean_precursor")).select([
+            pl.col("entropy_similarity").mean().alias("mean"),
+            pl.col("entropy_similarity").median().alias("median"),
+            pl.col("entropy_similarity").min().alias("min"),
+            pl.col("entropy_similarity").max().alias("max"),
+            pl.col("entropy_similarity").std().alias("std_dev"),
+        ]).to_dict(as_series=False)
+        for stat, value in entropy_stats.items():
+            print(f"  - {stat}: {value[0]}")
+    print(spectra_df.filter(pl.col("clean_precursor"),pl.col("Precursor_type").eq("[M+H]+")).sort(by="entropy_similarity").head().select(["entropy_similarity","NIST_ID"]))
 
 if __name__ == "__main__":
     # Make data_dir relative to this test file's location (resolve to absolute path)
