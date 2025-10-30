@@ -7,8 +7,8 @@ use rayon::prelude::*;
 // Keep the Peak and Spectrum structs from the previous version
 #[derive(Debug, Clone, PartialEq)]
 pub struct Peak {
-    pub mz: f32,
-    pub intensity: f32,
+    pub mz: f64,
+    pub intensity: f64,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -21,10 +21,10 @@ impl Spectrum {
         Spectrum { peaks }
     }
 
-    // Helper to create Spectrum from Polars Series (List<Float32>)
+    // Helper to create Spectrum from Polars Series (List<Float64>)
     fn from_polars_lists(mz_series: &Series, intensity_series: &Series) -> PolarsResult<Self> {
-        let mz_ca = mz_series.f32()?;
-        let int_ca = intensity_series.f32()?;
+        let mz_ca = mz_series.f64()?;
+        let int_ca = intensity_series.f64()?;
 
         let peaks: Vec<Peak> = mz_ca
             .into_iter()
@@ -43,25 +43,25 @@ impl Spectrum {
 // --- Keep the core spectral entropy functions (clean_spectrum, centroid_spectrum, etc.) ---
 // --- They remain largely the same as in the previous example ---
 
-const MASS_THRESHOLD_FOR_PPM: f32 = 200.0;
+const MASS_THRESHOLD_FOR_PPM: f64 = 200.0;
 
 /// Cleans a spectrum with the given parameters.
 pub fn clean_spectrum(
     peaks: &[Peak],
-    min_mz: Option<f32>,
-    max_mz: Option<f32>,
-    noise_threshold: Option<f32>,
-    ms2_tolerance_in_ppm: f32,
+    min_mz: Option<f64>,
+    max_mz: Option<f64>,
+    noise_threshold: Option<f64>,
+    ms2_tolerance_in_ppm: f64,
     max_peak_num: Option<usize>,
     normalize_intensity: bool,
 ) -> Spectrum {
-    let mut cleaned_peaks = peaks.to_vec();
+    let mut cleaned_peaks: Vec<Peak> = peaks.to_vec();
 
     // 1. Remove empty peaks and filter by mz
     cleaned_peaks.retain(|p| {
         p.intensity > 0.0
             && p.mz >= min_mz.unwrap_or(0.0)
-            && p.mz <= max_mz.unwrap_or(f32::MAX)
+            && p.mz <= max_mz.unwrap_or(f64::MAX)
     });
     cleaned_peaks.sort_by(|a, b| a.mz.partial_cmp(&b.mz).unwrap());
 
@@ -96,7 +96,7 @@ pub fn clean_spectrum(
 
     // 5. Normalize intensity
     if normalize_intensity {
-        let sum_intensity: f32 = cleaned_peaks.iter().map(|p| p.intensity).sum();
+        let sum_intensity: f64 = cleaned_peaks.iter().map(|p| p.intensity).sum();
         if sum_intensity > 0.0 {
             for p in &mut cleaned_peaks {
                 p.intensity /= sum_intensity;
@@ -114,7 +114,7 @@ pub fn clean_spectrum(
 
 /// Checks if a spectrum needs centroiding based on C's logic.
 /// Assumes peaks are sorted by mz.
-fn need_centroid(peaks: &[Peak], ms2_tolerance_in_ppm: f32) -> bool {
+fn need_centroid(peaks: &[Peak], ms2_tolerance_in_ppm: f64) -> bool {
     if peaks.len() < 2 || ms2_tolerance_in_ppm <= 0.0 {
         return false;
     }
@@ -130,7 +130,7 @@ fn need_centroid(peaks: &[Peak], ms2_tolerance_in_ppm: f32) -> bool {
 
 
 /// Centroids a spectrum using the logic from the C code.
-fn centroid_spectrum(peaks: &mut Vec<Peak>, ms2_tolerance_in_ppm: f32) {
+fn centroid_spectrum(peaks: &mut Vec<Peak>, ms2_tolerance_in_ppm: f64) {
     if peaks.is_empty() {
         return;
     }
@@ -207,9 +207,9 @@ fn centroid_spectrum(peaks: &mut Vec<Peak>, ms2_tolerance_in_ppm: f32) {
 
 
 /// Calculates the spectral entropy of a spectrum. (Identical)
-pub fn calculate_spectral_entropy(spectrum: &Spectrum) -> f32 {
+pub fn calculate_spectral_entropy(spectrum: &Spectrum) -> f64 {
     if spectrum.peaks.is_empty() { return 0.0; }
-    let sum_intensity: f32 = spectrum.peaks.iter().map(|p| p.intensity).sum();
+    let sum_intensity: f64 = spectrum.peaks.iter().map(|p| p.intensity).sum();
     if sum_intensity <= 0.0 { return 0.0; } // Avoid division by zero or log(0)
     spectrum.peaks.iter().map(|p| {
         if p.intensity > 0.0 {
@@ -228,7 +228,7 @@ pub fn apply_weight_to_intensity(spectrum: &mut Spectrum) {
         for p in &mut spectrum.peaks {
             p.intensity = p.intensity.powf(weight);
         }
-        let sum_intensity: f32 = spectrum.peaks.iter().map(|p| p.intensity).sum();
+        let sum_intensity: f64 = spectrum.peaks.iter().map(|p| p.intensity).sum();
         if sum_intensity > 0.0 {
             for p in &mut spectrum.peaks {
                 p.intensity /= sum_intensity;
@@ -245,8 +245,8 @@ pub fn apply_weight_to_intensity(spectrum: &mut Spectrum) {
 pub fn calculate_unweighted_entropy_similarity(
     spec_a: &Spectrum,
     spec_b: &Spectrum,
-    ms2_tolerance_in_ppm: f32,
-) -> f32 {
+    ms2_tolerance_in_ppm: f64,
+) -> f64 {
     let mut a = 0;
     let mut b = 0;
     let mut similarity = 0.0;
@@ -278,10 +278,10 @@ pub fn calculate_unweighted_entropy_similarity(
 pub fn calculate_entropy_similarity(
     spec_a: &Spectrum,
     spec_b: &Spectrum,
-    ms2_tolerance_in_ppm: f32,
+    ms2_tolerance_in_ppm: f64,
     clean_spectra_first: bool,
-    noise_threshold: Option<f32>,
-) -> f32 {
+    noise_threshold: Option<f64>,
+) -> f64 {
     let (mut a, mut b) = if clean_spectra_first {
         let cleaned_a = clean_spectrum(&spec_a.peaks, None, None, noise_threshold, 2.0 * ms2_tolerance_in_ppm, None, true);
         let cleaned_b = clean_spectrum(&spec_b.peaks, None, None, noise_threshold, 2.0 * ms2_tolerance_in_ppm, None, true);
@@ -302,12 +302,12 @@ pub fn calculate_entropy_similarity(
 #[derive(serde::Deserialize, Debug, Default)]
 #[serde(default)]
 struct SimilarityKwargs {
-    ms2_tolerance_in_ppm: Option<f32>,
+    ms2_tolerance_in_ppm: Option<f64>,
     clean_spectra_first: Option<bool>,
-    noise_threshold: Option<f32>,
+    noise_threshold: Option<f64>,
 }
 
-#[polars_expr(output_type=Float32)]
+#[polars_expr(output_type=Float64)]
 fn calculate_similarity_struct(inputs: &[Series], kwargs: SimilarityKwargs) -> PolarsResult<Series> {
     let struct_series = &inputs[0];
     let ca: &StructChunked = struct_series.struct_()?;
@@ -336,7 +336,7 @@ fn calculate_similarity_struct(inputs: &[Series], kwargs: SimilarityKwargs) -> P
     let noise_threshold = kwargs.noise_threshold;
 
     // Parallel calculation using rayon
-    let out: Float32Chunked = mz1_vec
+    let out: Float64Chunked = mz1_vec
         .into_par_iter()
         .zip(int1_vec.into_par_iter())
         .zip(mz2_vec.into_par_iter())
@@ -345,11 +345,11 @@ fn calculate_similarity_struct(inputs: &[Series], kwargs: SimilarityKwargs) -> P
             match (opt_mz1, opt_int1, opt_mz2, opt_int2) {
                 (Some(mz1), Some(int1), Some(mz2), Some(int2)) => {
                     // Create Spectrum objects
-                    let spec1 = Spectrum::from_polars_lists(&mz1, &int1).ok()?; // Use ok() to convert Result to Option
-                    let spec2 = Spectrum::from_polars_lists(&mz2, &int2).ok()?;
+                    let spec1: Spectrum = Spectrum::from_polars_lists(&mz1, &int1).ok()?; // Use ok() to convert Result to Option
+                    let spec2: Spectrum = Spectrum::from_polars_lists(&mz2, &int2).ok()?;
 
                     // Calculate similarity
-                    let similarity = calculate_entropy_similarity(
+                    let similarity: f64 = calculate_entropy_similarity(
                         &spec1,
                         &spec2,
                         ms2_tolerance_in_ppm,

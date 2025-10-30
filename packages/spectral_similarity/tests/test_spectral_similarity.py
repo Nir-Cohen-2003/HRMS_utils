@@ -38,7 +38,9 @@ def test_calculate_similarity():
     )
 
     result = df.with_columns(
-        similarity=calculate_similarity(pl.col("spectra"))
+        similarity=pl.col("spectra").spectral.entropy_similarity(
+            ms2_tolerance_in_ppm=10.0,
+        )
     )
 
     assert "similarity" in result.columns, "similarity column should be present in result dataframe"

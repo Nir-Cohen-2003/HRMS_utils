@@ -4,7 +4,7 @@ platforms = ["linux-64","win-64"]
 preview = ["pixi-build"]
 [package]
 name = "spectral_similarity"
-version = "0.2.0"
+version = "0.3.0"
 description = "A rust package for spectral similarity"
 authors = []
 
