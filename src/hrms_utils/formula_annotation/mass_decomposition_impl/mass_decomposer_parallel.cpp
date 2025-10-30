@@ -496,11 +496,8 @@ MassDecomposer::CleanedAndNormalizedSpectrumResult MassDecomposer::clean_and_nor
     const Formula& precursor_formula,
     const std::vector<mass_t>& fragment_masses,
     const std::vector<mass_t>& fragment_intensities,
-    mass_t precursor_mass,
     mass_t max_allowed_normalized_mass_error_ppm,
     const DecompositionParams& params) {
-
-
 
     const size_t n = fragment_masses.size();
     MassDecomposer::CleanedAndNormalizedSpectrumResult out;
@@ -527,24 +524,10 @@ MassDecomposer::CleanedAndNormalizedSpectrumResult MassDecomposer::clean_and_nor
         return m;
     };
 
-    // Compute precursor modeled mass and error once; will be used as an extra calibration point.
-    const mass_t precursor_calc_mass = compute_mass_for(precursor_formula);
-    const mass_t precursor_err = precursor_calc_mass - precursor_mass;
-
     // 1) Initial weighted linear fit err ~ a + b * mass using single-option fragments only.
     //    Weight = fragment mass. Rationale: higher mass fragments tend to have lower relative ppm.
+    //    Why: we fit only to fragments with unique formula assignments to avoid bias from arbitrary choices.
     mass_t Sw = 0.0, Sx = 0.0, Sy = 0.0, Sxx = 0.0, Sxy = 0.0;
-
-    // Include the precursor as an additional calibration point in the initial fit.
-    // Why: improves stability when few single-option fragments exist.
-    if (precursor_mass > 0.0) {
-        const mass_t w_prec = precursor_mass;
-        Sw  += w_prec;
-        Sx  += w_prec * precursor_mass;
-        Sy  += w_prec * precursor_err;
-        Sxx += w_prec * precursor_mass * precursor_mass;
-        Sxy += w_prec * precursor_mass * precursor_err;
-    }
 
     for (size_t i = 0; i < n; ++i) {
         const auto& formulas = fragment_solutions[i];
@@ -579,6 +562,7 @@ MassDecomposer::CleanedAndNormalizedSpectrumResult MassDecomposer::clean_and_nor
             b = 0.0;
             a = Sy / Sw;
         } else {
+            // No single-option fragments available -> no correction
             a = 0.0;
             b = 0.0;
         }
@@ -589,6 +573,7 @@ MassDecomposer::CleanedAndNormalizedSpectrumResult MassDecomposer::clean_and_nor
 
     // 2) For multi-option fragments, pick the candidate whose error is closest to the current model:
     //    minimize |(calc - target) - (a + b * target)|.
+    //    Why: we choose the formula that best fits the systematic error pattern observed in single-option fragments.
     for (size_t i = 0; i < n; ++i) {
         const auto& formulas = fragment_solutions[i];
         if (formulas.empty() || keep[i]) continue;
@@ -603,7 +588,7 @@ MassDecomposer::CleanedAndNormalizedSpectrumResult MassDecomposer::clean_and_nor
         for (int c = 0; c < static_cast<int>(formulas.size()); ++c) {
             const mass_t calc_mass = compute_mass_for(formulas[c]);
             const mass_t err = calc_mass - target;
-            const mass_t dev = std::abs(err - model); // abs vs squared yields same argmin
+            const mass_t dev = std::abs(err - model);
             if (dev < best_abs) {
                 best_abs = dev;
                 best_idx = c;
@@ -619,17 +604,8 @@ MassDecomposer::CleanedAndNormalizedSpectrumResult MassDecomposer::clean_and_nor
     }
 
     // 3) Refit a and b using all selected fragments (single + chosen multi) with mass weights.
+    //    Why: after disambiguating multi-option fragments, recompute correction for final normalization.
     Sw = Sx = Sy = Sxx = Sxy = 0.0;
-
-    // Include the precursor as a calibration point in the refit as well.
-    if (precursor_mass > 0.0) {
-        const mass_t w_prec = precursor_mass;
-        Sw  += w_prec;
-        Sx  += w_prec * precursor_mass;
-        Sy  += w_prec * precursor_err;
-        Sxx += w_prec * precursor_mass * precursor_mass;
-        Sxy += w_prec * precursor_mass * precursor_err;
-    }
 
     for (size_t i = 0; i < n; ++i) {
         if (!keep[i]) continue;
@@ -647,6 +623,7 @@ MassDecomposer::CleanedAndNormalizedSpectrumResult MassDecomposer::clean_and_nor
     std::tie(a, b) = finalize_fit(Sw, Sx, Sy, Sxx, Sxy);
 
     // 4) Compute normalized results for all kept fragments, then filter by max_allowed_normalized_mass_error_ppm.
+    //    Why: apply the systematic error correction and discard fragments with excessive residual error.
     std::vector<mass_t> tmp_masses_normalized;
     std::vector<mass_t> tmp_intensities;
     std::vector<Formula> tmp_fragment_formulas;
@@ -661,6 +638,7 @@ MassDecomposer::CleanedAndNormalizedSpectrumResult MassDecomposer::clean_and_nor
 
     // Check if the fit is valid. If not, use "nothing" normalization.
     if (!std::isfinite(a) || !std::isfinite(b)) {
+        // Why: invalid fit coefficients indicate insufficient data; report unnormalized masses and errors.
         for (size_t i = 0; i < n; ++i) {
             if (!keep[i]) continue;
 
@@ -715,14 +693,12 @@ MassDecomposer::clean_and_normalize_spectrum_known_precursor_verbose(
     const Formula& precursor_formula,
     const std::vector<mass_t>& fragment_masses,
     const std::vector<mass_t>& fragment_intensities,
-    mass_t precursor_mass,
     mass_t max_allowed_normalized_mass_error_ppm,
     const DecompositionParams& params) {
     CleanedAndNormalizedSpectrumResult base = clean_and_normalize_spectrum_known_precursor(
         precursor_formula,
         fragment_masses,
         fragment_intensities,
-        precursor_mass,
         max_allowed_normalized_mass_error_ppm,
         params
     );
@@ -758,7 +734,6 @@ MassDecomposer::clean_and_normalize_spectra_known_precursor_parallel(
                 s.precursor_formula,
                 s.fragment_masses,
                 s.fragment_intensities,
-                s.precursor_mass,
                 s.max_allowed_normalized_mass_error_ppm,
                 params);
         }

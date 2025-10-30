@@ -176,13 +176,11 @@ def _annotate_spectra(data: T, raw_fragment_tolerance_ppm: float, normalized_fra
     ).with_columns( # Call clean_and_normalize_spectra_known_precursor_verbose
         pl.struct([
             pl.col("Formula_array"),
-            pl.col("non_ionized_mass"),
             pl.col("non_ionized_raw_spectrum_mz"),
             pl.col("raw_spectrum_intensity")
         ]).map_batches(
             function = lambda batch: clean_and_normalize_spectra_known_precursor_verbose(
                 precursor_formula_series=batch.struct.field("Formula_array"),
-                precursor_masses_series=batch.struct.field("non_ionized_mass"),
                 fragment_masses_series=batch.struct.field("non_ionized_raw_spectrum_mz"),
                 fragment_intensities_series=batch.struct.field("raw_spectrum_intensity"),
                 tolerance_ppm=raw_fragment_tolerance_ppm,

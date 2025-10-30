@@ -217,7 +217,7 @@ public:
         const Formula& precursor_formula,
         const std::vector<mass_t>& fragment_masses,
         const DecompositionParams& params);
-    
+
     // Parallel known precursor spectrum decomposition - processes multiple spectra with different known precursor formulas
     static std::vector<std::vector<std::vector<Formula>>> decompose_spectra_known_precursor_parallel(
         const std::vector<SpectrumWithKnownPrecursor>& spectra,
@@ -231,8 +231,7 @@ public:
         Formula precursor_formula;
         std::vector<mass_t> fragment_masses;
         std::vector<mass_t> fragment_intensities;
-        // Observed precursor mass (unnormalized) and ppm filter threshold after normalization
-        mass_t precursor_mass;
+        // Remove precursor_mass field - no longer used for normalization
         mass_t max_allowed_normalized_mass_error_ppm;
     };
 
@@ -288,14 +287,12 @@ public:
         const Formula& precursor_formula,
         const std::vector<mass_t>& fragment_masses,
         const std::vector<mass_t>& fragment_intensities,
-        mass_t precursor_mass,
         mass_t max_allowed_normalized_mass_error_ppm,
         const DecompositionParams& params);
     CleanedAndNormalizedSpectrumResultVerbose clean_and_normalize_spectrum_known_precursor_verbose(
         const Formula& precursor_formula,
         const std::vector<mass_t>& fragment_masses,
         const std::vector<mass_t>& fragment_intensities,
-        mass_t precursor_mass,
         mass_t max_allowed_normalized_mass_error_ppm,
         const DecompositionParams& params);
 

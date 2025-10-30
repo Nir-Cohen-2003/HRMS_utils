@@ -1,2 +1,3 @@
 1. in mass decomposition, for sodium the "subtract the addcut mass then decompose the neutralized masses" doesn't work, since it can easily lose the sodium atom and have a proton instead
 2. in similarit, add precursor mz argument, and ignore all fragmnets above it, optionally also in the 1-2 Da range below it too (and to also remove the precursor itself)
+3. in mass decompostion, the curtrent addition of the "precursor" for normalization is wrong, since we should try to get the preucrsor form the ms2 spectrum. 

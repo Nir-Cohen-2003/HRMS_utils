@@ -90,7 +90,7 @@ cdef extern from "mass_decomposer_common.hpp":
         Formula_cpp precursor_formula
         vector[double] fragment_masses
         vector[double] fragment_intensities
-        double precursor_mass
+        # Removed: double precursor_mass
         double max_allowed_normalized_mass_error_ppm
 
     cdef cppclass CleanedSpectrumResult_cpp "MassDecomposer::CleanedSpectrumResult":
@@ -155,7 +155,7 @@ cdef extern from "mass_decomposer_common.hpp":
         vector[CleanedSpectrumResultVerbose_cpp] clean_spectra_known_precursor_parallel_verbose(const vector[CleanSpectrumWithKnownPrecursor_cpp]&, const DecompositionParams&)
         @staticmethod
         vector[CleanedAndNormalizedSpectrumResult_cpp] clean_and_normalize_spectra_known_precursor_parallel(const vector[CleanSpectrumWithKnownPrecursor_cpp]&, const DecompositionParams&)
-        CleanedAndNormalizedSpectrumResultVerbose_cpp clean_and_normalize_spectrum_known_precursor_verbose(const Formula_cpp&, const vector[double]&, const vector[double]&, double, double, const DecompositionParams&)
+        CleanedAndNormalizedSpectrumResultVerbose_cpp clean_and_normalize_spectrum_known_precursor_verbose(const Formula_cpp&, const vector[double]&, const vector[double]&, double, const DecompositionParams&)
         @staticmethod
         vector[CleanedAndNormalizedSpectrumResultVerbose_cpp] clean_and_normalize_spectra_known_precursor_parallel_verbose(const vector[CleanSpectrumWithKnownPrecursor_cpp]&, const DecompositionParams&)
 # Typedef for numpy arrays
@@ -1474,10 +1474,9 @@ def decompose_spectra_known_precursor_parallel_verbose(
     return pl.struct(formula_series, string_series, eager=True)
 
 def clean_and_normalize_spectra_known_precursor_parallel(
-    precursor_formula_series: pl.Series,   # pl.Array(int32, NUM_ELEMENTS)
-    precursor_masses_series: pl.Series,    # Float64 per spectrum (observed)
-    fragment_masses_series: pl.Series,     # list[float] per spectrum
-    fragment_intensities_series: pl.Series,# list[float] per spectrum
+    precursor_formula_series: pl.Series,
+    fragment_masses_series: pl.Series,
+    fragment_intensities_series: pl.Series,
     tolerance_ppm: float = 5.0,
     max_allowed_normalized_mass_error_ppm: float = 5.0,
     min_dbe: float = 0.0,
@@ -1485,11 +1484,9 @@ def clean_and_normalize_spectra_known_precursor_parallel(
     dbe_mode: str = "integer",
 ) -> pl.Series:
     """
-    Normalizes fragment masses using a spectrum-level linear error model augmented by the precursor point.
-    After normalization, drops fragments whose abs(normalized error ppm) > max_allowed_normalized_mass_error_ppm.
-    Arrow-backed construction avoids per-row Python lists.
+    Parallel cleaner + normalizer that estimates systematic mass error from the MS2 spectrum itself.
+    No longer requires precursor_mass input - normalization is based solely on fragment masses.
     """
-    # Convert precursor formulas to 2D contiguous int32
     cdef np.ndarray[np.int32_t, ndim=2, mode="c"] contig_precursors = np.ascontiguousarray(
         precursor_formula_series.to_numpy(), dtype=np.int32
     )
@@ -1497,8 +1494,7 @@ def clean_and_normalize_spectra_known_precursor_parallel(
     if contig_precursors.shape[1] != NUM_ELEMENTS:
         raise ValueError(f"Each precursor formula must have length {NUM_ELEMENTS} (got {contig_precursors.shape[1]}).")
     if (fragment_masses_series.len() != n or
-        fragment_intensities_series.len() != n or
-        precursor_masses_series.len() != n):
+        fragment_intensities_series.len() != n):
         raise ValueError("All input series must have the same length.")
     if n == 0:
         s_masses = pl.Series("masses_normalized", [], dtype=pl.List(pl.Float64))
@@ -1507,7 +1503,6 @@ def clean_and_normalize_spectra_known_precursor_parallel(
         s_err = pl.Series("fragment_errors_ppm", [], dtype=pl.List(pl.Float64))
         return pl.struct(s_masses, s_intens, s_frm, s_err, eager=True)
 
-    # Params: bounds are ignored here; pass zeros; DBE range for fragments
     cdef np.ndarray min_bounds = np.zeros(NUM_ELEMENTS, dtype=np.int32)
     cdef np.ndarray max_bounds = np.zeros(NUM_ELEMENTS, dtype=np.int32)
     cdef int dbe_mode_int = _get_dbe_mode_int(dbe_mode)
@@ -1516,13 +1511,11 @@ def clean_and_normalize_spectra_known_precursor_parallel(
         min_bounds, max_bounds
     )
 
-    # Prepare input vector<CleanSpectrumWithKnownPrecursor>
     cdef vector[CleanSpectrumWithKnownPrecursor_cpp] spectra_vec
     spectra_vec.reserve(n)
 
     frag_mass_lists = fragment_masses_series.to_list()
     frag_int_lists = fragment_intensities_series.to_list()
-    prec_mass_list = precursor_masses_series.to_list()
 
     cdef np.int32_t* prec_ptr = &contig_precursors[0, 0]
     cdef size_t formula_size_bytes = NUM_ELEMENTS * sizeof(F_DTYPE_t)
@@ -1537,53 +1530,43 @@ def clean_and_normalize_spectra_known_precursor_parallel(
     cdef Py_ssize_t mlen, ilen
 
     for i in range(n):
-        # Copy precursor row i
         memcpy(<void*>&prec[0], <const void*>(prec_ptr + i * NUM_ELEMENTS), formula_size_bytes)
         s.precursor_formula = prec
-
-        # Observed precursor mass and ppm threshold
-        s.precursor_mass = <double>(prec_mass_list[i] if prec_mass_list[i] is not None else 0.0)
         s.max_allowed_normalized_mass_error_ppm = <double>max_allowed_normalized_mass_error_ppm
 
-        # Masses -> contiguous buffer
         seq_m = frag_mass_lists[i] if frag_mass_lists[i] is not None else []
         mass_contig = np.ascontiguousarray(seq_m, dtype=np.float64)
         mlen = mass_contig.shape[0]
         if mlen > 0:
-            mptr = &mass_contig[0]
+            mptr = <double*> np.PyArray_DATA(mass_contig)
             s.fragment_masses.assign(mptr, mptr + mlen)
         else:
             s.fragment_masses.clear()
 
-        # Intensities -> contiguous buffer
         seq_i = frag_int_lists[i] if frag_int_lists[i] is not None else []
         inten_contig = np.ascontiguousarray(seq_i, dtype=np.float64)
         ilen = inten_contig.shape[0]
         if ilen > 0:
-            iptr = &inten_contig[0]
+            iptr = <double*> np.PyArray_DATA(inten_contig)
             s.fragment_intensities.assign(iptr, iptr + ilen)
         else:
             s.fragment_intensities.clear()
 
         spectra_vec.push_back(s)
 
-    # Call C++ parallel cleaner + normalizer (single formula per fragment)
     cdef vector[CleanedAndNormalizedSpectrumResult_cpp] all_results
     all_results = MassDecomposer.clean_and_normalize_spectra_known_precursor_parallel(spectra_vec, params)
 
-    # First pass: count kept fragments per spectrum (one formula per fragment)
     cdef size_t si, k
     cdef size_t n_specs = all_results.size()
     cdef size_t total_kept = 0
     for si in range(n_specs):
         total_kept += all_results[si].fragment_formulas.size()
 
-    # Offsets per spectrum (shared by masses, intensities, formulas, errors)
     cdef np.ndarray offs_specs = np.empty(n_specs + 1, dtype=np.int32)
     cdef np.int32_t[::1] offs_specs_v = offs_specs
     offs_specs_v[0] = 0
 
-    # Flat buffers
     cdef np.ndarray flat_masses_norm = np.empty(total_kept, dtype=np.float64)
     cdef double* mass_dst = <double*> np.PyArray_DATA(flat_masses_norm)
 
@@ -1596,29 +1579,20 @@ def clean_and_normalize_spectra_known_precursor_parallel(
     cdef np.ndarray flat_errors = np.empty(total_kept, dtype=np.float64)
     cdef double* ferr_dst = <double*> np.PyArray_DATA(flat_errors)
 
-    # Fill buffers
     cdef size_t cursor = 0
     cdef size_t cnt = 0
     for si in range(n_specs):
         cnt = all_results[si].fragment_formulas.size()
-        # masses normalized
         for k in range(cnt):
             mass_dst[cursor + k] = all_results[si].masses_normalized[k]
-        # intensities
         for k in range(cnt):
             intens_dst[cursor + k] = all_results[si].intensities[k]
-        # single formula per kept fragment
         for k in range(cnt):
-            memcpy(
-                <void*>(fvals_dst + (cursor + k) * NUM_ELEMENTS),
-                <const void*> formula_data_const(all_results[si].fragment_formulas[k]),
-                FORMULA_NBYTES_C
-            )
+            memcpy(<void*>(fvals_dst + (cursor + k) * NUM_ELEMENTS), <const void*>formula_data_const(all_results[si].fragment_formulas[k]), FORMULA_NBYTES_C)
             ferr_dst[cursor + k] = all_results[si].fragment_errors_ppm[k]
         cursor += cnt
         offs_specs_v[si + 1] = <np.int32_t>cursor
 
-    # Build Arrow arrays
     offs_specs_arr = pa.array(offs_specs, type=pa.int32())
 
     val_masses = pa.array(flat_masses_norm, type=pa.float64())
@@ -1634,7 +1608,6 @@ def clean_and_normalize_spectra_known_precursor_parallel(
     val_errors = pa.array(flat_errors, type=pa.float64())
     errors_arr = pa.ListArray.from_arrays(offs_specs_arr, val_errors)
 
-    # Convert Arrow -> Polars Series and pack into a struct Series
     s_masses = pl.Series("masses_normalized", masses_arr)
     s_intensities = pl.Series("cleaned_intensities", intens_arr)
     s_formulas = pl.Series("fragment_formulas", formulas_arr)
@@ -1649,7 +1622,6 @@ def clean_and_normalize_spectra_known_precursor_parallel(
 
 def clean_and_normalize_spectra_known_precursor_parallel_verbose(
     precursor_formula_series: pl.Series,
-    precursor_masses_series: pl.Series,
     fragment_masses_series: pl.Series,
     fragment_intensities_series: pl.Series,
     *,
@@ -1660,7 +1632,7 @@ def clean_and_normalize_spectra_known_precursor_parallel_verbose(
     dbe_mode: str = "integer",
 ) -> pl.Series:
     """
-    Verbose variant returning both numeric outputs and string representations for kept fragment formulas.
+    Verbose variant - no longer requires precursor_mass input.
     """
     cdef np.ndarray[np.int32_t, ndim=2, mode="c"] contig_precursors = np.ascontiguousarray(
         precursor_formula_series.to_numpy(), dtype=np.int32
@@ -1671,7 +1643,6 @@ def clean_and_normalize_spectra_known_precursor_parallel_verbose(
     if (
         fragment_masses_series.len() != n
         or fragment_intensities_series.len() != n
-        or precursor_masses_series.len() != n
     ):
         raise ValueError("All input series must have the same length.")
     if n == 0:
@@ -1696,7 +1667,6 @@ def clean_and_normalize_spectra_known_precursor_parallel_verbose(
 
     frag_mass_lists = fragment_masses_series.to_list()
     frag_int_lists = fragment_intensities_series.to_list()
-    prec_mass_list = precursor_masses_series.to_list()
 
     cdef vector[CleanSpectrumWithKnownPrecursor_cpp] spectra_vec
     spectra_vec.reserve(n)
@@ -1717,14 +1687,13 @@ def clean_and_normalize_spectra_known_precursor_parallel_verbose(
     for i in range(n):
         memcpy(<void*>&prec[0], <const void*>(prec_ptr + i * NUM_ELEMENTS), formula_size_bytes)
         s.precursor_formula = prec
-        s.precursor_mass = <double>(prec_mass_list[i] if prec_mass_list[i] is not None else 0.0)
         s.max_allowed_normalized_mass_error_ppm = <double>max_allowed_normalized_mass_error_ppm
 
         seq_m = frag_mass_lists[i] if frag_mass_lists[i] is not None else []
         mass_contig = np.ascontiguousarray(seq_m, dtype=np.float64)
         mlen = mass_contig.shape[0]
         if mlen > 0:
-            mptr = &mass_contig[0]
+            mptr = <double*> np.PyArray_DATA(mass_contig)
             s.fragment_masses.assign(mptr, mptr + mlen)
         else:
             s.fragment_masses.clear()
@@ -1733,7 +1702,7 @@ def clean_and_normalize_spectra_known_precursor_parallel_verbose(
         inten_contig = np.ascontiguousarray(seq_i, dtype=np.float64)
         ilen = inten_contig.shape[0]
         if ilen > 0:
-            iptr = &inten_contig[0]
+            iptr = <double*> np.PyArray_DATA(inten_contig)
             s.fragment_intensities.assign(iptr, iptr + ilen)
         else:
             s.fragment_intensities.clear()
@@ -1787,21 +1756,12 @@ def clean_and_normalize_spectra_known_precursor_parallel_verbose(
         for k in range(cnt):
             mass_dst[cursor + k] = all_results[si].masses_normalized[k]
             intens_dst[cursor + k] = all_results[si].intensities[k]
-            memcpy(
-                <void*>(fvals_dst + (cursor + k) * NUM_ELEMENTS),
-                <const void*> formula_data_const(all_results[si].fragment_formulas[k]),
-                FORMULA_NBYTES_C,
-            )
+            memcpy(<void*>(fvals_dst + (cursor + k) * NUM_ELEMENTS), <const void*>formula_data_const(all_results[si].fragment_formulas[k]), FORMULA_NBYTES_C)
             ferr_dst[cursor + k] = all_results[si].fragment_errors_ppm[k]
-
             formula_str = all_results[si].fragment_formulas_strings[k]
             length = formula_str.size()
             if length > 0:
-                memcpy(
-                    <void*>(string_data_ptr + char_cursor),
-                    <const void*> formula_str.c_str(),
-                    length,
-                )
+                memcpy(<void*>(string_data_ptr + char_cursor), <const void*>formula_str.data(), length)
             char_cursor += length
             string_offsets_view[cursor + k + 1] = <np.int32_t>char_cursor
 

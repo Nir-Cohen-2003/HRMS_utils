@@ -734,7 +734,6 @@ def clean_spectra_known_precursor_verbose(
 
 def clean_and_normalize_spectra_known_precursor(
     precursor_formula_series: pl.Series,
-    precursor_masses_series: pl.Series,
     fragment_masses_series: pl.Series,
     fragment_intensities_series: pl.Series,
     *,
@@ -746,13 +745,15 @@ def clean_and_normalize_spectra_known_precursor(
 ) -> pl.Series:
     """
     Parallel cleaner for spectra with known precursor that:
-    1) Estimates a spectrum-level mean mass error (systemic bias),
-    2) Selects a single best formula per fragment (highest masses resolved first),
-    3) Returns normalized fragment masses (target_mass + final_mean_error).
+    1) Estimates systematic mass error from single-option fragments only (no precursor dependency),
+    2) Selects best formula per fragment based on the error model,
+    3) Returns normalized fragment masses based on MS2 data alone.
+
+    Why the change: precursor masses from MS1 or computed sources introduce bias.
+    This function now relies solely on fragment peaks to estimate and correct systematic error.
 
     Input schema per spectrum (row-wise):
     - precursor_formula_series: pl.Array(pl.Int32, NUM_ELEMENTS)
-    - precursor_masses_series: pl.Float64 (observed precursor mass; for neutral-workflow pass non-ionized mass)
     - fragment_masses_series:   pl.List(pl.Float64)
     - fragment_intensities_series: pl.List(pl.Float64)
 
@@ -760,13 +761,12 @@ def clean_and_normalize_spectra_known_precursor(
     - pl.Series of Struct with fields:
         {
             "masses_normalized": pl.List(pl.Float64),
-            "cleaned_intensities":       pl.List(pl.Float64),
+            "cleaned_intensities": pl.List(pl.Float64),
             "fragment_formulas": pl.List(pl.Array(pl.Int32, NUM_ELEMENTS)),
             "fragment_errors_ppm": pl.List(pl.Float64),
         }
     """
     assert isinstance(precursor_formula_series, pl.Series), "precursor_formula_series must be a Polars Series"
-    assert isinstance(precursor_masses_series, pl.Series), "precursor_masses_series must be a Polars Series"
     assert isinstance(fragment_masses_series, pl.Series), "fragment_masses_series must be a Polars Series"
     assert isinstance(fragment_intensities_series, pl.Series), "fragment_intensities_series must be a Polars Series"
 
@@ -778,9 +778,6 @@ def clean_and_normalize_spectra_known_precursor(
             f"got {precursor_formula_series.dtype}"
         )
 
-    if precursor_masses_series.dtype != pl.Float64:
-        raise TypeError(f"precursor_masses_series.dtype must be Float64, got {precursor_masses_series.dtype}")
-
     expected_list = pl.List(pl.Float64)
     if fragment_masses_series.dtype != expected_list:
         raise TypeError(f"fragment_masses_series.dtype must be List(Float64), got {fragment_masses_series.dtype}")
@@ -789,13 +786,11 @@ def clean_and_normalize_spectra_known_precursor(
 
     n = precursor_formula_series.len()
     if (fragment_masses_series.len() != n or
-        fragment_intensities_series.len() != n or
-        precursor_masses_series.len() != n):
+        fragment_intensities_series.len() != n):
         raise ValueError("All input series must have the same length (one entry per spectrum).")
 
     return clean_and_normalize_spectra_known_precursor_parallel(
         precursor_formula_series=precursor_formula_series,
-        precursor_masses_series=precursor_masses_series,
         fragment_masses_series=fragment_masses_series,
         fragment_intensities_series=fragment_intensities_series,
         tolerance_ppm=tolerance_ppm,
@@ -808,7 +803,6 @@ def clean_and_normalize_spectra_known_precursor(
 
 def clean_and_normalize_spectra_known_precursor_verbose(
     precursor_formula_series: pl.Series,
-    precursor_masses_series: pl.Series,
     fragment_masses_series: pl.Series,
     fragment_intensities_series: pl.Series,
     *,
@@ -823,9 +817,11 @@ def clean_and_normalize_spectra_known_precursor_verbose(
     Performs the same steps as :func:`clean_and_normalize_spectra_known_precursor`
     but includes human-readable formula strings for the selected fragment formulas.
 
+    Why the change: removed precursor_masses_series parameter. Normalization is now
+    based solely on MS2 fragment data to avoid bias from MS1 or computed precursor masses.
+
     Inputs (per-spectrum / row):
     - precursor_formula_series: pl.Array(pl.Int32, NUM_ELEMENTS)
-    - precursor_masses_series: pl.Float64 (observed precursor mass)
     - fragment_masses_series:   pl.List(pl.Float64)
     - fragment_intensities_series: pl.List(pl.Float64)
 
@@ -834,7 +830,7 @@ def clean_and_normalize_spectra_known_precursor_verbose(
     tolerance_ppm : float
         Mass tolerance used for fragment matching.
     max_allowed_normalized_mass_error_ppm : float
-        Maximum allowed mean mass error after normalization (safeguard).
+        Maximum allowed residual error after normalization.
 
     Returns
     -------
@@ -856,16 +852,12 @@ def clean_and_normalize_spectra_known_precursor_verbose(
       compiled verbose implementation.
     """
     assert isinstance(precursor_formula_series, pl.Series), "precursor_formula_series must be a Polars Series"
-    assert isinstance(precursor_masses_series, pl.Series), "precursor_masses_series must be a Polars Series"
     assert isinstance(fragment_masses_series, pl.Series), "fragment_masses_series must be a Polars Series"
     assert isinstance(fragment_intensities_series, pl.Series), "fragment_intensities_series must be a Polars Series"
 
     expected_arr = pl.Array(pl.Int32, NUM_ELEMENTS)
     assert precursor_formula_series.dtype in (expected_arr, pl.Array(pl.Int32, shape=(NUM_ELEMENTS,))), (
         f"precursor_formula_series.dtype must be pl.Array(pl.Int32, {NUM_ELEMENTS}), got {precursor_formula_series.dtype}"
-    )
-    assert precursor_masses_series.dtype == pl.Float64, (
-        f"precursor_masses_series.dtype must be Float64, got {precursor_masses_series.dtype}"
     )
     expected_list = pl.List(pl.Float64)
     assert fragment_masses_series.dtype == expected_list, (
@@ -879,15 +871,11 @@ def clean_and_normalize_spectra_known_precursor_verbose(
     if (
         fragment_masses_series.len() != n
         or fragment_intensities_series.len() != n
-        or precursor_masses_series.len() != n
     ):
         raise ValueError("All input series must share the same length.")
 
-
-
     return clean_and_normalize_spectra_known_precursor_parallel_verbose(
         precursor_formula_series=precursor_formula_series,
-        precursor_masses_series=precursor_masses_series,
         fragment_masses_series=fragment_masses_series,
         fragment_intensities_series=fragment_intensities_series,
         tolerance_ppm=tolerance_ppm,
