@@ -54,15 +54,33 @@ pub fn clean_spectrum(
     ms2_tolerance_in_ppm: f64,
     max_peak_num: Option<usize>,
     normalize_intensity: bool,
+    precursor_mz: Option<f64>,
+    ignore_precursor: Option<bool>,
 ) -> Spectrum {
     let mut cleaned_peaks: Vec<Peak> = peaks.to_vec();
+
+    let mut effective_max_mz = max_mz.unwrap_or(f64::MAX);
+    if let Some(pmz) = precursor_mz {
+        effective_max_mz = pmz;
+    }
 
     // 1. Remove empty peaks and filter by mz
     cleaned_peaks.retain(|p| {
         p.intensity > 0.0
             && p.mz >= min_mz.unwrap_or(0.0)
-            && p.mz <= max_mz.unwrap_or(f64::MAX)
+            && p.mz <= effective_max_mz
     });
+
+    if let Some(pmz) = precursor_mz {
+        // ignore fragments in the 1 Da range below it too.
+        cleaned_peaks.retain(|p| p.mz < pmz - 1.0);
+
+        if ignore_precursor.unwrap_or(false) {
+            let tolerance = (ms2_tolerance_in_ppm * 1e-6 * MASS_THRESHOLD_FOR_PPM).max(ms2_tolerance_in_ppm * 1e-6 * pmz);
+            cleaned_peaks.retain(|p| (p.mz - pmz).abs() > tolerance);
+        }
+    }
+
     cleaned_peaks.sort_by(|a, b| a.mz.partial_cmp(&b.mz).unwrap());
 
     // 2. Centroid the spectrum (C-like iterative approach)
@@ -253,11 +271,7 @@ pub fn calculate_unweighted_entropy_similarity(
 
     while a < spec_a.peaks.len() && b < spec_b.peaks.len() {
         let mass = spec_a.peaks[a].mz;
-        let tolerance = if mass < MASS_THRESHOLD_FOR_PPM {
-            ms2_tolerance_in_ppm * 1e-6 * MASS_THRESHOLD_FOR_PPM
-        } else {
-            ms2_tolerance_in_ppm * 1e-6 * mass
-        };
+        let tolerance = (ms2_tolerance_in_ppm * 1e-6 * MASS_THRESHOLD_FOR_PPM).max(ms2_tolerance_in_ppm * 1e-6 * mass);
         let mass_diff = spec_a.peaks[a].mz - spec_b.peaks[b].mz;
         if mass_diff < -tolerance { a += 1; }
         else if mass_diff > tolerance { b += 1; }
@@ -281,19 +295,102 @@ pub fn calculate_entropy_similarity(
     ms2_tolerance_in_ppm: f64,
     clean_spectra_first: bool,
     noise_threshold: Option<f64>,
+    precursor_mz: Option<f64>,
+    ignore_precursor: Option<bool>,
 ) -> f64 {
     let (mut a, mut b) = if clean_spectra_first {
-        let cleaned_a = clean_spectrum(&spec_a.peaks, None, None, noise_threshold, 2.0 * ms2_tolerance_in_ppm, None, true);
-        let cleaned_b = clean_spectrum(&spec_b.peaks, None, None, noise_threshold, 2.0 * ms2_tolerance_in_ppm, None, true);
+        let cleaned_a = clean_spectrum(&spec_a.peaks, None, precursor_mz, noise_threshold, 2.0 * ms2_tolerance_in_ppm, None, true, precursor_mz, ignore_precursor);
+        let cleaned_b = clean_spectrum(&spec_b.peaks, None, precursor_mz, noise_threshold, 2.0 * ms2_tolerance_in_ppm, None, true, precursor_mz, ignore_precursor);
         (cleaned_a, cleaned_b)
     } else {
         (spec_a.clone(), spec_b.clone()) // Clone if not cleaning to avoid modifying originals if passed by ref elsewhere
     };
 
+    if !clean_spectra_first {
+        a.peaks.sort_by(|a, b| a.mz.partial_cmp(&b.mz).unwrap());
+        b.peaks.sort_by(|a, b| a.mz.partial_cmp(&b.mz).unwrap());
+    }
+
     if a.peaks.is_empty() || b.peaks.is_empty() { return 0.0; }
     apply_weight_to_intensity(&mut a);
     apply_weight_to_intensity(&mut b);
     calculate_unweighted_entropy_similarity(&a, &b, ms2_tolerance_in_ppm)
+}
+
+pub fn general_cosine_similarity(
+    spec_a: &Spectrum,
+    spec_b: &Spectrum,
+    ms2_tolerance_in_ppm: f64,
+    intensity_power: f64,
+    mass_power: f64,
+    clean_spectra_first: bool,
+    noise_threshold: Option<f64>,
+    precursor_mz: Option<f64>,
+    ignore_precursor: Option<bool>,
+) -> f64 {
+    let (mut a_cleaned, mut b_cleaned) = if clean_spectra_first {
+        let cleaned_a = clean_spectrum(&spec_a.peaks, None, precursor_mz, noise_threshold, 2.0 * ms2_tolerance_in_ppm, None, false, precursor_mz, ignore_precursor);
+        let cleaned_b = clean_spectrum(&spec_b.peaks, None, precursor_mz, noise_threshold, 2.0 * ms2_tolerance_in_ppm, None, false, precursor_mz, ignore_precursor);
+        (cleaned_a, cleaned_b)
+    } else {
+        (spec_a.clone(), spec_b.clone())
+    };
+
+    if !clean_spectra_first {
+        a_cleaned.peaks.sort_by(|a, b| a.mz.partial_cmp(&b.mz).unwrap());
+        b_cleaned.peaks.sort_by(|a, b| a.mz.partial_cmp(&b.mz).unwrap());
+    }
+
+    if a_cleaned.peaks.is_empty() || b_cleaned.peaks.is_empty() { return 0.0; }
+
+    let weighted_peaks_a: Vec<(f64, f64)> = a_cleaned.peaks.iter().map(|p| {
+        let weighted_intensity = p.intensity.powf(intensity_power) * p.mz.powf(mass_power);
+        (p.mz, weighted_intensity)
+    }).collect();
+
+    let weighted_peaks_b: Vec<(f64, f64)> = b_cleaned.peaks.iter().map(|p| {
+        let weighted_intensity = p.intensity.powf(intensity_power) * p.mz.powf(mass_power);
+        (p.mz, weighted_intensity)
+    }).collect();
+
+    let mut dot_product: f64 = 0.0;
+    let mut norm_a: f64 = 0.0;
+    let mut norm_b: f64 = 0.0;
+
+    for (_, intensity) in &weighted_peaks_a {
+        norm_a += intensity * intensity;
+    }
+    norm_a = norm_a.sqrt();
+
+    for (_, intensity) in &weighted_peaks_b {
+        norm_b += intensity * intensity;
+    }
+    norm_b = norm_b.sqrt();
+
+    if norm_a == 0.0 || norm_b == 0.0 {
+        return 0.0;
+    }
+
+    let mut a_idx = 0;
+    let mut b_idx = 0;
+
+    while a_idx < weighted_peaks_a.len() && b_idx < weighted_peaks_b.len() {
+        let mass_a = weighted_peaks_a[a_idx].0;
+        let tolerance = (ms2_tolerance_in_ppm * 1e-6 * MASS_THRESHOLD_FOR_PPM).max(ms2_tolerance_in_ppm * 1e-6 * mass_a);
+        let mass_diff = weighted_peaks_a[a_idx].0 - weighted_peaks_b[b_idx].0;
+
+        if mass_diff < -tolerance {
+            a_idx += 1;
+        } else if mass_diff > tolerance {
+            b_idx += 1;
+        } else {
+            dot_product += weighted_peaks_a[a_idx].1 * weighted_peaks_b[b_idx].1;
+            a_idx += 1;
+            b_idx += 1;
+        }
+    }
+
+    (dot_product / (norm_a * norm_b)).max(0.0).min(1.0)
 }
 
 
@@ -305,6 +402,10 @@ struct SimilarityKwargs {
     ms2_tolerance_in_ppm: Option<f64>,
     clean_spectra_first: Option<bool>,
     noise_threshold: Option<f64>,
+    precursor_mz: Option<f64>,
+    ignore_precursor: Option<bool>,
+    intensity_power: Option<f64>,
+    mass_power: Option<f64>,
 }
 
 #[polars_expr(output_type=Float64)]
@@ -312,14 +413,11 @@ fn calculate_similarity_struct(inputs: &[Series], kwargs: SimilarityKwargs) -> P
     let struct_series = &inputs[0];
     let ca: &StructChunked = struct_series.struct_()?;
 
-    // Extract the inner list series for mz1, int1, mz2, int2
-    // Adjust field names based on your actual DataFrame structure
     let mz1_series = ca.field_by_name("mz1")?;
     let int1_series = ca.field_by_name("intensities1")?;
     let mz2_series = ca.field_by_name("mz2")?;
     let int2_series = ca.field_by_name("intensities2")?;
 
-    // Convert ListChunked to Vec<Option<Series>> for easier parallel iteration
     let mz1_list = mz1_series.list()?;
     let int1_list = int1_series.list()?;
     let mz2_list = mz2_series.list()?;
@@ -330,12 +428,12 @@ fn calculate_similarity_struct(inputs: &[Series], kwargs: SimilarityKwargs) -> P
     let mz2_vec: Vec<Option<Series>> = mz2_list.into_iter().collect();
     let int2_vec: Vec<Option<Series>> = int2_list.into_iter().collect();
 
-    // Parameters (you might want to pass these as arguments to the polars_function)
     let ms2_tolerance_in_ppm = kwargs.ms2_tolerance_in_ppm.unwrap_or(5.0);
     let clean_spectra_first = kwargs.clean_spectra_first.unwrap_or(true);
     let noise_threshold = kwargs.noise_threshold;
+    let precursor_mz = kwargs.precursor_mz;
+    let ignore_precursor = kwargs.ignore_precursor;
 
-    // Parallel calculation using rayon
     let out: Float64Chunked = mz1_vec
         .into_par_iter()
         .zip(int1_vec.into_par_iter())
@@ -344,27 +442,88 @@ fn calculate_similarity_struct(inputs: &[Series], kwargs: SimilarityKwargs) -> P
         .map(|(((opt_mz1, opt_int1), opt_mz2), opt_int2)| {
             match (opt_mz1, opt_int1, opt_mz2, opt_int2) {
                 (Some(mz1), Some(int1), Some(mz2), Some(int2)) => {
-                    // Create Spectrum objects
-                    let spec1: Spectrum = Spectrum::from_polars_lists(&mz1, &int1).ok()?; // Use ok() to convert Result to Option
+                    let spec1: Spectrum = Spectrum::from_polars_lists(&mz1, &int1).ok()?;
                     let spec2: Spectrum = Spectrum::from_polars_lists(&mz2, &int2).ok()?;
 
-                    // Calculate similarity
                     let similarity: f64 = calculate_entropy_similarity(
                         &spec1,
                         &spec2,
                         ms2_tolerance_in_ppm,
                         clean_spectra_first,
                         noise_threshold,
+                        precursor_mz,
+                        ignore_precursor,
                     );
                     Some(similarity)
                 }
-                _ => None, // Handle rows with missing data
+                _ => None,
             }
         })
         .collect();
 
     Ok(out.into_series())
 }
+
+#[polars_expr(output_type=Float64)]
+fn cosine_similarity_struct(inputs: &[Series], kwargs: SimilarityKwargs) -> PolarsResult<Series> {
+    let struct_series = &inputs[0];
+    let ca: &StructChunked = struct_series.struct_()?;
+
+    let mz1_series = ca.field_by_name("mz1")?;
+    let int1_series = ca.field_by_name("intensities1")?;
+    let mz2_series = ca.field_by_name("mz2")?;
+    let int2_series = ca.field_by_name("intensities2")?;
+
+    let mz1_list = mz1_series.list()?;
+    let int1_list = int1_series.list()?;
+    let mz2_list = mz2_series.list()?;
+    let int2_list = int2_series.list()?;
+
+    let mz1_vec: Vec<Option<Series>> = mz1_list.into_iter().collect();
+    let int1_vec: Vec<Option<Series>> = int1_list.into_iter().collect();
+    let mz2_vec: Vec<Option<Series>> = mz2_list.into_iter().collect();
+    let int2_vec: Vec<Option<Series>> = int2_list.into_iter().collect();
+
+    let ms2_tolerance_in_ppm = kwargs.ms2_tolerance_in_ppm.unwrap_or(5.0);
+    let clean_spectra_first = kwargs.clean_spectra_first.unwrap_or(true);
+    let noise_threshold = kwargs.noise_threshold;
+    let precursor_mz = kwargs.precursor_mz;
+    let ignore_precursor = kwargs.ignore_precursor;
+    let intensity_power = kwargs.intensity_power.unwrap_or(0.5);
+    let mass_power = kwargs.mass_power.unwrap_or(0.0);
+
+    let out: Float64Chunked = mz1_vec
+        .into_par_iter()
+        .zip(int1_vec.into_par_iter())
+        .zip(mz2_vec.into_par_iter())
+        .zip(int2_vec.into_par_iter())
+        .map(|(((opt_mz1, opt_int1), opt_mz2), opt_int2)| {
+            match (opt_mz1, opt_int1, opt_mz2, opt_int2) {
+                (Some(mz1), Some(int1), Some(mz2), Some(int2)) => {
+                    let spec1: Spectrum = Spectrum::from_polars_lists(&mz1, &int1).ok()?;
+                    let spec2: Spectrum = Spectrum::from_polars_lists(&mz2, &int2).ok()?;
+
+                    let similarity: f64 = general_cosine_similarity(
+                        &spec1,
+                        &spec2,
+                        ms2_tolerance_in_ppm,
+                        intensity_power,
+                        mass_power,
+                        clean_spectra_first,
+                        noise_threshold,
+                        precursor_mz,
+                        ignore_precursor,
+                    );
+                    Some(similarity)
+                }
+                _ => None,
+            }
+        })
+        .collect();
+
+    Ok(out.into_series())
+}
+
 
 #[pymodule]
 fn _internal(_py: Python, m: &Bound<PyModule>) -> PyResult<()> {

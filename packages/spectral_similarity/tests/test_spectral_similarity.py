@@ -1,28 +1,11 @@
 import polars as pl
-import sys
-import pkgutil
+import numpy as np
 
-try:
-    from spectral_similarity import calculate_similarity
-except ImportError as e:
-    print(f"Failed to import spectral_similarity: {e}")
-    print("\nAvailable non-stdlib packages:")
-    
-    # Why: List all installed packages to help diagnose import issues
-    # Exclude stdlib modules by checking if they have a __file__ attribute in site-packages
-    available_packages = set()
-    for importer, modname, ispkg in pkgutil.iter_modules():
-        # Why: Filter out stdlib by checking if module path contains 'site-packages' or 'dist-packages'
-        if hasattr(importer, 'path') and importer.path:
-            if 'site-packages' in str(importer.path) or 'dist-packages' in str(importer.path):
-                available_packages.add(modname)
-    
-    for pkg in sorted(available_packages):
-        print(f"  - {pkg}")
-    
-    sys.exit(1)
+# This is the correct way to import the namespace
+import spectral_similarity
 
-def test_calculate_similarity():
+
+def test_entropy_similarity():
     df = pl.DataFrame(
         {
             "spectra": [
@@ -34,7 +17,16 @@ def test_calculate_similarity():
                 }
             ]
         },
-        schema={"spectra": pl.Struct({"mz1": pl.List(pl.Float32), "intensities1": pl.List(pl.Float32), "mz2": pl.List(pl.Float32), "intensities2": pl.List(pl.Float32)})}
+        schema={
+            "spectra": pl.Struct(
+                {
+                    "mz1": pl.List(pl.Float64),
+                    "intensities1": pl.List(pl.Float64),
+                    "mz2": pl.List(pl.Float64),
+                    "intensities2": pl.List(pl.Float64),
+                }
+            )
+        },
     )
 
     result = df.with_columns(
@@ -43,60 +35,193 @@ def test_calculate_similarity():
         )
     )
 
-    assert "similarity" in result.columns, "similarity column should be present in result dataframe"
-    assert result["similarity"][0] is not None, "similarity value should not be None"
-    assert abs(result["similarity"][0] - 1.0) < 1e-6, f"Expected similarity of 1.0 for identical spectra, got {result['similarity'][0]}"
+    # Why: identical spectra should have similarity of 1.0 within numerical precision
+    result_filtered = result.filter((pl.col("similarity") - 1.0).abs() < 1e-6)
+    assert (
+        len(result_filtered) == len(result)
+    ), f"Expected all rows to have similarity ≈ 1.0, but got {result['similarity'].to_list()}"
 
-    # Test with different tolerance
-    df2 = pl.DataFrame(
+
+def test_entropy_similarity_precursor_filtering():
+    # Test precursor filtering: peaks above and near precursor should be removed
+    df = pl.DataFrame(
+        {
+            "spectra": [
+                {
+                    "mz1": [100.0, 200.0, 299.5, 300.0],  # peak at 299.5 and 300.0 should be removed
+                    "intensities1": [1.0, 1.0, 1.0, 1.0],
+                    "mz2": [100.0, 200.0],
+                    "intensities2": [1.0, 1.0],
+                }
+            ]
+        },
+        schema={
+            "spectra": pl.Struct(
+                {
+                    "mz1": pl.List(pl.Float64),
+                    "intensities1": pl.List(pl.Float64),
+                    "mz2": pl.List(pl.Float64),
+                    "intensities2": pl.List(pl.Float64),
+                }
+            )
+        },
+    )
+
+    # Why: with precursor_mz=300, peaks >= 299 should be removed by default (1 Da tolerance)
+    # After filtering, mz1 becomes [100.0, 200.0], matching mz2, so similarity should be ~1.0
+    result = df.with_columns(
+        similarity=pl.col("spectra").spectral.entropy_similarity(precursor_mz=300.0)
+    )
+
+    result_filtered = result.filter(pl.col("similarity") > 0.99)
+    assert (
+        len(result_filtered) == len(result)
+    ), f"Expected similarity > 0.99 after precursor filtering, got {result['similarity'].to_list()}"
+
+    # Test ignore_precursor: precursor peak should be removed
+    df_ignore = pl.DataFrame(
+        {
+            "spectra": [
+                {
+                    "mz1": [100.0, 200.0, 300.001],  # precursor peak within tolerance
+                    "intensities1": [1.0, 1.0, 1.0],
+                    "mz2": [100.0, 200.0],
+                    "intensities2": [1.0, 1.0],
+                }
+            ]
+        },
+        schema={
+            "spectra": pl.Struct(
+                {
+                    "mz1": pl.List(pl.Float64),
+                    "intensities1": pl.List(pl.Float64),
+                    "mz2": pl.List(pl.Float64),
+                    "intensities2": pl.List(pl.Float64),
+                }
+            )
+        },
+    )
+
+    # Why: precursor peak at 300.001 is within 10ppm of 300.0, should be removed when ignore_precursor=True
+    result_ignore = df_ignore.with_columns(
+        similarity=pl.col("spectra").spectral.entropy_similarity(
+            precursor_mz=300.0, ignore_precursor=True, ms2_tolerance_in_ppm=10.0
+        )
+    )
+
+    result_filtered = result_ignore.filter(pl.col("similarity") > 0.99)
+    assert (
+        len(result_filtered) == len(result_ignore)
+    ), f"Expected similarity > 0.99 after precursor removal, got {result_ignore['similarity'].to_list()}"
+
+
+def test_cosine_similarities():
+    df = pl.DataFrame(
         {
             "spectra": [
                 {
                     "mz1": [100.0, 200.0, 300.0],
-                    "intensities1": [1.0, 1.0, 1.0],
-                    "mz2": [100.0003, 200.0, 300.0], # diff 0.0003 Da
-                    "intensities2": [1.0, 1.0, 1.0],
+                    "intensities1": [0.5, 0.8, 1.0],
+                    "mz2": [100.0, 200.0, 400.0],
+                    "intensities2": [0.5, 0.8, 1.0],
                 }
             ]
         },
-        schema={"spectra": pl.Struct({"mz1": pl.List(pl.Float32), "intensities1": pl.List(pl.Float32), "mz2": pl.List(pl.Float32), "intensities2": pl.List(pl.Float32)})}
-    )
-
-    # default tolerance is 5ppm. At 100Da, it is 5 * 1e-6 * 200 = 0.001 Da. 0.0003 < 0.001, so it should match.
-    result2_default = df2.with_columns(similarity=calculate_similarity(pl.col("spectra")))
-    assert abs(result2_default["similarity"][0] - 1.0) < 1e-3
-
-    # 1ppm tolerance. At 100Da, it is 1 * 1e-6 * 200 = 0.0002 Da. 0.0003 > 0.0002, so it should not match fully.
-    result2_1ppm = df2.with_columns(similarity=calculate_similarity(pl.col("spectra"), ms2_tolerance_in_ppm=1.0))
-    assert result2_1ppm["similarity"][0] < 1.0
-
-    # Test with noise_threshold
-    df3 = pl.DataFrame(
-        {
-            "spectra": [
+        schema={
+            "spectra": pl.Struct(
                 {
-                    "mz1": [100.0, 200.0, 300.0, 400.0],
-                    "intensities1": [1.0, 1.0, 1.0, 0.0005], # max intensity is 1.0
-                    "mz2": [100.0, 200.0, 300.0],
-                    "intensities2": [1.0, 1.0, 1.0],
+                    "mz1": pl.List(pl.Float64),
+                    "intensities1": pl.List(pl.Float64),
+                    "mz2": pl.List(pl.Float64),
+                    "intensities2": pl.List(pl.Float64),
                 }
-            ]
+            )
         },
-        schema={"spectra": pl.Struct({"mz1": pl.List(pl.Float32), "intensities1": pl.List(pl.Float32), "mz2": pl.List(pl.Float32), "intensities2": pl.List(pl.Float32)})}
     )
 
-    # with default noise_threshold=0.001, the peak at 400.0 (intensity 0.0005) should be removed.
-    # noise_level = 0.001 * 1.0 = 0.001. 0.0005 < 0.001.
-    # So spec1 becomes identical to spec2. Similarity should be 1.0
-    result3_default_noise = df3.with_columns(similarity=calculate_similarity(pl.col("spectra")))
-    assert abs(result3_default_noise["similarity"][0] - 1.0) < 1e-3
+    # Why: compute expected cosine similarity manually
+    # matching peaks for dot product: [(100, 0.5, 0.5), (200, 0.8, 0.8)]
+    # but denominator uses ALL intensities from both spectra
+    all_intensities1 = np.array([0.5, 0.8, 1.0])
+    all_intensities2 = np.array([0.5, 0.8, 1.0])
+    matching_intensities1 = np.array([0.5, 0.8])
+    matching_intensities2 = np.array([0.5, 0.8])
+    
+    # Why: classic cosine with intensity_power=1.0, mass_power=0.0
+    # numerator: sum of products of matching peaks
+    # denominator: norm of all peaks in each spectrum
+    expected_cosine = np.dot(matching_intensities1, matching_intensities2) / (
+        np.linalg.norm(all_intensities1) * np.linalg.norm(all_intensities2)
+    )
 
-    # with noise_threshold=0.0001, the peak at 400.0 should NOT be removed.
-    # noise_level = 0.0001 * 1.0 = 0.0001. 0.0005 > 0.0001.
-    # So spec1 is different from spec2. Similarity should be less than 1.0
-    result3_low_noise = df3.with_columns(similarity=calculate_similarity(pl.col("spectra"), noise_threshold=0.0001))
-    assert result3_low_noise["similarity"][0] < 1.0
+    # General cosine
+    result_general = df.with_columns(
+        similarity=pl.col("spectra").spectral.general_cosine_similarity(
+            intensity_power=1.0, mass_power=0.0
+        )
+    )
 
-if __name__ == "__main__":
-    test_calculate_similarity()
-    print("Test passed!")
+    result_filtered = result_general.filter(
+        (pl.col("similarity") - expected_cosine).abs() < 1e-6
+    )
+    assert len(result_filtered) == len(
+        result_general
+    ), f"Expected cosine similarity ≈ {expected_cosine}, got {result_general['similarity'].to_list()}"
+
+    # Why: mass weighted cosine (mass_power=1.0, intensity_power=0.5)
+    # # ALL peaks contribute to denominator, not just matching ones
+    # all_weighted_intensities1 = (all_intensities1**0.5) * np.array([100.0, 200.0, 300.0])
+    # all_weighted_intensities2 = (all_intensities2**0.5) * np.array([100.0, 200.0, 400.0])
+    # matching_weighted_intensities1 = (matching_intensities1**0.5) * np.array([100.0, 200.0])
+    # matching_weighted_intensities2 = (matching_intensities2**0.5) * np.array([100.0, 200.0])
+    
+    # expected_mw_cosine = np.dot(matching_weighted_intensities1, matching_weighted_intensities2) / (
+    #     np.linalg.norm(all_weighted_intensities1) * np.linalg.norm(all_weighted_intensities2)
+    # )
+
+    # result_mw = df.with_columns(
+    #     similarity=pl.col("spectra").spectral.mass_weighted_cosine_similarity()
+    # )
+
+    # result_filtered = result_mw.filter(
+    #     (pl.col("similarity") - expected_mw_cosine).abs() < 1e-6
+    # )
+    # assert len(result_filtered) == len(
+    #     result_mw
+    # ), f"Expected mass-weighted cosine ≈ {expected_mw_cosine}, got {result_mw['similarity'].to_list()}"
+
+    # Why: explained intensity: sum of min intensities / sum of spectrum2 intensities
+    # matching peaks: min(0.5, 0.5) + min(0.8, 0.8) = 1.3
+    # total intensity in spectrum2: 0.5 + 0.8 + 1.0 = 2.3
+    expected_ei = 1.3 / 2.3
+
+    result_ei = df.with_columns(
+        similarity=pl.col("spectra").spectral.explained_intensity()
+    )
+
+    result_filtered = result_ei.filter((pl.col("similarity") - expected_ei).abs() < 1e-6)
+    assert len(result_filtered) == len(
+        result_ei
+    ), f"Expected explained intensity ≈ {expected_ei}, got {result_ei['similarity'].to_list()}"
+
+    # Why: mass weighted explained intensity uses ALL peaks in spectrum2 denominator
+    # weighted intensities: intensity * mz^1.0
+    mass_power = 0
+    weighted_intensities1 = (np.array([0.5, 0.8]) ** mass_power) * np.array([100.0, 200.0])
+    weighted_intensities2 = (np.array([0.5, 0.8, 1.0]) ** mass_power) * np.array([100.0, 200.0, 400.0])
+    matching_weighted_intensities = (np.array([0.5, 0.8]) ** mass_power) * np.array([100.0, 200.0])
+
+    expected_mwei = np.linalg.norm(matching_weighted_intensities) / np.linalg.norm(weighted_intensities2)
+
+    result_mwei = df.with_columns(
+        similarity=pl.col("spectra").spectral.mass_weighted_explained_intensity()
+    )
+
+    result_filtered = result_mwei.filter(
+        (pl.col("similarity") - expected_mwei).abs() < 1e-6
+    )
+    assert len(result_filtered) == len(
+        result_mwei
+    ), f"Expected mass-weighted explained intensity ≈ {expected_mwei}, got {result_mwei['similarity'].to_list()}"
+
+

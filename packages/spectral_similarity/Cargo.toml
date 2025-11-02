@@ -6,7 +6,7 @@ edition = "2024"
 [lib]
 name = "_internal"
 crate-type= ["cdylib"]
-path = "src/entropy_lib.rs"
+path = "src/lib.rs"
 
 [dependencies]
 pyo3 = { version = "*", features = ["extension-module", "abi3-py38"] }

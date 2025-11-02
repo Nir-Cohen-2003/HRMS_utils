@@ -32,9 +32,11 @@ default = {features = [], solve-group = "default"}
 testing = {features = ["testing"], solve-group = "testing"}
 
 [feature.testing.tasks]
-test = "python tests/test_spectral_similarity.py"
+test = "pytest tests/test_spectral_similarity.py"
 [feature.testing.dependencies]
 polars = ">=1.33.0,<2"
 python = ">=3.9"
 pip = ">=23.0"
+numpy = ">=1.24.0"
 spectral_similarity = {path = "."}
+pytest = ">=7.0"

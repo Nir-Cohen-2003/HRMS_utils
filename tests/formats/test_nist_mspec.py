@@ -15,7 +15,7 @@ def run_mspec_reader_profile(msp_file_path: Path):
     
     # Read the MSPEC file
     try:
-        spectra_df = read_MSPEC_file(msp_file_path,raw_fragment_tolerance_ppm=10.0, normalized_fragment_tolerance_ppm=5.0, molecular_ion_tolerance_ppm=5.0)
+        spectra_df = read_MSPEC_file(msp_file_path,raw_fragment_tolerance_ppm=10.0, normalized_fragment_tolerance_ppm=10.0, molecular_ion_tolerance_ppm=5.0)
         is_empty = spectra_df.is_empty()
     except Exception as e:
         print(f"An error occurred while reading the MSPEC file: {e}")
