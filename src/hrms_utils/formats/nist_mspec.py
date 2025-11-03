@@ -210,7 +210,7 @@ def _annotate_spectra(data: T, raw_fragment_tolerance_ppm: float, normalized_fra
             pl.col("cleaned_normalized_intensity").alias("intensities1"),
             pl.col("raw_spectrum_mz").alias("mz2"),
             pl.col("raw_spectrum_intensity").alias("intensities2")
-        ]).spectral.explained_intensity().alias("explained_intensity"))
+        ]).spectral.explained_intensity(permissive=True,ms2_tolerance_in_ppm=10.0).alias("explained_intensity"))
     )
 
 def _add_precursor_type_indicators(data: T) -> T:
