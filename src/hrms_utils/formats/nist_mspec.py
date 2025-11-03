@@ -110,8 +110,10 @@ def _read_file(file_contents: str):
         ).alias("collision_energy_list"),
         pl.col('Formula').map_elements(format_formula_string_to_array,return_dtype=pl.List(pl.Int32)).list.to_array(width=num_elements).alias('Formula_array'),
         pl.col('mz_intensity').list.eval(pl.element().str.split(by=' ').list.get(index=0).cast(pl.Float64)).alias('raw_spectrum_mz'),
-        pl.col('mz_intensity').list.eval(pl.element().str.split(by=' ').list.get(index=1).cast(pl.Float64)).alias('raw_spectrum_intensity')
+        pl.col('mz_intensity').list.eval(pl.element().str.split(by=' ').list.get(index=1).cast(pl.Float64)).alias('raw_spectrum_intensity'),
+        pl.col('Precursor_type').str.replace(r'\[(M.*)\][+\\-]?\\d*', r'$1').str.replace('M', pl.col('Formula')).alias('precursor_formula')
     ).with_columns(
+        pl.col('precursor_formula').map_elements(format_formula_string_to_array,return_dtype=pl.List(pl.Int32)).list.to_array(width=num_elements).alias('precursor_formula_array'),
         pl.col("collision_energy_list").list.len().ge(1).alias("multiple_collision_energies"),
         pl.col("collision_energy_list").list.mean().alias("collision_energy_mean")
     )
@@ -161,30 +163,21 @@ def _annotate_spectra(data: T, raw_fragment_tolerance_ppm: float, normalized_fra
         data_frame = cast(T,data_df)
     else:
         raise TypeError(f"In function '_annotate_spectra', data must be a Polars DataFrame or LazyFrame, got {type(data)}")
-    # print(data_frame.schema)
-    # make sure there are no nulls in adduct_mass
-    # assert data_frame.filter(pl.col("adduct_mass").is_null()).height == 0, "Some entries have null adduct_mass after joining. Check Precursor_type values."
+
     return cast(T,
     data_frame.with_columns(
-        pl.col("adduct_mass").fill_null(
-            pl.when(pl.col("Ion_mode") == "P").then(1.007276).otherwise(-1.007276)
-        ) # Default to 0.0 if no adduct mass is found
-    ).with_columns(# Calculate non_ionized_mass
-        (pl.col("PrecursorMZ").sub(pl.col("adduct_mass"))).alias("non_ionized_mass")
-    ).with_columns( # Prepare fragment masses by subtracting adduct_mass
-        pl.col("raw_spectrum_mz").sub(pl.col("adduct_mass")).alias("non_ionized_raw_spectrum_mz")
-    ).with_columns( # Call clean_and_normalize_spectra_known_precursor_verbose
         pl.struct([
-            pl.col("Formula_array"),
-            pl.col("non_ionized_raw_spectrum_mz"),
+            pl.col("precursor_formula_array"),
+            pl.col("raw_spectrum_mz"),
             pl.col("raw_spectrum_intensity")
         ]).map_batches(
             function = lambda batch: clean_and_normalize_spectra_known_precursor_verbose(
-                precursor_formula_series=batch.struct.field("Formula_array"),
-                fragment_masses_series=batch.struct.field("non_ionized_raw_spectrum_mz"),
+                precursor_formula_series=batch.struct.field("precursor_formula_array"),
+                fragment_masses_series=batch.struct.field("raw_spectrum_mz"),
                 fragment_intensities_series=batch.struct.field("raw_spectrum_intensity"),
                 tolerance_ppm=raw_fragment_tolerance_ppm,
                 max_allowed_normalized_mass_error_ppm=normalized_fragment_tolerance_ppm,
+                min_dbe=-0.5,#protonated can be seen as having DBE of -0.5, since there is one extra H
                 dbe_mode="half_integer"
             ),
             return_dtype=pl.Struct({
@@ -197,20 +190,20 @@ def _annotate_spectra(data: T, raw_fragment_tolerance_ppm: float, normalized_fra
             is_elementwise=True
         ).alias("cleaned_normalized_spectra")
     ).with_columns( # Extract results and add adduct_mass back to normalized masses
-        pl.col("cleaned_normalized_spectra").struct.field("masses_normalized").add(pl.col("adduct_mass")).alias("cleaned_normalized_mz"),
+        pl.col("cleaned_normalized_spectra").struct.field("masses_normalized").alias("cleaned_normalized_mz"),
         pl.col("cleaned_normalized_spectra").struct.field("cleaned_intensities").alias("cleaned_normalized_intensity"),
         pl.col("cleaned_normalized_spectra").struct.field("fragment_formulas").alias("cleaned_fragment_formulas"),
         pl.col("cleaned_normalized_spectra").struct.field("fragment_errors_ppm").alias("cleaned_fragment_errors_ppm"),
         pl.col("cleaned_normalized_spectra").struct.field("fragment_formulas_str").alias("cleaned_fragment_formulas_str"),
     ).drop(
-        "cleaned_normalized_spectra", "non_ionized_mass", "non_ionized_raw_spectrum_mz", "adduct_mass"
+        "cleaned_normalized_spectra"
     ).with_columns(
          pl.struct([
             pl.col("cleaned_normalized_mz").alias("mz1"),
             pl.col("cleaned_normalized_intensity").alias("intensities1"),
             pl.col("raw_spectrum_mz").alias("mz2"),
             pl.col("raw_spectrum_intensity").alias("intensities2")
-        ]).spectral.explained_intensity(permissive=True,ms2_tolerance_in_ppm=10.0).alias("explained_intensity"))
+        ]).spectral.explained_intensity(permissive=True,ms2_tolerance_in_ppm=15.0).alias("explained_intensity"))
     )
 
 def _add_precursor_type_indicators(data: T) -> T:
