@@ -1,4 +1,4 @@
-'''
+
 use serde::Deserialize;
 
 pub const NUM_ELEMENTS: usize = 15;
@@ -62,4 +62,3 @@ pub fn check_dbe(formula: &Formula, min_dbe: f64, max_dbe: f64, dbe_mode: &str) 
         _ => false,
     }
 }
-''
