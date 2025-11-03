@@ -4,11 +4,11 @@ use pyo3_polars::derive::polars_expr;
 use crate::algorithms::MassDecomposer;
 use crate::common::{DecompositionParams, NUM_ELEMENTS};
 
-use polars::chunked_array::builder::get_list_builder;
+use polars::chunked_array::builder::{get_list_builder, ListPrimitiveChunkedBuilder};
 
 pub fn decompose_mass_output(_: &[Field]) -> PolarsResult<Field> {
     Ok(Field::new(
-        "decomposed_formulas",
+        "decomposed_formulas".into(),
         DataType::List(Box::new(DataType::Array(Box::new(DataType::Int32), NUM_ELEMENTS))),
     ))
 }
@@ -25,19 +25,31 @@ pub fn decompose_mass(inputs: &[Series], kwargs: DecompositionParams) -> PolarsR
         &DataType::Array(Box::new(DataType::Int32), NUM_ELEMENTS),
         ca.len(),
         ca.len() * 5, // initial capacity for inner list, assuming avg 5 formulas per mass
-        "decomposed_formulas",
-    )?;
+        "decomposed_formulas".into(),
+    );
 
     for opt_mass in ca.into_iter() {
         if let Some(mass) = opt_mass {
             let mut decomposer = MassDecomposer::new(min_bounds, max_bounds);
             let formulas = decomposer.decompose(mass, &kwargs);
-            let mut formula_builder = FixedSizeListBuilder::new("formula", DataType::Int32, NUM_ELEMENTS, formulas.len());
-            for formula in formulas {
-                formula_builder.append_slice(&formula);
+
+            // 1. Build a List(Int32) series for the formulas of this mass
+            let mut list_primitive_builder = ListPrimitiveChunkedBuilder::<Int32Type>::new(
+                "formulas_for_mass".into(),
+                formulas.len(), // capacity
+                formulas.len() * NUM_ELEMENTS, // values capacity
+            );
+            for formula in &formulas {
+                list_primitive_builder.append_slice(formula);
             }
-            let s = formula_builder.finish().into_series();
-            list_builder.append_series(&s)?;
+            let list_primitive_chunked = list_primitive_builder.finish();
+            let list_series = list_primitive_chunked.into_series();
+
+            // 2. Cast to Array(Int32, NUM_ELEMENTS)
+            let array_series = list_series.cast(&DataType::Array(Box::new(DataType::Int32), NUM_ELEMENTS))?;
+
+            // 3. Append to the main list_builder
+            list_builder.append_series(&array_series)?;
         } else {
             list_builder.append_null();
         }
