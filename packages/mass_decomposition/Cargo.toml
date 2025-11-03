@@ -8,9 +8,9 @@ name = "mass_decomposition"
 crate-type = ["cdylib"]
 
 [dependencies]
-polars = { version = "*", features = ["serde", "rayon"] }
-pyo3 = { version = "*", features = ["extension-module"] }
-pyo3-polars = { version = "*", features = ["derive"] }
+polars = { version = "*", features = ["dtype-struct","dtype-array", "dtype-full"] }
+pyo3 = { version = "*", features = ["extension-module", "abi3-py38"] }
+pyo3-polars = { version = "*", features = ["derive", "dtype-struct","dtype-full", "dtype-array"] }
 polars-arrow = { version = "*", default-features = false }
 pyo3-ffi = "*"
 rayon = "*"
@@ -20,9 +20,9 @@ num-integer = "*"
 once_cell = "*"
 
 
-[dev-dependencies]
-criterion = { version = "0.5", features = ["html_reports"] }
+# [dev-dependencies]
+# criterion = { version = "0.5", features = ["html_reports"] }
 
-[[bench]]
-name = "mass_decomposition_benchmark"
-harness = false
+# [[bench]]
+# name = "mass_decomposition_benchmark"
+# harness = false
