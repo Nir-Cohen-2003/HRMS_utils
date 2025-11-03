@@ -18,6 +18,7 @@ pub struct MassDecomposer {
     is_initialized: bool,
     min_bounds: Formula,
     max_bounds: Formula,
+    temp_counts: Vec<i32>,
 }
 
 impl MassDecomposer {
@@ -31,6 +32,7 @@ impl MassDecomposer {
             is_initialized: false,
             min_bounds,
             max_bounds,
+            temp_counts: Vec::new(),
         };
         decomposer.init_money_changing();
         decomposer
@@ -162,41 +164,103 @@ impl MassDecomposer {
         (start, end)
     }
 
-    fn decomposable(&self, i: usize, m: i64, a1: i64) -> bool {
+
+    fn decomposable_fast(&self, i: usize, m: i64, remainder: i64) -> bool {
         if m < 0 {
             return false;
         }
-        if a1 <= 0 {
-            return false;
-        }
-        self.ert[(m % a1) as usize][i] <= m
+        self.ert[remainder as usize][i] <= m
     }
 
-    fn integer_decompose_recursive(&self, mass: i64, k: usize, current_formula: &mut Formula, results: &mut Vec<Formula>) {
+    fn integer_decompose(&mut self, mass: i64) -> Vec<Formula> {
+        let mut results = Vec::with_capacity(100);
+        let k = self.weights.len();
         if k == 0 {
-            if mass % self.weights[0].integer_mass == 0 {
-                let count = (mass / self.weights[0].integer_mass) as i32;
-                if count >= self.weights[0].min_count && count <= self.weights[0].max_count {
-                    current_formula[self.weights[0].original_index] = count;
-                    results.push(current_formula.clone());
+            return results;
+        }
+
+        let weight_masses: Vec<i64> = self.weights.iter().map(|w| w.integer_mass).collect();
+        let a = weight_masses[0];
+        if a <= 0 {
+            return results;
+        }
+
+        if self.temp_counts.len() < k {
+            self.temp_counts.resize(k, 0);
+        }
+        self.temp_counts.fill(0);
+
+        let mut i = (k - 1) as isize;
+        let mut m = mass;
+
+        loop {
+            let remainder = m % a;
+            if !self.decomposable_fast(i as usize, m, remainder) {
+                loop {
+                    if i >= (k - 1) as isize {
+                        return results;
+                    }
+                    if self.decomposable_fast(i as usize, m, m % a) {
+                        break;
+                    }
+                    m += self.temp_counts[i as usize] as i64 * weight_masses[i as usize];
+                    self.temp_counts[i as usize] = 0;
+                    i += 1;
+                }
+
+                if i < k as isize {
+                    m -= weight_masses[i as usize];
+                    self.temp_counts[i as usize] += 1;
+                }
+            } else {
+                while i > 0 {
+                    if !self.decomposable_fast((i - 1) as usize, m, remainder) {
+                        break;
+                    }
+                    i -= 1;
+                }
+
+                if i == 0 {
+                    if a > 0 {
+                        self.temp_counts[0] = (m / a) as i32;
+                    } else {
+                        self.temp_counts[0] = 0;
+                    }
+
+                    let mut valid_formula = true;
+                    for j in 0..k {
+                        if self.temp_counts[j] < self.weights[j].min_count || self.temp_counts[j] > self.weights[j].max_count {
+                            valid_formula = false;
+                            break;
+                        }
+                    }
+
+                    if valid_formula {
+                        let mut res = [0; NUM_ELEMENTS];
+                        for j in 0..k {
+                            res[self.weights[j].original_index] = self.temp_counts[j];
+                        }
+                        results.push(res);
+                    }
+                    i += 1;
+                }
+
+                while i < k as isize && self.temp_counts[i as usize] >= self.weights[i as usize].max_count {
+                    m += self.temp_counts[i as usize] as i64 * weight_masses[i as usize];
+                    self.temp_counts[i as usize] = 0;
+                    i += 1;
+                }
+
+                if i < k as isize {
+                    m -= weight_masses[i as usize];
+                    self.temp_counts[i as usize] += 1;
+                } else {
+                    return results;
                 }
             }
-            return;
-        }
-
-        let w_k = self.weights[k].integer_mass;
-        let min_c = self.weights[k].min_count;
-        let max_c = self.weights[k].max_count;
-
-        for c in min_c..=max_c {
-            let remaining_mass = mass - c as i64 * w_k;
-            if remaining_mass >= 0 && self.decomposable(k - 1, remaining_mass, self.weights[0].integer_mass) {
-                current_formula[self.weights[k].original_index] = c;
-                self.integer_decompose_recursive(remaining_mass, k - 1, current_formula, results);
-            }
         }
     }
-    
+
     pub fn decompose(&mut self, target_mass: f64, params: &DecompositionParams) -> Vec<Formula> {
         if !self.is_initialized {
             self.precision = (params.tolerance_ppm * target_mass * 2.0) / 1_000_000.0;
@@ -217,12 +281,8 @@ impl MassDecomposer {
         
         let mut all_results = Vec::new();
         for m in start..=end {
-            let mut results = Vec::new();
-            let mut current_formula = [0; NUM_ELEMENTS];
-            if self.weights.len() > 0 {
-                self.integer_decompose_recursive(m, self.weights.len() - 1, &mut current_formula, &mut results);
-            }
-            all_results.extend(results);
+            let mut results = self.integer_decompose(m);
+            all_results.append(&mut results);
         }
         
         all_results.into_iter().filter(|f| check_dbe(f, params.min_dbe, params.max_dbe, &params.dbe_mode)).collect()
