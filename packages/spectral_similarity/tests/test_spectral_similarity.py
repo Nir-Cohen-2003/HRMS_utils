@@ -193,8 +193,31 @@ def test_cosine_similarities():
     # Why: explained intensity: sum of min intensities / sum of spectrum2 intensities
     # matching peaks: min(0.5, 0.5) + min(0.8, 0.8) = 1.3
     # total intensity in spectrum2: 0.5 + 0.8 + 1.0 = 2.3
-    expected_ei = 1.3 / 2.3
-
+    
+    df = pl.DataFrame(
+        {
+            "spectra": [
+                {
+                    "mz1": [100.0, 200.0],
+                    "intensities1": [0.5, 0.8],
+                    "mz2": [100.0, 200.0, 400.0],
+                    "intensities2": [0.5, 0.8, 1.0],
+                }
+            ]
+        },
+        schema={
+            "spectra": pl.Struct(
+                {
+                    "mz1": pl.List(pl.Float64),
+                    "intensities1": pl.List(pl.Float64),
+                    "mz2": pl.List(pl.Float64),
+                    "intensities2": pl.List(pl.Float64),
+                }
+            )
+        },
+    )
+    expected_ei = 1.3 / 2.3 
+    
     result_ei = df.with_columns(
         similarity=pl.col("spectra").spectral.explained_intensity()
     )
@@ -204,24 +227,44 @@ def test_cosine_similarities():
         result_ei
     ), f"Expected explained intensity ≈ {expected_ei}, got {result_ei['similarity'].to_list()}"
 
-    # Why: mass weighted explained intensity uses ALL peaks in spectrum2 denominator
-    # weighted intensities: intensity * mz^1.0
-    mass_power = 0
-    weighted_intensities1 = (np.array([0.5, 0.8]) ** mass_power) * np.array([100.0, 200.0])
-    weighted_intensities2 = (np.array([0.5, 0.8, 1.0]) ** mass_power) * np.array([100.0, 200.0, 400.0])
-    matching_weighted_intensities = (np.array([0.5, 0.8]) ** mass_power) * np.array([100.0, 200.0])
-
-    expected_mwei = np.linalg.norm(matching_weighted_intensities) / np.linalg.norm(weighted_intensities2)
-
-    result_mwei = df.with_columns(
-        similarity=pl.col("spectra").spectral.mass_weighted_explained_intensity()
+    # subset error
+    df_ei_not_subset = pl.DataFrame(
+        {
+            "spectra": [
+                {
+                    "mz1": [100.0, 200.0, 500.0],
+                    "intensities1": [0.5, 0.8, 1.0],
+                    "mz2": [100.0, 200.0, 400.0],
+                    "intensities2": [0.5, 0.8, 1.0]
+                }
+            ]
+        },
+        schema={
+            "spectra": pl.Struct(
+                {
+                    "mz1": pl.List(pl.Float64),
+                    "intensities1": pl.List(pl.Float64),
+                    "mz2": pl.List(pl.Float64),
+                    "intensities2": pl.List(pl.Float64)
+                }
+            )
+        }
     )
 
-    result_filtered = result_mwei.filter(
-        (pl.col("similarity") - expected_mwei).abs() < 1e-6
+    result_ei_not_subset = df_ei_not_subset.with_columns(
+        similarity=pl.col("spectra").spectral.explained_intensity(intensity_power=1.0, mass_power=0.0)
     )
-    assert len(result_filtered) == len(
-        result_mwei
-    ), f"Expected mass-weighted explained intensity ≈ {expected_mwei}, got {result_mwei['similarity'].to_list()}"
+
+    assert result_ei_not_subset["similarity"][0] == -1.0, f"Expected explained intensity to be -1.0 when A is not a subset of B, got {result_ei_not_subset['similarity'][0]}"
+    # now tha same for mass weighted
+    result_ei_not_subset_mw = df_ei_not_subset.with_columns(
+        similarity=pl.col("spectra").spectral.explained_intensity(intensity_power=0.5, mass_power=1.0)
+    )
+
+    # Why: mass-weighted explained intensity should also return -1.0 when A is not a subset of B
+    assert result_ei_not_subset_mw["similarity"][0] == -1.0, (
+        f"Expected mass-weighted explained intensity to be -1.0 when A is not a subset of B, "
+        f"got {result_ei_not_subset_mw['similarity'][0]}"
+    )
 
 

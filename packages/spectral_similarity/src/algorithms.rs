@@ -168,3 +168,73 @@ pub fn general_cosine_similarity(
 
     (dot_product / (norm_a * norm_b)).max(0.0).min(1.0)
 }
+
+pub fn calculate_explained_intensity(
+    spec_a: &Spectrum,
+    spec_b: &Spectrum,
+    ms2_tolerance_in_ppm: f64,
+    intensity_power: f64,
+    mass_power: f64,
+    clean_spectra_first: bool,
+    noise_threshold: Option<f64>,
+    precursor_mz: Option<f64>,
+    ignore_precursor: Option<bool>,
+) -> f64 {
+    let (mut a_cleaned, mut b_cleaned) = if clean_spectra_first {
+        let cleaned_a = clean_spectrum(&spec_a.peaks, None, precursor_mz, noise_threshold, 2.0 * ms2_tolerance_in_ppm, None, false, precursor_mz, ignore_precursor);
+        let cleaned_b = clean_spectrum(&spec_b.peaks, None, precursor_mz, noise_threshold, 2.0 * ms2_tolerance_in_ppm, None, false, precursor_mz, ignore_precursor);
+        (cleaned_a, cleaned_b)
+    } else {
+        (spec_a.clone(), spec_b.clone())
+    };
+
+    if !clean_spectra_first {
+        a_cleaned.peaks.sort_by(|a, b| a.mz.partial_cmp(&b.mz).unwrap());
+        b_cleaned.peaks.sort_by(|a, b| a.mz.partial_cmp(&b.mz).unwrap());
+    }
+
+    if a_cleaned.peaks.is_empty() { return 0.0; }
+    if b_cleaned.peaks.is_empty() { return 0.0; }
+
+    let weighted_peaks_a: Vec<(f64, f64)> = a_cleaned.peaks.iter().map(|p| {
+        let weighted_intensity = p.intensity.powf(intensity_power) * p.mz.powf(mass_power);
+        (p.mz, weighted_intensity)
+    }).collect();
+
+    let weighted_peaks_b: Vec<(f64, f64)> = b_cleaned.peaks.iter().map(|p| {
+        let weighted_intensity = p.intensity.powf(intensity_power) * p.mz.powf(mass_power);
+        (p.mz, weighted_intensity)
+    }).collect();
+
+    let mut a_idx = 0;
+    let mut b_idx = 0;
+    let mut sum_a = 0.0;
+
+    while a_idx < weighted_peaks_a.len() && b_idx < weighted_peaks_b.len() {
+        let mass_a = weighted_peaks_a[a_idx].0;
+        let tolerance = (ms2_tolerance_in_ppm * 1e-6 * MASS_THRESHOLD_FOR_PPM).max(ms2_tolerance_in_ppm * 1e-6 * mass_a);
+        let mass_diff = weighted_peaks_a[a_idx].0 - weighted_peaks_b[b_idx].0;
+
+        if mass_diff < -tolerance {
+            return -1.0;
+        } else if mass_diff > tolerance {
+            b_idx += 1;
+        } else {
+            sum_a += weighted_peaks_a[a_idx].1;
+            a_idx += 1;
+            b_idx += 1;
+        }
+    }
+
+    if a_idx < weighted_peaks_a.len() {
+        return -1.0;
+    }
+
+    let sum_b: f64 = weighted_peaks_b.iter().map(|(_, intensity)| *intensity).sum();
+
+    if sum_b == 0.0 {
+        return 0.0;
+    }
+
+    (sum_a / sum_b).max(0.0).min(1.0)
+}

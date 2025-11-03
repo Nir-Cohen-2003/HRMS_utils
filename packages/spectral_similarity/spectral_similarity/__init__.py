@@ -114,6 +114,8 @@ class SpectralUtils:
 
     def explained_intensity(
         self,
+        intensity_power: float | None = 1.0,
+        mass_power: float | None = 0.0,
         ms2_tolerance_in_ppm: float | None = None,
         clean_spectra_first: bool | None = None,
         noise_threshold: float | None = 0.001,
@@ -121,35 +123,24 @@ class SpectralUtils:
         ignore_precursor: bool | None = None,
     ) -> pl.Expr:
         """
-        Calculate explained intensity (cosine similarity with intensity^0.5, mass^0).
+        Calculate explained intensity.
+        Assumes spectrum 1 is a subset of spectrum 2.
         """
-        return self.general_cosine_similarity(
-            intensity_power=0.5,
-            mass_power=0.0,
-            ms2_tolerance_in_ppm=ms2_tolerance_in_ppm,
-            clean_spectra_first=clean_spectra_first,
-            noise_threshold=noise_threshold,
-            precursor_mz=precursor_mz,
-            ignore_precursor=ignore_precursor,
-        )
+        kwargs = {
+            "intensity_power": intensity_power,
+            "mass_power": mass_power,
+            "ms2_tolerance_in_ppm": ms2_tolerance_in_ppm,
+            "clean_spectra_first": clean_spectra_first,
+            "noise_threshold": noise_threshold,
+            "precursor_mz": precursor_mz,
+            "ignore_precursor": ignore_precursor,
+        }
+        kwargs = {k: v for k, v in kwargs.items() if v is not None}
 
-    def mass_weighted_explained_intensity(
-        self,
-        ms2_tolerance_in_ppm: float | None = None,
-        clean_spectra_first: bool | None = None,
-        noise_threshold: float | None = 0.001,
-        precursor_mz: float | None = None,
-        ignore_precursor: bool | None = None,
-    ) -> pl.Expr:
-        """
-        Calculate mass weighted explained intensity (cosine similarity with intensity^0.5, mass^1).
-        """
-        return self.general_cosine_similarity(
-            intensity_power=0.5,
-            mass_power=1.0,
-            ms2_tolerance_in_ppm=ms2_tolerance_in_ppm,
-            clean_spectra_first=clean_spectra_first,
-            noise_threshold=noise_threshold,
-            precursor_mz=precursor_mz,
-            ignore_precursor=ignore_precursor,
+        return register_plugin_function(
+            args=[self._expr],
+            plugin_path=LIB,
+            function_name="explained_intensity_struct",
+            is_elementwise=True,
+            kwargs=kwargs,
         )

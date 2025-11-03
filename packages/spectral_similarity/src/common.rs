@@ -63,12 +63,12 @@ pub fn clean_spectrum(
     });
 
     if let Some(pmz) = precursor_mz {
-        // ignore fragments in the 1 Da range below it too.
-        cleaned_peaks.retain(|p| p.mz < pmz - 1.0);
-
         if ignore_precursor.unwrap_or(false) {
             let tolerance = (ms2_tolerance_in_ppm * 1e-6 * MASS_THRESHOLD_FOR_PPM).max(ms2_tolerance_in_ppm * 1e-6 * pmz);
             cleaned_peaks.retain(|p| (p.mz - pmz).abs() > tolerance);
+        } else {
+            // ignore fragments in the 1 Da range below it too.
+            cleaned_peaks.retain(|p| p.mz < pmz - 1.0);
         }
     }
 
