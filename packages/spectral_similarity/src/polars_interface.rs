@@ -14,6 +14,7 @@ pub struct SimilarityKwargs {
     ignore_precursor: Option<bool>,
     intensity_power: Option<f64>,
     mass_power: Option<f64>,
+    permissive: Option<bool>,
 }
 
 #[polars_expr(output_type=Float64)]
@@ -159,6 +160,7 @@ pub fn explained_intensity_struct(inputs: &[Series], kwargs: SimilarityKwargs) -
     let ignore_precursor = kwargs.ignore_precursor;
     let intensity_power = kwargs.intensity_power.unwrap_or(1.0);
     let mass_power = kwargs.mass_power.unwrap_or(0.0);
+    let permissive = kwargs.permissive;
 
     let out: Float64Chunked = mz1_vec
         .into_par_iter()
@@ -181,6 +183,7 @@ pub fn explained_intensity_struct(inputs: &[Series], kwargs: SimilarityKwargs) -
                         noise_threshold,
                         precursor_mz,
                         ignore_precursor,
+                        permissive,
                     );
                     Some(similarity)
                 }
@@ -191,3 +194,5 @@ pub fn explained_intensity_struct(inputs: &[Series], kwargs: SimilarityKwargs) -
 
     Ok(out.into_series())
 }
+
+

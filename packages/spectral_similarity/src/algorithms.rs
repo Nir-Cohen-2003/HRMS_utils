@@ -179,6 +179,7 @@ pub fn calculate_explained_intensity(
     noise_threshold: Option<f64>,
     precursor_mz: Option<f64>,
     ignore_precursor: Option<bool>,
+    permissive: Option<bool>,
 ) -> f64 {
     let (mut a_cleaned, mut b_cleaned) = if clean_spectra_first {
         let cleaned_a = clean_spectrum(&spec_a.peaks, None, precursor_mz, noise_threshold, 2.0 * ms2_tolerance_in_ppm, None, false, precursor_mz, ignore_precursor);
@@ -209,6 +210,7 @@ pub fn calculate_explained_intensity(
     let mut a_idx = 0;
     let mut b_idx = 0;
     let mut sum_a = 0.0;
+    let permissive_flag = permissive.unwrap_or(false);
 
     while a_idx < weighted_peaks_a.len() && b_idx < weighted_peaks_b.len() {
         let mass_a = weighted_peaks_a[a_idx].0;
@@ -216,7 +218,10 @@ pub fn calculate_explained_intensity(
         let mass_diff = weighted_peaks_a[a_idx].0 - weighted_peaks_b[b_idx].0;
 
         if mass_diff < -tolerance {
-            return -1.0;
+            if !permissive_flag {
+                return -1.0;
+            }
+            a_idx += 1;
         } else if mass_diff > tolerance {
             b_idx += 1;
         } else {
@@ -226,7 +231,7 @@ pub fn calculate_explained_intensity(
         }
     }
 
-    if a_idx < weighted_peaks_a.len() {
+    if !permissive_flag && a_idx < weighted_peaks_a.len() {
         return -1.0;
     }
 

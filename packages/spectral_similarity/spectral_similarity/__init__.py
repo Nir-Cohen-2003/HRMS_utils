@@ -140,6 +140,7 @@ class SpectralUtils:
         noise_threshold: float | None = 0.001,
         precursor_mz: float | None = None,
         ignore_precursor: bool | None = None,
+        permissive: bool = False,
     ) -> pl.Expr:
         """
         Calculate explained intensity.
@@ -153,6 +154,7 @@ class SpectralUtils:
             "noise_threshold": noise_threshold,
             "precursor_mz": precursor_mz,
             "ignore_precursor": ignore_precursor,
+            "permissive": permissive,
         }
         kwargs = {k: v for k, v in kwargs.items() if v is not None}
 

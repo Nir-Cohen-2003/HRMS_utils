@@ -175,7 +175,7 @@ def test_cosine_similarities():
     # matching_weighted_intensities1 = (matching_intensities1**0.5) * np.array([100.0, 200.0])
     # matching_weighted_intensities2 = (matching_intensities2**0.5) * np.array([100.0, 200.0])
     
-    # expected_mw_cosine = np.dot(matching_weighted_intensities1, matching_weighted_intensities2) / (
+    # expected_mw_cosine = np.dot(.venv)matching_weighted_intensities1, matching_weighted_intensities2) / (
     #     np.linalg.norm(all_weighted_intensities1) * np.linalg.norm(all_weighted_intensities2)
     # )
 
@@ -268,3 +268,68 @@ def test_cosine_similarities():
     )
 
 
+def test_explained_intensity_options():
+    # Test with permissive=True, where spec A is not a subset of spec B
+    df_permissive = pl.DataFrame(
+        {
+            "spectra": [
+                {
+                    "mz1": [100.0, 200.0, 500.0], # 500.0 is not in mz2
+                    "intensities1": [0.5, 0.8, 1.0],
+                    "mz2": [100.0, 200.0, 400.0],
+                    "intensities2": [0.5, 0.8, 1.0]
+                }
+            ]
+        },
+        schema={
+            "spectra": pl.Struct({
+                "mz1": pl.List(pl.Float64), "intensities1": pl.List(pl.Float64),
+                "mz2": pl.List(pl.Float64), "intensities2": pl.List(pl.Float64)
+            })
+        }
+    )
+
+    # With permissive=True, it should ignore the non-matching peak (500.0) and calculate EI
+    # Matching peaks: 100.0, 200.0. Sum of intensities in spec A: 0.5 + 0.8 = 1.3
+    # Total intensity in spec B: 0.5 + 0.8 + 1.0 = 2.3
+    expected_ei_permissive = 1.3 / 2.3
+    result_permissive = df_permissive.with_columns(
+        similarity=pl.col("spectra").spectral.explained_intensity(permissive=True)
+    )
+    assert abs(result_permissive["similarity"][0] - expected_ei_permissive) < 1e-6, \
+        f"Expected permissive explained intensity ≈ {expected_ei_permissive}, got {result_permissive['similarity'][0]}"
+
+    # With permissive=False (default), it should return -1.0
+    result_strict = df_permissive.with_columns(
+        similarity=pl.col("spectra").spectral.explained_intensity(permissive=False)
+    )
+    assert result_strict["similarity"][0] == -1.0, \
+        f"Expected strict explained intensity to be -1.0, got {result_strict['similarity'][0]}"
+
+    # Test with ms2_tolerance_in_da
+    df_da_tolerance = pl.DataFrame(
+        {
+            "spectra": [
+                {
+                    "mz1": [100.0, 200.05], # 200.05 is within 0.1 Da of 200.0
+                    "intensities1": [0.5, 0.8],
+                    "mz2": [100.0, 200.0, 400.0],
+                    "intensities2": [0.5, 0.8, 1.0]
+                }
+            ]
+        },
+        schema={
+            "spectra": pl.Struct({
+                "mz1": pl.List(pl.Float64), "intensities1": pl.List(pl.Float64),
+                "mz2": pl.List(pl.Float64), "intensities2": pl.List(pl.Float64)
+            })
+        }
+    )
+
+    # With default ppm tolerance, peaks might not match
+    # 200.05 vs 200.0 -> diff is 0.05. ppm diff is (0.05 / 200.0) * 1e6 = 250 ppm. Default is 5 ppm.
+    result_ppm = df_da_tolerance.with_columns(
+        similarity=pl.col("spectra").spectral.explained_intensity()
+    )
+    assert result_ppm["similarity"][0] == -1.0, \
+        f"Expected explained intensity with default ppm tolerance to be -1.0, got {result_ppm['similarity'][0]}"

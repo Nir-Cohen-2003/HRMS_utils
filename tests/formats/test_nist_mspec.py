@@ -98,19 +98,19 @@ def run_mspec_reader_profile(msp_file_path: Path):
     print(f"  - ESI TOF: {esi_tof_count}")
     print(f"  - ESI Other: {esi_other_count}")
 
-    # print teh distribution of "entropy_similarity" column if it exists
-    if "entropy_similarity" in spectra_df.columns:
-        print("\n'entropy_similarity' column statistics, for clean precursors only:")
+    # print teh distribution of "explained_intensity" column if it exists
+    if "explained_intensity" in spectra_df.columns:
+        print("\n'explained_intensity' column statistics, for clean precursors only:")
         entropy_stats = spectra_df.filter(pl.col("clean_precursor")).select([
-            pl.col("entropy_similarity").mean().alias("mean"),
-            pl.col("entropy_similarity").median().alias("median"),
-            pl.col("entropy_similarity").min().alias("min"),
-            pl.col("entropy_similarity").max().alias("max"),
-            pl.col("entropy_similarity").std().alias("std_dev"),
+            pl.col("explained_intensity").mean().alias("mean"),
+            pl.col("explained_intensity").median().alias("median"),
+            pl.col("explained_intensity").min().alias("min"),
+            pl.col("explained_intensity").max().alias("max"),
+            pl.col("explained_intensity").std().alias("std_dev"),
         ]).to_dict(as_series=False)
         for stat, value in entropy_stats.items():
             print(f"  - {stat}: {value[0]}")
-    print(spectra_df.filter(pl.col("clean_precursor"),pl.col("Precursor_type").eq("[M+H]+")).sort(by="entropy_similarity").head().select(["entropy_similarity","NIST_ID","cleaned_fragment_formulas_str","cleaned_fragment_errors_ppm"]))
+    print(spectra_df.filter(pl.col("clean_precursor"),pl.col("Precursor_type").eq("[M+H]+")).sort(by="explained_intensity").head().select(["explained_intensity","NIST_ID","cleaned_fragment_formulas_str","cleaned_fragment_errors_ppm"]))
 
 if __name__ == "__main__":
     # Make data_dir relative to this test file's location (resolve to absolute path)
