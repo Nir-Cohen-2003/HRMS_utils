@@ -110,7 +110,7 @@ def run_mspec_reader_profile(msp_file_path: Path):
         ]).to_dict(as_series=False)
         for stat, value in entropy_stats.items():
             print(f"  - {stat}: {value[0]}")
-    print(spectra_df.filter(pl.col("clean_precursor"),pl.col("Precursor_type").eq("[M+H]+")).sort(by="explained_intensity").head().select(["explained_intensity","NIST_ID","cleaned_fragment_formulas_str","cleaned_fragment_errors_ppm"]))
+    print(spectra_df.filter(pl.col("clean_precursor"),pl.col("Precursor_type").eq("[M+H]+")).sort(by="explained_intensity").head(1).select(["explained_intensity","NIST_ID","raw_spectrum_mz","cleaned_fragment_formulas_str","cleaned_fragment_errors_ppm"]).to_init_repr())
 
 if __name__ == "__main__":
     # Make data_dir relative to this test file's location (resolve to absolute path)
