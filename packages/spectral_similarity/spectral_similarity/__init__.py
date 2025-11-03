@@ -111,7 +111,26 @@ class SpectralUtils:
             precursor_mz=precursor_mz,
             ignore_precursor=ignore_precursor,
         )
-
+    def dotprod_similarity(
+        self,
+        ms2_tolerance_in_ppm: float | None = None,
+        clean_spectra_first: bool | None = None,
+        noise_threshold: float | None = 0.001,
+        precursor_mz: float | None = None,
+        ignore_precursor: bool | None = None,
+    ) -> pl.Expr:
+        """
+        Calculate NIST-like dot product similarity (intensity^0.5, mass^0.0).
+        """
+        return self.general_cosine_similarity(
+            intensity_power=0.5,
+            mass_power=0.0,
+            ms2_tolerance_in_ppm=ms2_tolerance_in_ppm,
+            clean_spectra_first=clean_spectra_first,
+            noise_threshold=noise_threshold,
+            precursor_mz=precursor_mz,
+            ignore_precursor=ignore_precursor,
+        )
     def explained_intensity(
         self,
         intensity_power: float | None = 1.0,
