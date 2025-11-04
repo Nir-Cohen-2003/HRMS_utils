@@ -131,7 +131,7 @@ def test_dotprod_similarity_against_nist() -> None:
 
     result_df: pl.DataFrame = comparison_df.with_columns(
         pl.col("spectra_pair_struct").spectral.dotprod_similarity(
-            ms2_tolerance_in_ppm=12.0,
+            ms2_tolerance_in_ppm=10.0,
             clean_spectra_first=False,
             # noise_threshold=0.01,
         ).alias("my_dotprod_score")
