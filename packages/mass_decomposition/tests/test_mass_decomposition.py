@@ -115,9 +115,6 @@ def test_decompose_mass(mass, tolerance_ppm, min_bounds_dict, max_bounds_dict, e
 
     sorted_output = sorted(output_formulas_arr)
     sorted_expected = sorted(expected_formulas_arr)
-    for arr in sorted_expected:
-        print(arr)
-        print(formula_array_to_string(arr))
 
     output_formulas_str_sorted = sorted([formula_array_to_string(f) for f in output_formulas_arr])
     expected_formulas_str_sorted = sorted(expected_formulas_str)
@@ -235,7 +232,7 @@ SPECTRUM_TEST_CASES = [
         ]
     ),
     (
-        [78.046950,84.0554, 104.062600, 128.062600,152.1182],
+        [78.046950,84.056172, 104.062600, 128.062600,152.1182],
         "C8H14N3",
         5.0,
         False,
@@ -277,9 +274,13 @@ def test_decompose_spectrum_with_precursor(mz_values, precursor_formula_str, tol
     )
 
     output_formulas_arr = result_df.item(0, "decomposed").to_list()
+    expected_formulas_arr = [[formula_string_to_array(f) for f in formulas] for formulas in expected_formulas_str]
 
-    output_formulas_str_sorted = sorted([sorted([formula_array_to_string(f) for f in mz_formulas]) for mz_formulas in output_formulas_arr])
-    expected_formulas_str_sorted = sorted([sorted(mz_formulas_str) for mz_formulas_str in expected_formulas_str])
+    sorted_output = [sorted(mz_formulas) for mz_formulas in output_formulas_arr]
+    sorted_expected = [sorted(mz_formulas) for mz_formulas in expected_formulas_arr]
 
-    assert output_formulas_str_sorted == expected_formulas_str_sorted, \
-        f"Expected {expected_formulas_str_sorted}, but got {output_formulas_str_sorted}"
+    output_formulas_str_for_assert = [sorted([formula_array_to_string(f) for f in mz_formulas]) for mz_formulas in output_formulas_arr]
+    expected_formulas_str_for_assert = [sorted(mz_formulas_str) for mz_formulas_str in expected_formulas_str]
+
+    assert sorted_output == sorted_expected, \
+        f"Expected {expected_formulas_str_for_assert}, but got {output_formulas_str_for_assert}"
