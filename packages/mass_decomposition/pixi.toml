@@ -32,8 +32,7 @@ default = {features = [], solve-group = "default"}
 testing = {features = ["testing"], solve-group = "testing"}
 
 [feature.testing.tasks]
-test = "pytest tests/test_mass_decomposition.py"
-test_all = "POLARS_VERBOSE=1 pytest tests/"
+test_all = {cmd = ["pytest", "tests/"] ,env = { POLARS_VERBOSE= "1" }}
 [feature.testing.dependencies]
 polars = ">=1.33.0,<2"
 python = ">=3.9"
