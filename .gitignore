@@ -30,3 +30,4 @@ packages/my_plugin/
 packages/channel/
 packages/temp/
 **.tar**
+**.lock

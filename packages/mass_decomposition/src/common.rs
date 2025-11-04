@@ -13,6 +13,8 @@ pub const ATOMIC_MASSES: [f64; NUM_ELEMENTS] = [
     38.963707, 74.921596, 78.918338, 126.904468
 ];
 
+pub const MIN_MASS_FOR_TOLERANCE: f64 = 200.0;
+
 pub type Formula = [i32; NUM_ELEMENTS];
 
 #[derive(Debug, Clone, Deserialize)]

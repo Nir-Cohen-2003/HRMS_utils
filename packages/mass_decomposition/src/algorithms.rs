@@ -1,4 +1,4 @@
-use crate::common::{Formula, DecompositionParams, NUM_ELEMENTS, ATOMIC_MASSES, check_dbe};
+use crate::common::{Formula, DecompositionParams, NUM_ELEMENTS, ATOMIC_MASSES, check_dbe, MIN_MASS_FOR_TOLERANCE};
 
 #[derive(Debug, Clone)]
 struct Weight {
@@ -262,8 +262,10 @@ impl MassDecomposer {
     }
 
     pub fn decompose(&mut self, target_mass: f64, params: &DecompositionParams) -> Vec<Formula> {
+        let tolerance_da = params.tolerance_ppm * 1e-6 * target_mass.max(MIN_MASS_FOR_TOLERANCE);
+
         if !self.is_initialized {
-            self.precision = (params.tolerance_ppm * target_mass * 2.0) / 1_000_000.0;
+            self.precision = tolerance_da * 2.0;
             if self.precision == 0.0 {
                 return Vec::new();
             }
@@ -274,8 +276,8 @@ impl MassDecomposer {
             self.is_initialized = true;
         }
 
-        let mass_from = target_mass - (params.tolerance_ppm * target_mass) / 1_000_000.0;
-        let mass_to = target_mass + (params.tolerance_ppm * target_mass) / 1_000_000.0;
+        let mass_from = target_mass - tolerance_da;
+        let mass_to = target_mass + tolerance_da;
         
         let (start, end) = self.integer_bound(mass_from, mass_to);
         
