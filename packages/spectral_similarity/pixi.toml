@@ -34,6 +34,7 @@ testing = {features = ["testing"], solve-group = "testing"}
 [feature.testing.tasks]
 test = "pytest tests/test_spectral_similarity.py"
 compare_nist = "python tests/compare_to_nist.py"
+dotprod = "pytest tests/nist_dot_prod_match.py"
 [feature.testing.dependencies]
 polars = ">=1.33.0,<2"
 python = ">=3.9"
