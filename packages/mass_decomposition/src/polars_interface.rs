@@ -1,8 +1,9 @@
 use polars::prelude::*;
 use pyo3_polars::derive::polars_expr;
 use crate::algorithms::{MassDecomposer, SpectrumDecomposer};
-use crate::common::{DecompositionParams, SpectrumDecompositionParams, NUM_ELEMENTS, Formula};
+use crate::common::{DecompositionParams, DecompositionKwargs, SpectrumDecompositionParams, NUM_ELEMENTS, Formula};
 use polars::chunked_array::builder::{get_list_builder, ListPrimitiveChunkedBuilder};
+use itertools::izip;
 
 
 pub fn decompose_mass_output(_: &[Field]) -> PolarsResult<Field> {
@@ -58,6 +59,86 @@ pub fn decompose_mass(inputs: &[Series], kwargs: DecompositionParams) -> PolarsR
     let out = list_builder.finish();
     Ok(out.into_series())
 }
+
+#[polars_expr(output_type_func=decompose_mass_output)]
+pub fn decompose_mass_with_bounds_struct(inputs: &[Series], kwargs: DecompositionKwargs) -> PolarsResult<Series> {
+    let struct_series = &inputs[0];
+    let struct_ca = struct_series.struct_()?;
+
+    let mass_series = struct_ca.field_by_name("mass")?;
+    let min_bounds_series = struct_ca.field_by_name("min_bounds")?;
+    let max_bounds_series = struct_ca.field_by_name("max_bounds")?;
+
+    let mass_ca: &Float64Chunked = mass_series.f64()?;
+    let min_bounds_ca: &ArrayChunked = min_bounds_series.array()?;
+    let max_bounds_ca: &ArrayChunked = max_bounds_series.array()?;
+
+    let mut list_builder = get_list_builder(
+        &DataType::Array(Box::new(DataType::Int32), NUM_ELEMENTS),
+        mass_ca.len(),
+        mass_ca.len() * 5, // initial capacity for inner list, assuming avg 5 formulas per mass
+        "decomposed_formulas".into(),
+    );
+
+    let mass_iter = mass_ca.into_iter();
+    let min_bounds_iter = min_bounds_ca.into_iter();
+    let max_bounds_iter = max_bounds_ca.into_iter();
+
+    for (opt_mass, opt_min_bounds, opt_max_bounds) in izip!(mass_iter, min_bounds_iter, max_bounds_iter) {
+        if let (Some(mass), Some(min_bounds_arr), Some(max_bounds_arr)) = (opt_mass, opt_min_bounds, opt_max_bounds) {
+            
+            let mut min_bounds: Formula = [0; NUM_ELEMENTS];
+            let s_min = Series::from(min_bounds_arr);
+            let ca_min = s_min.i32()?;
+            ca_min.into_no_null_iter().enumerate().for_each(|(i, v)| {
+                min_bounds[i] = v;
+            });
+
+            let mut max_bounds: Formula = [0; NUM_ELEMENTS];
+            let s_max = Series::from(max_bounds_arr);
+            let ca_max = s_max.i32()?;
+            ca_max.into_no_null_iter().enumerate().for_each(|(i, v)| {
+                max_bounds[i] = v;
+            });
+
+            let mut decomposer = MassDecomposer::new(min_bounds, max_bounds);
+            let params = DecompositionParams {
+                tolerance_ppm: kwargs.tolerance_ppm,
+                min_dbe: kwargs.min_dbe,
+                max_dbe: kwargs.max_dbe,
+                dbe_mode: kwargs.dbe_mode.clone(),
+                min_bounds,
+                max_bounds,
+            };
+            let formulas = decomposer.decompose(mass, &params);
+
+            // 1. Build a List(Int32) series for the formulas of this mass
+            let mut list_primitive_builder = ListPrimitiveChunkedBuilder::<Int32Type>::new(
+                "formulas_for_mass".into(),
+                formulas.len(), // capacity
+                formulas.len() * NUM_ELEMENTS, // values capacity
+                DataType::Int32,
+            );
+            for formula in &formulas {
+                list_primitive_builder.append_slice(formula);
+            }
+            let list_primitive_chunked = list_primitive_builder.finish();
+            let list_series = list_primitive_chunked.into_series();
+
+            // 2. Cast to Array(Int32, NUM_ELEMENTS)
+            let array_series = list_series.cast(&DataType::Array(Box::new(DataType::Int32), NUM_ELEMENTS))?;
+
+            // 3. Append to the main list_builder
+            list_builder.append_series(&array_series)?;
+        } else {
+            list_builder.append_null();
+        }
+    }
+
+    let out = list_builder.finish();
+    Ok(out.into_series())
+}
+
 
 pub fn decompose_spectrum_output(_: &[Field]) -> PolarsResult<Field> {
     Ok(Field::new(

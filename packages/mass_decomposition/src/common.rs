@@ -28,6 +28,14 @@ pub struct DecompositionParams {
 }
 
 #[derive(Debug, Clone, Deserialize)]
+pub struct DecompositionKwargs {
+    pub tolerance_ppm: f64,
+    pub min_dbe: f64,
+    pub max_dbe: f64,
+    pub dbe_mode: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
 pub struct SpectrumDecompositionParams {
     pub tolerance_ppm: f64,
     pub min_dbe: f64,

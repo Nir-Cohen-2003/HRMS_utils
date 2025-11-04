@@ -82,7 +82,7 @@ class MassDecomposerUtils:
             water_absorption: Whether to allow for water absorption.
             min_dbe: The minimum degree of unsaturation.
             max_dbe: The maximum degree of unsaturation.
-            dbe_mode: The DBE mode, one of 'integer', 'half_integer', 'any'.
+            dbe_mode: The DBE mode, one of 'integer', 'half_integer'.
         """
         kwargs = {
             "tolerance_ppm": tolerance_ppm,
@@ -96,6 +96,42 @@ class MassDecomposerUtils:
             args=[self._expr],
             plugin_path=LIB,
             function_name="decompose_spectrum_with_precursor_struct",
+            is_elementwise=True,
+            kwargs=kwargs,
+        )
+
+    def decompose_mass_with_bounds(
+        self,
+        tolerance_ppm: float = 5.0,
+        min_dbe: float = 0.0,
+        max_dbe: float = 40.0,
+        dbe_mode: str = "integer",
+    ) -> pl.Expr:
+        """
+        Decompose a mass into possible chemical formulas, with per-mass bounds.
+
+        The input expression is expected to be a struct with the following fields:
+        - 'mass': float, the mass to decompose
+        - 'min_bounds': list[int], the minimum elemental counts for the formula
+        - 'max_bounds': list[int], the maximum elemental counts for the formula
+
+        Args:
+            tolerance_ppm: The mass tolerance in ppm.
+            min_dbe: The minimum degree of unsaturation.
+            max_dbe: The maximum degree of unsaturation.
+            dbe_mode: The DBE mode, one of 'integer', 'half_integer', 'any'.
+        """
+        kwargs = {
+            "tolerance_ppm": tolerance_ppm,
+            "min_dbe": min_dbe,
+            "max_dbe": max_dbe,
+            "dbe_mode": dbe_mode,
+        }
+
+        return register_plugin_function(
+            args=[self._expr],
+            plugin_path=LIB,
+            function_name="decompose_mass_with_bounds_struct",
             is_elementwise=True,
             kwargs=kwargs,
         )

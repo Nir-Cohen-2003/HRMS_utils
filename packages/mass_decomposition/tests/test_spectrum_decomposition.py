@@ -35,6 +35,20 @@ TEST_CASES = [
             ["C10H8"]
         ]
     ),
+    (
+        [78.046950,84.0554, 104.062600, 128.062600,152.1182],
+        "C8H14N3",
+        5.0,
+        False,
+        [ #expected formulas for each mz
+            ["C6H6"],
+            ["C3H6N3"],
+            ["C8H8"],
+            [],
+            ["C8H14N3"]
+
+        ]
+    ),
 ]
 
 @pytest.mark.parametrize("mz_values, precursor_formula_str, tolerance_ppm, water_absorption, expected_formulas_str", TEST_CASES)
@@ -57,9 +71,9 @@ def test_decompose_spectrum_with_precursor(mz_values, precursor_formula_str, tol
         decomposed=pl.col("spectrum_struct").mass_decomposer.decompose_spectrum_with_precursor(
             tolerance_ppm=tolerance_ppm,
             water_absorption=water_absorption,
-            min_dbe=0.0,
+            min_dbe=-0.5,
             max_dbe=50.0,
-            dbe_mode="any",
+            dbe_mode="half_integer",
         )
     )
 
