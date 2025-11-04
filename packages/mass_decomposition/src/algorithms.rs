@@ -262,10 +262,8 @@ impl MassDecomposer {
     }
 
     pub fn decompose(&mut self, target_mass: f64, params: &DecompositionParams) -> Vec<Formula> {
-        let tolerance_da = params.tolerance_ppm * 1e-6 * target_mass.max(MIN_MASS_FOR_TOLERANCE);
-
         if !self.is_initialized {
-            self.precision = tolerance_da * 2.0;
+            self.precision = (params.tolerance_ppm * target_mass * 2.0) / 1_000_000.0;
             if self.precision == 0.0 {
                 return Vec::new();
             }
@@ -276,8 +274,8 @@ impl MassDecomposer {
             self.is_initialized = true;
         }
 
-        let mass_from = target_mass - tolerance_da;
-        let mass_to = target_mass + tolerance_da;
+        let mass_from = target_mass - (params.tolerance_ppm * target_mass) / 1_000_000.0;
+        let mass_to = target_mass + (params.tolerance_ppm * target_mass) / 1_000_000.0;
         
         let (start, end) = self.integer_bound(mass_from, mass_to);
         
@@ -287,6 +285,14 @@ impl MassDecomposer {
             all_results.append(&mut results);
         }
         
-        all_results.into_iter().filter(|f| check_dbe(f, params.min_dbe, params.max_dbe, &params.dbe_mode)).collect()
+        let tolerance_da = params.tolerance_ppm * 1e-6 * target_mass.max(MIN_MASS_FOR_TOLERANCE);
+
+        all_results.into_iter()
+            .filter(|f| {
+                let formula_mass: f64 = f.iter().enumerate().map(|(i, &count)| ATOMIC_MASSES[i] * count as f64).sum();
+                (formula_mass - target_mass).abs() <= tolerance_da
+            })
+            .filter(|f| check_dbe(f, params.min_dbe, params.max_dbe, &params.dbe_mode))
+            .collect()
     }
 }
