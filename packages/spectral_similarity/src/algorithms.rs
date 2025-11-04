@@ -74,18 +74,8 @@ pub fn calculate_entropy_similarity(
     precursor_mz: Option<f64>,
     ignore_precursor: Option<bool>,
 ) -> f64 {
-    let (mut a, mut b) = if clean_spectra_first {
-        let cleaned_a = clean_spectrum(&spec_a.peaks, None, precursor_mz, noise_threshold, 2.0 * ms2_tolerance_in_ppm, None, true, precursor_mz, ignore_precursor);
-        let cleaned_b = clean_spectrum(&spec_b.peaks, None, precursor_mz, noise_threshold, 2.0 * ms2_tolerance_in_ppm, None, true, precursor_mz, ignore_precursor);
-        (cleaned_a, cleaned_b)
-    } else {
-        (spec_a.clone(), spec_b.clone()) // Clone if not cleaning to avoid modifying originals if passed by ref elsewhere
-    };
-
-    if !clean_spectra_first {
-        a.peaks.sort_by(|a, b| a.mz.partial_cmp(&b.mz).unwrap());
-        b.peaks.sort_by(|a, b| a.mz.partial_cmp(&b.mz).unwrap());
-    }
+    let mut a = clean_spectrum(&spec_a.peaks, None, precursor_mz, noise_threshold, 2.0 * ms2_tolerance_in_ppm, None, true, precursor_mz, ignore_precursor, clean_spectra_first);
+    let mut b = clean_spectrum(&spec_b.peaks, None, precursor_mz, noise_threshold, 2.0 * ms2_tolerance_in_ppm, None, true, precursor_mz, ignore_precursor, clean_spectra_first);
 
     if a.peaks.is_empty() || b.peaks.is_empty() { return 0.0; }
     apply_weight_to_intensity(&mut a);
@@ -104,20 +94,12 @@ pub fn general_cosine_similarity(
     precursor_mz: Option<f64>,
     ignore_precursor: Option<bool>,
 ) -> f64 {
-    let (mut a_cleaned, mut b_cleaned) = if clean_spectra_first {
-        let cleaned_a = clean_spectrum(&spec_a.peaks, None, precursor_mz, noise_threshold, 2.0 * ms2_tolerance_in_ppm, None, false, precursor_mz, ignore_precursor);
-        let cleaned_b = clean_spectrum(&spec_b.peaks, None, precursor_mz, noise_threshold, 2.0 * ms2_tolerance_in_ppm, None, false, precursor_mz, ignore_precursor);
-        (cleaned_a, cleaned_b)
-    } else {
-        (spec_a.clone(), spec_b.clone())
-    };
+    let (a_cleaned,  b_cleaned) = (
+        clean_spectrum(&spec_a.peaks, None, precursor_mz, noise_threshold, 2.0 * ms2_tolerance_in_ppm, None, false, precursor_mz, ignore_precursor, clean_spectra_first),
+        clean_spectrum(&spec_b.peaks, None, precursor_mz, noise_threshold, 2.0 * ms2_tolerance_in_ppm, None, false, precursor_mz, ignore_precursor, clean_spectra_first)
+    );
 
-    if !clean_spectra_first {
-        a_cleaned.peaks.sort_by(|a, b| a.mz.partial_cmp(&b.mz).unwrap());
-        b_cleaned.peaks.sort_by(|a, b| a.mz.partial_cmp(&b.mz).unwrap());
-    }
 
-    if a_cleaned.peaks.is_empty() || b_cleaned.peaks.is_empty() { return 0.0; }
 
     let weighted_peaks_a: Vec<(f64, f64)> = a_cleaned.peaks.iter().map(|p| {
         let weighted_intensity = p.intensity.powf(intensity_power) * p.mz.powf(mass_power);
@@ -181,18 +163,10 @@ pub fn calculate_explained_intensity(
     ignore_precursor: Option<bool>,
     permissive: Option<bool>,
 ) -> f64 {
-    let (mut a_cleaned, mut b_cleaned) = if clean_spectra_first {
-        let cleaned_a = clean_spectrum(&spec_a.peaks, None, precursor_mz, noise_threshold, 2.0 * ms2_tolerance_in_ppm, None, false, precursor_mz, ignore_precursor);
-        let cleaned_b = clean_spectrum(&spec_b.peaks, None, precursor_mz, noise_threshold, 2.0 * ms2_tolerance_in_ppm, None, false, precursor_mz, ignore_precursor);
-        (cleaned_a, cleaned_b)
-    } else {
-        (spec_a.clone(), spec_b.clone())
-    };
-
-    if !clean_spectra_first {
-        a_cleaned.peaks.sort_by(|a, b| a.mz.partial_cmp(&b.mz).unwrap());
-        b_cleaned.peaks.sort_by(|a, b| a.mz.partial_cmp(&b.mz).unwrap());
-    }
+    let (a_cleaned, b_cleaned) = (
+        clean_spectrum(&spec_a.peaks, None, precursor_mz, noise_threshold, 2.0 * ms2_tolerance_in_ppm, None, false, precursor_mz, ignore_precursor, clean_spectra_first),
+        clean_spectrum(&spec_b.peaks, None, precursor_mz, noise_threshold, 2.0 * ms2_tolerance_in_ppm, None, false, precursor_mz, ignore_precursor, clean_spectra_first)
+    );
 
     if a_cleaned.peaks.is_empty() { return 0.0; }
     if b_cleaned.peaks.is_empty() { return 0.0; }

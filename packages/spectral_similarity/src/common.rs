@@ -47,6 +47,7 @@ pub fn clean_spectrum(
     normalize_intensity: bool,
     precursor_mz: Option<f64>,
     ignore_precursor: Option<bool>,
+    apply_full_cleaning: bool,
 ) -> Spectrum {
     let mut cleaned_peaks: Vec<Peak> = peaks.to_vec();
 
@@ -62,13 +63,15 @@ pub fn clean_spectrum(
             && p.mz <= effective_max_mz
     });
 
-    if let Some(pmz) = precursor_mz {
-        if ignore_precursor.unwrap_or(false) {
-            let tolerance = (ms2_tolerance_in_ppm * 1e-6 * MASS_THRESHOLD_FOR_PPM).max(ms2_tolerance_in_ppm * 1e-6 * pmz);
-            cleaned_peaks.retain(|p| (p.mz - pmz).abs() > tolerance);
-        } else {
-            // ignore fragments in the 1 Da range below it too.
-            cleaned_peaks.retain(|p| p.mz < pmz - 1.0);
+    if apply_full_cleaning {
+        if let Some(pmz) = precursor_mz {
+            if ignore_precursor.unwrap_or(false) {
+                let tolerance = (ms2_tolerance_in_ppm * 1e-6 * MASS_THRESHOLD_FOR_PPM).max(ms2_tolerance_in_ppm * 1e-6 * pmz);
+                cleaned_peaks.retain(|p| (p.mz - pmz).abs() > tolerance);
+            } else {
+                // ignore fragments in the 1 Da range below it too.
+                cleaned_peaks.retain(|p| p.mz < pmz - 1.0);
+            }
         }
     }
 
@@ -81,19 +84,21 @@ pub fn clean_spectrum(
         }
     }
 
-    // 3. Remove noise
-    if let Some(threshold) = noise_threshold {
-        if let Some(max_intensity) = cleaned_peaks.iter().map(|p| p.intensity).max_by(|a, b| a.partial_cmp(b).unwrap()) {
-            let noise_level = threshold * max_intensity;
-            cleaned_peaks.retain(|p| p.intensity >= noise_level);
+    if apply_full_cleaning {
+        // 3. Remove noise
+        if let Some(threshold) = noise_threshold {
+            if let Some(max_intensity) = cleaned_peaks.iter().map(|p| p.intensity).max_by(|a, b| a.partial_cmp(b).unwrap()) {
+                let noise_level = threshold * max_intensity;
+                cleaned_peaks.retain(|p| p.intensity >= noise_level);
+            }
         }
-    }
 
-    // 4. Keep top N peaks
-    if let Some(n) = max_peak_num {
-        if n < cleaned_peaks.len() {
-            cleaned_peaks.sort_by(|a, b| b.intensity.partial_cmp(&a.intensity).unwrap());
-            cleaned_peaks.truncate(n);
+        // 4. Keep top N peaks
+        if let Some(n) = max_peak_num {
+            if n < cleaned_peaks.len() {
+                cleaned_peaks.sort_by(|a, b| b.intensity.partial_cmp(&a.intensity).unwrap());
+                cleaned_peaks.truncate(n);
+            }
         }
     }
     
