@@ -263,8 +263,9 @@ impl MassDecomposer {
 
     pub fn decompose(&mut self, target_mass: f64, params: &DecompositionParams) -> Vec<Formula> {
         if !self.is_initialized {
-            self.precision = (params.tolerance_ppm * target_mass * 2.0) / 1_000_000.0;
-            if self.precision == 0.0 {
+            // self.precision = (params.tolerance_ppm * 50.0f64 * 2.0f64) / 1_000_000.0f64;
+            self.precision = 1.0 / 5963.337687;
+            if self.precision == 0.0f64 {
                 return Vec::new();
             }
             self.discretize_masses();
@@ -274,8 +275,8 @@ impl MassDecomposer {
             self.is_initialized = true;
         }
 
-        let mass_from = target_mass - (params.tolerance_ppm * target_mass) / 1_000_000.0;
-        let mass_to = target_mass + (params.tolerance_ppm * target_mass) / 1_000_000.0;
+        let mass_from = target_mass - (params.tolerance_ppm * target_mass) / 1_000_000.0f64;
+        let mass_to = target_mass + (params.tolerance_ppm * target_mass) / 1_000_000.0f64;
         
         let (start, end) = self.integer_bound(mass_from, mass_to);
         
@@ -285,7 +286,7 @@ impl MassDecomposer {
             all_results.append(&mut results);
         }
         
-        let tolerance_da = params.tolerance_ppm * 1e-6 * target_mass.max(MIN_MASS_FOR_TOLERANCE);
+        let tolerance_da = params.tolerance_ppm * 1e-6f64 * target_mass.max(MIN_MASS_FOR_TOLERANCE);
 
         all_results.into_iter()
             .filter(|f| {

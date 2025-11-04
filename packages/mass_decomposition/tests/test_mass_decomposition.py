@@ -37,14 +37,14 @@ TEST_CASES = [
         5.0,
         {"C": 0, "H": 0},
         {"C": 10, "H": 10},
-        ["H6C6"]
+        ["C6H6"]
     ),
     (
         140.1062,
         10.0,
         {"C": 0, "H": 1, "O": 0, "N": 0},
         {"C": 20, "H": 40, "O": 10, "N": 5},
-        ["H12C6N4", "H14C8NO"]
+        ["C6H12N4", "C8H14NO"]
     ),
     (
         182.073165, 
@@ -61,11 +61,25 @@ TEST_CASES = [
         ["C13H10O", "C9H13NOP"]
     ),
     (
-        182.073165, 
+        182.0732, 
         3.0,
         {"C": 0, "H": 0, "O": 0},
-        {"C": 20, "H": 20, "O": 10, "P": 0, "N": 10, "S": 5, "Si": 0, "Cl": 0},
-        ["C13H10O"]
+        {"C": 20, "H": 20, "O": 10, "P": 0, "N": 10, "S": 5, "Si": 0, "Cl": 1},
+        ["C13H10O", "C10H13ClN"]
+    ),
+    (
+        112.007978, 
+        5.0,
+        {"C": 0, "H": 0, "O": 0,"Cl": 1},
+        {"C": 20, "H": 20, "O": 10, "P": 0, "N": 10, "S": 5, "Si": 0, "Cl": 1},
+        ["C6H5Cl"]
+    ),
+    (
+        155.957461, 
+        5.0,
+        {"C": 0, "H": 0, "O": 0,"Cl": 1},
+        {"C": 20, "H": 20, "O": 10, "P": 0, "N": 10, "S": 0, "Si": 0, "Cl": 0,"Br": 1},
+        ["C6H5Br"]
     )
 ]
 
@@ -101,6 +115,9 @@ def test_decompose_mass(mass, tolerance_ppm, min_bounds_dict, max_bounds_dict, e
 
     sorted_output = sorted(output_formulas_arr)
     sorted_expected = sorted(expected_formulas_arr)
+    for arr in sorted_expected:
+        print(arr)
+        print(formula_array_to_string(arr))
 
     output_formulas_str_sorted = sorted([formula_array_to_string(f) for f in output_formulas_arr])
     expected_formulas_str_sorted = sorted(expected_formulas_str)
@@ -185,13 +202,13 @@ def test_decompose_mass_with_bounds():
 
     # Check first result
     output_formulas_1 = result_df.item(0, "decomposed").to_list()
-    expected_formulas_1_str = ["H6C6"]
+    expected_formulas_1_str = ["C6H6"]
     expected_formulas_1_arr = [formula_string_to_array(s) for s in expected_formulas_1_str]
     assert sorted(output_formulas_1) == sorted(expected_formulas_1_arr)
 
     # Check second result
     output_formulas_2 = result_df.item(1, "decomposed").to_list()
-    expected_formulas_2_str = ["H12C6N4", "H14C8NO"]
+    expected_formulas_2_str = ["C6H12N4", "C8H14NO"]
     expected_formulas_2_arr = [formula_string_to_array(s) for s in expected_formulas_2_str]
     
     sorted_output = sorted(output_formulas_2)
@@ -201,4 +218,68 @@ def test_decompose_mass_with_bounds():
     expected_formulas_str_sorted = sorted(expected_formulas_2_str)
 
     assert sorted_output == sorted_expected, \
+        f"Expected {expected_formulas_str_sorted}, but got {output_formulas_str_sorted}"
+
+# Test cases for spectrum decomposition
+# Each tuple contains: (mz_values, precursor_formula_str, tolerance_ppm, water_absorption, expected_formulas)
+SPECTRUM_TEST_CASES = [
+    (
+        [78.046950, 104.062600, 128.062600],
+        "C10H20O5",
+        5.0,
+        False,
+        [ #expected formulas for each mz
+            ["C6H6"],
+            ["C8H8"],
+            ["C10H8"]
+        ]
+    ),
+    (
+        [78.046950,84.0554, 104.062600, 128.062600,152.1182],
+        "C8H14N3",
+        5.0,
+        False,
+        [ #expected formulas for each mz
+            ["C6H6"],
+            ["C3H6N3"],
+            ["C8H8"],
+            [],
+            ["C8H14N3"]
+
+        ]
+    ),
+]
+
+@pytest.mark.parametrize("mz_values, precursor_formula_str, tolerance_ppm, water_absorption, expected_formulas_str", SPECTRUM_TEST_CASES)
+def test_decompose_spectrum_with_precursor(mz_values, precursor_formula_str, tolerance_ppm, water_absorption, expected_formulas_str):
+    """
+    Tests the decompose_spectrum_with_precursor function with a set of predefined test cases.
+    """
+    precursor_formula = formula_string_to_array(precursor_formula_str)
+    df = pl.DataFrame({
+        "mz": [mz_values],
+        "precursor_formula": [precursor_formula]
+    },schema={
+        "mz": pl.List(pl.Float64),
+        "precursor_formula": pl.Array(pl.Int32, NUM_ELEMENTS)
+    }).with_columns(
+        spectrum_struct=pl.struct(["mz", "precursor_formula"])
+    )
+
+    result_df = df.with_columns(
+        decomposed=pl.col("spectrum_struct").mass_decomposer.decompose_spectrum_with_precursor(
+            tolerance_ppm=tolerance_ppm,
+            water_absorption=water_absorption,
+            min_dbe=-0.5,
+            max_dbe=50.0,
+            dbe_mode="half_integer",
+        )
+    )
+
+    output_formulas_arr = result_df.item(0, "decomposed").to_list()
+
+    output_formulas_str_sorted = sorted([sorted([formula_array_to_string(f) for f in mz_formulas]) for mz_formulas in output_formulas_arr])
+    expected_formulas_str_sorted = sorted([sorted(mz_formulas_str) for mz_formulas_str in expected_formulas_str])
+
+    assert output_formulas_str_sorted == expected_formulas_str_sorted, \
         f"Expected {expected_formulas_str_sorted}, but got {output_formulas_str_sorted}"
