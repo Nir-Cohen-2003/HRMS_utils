@@ -2,8 +2,8 @@ use polars::prelude::*;
 use pyo3_polars::derive::polars_expr;
 use crate::algorithms::{MassDecomposer, SpectrumDecomposer};
 use crate::common::{DecompositionParams, SpectrumDecompositionParams, NUM_ELEMENTS, Formula};
-
-use polars::chunked_array::builder::{get_list_builder, ListPrimitiveChunkedBuilder, ListBuilder};
+use polars::chunked_array::builder::{get_list_builder, ListPrimitiveChunkedBuilder};
+use polars_arrow::array::FixedSizeListArray;
 
 pub fn decompose_mass_output(_: &[Field]) -> PolarsResult<Field> {
     Ok(Field::new(
@@ -67,9 +67,12 @@ pub fn decompose_spectrum_output(_: &[Field]) -> PolarsResult<Field> {
 }
 
 #[polars_expr(output_type_func=decompose_spectrum_output)]
-pub fn decompose_spectrum_with_precursor(inputs: &[Series], kwargs: SpectrumDecompositionParams) -> PolarsResult<Series> {
-    let mz_series = &inputs[0];
-    let precursor_formula_series = &inputs[1];
+pub fn decompose_spectrum_with_precursor_struct(inputs: &[Series], kwargs: SpectrumDecompositionParams) -> PolarsResult<Series> {
+    let struct_series = &inputs[0];
+    let struct_ca = struct_series.struct_()?;
+
+    let mz_series = struct_ca.field_by_name("mz")?;
+    let precursor_formula_series = struct_ca.field_by_name("precursor_formula")?;
 
     let mz_ca: &ListChunked = mz_series.list()?;
     let precursor_formula_ca: &ArrayChunked = precursor_formula_series.array()?;
@@ -77,19 +80,31 @@ pub fn decompose_spectrum_with_precursor(inputs: &[Series], kwargs: SpectrumDeco
     let mut outer_list_builder = get_list_builder(
         &DataType::List(Box::new(DataType::Array(Box::new(DataType::Int32), NUM_ELEMENTS))),
         mz_ca.len(),
-        mz_ca.len() * 5, // initial capacity
+        mz_ca.len(),
         "decomposed_spectrum".into(),
     );
 
-    for i in 0..mz_ca.len() {
-        let mz_values_opt = mz_ca.get(i);
-        let precursor_formula_opt = precursor_formula_ca.get(i);
+    let mz_iter = mz_ca.into_iter();
+    let precursor_iter = precursor_formula_ca.into_iter();
 
-        if let (Some(mz_values_series), Some(precursor_formula_series)) = (mz_values_opt, precursor_formula_opt) {
-            let mz_values: Vec<f64> = mz_values_series.f64()?.into_no_null_iter().collect();
-            let precursor_formula_slice = precursor_formula_series.i32()?;
+    for (mz_values_opt, precursor_formula_opt) in mz_iter.zip(precursor_iter) {
+        if let (Some(mz_values_s), Some(precursor_formula_arr)) = (mz_values_opt, precursor_formula_opt) {
+            let mz_values_ca = mz_values_s.f64()?;
+            let mz_values: Vec<f64> = mz_values_ca.into_no_null_iter().collect();
+
             let mut precursor_formula: Formula = [0; NUM_ELEMENTS];
-            precursor_formula.copy_from_slice(precursor_formula_slice.cont_slice()?);
+            if precursor_formula_arr.as_any().is::<polars_arrow::array::Int32Array>() {
+                panic!("precursor_formula_arr is an Int32Array");
+            }
+            let fixed_size_list_arr = precursor_formula_arr.as_any().downcast_ref::<FixedSizeListArray>();
+            if fixed_size_list_arr.is_none() {
+                panic!("downcast to FixedSizeListArray failed");
+            }
+            let fixed_size_list_arr = fixed_size_list_arr.unwrap();
+            let values = fixed_size_list_arr.values().as_any().downcast_ref::<polars_arrow::array::Int32Array>().unwrap();
+            values.into_iter().enumerate().for_each(|(i, v)| {
+                precursor_formula[i] = *v.unwrap_or(&0);
+            });
 
             let mut decomposer = SpectrumDecomposer::new();
             let formulas_per_mz = decomposer.decompose_spectrum_with_precursor(&mz_values, &precursor_formula, &kwargs);
@@ -97,7 +112,7 @@ pub fn decompose_spectrum_with_precursor(inputs: &[Series], kwargs: SpectrumDeco
             let mut inner_list_builder = get_list_builder(
                 &DataType::Array(Box::new(DataType::Int32), NUM_ELEMENTS),
                 formulas_per_mz.len(),
-                formulas_per_mz.iter().map(|f| f.len()).sum::<usize>() * 5, // initial capacity
+                formulas_per_mz.iter().map(|f| f.len()).sum::<usize>(),
                 "formulas_for_mz".into(),
             );
 

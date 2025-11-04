@@ -1,4 +1,4 @@
-use crate::common::{Formula, DecompositionParams, NUM_ELEMENTS, ATOMIC_MASSES, check_dbe, MIN_MASS_FOR_TOLERANCE};
+use crate::common::{Formula, DecompositionParams, NUM_ELEMENTS, ATOMIC_MASSES, check_dbe, MIN_MASS_FOR_TOLERANCE, SpectrumDecompositionParams};
 
 #[derive(Debug, Clone)]
 struct Weight {
@@ -322,7 +322,7 @@ impl SpectrumDecomposer {
 
         for &mass in mz_values {
             let mut decomposer = MassDecomposer::new(min_bounds, max_bounds);
-            let mut formulas = decomposer.decompose(mass, &DecompositionParams {
+            let formulas = decomposer.decompose(mass, &DecompositionParams {
                 tolerance_ppm: params.tolerance_ppm,
                 min_dbe: params.min_dbe,
                 max_dbe: params.max_dbe,
