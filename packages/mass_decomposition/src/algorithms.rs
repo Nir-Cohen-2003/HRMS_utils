@@ -316,7 +316,7 @@ impl SpectrumDecomposer {
             max_bounds[0] += 2; // H
             max_bounds[4] += 1; // O
         }
-
+        let max_bounds = max_bounds; // now immutable for the rest of the scope
         let min_bounds = [0; NUM_ELEMENTS];
 
         let mut all_results = Vec::with_capacity(mz_values.len());
