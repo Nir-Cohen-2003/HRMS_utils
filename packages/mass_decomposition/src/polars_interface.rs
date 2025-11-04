@@ -38,6 +38,7 @@ pub fn decompose_mass(inputs: &[Series], kwargs: DecompositionParams) -> PolarsR
                 "formulas_for_mass".into(),
                 formulas.len(), // capacity
                 formulas.len() * NUM_ELEMENTS, // values capacity
+                DataType::Int32,
             );
             for formula in &formulas {
                 list_primitive_builder.append_slice(formula);
