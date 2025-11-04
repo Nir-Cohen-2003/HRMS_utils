@@ -27,6 +27,15 @@ pub struct DecompositionParams {
     pub max_bounds: Formula,
 }
 
+#[derive(Debug, Clone, Deserialize)]
+pub struct SpectrumDecompositionParams {
+    pub tolerance_ppm: f64,
+    pub min_dbe: f64,
+    pub max_dbe: f64,
+    pub dbe_mode: String,
+    pub water_absorption: bool,
+}
+
 pub fn formula_to_string(formula: &Formula) -> String {
     let mut s = String::new();
     for (i, &count) in formula.iter().enumerate() {

@@ -33,6 +33,7 @@ testing = {features = ["testing"], solve-group = "testing"}
 
 [feature.testing.tasks]
 test = "pytest tests/test_mass_decomposition.py"
+test_all = "pytest tests/"
 [feature.testing.dependencies]
 polars = ">=1.33.0,<2"
 python = ">=3.9"

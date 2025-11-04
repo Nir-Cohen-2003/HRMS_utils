@@ -31,3 +31,4 @@ packages/channel/
 packages/temp/
 **.tar**
 **.lock
+packages/mass_decomposition/mass_decomposition/old_cpp_code/

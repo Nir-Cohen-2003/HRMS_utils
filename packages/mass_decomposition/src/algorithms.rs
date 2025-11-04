@@ -293,6 +293,46 @@ impl MassDecomposer {
                 (formula_mass - target_mass).abs() <= tolerance_da
             })
             .filter(|f| check_dbe(f, params.min_dbe, params.max_dbe, &params.dbe_mode))
-            .collect()
+                .collect()
+    }
+}
+
+pub struct SpectrumDecomposer {}
+
+impl SpectrumDecomposer {
+    pub fn new() -> Self {
+        SpectrumDecomposer {}
+    }
+
+    pub fn decompose_spectrum_with_precursor(
+        &mut self,
+        mz_values: &[f64],
+        precursor_formula: &Formula,
+        params: &SpectrumDecompositionParams,
+    ) -> Vec<Vec<Formula>> {
+        let mut max_bounds = precursor_formula.clone();
+        if params.water_absorption {
+            max_bounds[0] += 2; // H
+            max_bounds[4] += 1; // O
+        }
+
+        let min_bounds = [0; NUM_ELEMENTS];
+
+        let mut all_results = Vec::with_capacity(mz_values.len());
+
+        for &mass in mz_values {
+            let mut decomposer = MassDecomposer::new(min_bounds, max_bounds);
+            let mut formulas = decomposer.decompose(mass, &DecompositionParams {
+                tolerance_ppm: params.tolerance_ppm,
+                min_dbe: params.min_dbe,
+                max_dbe: params.max_dbe,
+                dbe_mode: params.dbe_mode.clone(),
+                min_bounds,
+                max_bounds,
+            });
+            all_results.push(formulas);
+        }
+
+        all_results
     }
 }

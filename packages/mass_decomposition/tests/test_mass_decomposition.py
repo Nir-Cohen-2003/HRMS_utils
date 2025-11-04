@@ -30,9 +30,101 @@ TEST_CASES = [
     (
         140.1062,
         10.0,
-        {"C": 0, "H": 0, "O": 0},
+        {"C": 0, "H": 1, "O": 0,"N":0},
         {"C": 20, "H": 40, "O": 10,"N":5},
-        ["C6H12N4", "C8H14NO"] # Placeholder
+        ["C6H12N4", "C8H14NO"] 
+    ),
+    (
+        182.073165, 
+        3.0,
+        {"C": 0, "H": 0, "O": 0},
+        {"C": 20, "H": 20, "O": 10,"P":3,"N":10,"S":5,"Si":5, "Cl":5},
+        ["C13H10O","C9H13NOP","C5H10N6Si","C10H13ClN"]
+    ),
+    (
+        182.073165, 
+        3.0,
+        {"C": 0, "H": 0, "O": 0},
+        {"C": 20, "H": 20, "O": 10,"P":3,"N":10,"S":5,"Si":0, "Cl":0},
+        ["C13H10O","C9H13NOP"]
+    ),
+    (
+        182.073165, 
+        3.0,
+        {"C": 0, "H": 0, "O": 0},
+        {"C": 20, "H": 20, "O": 10,"P":0,"N":10,"S":5,"Si":0, "Cl":0},
+        ["C13H10O"]
+    )
+]
+
+def bounds_to_array(bounds: dict[str, int]) -> list[int]:
+    """Converts a dictionary of bounds to a fixed-size array."""
+    bounds_arr = [0] * NUM_ELEMENTS
+    for symbol, value in bounds.items():
+        if symbol in ELEMENT_SYMBOLS:
+            bounds_arr[ELEMENT_SYMBOLS.index(symbol)] = value
+    return bounds_arr
+
+@pytest.mark.parametrize("mass, tolerance_ppm, min_bounds_dict, max_bounds_dict, expected_formulas_str", TEST_CASES)
+def test_decompose_mass(mass, tolerance_ppm, min_bounds_dict, max_bounds_dict, expected_formulas_str):
+    """
+    Tests the decompose_mass function with a set of predefined test cases.
+    """
+    df = pl.DataFrame({"mass": [mass]})
+
+    min_bounds = bounds_to_array(min_bounds_dict)
+    max_bounds = bounds_to_array(max_bounds_dict)
+
+    result_df = df.with_columns(
+        decomposed=pl.col("mass").mass_decomposer.decompose_mass(
+            tolerance_ppm=tolerance_ppm,
+            min_bounds=min_bounds,
+            max_bounds=max_bounds,
+            dbe_mode="half_integer",
+        )
+    )
+
+    # Extract the list of formula arrays from the result
+    output_formulas = result_df.item(0, "decomposed")
+    
+    # Convert formula arrays to string representations
+    output_formulas_str = sorted([formula_array_to_string(f) for f in output_formulas])
+
+import re
+
+def formula_array_to_string(formula: list[int]) -> str:
+    """Converts a formula array to a string representation, in ELEMENT_SYMBOLS order."""
+    parts = []
+    for i, count in enumerate(formula):
+        if count > 0:
+            parts.append(f"{ELEMENT_SYMBOLS[i]}{count}" if count > 1 else f"{ELEMENT_SYMBOLS[i]}")
+    return "".join(parts)
+
+def formula_string_to_array(formula_str: str) -> list[int]:
+    """Converts a formula string to a formula array."""
+    formula_arr = [0] * NUM_ELEMENTS
+    for symbol, count_str in re.findall(r'([A-Z][a-z]?)(\d*)', formula_str):
+        count = int(count_str) if count_str else 1
+        if symbol in ELEMENT_SYMBOLS:
+            formula_arr[ELEMENT_SYMBOLS.index(symbol)] = count
+    return formula_arr
+
+# Placeholder for test cases
+# Each tuple contains: (mass, tolerance_ppm, min_bounds, max_bounds, expected_formulas)
+TEST_CASES = [
+    (
+        78.04695,  # Mass of C6H6
+        5.0,
+        {"C": 0, "H": 0},
+        {"C": 10, "H": 10},
+        ["H6C6"]  # Expected formulas (H before C as per ELEMENT_SYMBOLS)
+    ),
+    (
+        140.1062,
+        10.0,
+        {"C": 0, "H": 1, "O": 0,"N":0},
+        {"C": 20, "H": 40, "O": 10,"N":5},
+        ["H12C6N4", "H14C8NO"] # Expected formulas (H before C, N before O as per ELEMENT_SYMBOLS)
     ),
 ]
 
@@ -59,17 +151,22 @@ def test_decompose_mass(mass, tolerance_ppm, min_bounds_dict, max_bounds_dict, e
             tolerance_ppm=tolerance_ppm,
             min_bounds=min_bounds,
             max_bounds=max_bounds,
+            dbe_mode="half_integer",
         )
     )
 
     # Extract the list of formula arrays from the result
-    output_formulas = result_df.item(0, "decomposed")
+    output_formulas_arr = result_df.item(0, "decomposed").to_list()
     
-    # Convert formula arrays to string representations
-    output_formulas_str = sorted([formula_array_to_string(f) for f in output_formulas])
+    # Convert expected formula strings to arrays
+    expected_formulas_arr = [formula_string_to_array(s) for s in expected_formulas_str]
 
-    assert output_formulas_str == sorted(expected_formulas_str), \
-        f"Expected {sorted(expected_formulas_str)}, but got {output_formulas_str}"
+    # Sort both lists of arrays for comparison
+    sorted_output = sorted(output_formulas_arr)
+    sorted_expected = sorted(expected_formulas_arr)
+
+    assert sorted_output == sorted_expected, \
+        f"Expected {sorted(expected_formulas_str)}, but got {sorted([formula_array_to_string(f) for f in output_formulas_arr])}"
 
 def test_decompose_mass_no_result():
     """
