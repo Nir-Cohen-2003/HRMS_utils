@@ -3,7 +3,7 @@ use pyo3_polars::derive::polars_expr;
 use crate::algorithms::{MassDecomposer, SpectrumDecomposer};
 use crate::common::{DecompositionParams, SpectrumDecompositionParams, NUM_ELEMENTS, Formula};
 use polars::chunked_array::builder::{get_list_builder, ListPrimitiveChunkedBuilder};
-use polars_arrow::array::FixedSizeListArray;
+
 
 pub fn decompose_mass_output(_: &[Field]) -> PolarsResult<Field> {
     Ok(Field::new(
@@ -93,18 +93,12 @@ pub fn decompose_spectrum_with_precursor_struct(inputs: &[Series], kwargs: Spect
             let mz_values: Vec<f64> = mz_values_ca.into_no_null_iter().collect();
 
             let mut precursor_formula: Formula = [0; NUM_ELEMENTS];
-            if precursor_formula_arr.as_any().is::<polars_arrow::array::Int32Array>() {
-                panic!("precursor_formula_arr is an Int32Array");
-            }
-            let fixed_size_list_arr = precursor_formula_arr.as_any().downcast_ref::<FixedSizeListArray>();
-            if fixed_size_list_arr.is_none() {
-                panic!("downcast to FixedSizeListArray failed");
-            }
-            let fixed_size_list_arr = fixed_size_list_arr.unwrap();
-            let values = fixed_size_list_arr.values().as_any().downcast_ref::<polars_arrow::array::Int32Array>().unwrap();
-            values.into_iter().enumerate().for_each(|(i, v)| {
-                precursor_formula[i] = *v.unwrap_or(&0);
+            let s = Series::from(precursor_formula_arr);
+            let ca = s.i32()?;
+            ca.into_no_null_iter().enumerate().for_each(|(i, v)| {
+                precursor_formula[i] = v;
             });
+
 
             let mut decomposer = SpectrumDecomposer::new();
             let formulas_per_mz = decomposer.decompose_spectrum_with_precursor(&mz_values, &precursor_formula, &kwargs);

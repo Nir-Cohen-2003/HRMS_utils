@@ -25,14 +25,14 @@ def formula_string_to_array(formula_str: str) -> list[int]:
 # Each tuple contains: (mz_values, precursor_formula_str, tolerance_ppm, water_absorption, expected_formulas)
 TEST_CASES = [
     (
-        [78.04695, 104.0524, 128.0524],
+        [78.046950, 104.062600, 128.062600],
         "C10H20O5",
         5.0,
         False,
         [ #expected formulas for each mz
-            [["C6H6"]],
-            [["C8H8"]],
-            [["C10H8"]]
+            ["C6H6"],
+            ["C8H8"],
+            ["C10H8"]
         ]
     ),
 ]
