@@ -198,7 +198,7 @@ pub fn decompose_spectrum_with_precursor_struct(inputs: &[Series], kwargs: Spect
                 let formulas_per_mz = decomposer.decompose_spectrum_with_precursor(&mz_values, &precursor_formula, &kwargs);
 
                 let mut inner_list_builder = get_list_builder(
-                    &DataType::List(Box::new(DataType::Array(Box::new(DataType::Int32), NUM_ELEMENTS))),
+                    &DataType::Array(Box::new(DataType::Int32), NUM_ELEMENTS),
                     formulas_per_mz.len(),
                     formulas_per_mz.iter().map(|f| f.len()).sum::<usize>(),
                     "formulas_for_mz".into(),

@@ -19,14 +19,8 @@ def mass_decomposition_test(size:int):
 
     """
     # check if the nist data is available, and if not, use mock data
-    if Path("/home/analytit_admin/Data/NIST_hr_msms/NIST_hr_msms.parquet").exists():
-        nist = pl.scan_parquet("/home/analytit_admin/Data/NIST_hr_msms/NIST_hr_msms.parquet").filter(
-        pl.col("PrecursorMZ").le(900),
-         pl.col("Precursor_type").eq("[M+H]+")
-        )
-    else:
-        print(f"NIST not found, using mock data instead, with length {size}.")
-        nist = create_mock_nist(size=size).lazy()
+
+    nist = create_mock_nist(size=size).lazy()
     if size != -1:
         nist = nist.sort(by="NIST_ID").head(n=size)
     nist = nist.select(
@@ -351,4 +345,4 @@ if __name__ == "__main__":
     ########################## H,  B, C,  N,  O,  F, Na,Si, P, S, Cl, K, As,Br, I
     MIN_FORMULA: list[int] = [ 0,  0, 0,  0,  0,  0, 0, 0,  0, 0, 0,  0, 0, 0,  0]
     MAX_FORMULA: list[int] = [100, 1, 60, 30, 30, 30, 0, 5, 10, 5, 10, 0, 1, 2,  3]
-    mass_decomposition_test(size=100)
+    mass_decomposition_test(size=1000)

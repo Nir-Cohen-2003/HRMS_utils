@@ -1,9 +1,14 @@
-
 import polars as pl
 import numpy as np
 from time import perf_counter
 import mass_decomposition
 import sys
+
+
+########################## H,  B, C,  N,  O,  F, Na,Si, P, S, Cl, K, As,Br, I
+MIN_FORMULA: list[int] = [ 0,  0, 0,  0,  0,  0, 0, 0,  0, 0, 0,  0, 0, 0,  0]
+MAX_FORMULA: list[int] = [100, 1, 60, 30, 30, 30, 0, 5, 10, 5, 10, 0, 1, 2,  3]
+NUM_ELEMENTS = 15
 
 def create_mock_nist(size:int = 10000) -> pl.DataFrame:
     """
@@ -11,8 +16,8 @@ def create_mock_nist(size:int = 10000) -> pl.DataFrame:
     The DataFrame will have size rows and the following columns:
     - NIST_ID: unique identifier
     - PrecursorMZ: precursor mass
-    - Formula_array: precursor formula (length 15)
-    - raw_spectrum_mz: list of fragment m/z values (computed from the fragment formulas below)
+    - precursor_formula: precursor formula (length 15)
+    - mz: list of fragment m/z values (computed from the fragment formulas below)
     """
     np.random.seed(42)  # For reproducibility
     nist_ids = np.arange(1, size + 1)
@@ -77,8 +82,8 @@ def test_roundtrip_decomposition(size: int = 10000):
     
     result = df.with_columns(
         decomposed_formula=pl.struct([
+            pl.col("mz"),
             pl.col("precursor_formula"),
-            pl.col("mz")
         ]).mass_decomposer.decompose_spectrum_with_precursor(
             tolerance_ppm=5.0
         )
@@ -86,14 +91,136 @@ def test_roundtrip_decomposition(size: int = 10000):
     
     end = perf_counter()
     
-    print(f"Roundtrip for {size} rows took {end - start:.4f} seconds")
+    print(f"Spectrum decomposition for {size} rows took {end - start:.4f} seconds")
     assert result is not None
     assert len(result) == size
     assert 'decomposed_formula' in result.columns
 
+
+def _min_bound(formula_arr:np.ndarray):
+    min_formula = np.array(MIN_FORMULA, dtype=np.int32)
+    result_arr = np.zeros((formula_arr.shape[0], NUM_ELEMENTS), dtype=np.int32)
+    result_arr[:, 0] = min_formula[0]  # H
+    result_arr[:, 1] = np.where(formula_arr[:, 1]>0, 1, 0)  # B: B if B>0, else 0
+    result_arr[:, 2] = np.maximum(0,formula_arr[:, 2] - 1)  # C: C-1, clipped to [0, MAX]
+    result_arr[:, 3] = np.where(formula_arr[:, 3] > 0, 1, 0)  # N: N if N>0, else 0
+    result_arr[:, 4] = min_formula[4]  # O
+    result_arr[:, 5] = min_formula[5]  # F
+    result_arr[:, 6] = min_formula[6]  # Na
+    result_arr[:, 7] = min_formula[7]  # Si
+    result_arr[:, 8] = min_formula[8]  # P
+    result_arr[:, 9] = np.where(formula_arr[:, 9] > 0, 1, 0)
+    result_arr[:, 10] = formula_arr[:, 10]  # Cl: exact
+    result_arr[:, 11] = min_formula[11]  # K
+    result_arr[:, 12] = min_formula[12]  # As
+    result_arr[:, 13] = formula_arr[:, 13]  # Br: exact
+    result_arr[:, 14] = min_formula[14]  # I
+    return result_arr
+
+def _max_bound(formula_arr:np.ndarray):
+    max_formula = np.array(MAX_FORMULA, dtype=np.int32)
+    result_arr = np.zeros((formula_arr.shape[0], NUM_ELEMENTS), dtype=np.int32)
+    result_arr[:, 0] = max_formula[0]  # H
+    result_arr[:, 1] = np.maximum(0,formula_arr[:, 1])  # B
+    result_arr[:, 2] = np.maximum(0,formula_arr[:, 2] + 1)  # C: C+1, clipped to [0, MAX]
+    result_arr[:, 3] = np.where(formula_arr[:, 3] > 0, max_formula[3], 0)  # N: N if N>0, else 0
+    result_arr[:, 4] = max_formula[4]  # O
+    result_arr[:, 5] = max_formula[5]  # F
+    result_arr[:, 6] = max_formula[6]  # Na
+    result_arr[:, 7] = max_formula[7]  # Si
+    result_arr[:, 8] = max_formula[8]  # P
+    result_arr[:, 9] = np.where(formula_arr[:, 9] > 0, max_formula[9], 0)  # S: 0 if S==0 else MAX, evaluated elementwise
+    result_arr[:, 10] = formula_arr[:, 10]  # Cl: exact
+    result_arr[:, 11] = max_formula[11]  # K
+    result_arr[:, 12] = max_formula[12]  # As
+    result_arr[:, 13] = formula_arr[:, 13]  # Br: exact
+    result_arr[:, 14] = max_formula[14]  # I
+    return result_arr
+
+def create_isotopic_bounds(df:pl.DataFrame, formula_col: str = "precursor_formula") -> pl.DataFrame:
+    """
+    Create isotopic bounds for a given DataFrame with a formula column.
+    Returns the DataFrame with two new columns: min_bounds and max_bounds.
+    """
+    df = df.with_columns(
+        min_bounds=pl.col(formula_col).map_batches(
+            lambda x: _min_bound(x.to_numpy()),
+            return_dtype=pl.Array(pl.Int32, NUM_ELEMENTS),
+        ),
+        max_bounds=pl.col(formula_col).map_batches(
+            lambda x: _max_bound(x.to_numpy()),
+            return_dtype=pl.Array(pl.Int32, NUM_ELEMENTS),
+        )
+    )
+    return df
+
+def benchmark_mass_decomposition(size: int):
+    nist = create_mock_nist(size=size).select(
+        pl.col("NIST_ID"),
+        pl.col("PrecursorMZ"),
+        pl.col("precursor_formula"),
+    )
+
+    # Scenario 1: Uniform bounds
+    print("\n--- Mass Decomposition Benchmark ---")
+    print(f"Running for {size} rows.")
+    print("\nScenario 1: Uniform bounds")
+    start = perf_counter()
+    nist_uniform_bounds = nist.with_columns(
+        decomposed=pl.col("PrecursorMZ").mass_decomposer.decompose_mass(
+            tolerance_ppm=5.0,
+            min_bounds=MIN_FORMULA,
+            max_bounds=MAX_FORMULA,
+            min_dbe=0.0,
+            max_dbe=40.0,
+        )
+    )
+    end = perf_counter()
+    print(f"Uniform bounds decomposition time: {end - start:.4f} seconds")
+    assert len(nist_uniform_bounds) == size
+
+    # Scenario 2: Per-mass bounds (all same)
+    print("\nScenario 2: Per-mass bounds (all same)")
+    nist_with_bounds = nist.with_columns(
+        min_bounds=pl.lit(np.tile(np.array(MIN_FORMULA, dtype=np.int32), (nist.height, 1))),
+        max_bounds=pl.lit(np.tile(np.array(MAX_FORMULA, dtype=np.int32), (nist.height, 1)))
+    )
+    start = perf_counter()
+    nist_non_uniform_bounds = nist_with_bounds.with_columns(
+        decomposed=pl.struct([
+            pl.col("PrecursorMZ").alias("mass"), 
+            pl.col("min_bounds"), 
+            pl.col("max_bounds")
+        ]).mass_decomposer.decompose_mass_with_bounds(
+            tolerance_ppm=5.0,
+        )
+    ).drop(["min_bounds", "max_bounds"])
+    end = perf_counter()
+    print(f"Per-mass bounds (all same) decomposition time: {end - start:.4f} seconds")
+    assert len(nist_non_uniform_bounds) == size
+
+    # Scenario 3: Per-mass bounds (isotopic)
+    print("\nScenario 3: Per-mass bounds (isotopic)")
+    nist_isotopic_bounds = create_isotopic_bounds(nist)
+    start = perf_counter()
+    nist_isotopic_bounds_decomposed = nist_isotopic_bounds.with_columns(
+        decomposed=pl.struct([
+            pl.col("PrecursorMZ").alias("mass"), 
+            pl.col("min_bounds"), 
+            pl.col("max_bounds")
+        ]).mass_decomposer.decompose_mass_with_bounds(
+            tolerance_ppm=5.0,
+        )
+    ).drop(["min_bounds", "max_bounds"])
+    end = perf_counter()
+    print(f"Isotopic bounds decomposition time: {end - start:.4f} seconds")
+    assert len(nist_isotopic_bounds_decomposed) == size
+
+
 if __name__ == "__main__":
+    size = 10000
     if len(sys.argv) > 1:
         size = int(sys.argv[1])
-        test_roundtrip_decomposition(size)
-    else:
-        test_roundtrip_decomposition()
+    
+    test_roundtrip_decomposition(size)
+    benchmark_mass_decomposition(size)
