@@ -100,7 +100,13 @@ pub struct CorrectedFragment {
     pub error_ppm: f64,
 }
 
-#[derive(Debug, Clone)]
 pub struct CleanedAndNormalizedSpectrumResult {
     pub fragments: Vec<CorrectedFragment>,
+}
+
+#[derive(Debug, Clone)]
+pub struct DecomposedFragment {
+    pub formula: Formula,
+    pub mass: f64,
+    pub error_ppm: f64,
 }
