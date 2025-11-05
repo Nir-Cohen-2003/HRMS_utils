@@ -1,4 +1,5 @@
-use crate::common::{Formula, DecompositionParams, NUM_ELEMENTS, ATOMIC_MASSES, check_dbe, MIN_MASS_FOR_TOLERANCE, SpectrumDecompositionParams};
+
+use crate::common::{Formula, DecompositionParams, NUM_ELEMENTS, ATOMIC_MASSES, check_dbe, MIN_MASS_FOR_TOLERANCE, SpectrumDecompositionParams, CleanedAndNormalizedSpectrumResult, CorrectedFragment};
 
 #[derive(Debug, Clone)]
 struct Weight {
@@ -298,6 +299,40 @@ impl MassDecomposer {
     }
 }
 
+
+
+struct FitPoint {
+    mass: f64,
+    error: f64,
+    weight: f64,
+}
+
+fn weighted_linear_regression(points: &[FitPoint]) -> (f64, f64) {
+    let mut sw = 0.0;
+    let mut sx = 0.0;
+    let mut sy = 0.0;
+    let mut sxx = 0.0;
+    let mut sxy = 0.0;
+
+    for p in points {
+        sw += p.weight;
+        sx += p.weight * p.mass;
+        sy += p.weight * p.error;
+        sxx += p.weight * p.mass * p.mass;
+        sxy += p.weight * p.mass * p.error;
+    }
+
+    let denom = sw * sxx - sx * sx;
+    if denom.abs() < 1e-12 {
+        return (0.0, 0.0); // Not enough data or collinear
+    }
+
+    let b = (sw * sxy - sx * sy) / denom;
+    let a = (sy - b * sx) / sw;
+    (a, b)
+}
+
+
 pub struct SpectrumDecomposer {}
 
 impl SpectrumDecomposer {
@@ -335,5 +370,117 @@ impl SpectrumDecomposer {
         }
 
         all_results
+    }
+
+    pub fn clean_and_normalize_spectrum_iterative(
+        &mut self,
+        fragment_masses: &[f64],
+        fragment_intensities: &[f64],
+        precursor_formula: &Formula,
+        params: &SpectrumDecompositionParams,
+        max_allowed_normalized_mass_error_ppm: f64,
+        max_iterations: usize,
+        convergence_tolerance: f64,
+    ) -> CleanedAndNormalizedSpectrumResult {
+        
+        let fragment_solutions = self.decompose_spectrum_with_precursor(
+            fragment_masses, 
+            precursor_formula, 
+            params
+        );
+
+        let mut linear_fit = (0.0, 0.0); // (a, b)
+
+        for _ in 0..max_iterations {
+            let mut fit_points = Vec::new();
+
+            for (i, formulas) in fragment_solutions.iter().enumerate() {
+                if formulas.is_empty() {
+                    continue;
+                }
+
+                let measured_mass = fragment_masses[i];
+                let predicted_error = linear_fit.0 + linear_fit.1 * measured_mass;
+
+                let mut formula_errors = Vec::new();
+                let mut formula_weights = Vec::new();
+
+                for formula in formulas {
+                    let calc_mass: f64 = formula.iter().enumerate().map(|(i, &c)| ATOMIC_MASSES[i] * c as f64).sum();
+                    let error = calc_mass - measured_mass;
+                    formula_errors.push(error);
+
+                    let deviation = (error - predicted_error).abs();
+                    formula_weights.push(1.0 / (deviation + 1e-9));
+                }
+
+                let total_weight: f64 = formula_weights.iter().sum();
+                if total_weight == 0.0 {
+                    continue;
+                }
+
+                let weighted_average_error: f64 = formula_errors.iter().zip(formula_weights.iter())
+                    .map(|(&err, &w)| err * (w / total_weight))
+                    .sum();
+
+                fit_points.push(FitPoint {
+                    mass: measured_mass,
+                    error: weighted_average_error,
+                    weight: fragment_intensities[i],
+                });
+            }
+
+            let new_linear_fit = weighted_linear_regression(&fit_points);
+
+            if (new_linear_fit.0 - linear_fit.0).abs() < convergence_tolerance &&
+               (new_linear_fit.1 - linear_fit.1).abs() < convergence_tolerance {
+                linear_fit = new_linear_fit;
+                break;
+            }
+            linear_fit = new_linear_fit;
+        }
+
+        let mut corrected_fragments = Vec::new();
+        for (i, formulas) in fragment_solutions.iter().enumerate() {
+            if formulas.is_empty() {
+                continue;
+            }
+
+            let measured_mass = fragment_masses[i];
+            let predicted_error = linear_fit.0 + linear_fit.1 * measured_mass;
+
+            let mut best_formula: Option<Formula> = None;
+            let mut min_deviation = f64::INFINITY;
+
+            for formula in formulas {
+                let calc_mass: f64 = formula.iter().enumerate().map(|(i, &c)| ATOMIC_MASSES[i] * c as f64).sum();
+                let error = calc_mass - measured_mass;
+                let deviation = (error - predicted_error).abs();
+
+                if deviation < min_deviation {
+                    min_deviation = deviation;
+                    best_formula = Some(formula.clone());
+                }
+            }
+
+            if let Some(formula) = best_formula {
+                let correction = linear_fit.0 + linear_fit.1 * measured_mass;
+                let normalized_mass = measured_mass + correction;
+                let calc_mass: f64 = formula.iter().enumerate().map(|(i, &c)| ATOMIC_MASSES[i] * c as f64).sum();
+                let final_error = calc_mass - normalized_mass;
+                let final_error_ppm = (final_error / normalized_mass) * 1e6;
+
+                if final_error_ppm.abs() <= max_allowed_normalized_mass_error_ppm {
+                    corrected_fragments.push(CorrectedFragment {
+                        normalized_mass,
+                        intensity: fragment_intensities[i],
+                        formula,
+                        error_ppm: final_error_ppm,
+                    });
+                }
+            }
+        }
+
+        CleanedAndNormalizedSpectrumResult { fragments: corrected_fragments }
     }
 }

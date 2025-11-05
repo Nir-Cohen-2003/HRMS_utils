@@ -44,6 +44,16 @@ pub struct SpectrumDecompositionParams {
     pub water_absorption: bool,
 }
 
+#[derive(Debug, Clone, Deserialize)]
+pub struct CleanAndNormalizeSpectrumKwargs {
+    pub tolerance_ppm: f64,
+    pub max_allowed_normalized_mass_error_ppm: f64,
+    pub min_dbe: f64,
+    pub max_dbe: f64,
+    pub dbe_mode: String,
+    pub water_absorption: bool,
+}
+
 pub fn formula_to_string(formula: &Formula) -> String {
     let mut s = String::new();
     for (i, &count) in formula.iter().enumerate() {
@@ -80,4 +90,17 @@ pub fn check_dbe(formula: &Formula, min_dbe: f64, max_dbe: f64, dbe_mode: &str) 
         "any" => true,
         _ => false,
     }
+}
+
+#[derive(Debug, Clone)]
+pub struct CorrectedFragment {
+    pub normalized_mass: f64,
+    pub intensity: f64,
+    pub formula: Formula,
+    pub error_ppm: f64,
+}
+
+#[derive(Debug, Clone)]
+pub struct CleanedAndNormalizedSpectrumResult {
+    pub fragments: Vec<CorrectedFragment>,
 }
