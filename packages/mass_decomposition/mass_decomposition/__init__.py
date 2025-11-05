@@ -1,3 +1,4 @@
+
 # packages/mass_decomposition/mass_decomposition/__init__.py
 
 from __future__ import annotations
@@ -113,7 +114,7 @@ class MassDecomposerUtils:
         The input expression is expected to be a struct with the following fields:
         - 'mass': float, the mass to decompose
         - 'min_bounds': list[int], the minimum elemental counts for the formula
-        - 'max_bounds': list[int], the maximum elemental counts for the formula
+        - 'max_bounds
 
         Args:
             tolerance_ppm: The mass tolerance in ppm.
@@ -135,4 +136,42 @@ class MassDecomposerUtils:
             is_elementwise=True,
             kwargs=kwargs,
         )
+
+    def clean_and_normalize_spectrum(
+        self,
+        tolerance_ppm: float = 5.0,
+        max_allowed_normalized_mass_error_ppm: float = 2.0,
+        min_dbe: float = -10.0,
+        max_dbe: float = 100.0,
+        dbe_mode: str = "any",
+        water_absorption: bool = False,
+    ) -> pl.Expr:
+        """
+        Clean and normalize a spectrum with a known precursor.
+
+        Args:
+            tolerance_ppm: The mass tolerance in ppm for the initial decomposition.
+            max_allowed_normalized_mass_error_ppm: The maximum allowed mass error in ppm after normalization.
+            min_dbe: The minimum degree of unsaturation.
+            max_dbe: The maximum degree of unsaturation.
+            dbe_mode: The DBE mode, one of 'integer', 'half_integer', 'any'.
+            water_absorption: Whether to allow for water absorption.
+        """
+        kwargs = {
+            "tolerance_ppm": tolerance_ppm,
+            "max_allowed_normalized_mass_error_ppm": max_allowed_normalized_mass_error_ppm,
+            "min_dbe": min_dbe,
+            "max_dbe": max_dbe,
+            "dbe_mode": dbe_mode,
+            "water_absorption": water_absorption,
+        }
+
+        return register_plugin_function(
+            args=[self._expr],
+            plugin_path=LIB,
+            function_name="clean_and_normalize_spectrum",
+            is_elementwise=True,
+            kwargs=kwargs,
+        )
+
 

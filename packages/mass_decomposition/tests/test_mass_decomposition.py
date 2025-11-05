@@ -58,7 +58,7 @@ TEST_CASES = [
         3.0,
         {"C": 0, "H": 0, "O": 0},
         {"C": 20, "H": 20, "O": 10, "P": 3, "N": 10, "S": 5, "Si": 0, "Cl": 0},
-        ["C13H10O", "C9H13NOP"]
+        ["C9H13NOP", "C13H10O"]
     ),
     (
         182.0732, 
@@ -247,16 +247,14 @@ SPECTRUM_TEST_CASES = [
     ),
 ]
 
+
 @pytest.mark.parametrize("mz_values, precursor_formula_str, tolerance_ppm, water_absorption, expected_formulas_str", SPECTRUM_TEST_CASES)
 def test_decompose_spectrum_with_precursor(mz_values, precursor_formula_str, tolerance_ppm, water_absorption, expected_formulas_str):
-    """
-    Tests the decompose_spectrum_with_precursor function with a set of predefined test cases.
-    """
     precursor_formula = formula_string_to_array(precursor_formula_str)
     df = pl.DataFrame({
         "mz": [mz_values],
         "precursor_formula": [precursor_formula]
-    },schema={
+    }, schema={
         "mz": pl.List(pl.Float64),
         "precursor_formula": pl.Array(pl.Int32, NUM_ELEMENTS)
     }).with_columns(
@@ -266,21 +264,97 @@ def test_decompose_spectrum_with_precursor(mz_values, precursor_formula_str, tol
     result_df = df.with_columns(
         decomposed=pl.col("spectrum_struct").mass_decomposer.decompose_spectrum_with_precursor(
             tolerance_ppm=tolerance_ppm,
-            water_absorption=water_absorption,
             min_dbe=-0.5,
-            max_dbe=50.0,
+            max_dbe=100.0,
             dbe_mode="half_integer",
+            water_absorption=water_absorption
         )
     )
 
-    output_formulas_arr = result_df.item(0, "decomposed").to_list()
-    expected_formulas_arr = [[formula_string_to_array(f) for f in formulas] for formulas in expected_formulas_str]
+    decomposed_col = result_df["decomposed"]
+    assert isinstance(decomposed_col.dtype, pl.Struct), f"Expected a struct, but got {decomposed_col.dtype}"
 
-    sorted_output = [sorted(mz_formulas) for mz_formulas in output_formulas_arr]
-    sorted_expected = [sorted(mz_formulas) for mz_formulas in expected_formulas_arr]
+    # Check that the struct has the correct fields and types
+    expected_fields = {
+        "fragments": pl.List(pl.List(pl.Array(pl.Int32, NUM_ELEMENTS))),
+        "fragment_masses": pl.List(pl.List(pl.Float64)),
+        "fragment_errors_ppm": pl.List(pl.List(pl.Float64)),
+        "fragment_formulas_str": pl.List(pl.List(pl.Utf8)),
+    }
+    for field in decomposed_col.dtype.fields:
+        assert field.name in expected_fields, f"Unexpected field {field.name} in decomposed spectrum struct"
+        assert field.dtype == expected_fields[field.name], f"Field {field.name} has wrong dtype: expected {expected_fields[field.name]}, got {field.dtype}"
 
-    output_formulas_str_for_assert = [sorted([formula_array_to_string(f) for f in mz_formulas]) for mz_formulas in output_formulas_arr]
-    expected_formulas_str_for_assert = [sorted(mz_formulas_str) for mz_formulas_str in expected_formulas_str]
 
-    assert sorted_output == sorted_expected, \
-        f"Expected {expected_formulas_str_for_assert}, but got {output_formulas_str_for_assert}"
+    output_struct = decomposed_col.to_list()[0]
+    output_formulas_arr = output_struct["fragments"]
+    output_formulas_str = output_struct["fragment_formulas_str"]
+
+    # Check that string formulas match array formulas
+    for i, formulas_arr in enumerate(output_formulas_arr):
+        for j, formula_arr in enumerate(formulas_arr):
+            assert formula_array_to_string(formula_arr) == output_formulas_str[i][j], f"Formula string does not match array for formula {i},{j}: expected {formula_array_to_string(formula_arr)}, got {output_formulas_str[i][j]}"
+
+    # Check that the decomposed formulas are correct
+    expected_formulas_flat = [f for formulas in expected_formulas_str for f in formulas]
+    output_formulas_flat = [f for formulas in output_formulas_str for f in formulas]
+    assert set(output_formulas_flat) == set(expected_formulas_flat), f"Expected formulas {set(expected_formulas_flat)}, but got {set(output_formulas_flat)}"
+
+
+
+@pytest.mark.parametrize("mz_values, precursor_formula_str, tolerance_ppm, water_absorption, expected_formulas_str", SPECTRUM_TEST_CASES)
+def test_clean_and_normalize_spectrum(mz_values, precursor_formula_str, tolerance_ppm, water_absorption, expected_formulas_str):
+    precursor_formula = formula_string_to_array(precursor_formula_str)
+    df = pl.DataFrame({
+        "mz": [mz_values],
+        "intensity": [[100.0] * len(mz_values)],
+        "precursor_formula": [precursor_formula]
+    }, schema={
+        "mz": pl.List(pl.Float64),
+        "intensity": pl.List(pl.Float64),
+        "precursor_formula": pl.Array(pl.Int32, NUM_ELEMENTS)
+    }).with_columns(
+        spectrum_struct=pl.struct(["mz", "intensity", "precursor_formula"])
+    )
+
+    result_df = df.with_columns(
+        corrected=pl.col("spectrum_struct").mass_decomposer.clean_and_normalize_spectrum(
+            tolerance_ppm=tolerance_ppm,
+            max_allowed_normalized_mass_error_ppm=2.0,
+            min_dbe=-10.0,
+            max_dbe=100.0,
+            dbe_mode="any",
+            water_absorption=water_absorption
+        )
+    )
+
+    corrected_col = result_df["corrected"]
+    assert isinstance(corrected_col.dtype, pl.Struct), f"Expected a struct, but got {corrected_col.dtype}"
+
+    # Check that the struct has the correct fields and types
+    expected_fields = {
+        "masses_normalized": pl.List(pl.Float64),
+        "cleaned_intensities": pl.List(pl.Float64),
+        "fragment_formulas": pl.List(pl.Array(pl.Int32, NUM_ELEMENTS)),
+        "fragment_errors_ppm": pl.List(pl.Float64),
+        "fragment_formulas_str": pl.List(pl.Utf8),
+    }
+    for field in corrected_col.dtype.fields:
+        assert field.name in expected_fields, f"Unexpected field {field.name} in corrected spectrum struct"
+        assert field.dtype == expected_fields[field.name], f"Field {field.name} has wrong dtype: expected {expected_fields[field.name]}, got {field.dtype}"
+
+    # Check that only fragments with a formula are returned
+    expected_formulas_flat = [f for formulas in expected_formulas_str for f in formulas]
+    output_struct = corrected_col.to_list()[0]
+    output_formulas_arr = output_struct["fragment_formulas"]
+    output_formulas_str = output_struct["fragment_formulas_str"]
+
+    # Check that string formulas match array formulas
+    for i, formula_arr in enumerate(output_formulas_arr):
+        assert formula_array_to_string(formula_arr) == output_formulas_str[i], f"Formula string does not match array for formula {i}: expected {formula_array_to_string(formula_arr)}, got {output_formulas_str[i]}"
+
+    assert len(output_formulas_str) <= len(expected_formulas_flat), f"Expected at most {len(expected_formulas_flat)} formulas, but got {len(output_formulas_str)}"
+
+    # Check that the correct formula is chosen
+    for formula in output_formulas_str:
+        assert formula in expected_formulas_flat, f"Unexpected formula {formula} in output, expected one of {expected_formulas_flat}"
