@@ -1,4 +1,3 @@
-
 use crate::common::{Formula, DecompositionParams, NUM_ELEMENTS, ATOMIC_MASSES, check_dbe, MIN_MASS_FOR_TOLERANCE, SpectrumDecompositionParams, CleanedAndNormalizedSpectrumResult, CorrectedFragment, DecomposedFragment};
 
 #[derive(Debug, Clone)]
@@ -262,12 +261,12 @@ impl MassDecomposer {
         }
     }
 
-    pub fn decompose(&mut self, target_mass: f64, params: &DecompositionParams) -> Vec<DecomposedFragment> {
+    pub fn decompose(&mut self, target_mass: f64, params: &DecompositionParams) -> (Vec<Formula>, Vec<f64>) {
         if !self.is_initialized {
             // self.precision = (params.tolerance_ppm * 50.0f64 * 2.0f64) / 1_000_000.0f64;
             self.precision = 1.0 / 5963.337687;
             if self.precision == 0.0f64 {
-                return Vec::new();
+                return (Vec::new(), Vec::new());
             }
             self.discretize_masses();
             self.divide_by_gcd();
@@ -289,19 +288,19 @@ impl MassDecomposer {
         
         let tolerance_da = params.tolerance_ppm * 1e-6f64 * target_mass.max(MIN_MASS_FOR_TOLERANCE);
 
-        all_results.into_iter()
-            .filter_map(|f| {
-                let formula_mass: f64 = f.iter().enumerate().map(|(i, &count)| ATOMIC_MASSES[i] * count as f64).sum();
-                let error = formula_mass - target_mass;
-                if error.abs() <= tolerance_da {
-                    Some((f, formula_mass, (error / formula_mass) * 1e6))
-                } else {
-                    None
-                }
-            })
-            .filter(|(f, _, _)| check_dbe(f, params.min_dbe, params.max_dbe, &params.dbe_mode))
-            .map(|(formula, mass, error_ppm)| DecomposedFragment { formula, mass, error_ppm })
-            .collect()
+        let mut formulas = Vec::new();
+        let mut errors_ppm = Vec::new();
+
+        for f in all_results {
+            let formula_mass: f64 = f.iter().enumerate().map(|(i, &count)| ATOMIC_MASSES[i] * count as f64).sum();
+            let error = formula_mass - target_mass;
+            if error.abs() <= tolerance_da && check_dbe(&f, params.min_dbe, params.max_dbe, &params.dbe_mode) {
+                formulas.push(f);
+                errors_ppm.push((error / formula_mass) * 1e6);
+            }
+        }
+
+        (formulas, errors_ppm)
     }
 }
 
@@ -351,20 +350,20 @@ impl SpectrumDecomposer {
         mz_values: &[f64],
         precursor_formula: &Formula,
         params: &SpectrumDecompositionParams,
-    ) -> Vec<Vec<DecomposedFragment>> {
+    ) -> Vec<(Vec<Formula>, Vec<f64>)> {
         let mut max_bounds = precursor_formula.clone();
         if params.water_absorption {
             max_bounds[0] += 2; // H
             max_bounds[4] += 1; // O
         }
-        let max_bounds = max_bounds; // now immutable for the rest of the scope
+        let max_bounds = max_bounds;
         let min_bounds = [0; NUM_ELEMENTS];
 
         let mut all_results = Vec::with_capacity(mz_values.len());
 
         for &mass in mz_values {
             let mut decomposer = MassDecomposer::new(min_bounds, max_bounds);
-            let formulas = decomposer.decompose(mass, &DecompositionParams {
+            let result = decomposer.decompose(mass, &DecompositionParams {
                 tolerance_ppm: params.tolerance_ppm,
                 min_dbe: params.min_dbe,
                 max_dbe: params.max_dbe,
@@ -372,7 +371,7 @@ impl SpectrumDecomposer {
                 min_bounds,
                 max_bounds,
             });
-            all_results.push(formulas);
+            all_results.push(result);
         }
 
         all_results
@@ -395,13 +394,13 @@ impl SpectrumDecomposer {
             params
         );
 
-        let mut linear_fit = (0.0, 0.0); // (a, b)
+        let mut linear_fit = (0.0, 0.0);
 
         for _ in 0..max_iterations {
             let mut fit_points = Vec::new();
 
-            for (i, fragments) in fragment_solutions.iter().enumerate() {
-                if fragments.is_empty() {
+            for (i, (formulas,_errors_ppm)) in fragment_solutions.iter().enumerate() {
+                if formulas.len() == 0 {
                     continue;
                 }
 
@@ -411,8 +410,8 @@ impl SpectrumDecomposer {
                 let mut formula_errors = Vec::new();
                 let mut formula_weights = Vec::new();
 
-                for fragment in fragments {
-                    let calc_mass = fragment.mass;
+                for (_formula_idx, formula) in formulas.iter().enumerate() {
+                    let calc_mass: f64 = formula.iter().enumerate().map(|(i, &count)| ATOMIC_MASSES[i] * count as f64).sum();
                     let error = calc_mass - measured_mass;
                     formula_errors.push(error);
 
@@ -447,32 +446,33 @@ impl SpectrumDecomposer {
         }
 
         let mut corrected_fragments = Vec::new();
-        for (i, fragments) in fragment_solutions.iter().enumerate() {
-            if fragments.is_empty() {
+        for (i, (formulas, _errors_ppm)) in fragment_solutions.iter().enumerate() {
+            if formulas.is_empty() {
                 continue;
             }
 
             let measured_mass = fragment_masses[i];
             let predicted_error = linear_fit.0 + linear_fit.1 * measured_mass;
 
-            let mut best_fragment: Option<&DecomposedFragment> = None;
+            let mut best_formula_idx: Option<usize> = None;
             let mut min_deviation = f64::INFINITY;
 
-            for fragment in fragments {
-                let calc_mass = fragment.mass;
+            for (formula_idx, formula) in formulas.iter().enumerate() {
+                let calc_mass: f64 = formula.iter().enumerate().map(|(j, &count)| ATOMIC_MASSES[j] * count as f64).sum();
                 let error = calc_mass - measured_mass;
                 let deviation = (error - predicted_error).abs();
 
                 if deviation < min_deviation {
                     min_deviation = deviation;
-                    best_fragment = Some(fragment);
+                    best_formula_idx = Some(formula_idx);
                 }
             }
 
-            if let Some(fragment) = best_fragment {
+            if let Some(idx) = best_formula_idx {
+                let formula = formulas[idx];
+                let calc_mass: f64 = formula.iter().enumerate().map(|(j, &count)| ATOMIC_MASSES[j] * count as f64).sum();
                 let correction = linear_fit.0 + linear_fit.1 * measured_mass;
                 let normalized_mass = measured_mass + correction;
-                let calc_mass = fragment.mass;
                 let final_error = calc_mass - normalized_mass;
                 let final_error_ppm = (final_error / normalized_mass) * 1e6;
 
@@ -480,7 +480,7 @@ impl SpectrumDecomposer {
                     corrected_fragments.push(CorrectedFragment {
                         normalized_mass,
                         intensity: fragment_intensities[i],
-                        formula: fragment.formula,
+                        formula,
                         error_ppm: final_error_ppm,
                     });
                 }

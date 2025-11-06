@@ -42,30 +42,29 @@ fn mass_decomposition(inputs: &[Series], kwargs: DecompositionKwargs) -> PolarsR
                 max_bounds,
             };
             let mut decomposer = MassDecomposer::new(min_bounds, max_bounds);
-            let results = decomposer.decompose(mass, &params);
+            let (formulas, errors_ppm) = decomposer.decompose(mass, &params);
 
-            // Why: Build arrays directly instead of using ListPrimitiveChunkedBuilder
-            // which creates List(Array) instead of List(Array)
-            let formulas_vec: Vec<Option<Series>> = results
+            // Why: Build arrays directly for formulas
+            let formulas_vec: Vec<Option<Series>> = formulas
                 .iter()
-                .map(|res| {
-                    let arr = Int32Array::from_slice(&res.formula);
+                .map(|formula| {
+                    let arr = Int32Array::from_slice(formula);
                     let arr_boxed = Box::new(arr) as Box<dyn polars_arrow::array::Array>;
                     Some(Series::try_from((PlSmallStr::EMPTY, arr_boxed)).unwrap())
                 })
                 .collect();
             
-            let mut formulas_series = Series::new(
+            let formulas_series = Series::new(
                 PlSmallStr::from_static("formulas"), 
                 formulas_vec
             ).cast(&DataType::Array(Box::new(DataType::Int32), NUM_ELEMENTS))?;
 
-            let mut formulas_str_builder = StringChunkedBuilder::new("formulas_str".into(), results.len());
-            let mut errors_builder = PrimitiveChunkedBuilder::<Float64Type>::new("errors".into(), results.len());
+            let mut formulas_str_builder = StringChunkedBuilder::new("formulas_str".into(), formulas.len());
+            let mut errors_builder = PrimitiveChunkedBuilder::<Float64Type>::new("errors".into(), errors_ppm.len());
 
-            for res in results {
-                formulas_str_builder.append_value(formula_to_string(&res.formula));
-                errors_builder.append_value(res.error_ppm);
+            for (formula, error) in formulas.iter().zip(errors_ppm.iter()) {
+                formulas_str_builder.append_value(formula_to_string(formula));
+                errors_builder.append_value(*error);
             }
 
             formulas_series_vec.push(formulas_series);
@@ -131,16 +130,16 @@ fn mass_decomposition_with_bounds(inputs: &[Series], kwargs: DecompositionKwargs
                 max_bounds,
             };
             let mut decomposer = MassDecomposer::new(min_bounds, max_bounds);
-            let results = decomposer.decompose(mass, &params);
+            let (formulas, errors_ppm) = decomposer.decompose(mass, &params);
 
-            let mut formulas_builder = ListPrimitiveChunkedBuilder::<Int32Type>::new("formulas".into(), results.len(), NUM_ELEMENTS, DataType::Int32);
-            let mut formulas_str_builder = StringChunkedBuilder::new("formulas_str".into(), results.len());
-            let mut errors_builder = PrimitiveChunkedBuilder::<Float64Type>::new("errors".into(), results.len());
+            let mut formulas_builder = ListPrimitiveChunkedBuilder::<Int32Type>::new("formulas".into(), formulas.len(), NUM_ELEMENTS, DataType::Int32);
+            let mut formulas_str_builder = StringChunkedBuilder::new("formulas_str".into(), formulas.len());
+            let mut errors_builder = PrimitiveChunkedBuilder::<Float64Type>::new("errors".into(), errors_ppm.len());
 
-            for res in results {
-                formulas_builder.append_slice(&res.formula);
-                formulas_str_builder.append_value(formula_to_string(&res.formula));
-                errors_builder.append_value(res.error_ppm);
+            for (formula, error) in formulas.iter().zip(errors_ppm.iter()) {
+                formulas_builder.append_slice(formula);
+                formulas_str_builder.append_value(formula_to_string(formula));
+                errors_builder.append_value(*error);
             }
 
             formulas_series_vec.push(formulas_builder.finish().into_series());
@@ -219,8 +218,8 @@ fn spectrum_decomposition_normalized(inputs: &[Series], kwargs: CleanAndNormaliz
                 &precursor_formula,
                 &params,
                 kwargs.max_allowed_normalized_mass_error_ppm,
-                10, // max_iterations
-                1e-9, // convergence_tolerance
+                10, // Why: 10 iterations is sufficient for mass calibration convergence in typical HRMS data
+                1e-9, // Why: Tight convergence tolerance ensures accurate mass calibration fit
             );
 
             let mut formulas_builder = ListPrimitiveChunkedBuilder::<Int32Type>::new("formulas".into(), result.fragments.len(), NUM_ELEMENTS, DataType::Int32);
