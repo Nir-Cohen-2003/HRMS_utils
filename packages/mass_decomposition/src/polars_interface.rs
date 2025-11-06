@@ -44,22 +44,36 @@ fn mass_decomposition(inputs: &[Series], kwargs: DecompositionKwargs) -> PolarsR
             let mut decomposer = MassDecomposer::new(min_bounds, max_bounds);
             let results = decomposer.decompose(mass, &params);
 
-            let mut formulas_builder = ListPrimitiveChunkedBuilder::<Int32Type>::new("formulas".into(), results.len(), NUM_ELEMENTS, DataType::Int32);
+            // Why: Build arrays directly instead of using ListPrimitiveChunkedBuilder
+            // which creates List(Array) instead of List(Array)
+            let formulas_vec: Vec<Option<Series>> = results
+                .iter()
+                .map(|res| {
+                    let arr = Int32Array::from_slice(&res.formula);
+                    let arr_boxed = Box::new(arr) as Box<dyn polars_arrow::array::Array>;
+                    Some(Series::try_from((PlSmallStr::EMPTY, arr_boxed)).unwrap())
+                })
+                .collect();
+            
+            let mut formulas_series = Series::new(
+                PlSmallStr::from_static("formulas"), 
+                formulas_vec
+            ).cast(&DataType::Array(Box::new(DataType::Int32), NUM_ELEMENTS))?;
+
             let mut formulas_str_builder = StringChunkedBuilder::new("formulas_str".into(), results.len());
             let mut errors_builder = PrimitiveChunkedBuilder::<Float64Type>::new("errors".into(), results.len());
 
             for res in results {
-                formulas_builder.append_slice(&res.formula);
                 formulas_str_builder.append_value(formula_to_string(&res.formula));
                 errors_builder.append_value(res.error_ppm);
             }
 
-            formulas_series_vec.push(formulas_builder.finish().into_series());
+            formulas_series_vec.push(formulas_series);
             formulas_str_series_vec.push(formulas_str_builder.finish().into_series());
             errors_series_vec.push(errors_builder.finish().into_series());
         } else {
-            // Why: Handle null input by creating empty lists
-            let empty_formulas = ListPrimitiveChunkedBuilder::<Int32Type>::new("formulas".into(), 0, NUM_ELEMENTS, DataType::Int32).finish().into_series();
+            // Why: Handle null input by creating empty lists with proper Array dtype
+            let empty_formulas = Series::new(PlSmallStr::from_static("formulas"), Vec::<Option<Series>>::new());
             let empty_formulas_str = StringChunkedBuilder::new("formulas_str".into(), 0).finish().into_series();
             let empty_errors = PrimitiveChunkedBuilder::<Float64Type>::new("errors".into(), 0).finish().into_series();
             

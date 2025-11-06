@@ -111,10 +111,10 @@ def test_decompose_mass(mass, tolerance_ppm, min_bounds_dict, max_bounds_dict, e
     )
     print(result_df.schema)
     print(result_df)
-    return
-    output_formulas_arr = result_df.item(0, "decomposed2")
+    output_formulas_arr = result_df.item(0, "formulas")
     print("Output formulas (arrays):", output_formulas_arr)
     expected_formulas_arr = [formula_string_to_array(s) for s in expected_formulas_str]
+    return
 
     sorted_output = sorted(output_formulas_arr)
     sorted_expected = sorted(expected_formulas_arr)
