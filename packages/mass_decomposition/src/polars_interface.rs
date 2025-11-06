@@ -9,8 +9,8 @@ use polars::frame::DataFrame;
 use polars::chunked_array::builder::{
     ListPrimitiveChunkedBuilder, PrimitiveChunkedBuilder, StringChunkedBuilder
 };
-use polars_arrow::array::Int32Array;
-
+use polars_arrow::array::{Int32Array, FixedSizeListArray};
+use itertools::multizip;
 fn mass_decomposition_output(_fields: &[Field]) -> PolarsResult<Field> {
     let formula_field = Field::new("formulas".into(), DataType::List(Box::new(DataType::Array(Box::new(DataType::Int32), NUM_ELEMENTS))));
     let formula_str_field = Field::new("formulas_str".into(), DataType::List(Box::new(DataType::String)));
@@ -94,32 +94,46 @@ fn mass_decomposition(inputs: &[Series], kwargs: DecompositionKwargs) -> PolarsR
 
 #[polars_expr(output_type_func=mass_decomposition_output)]
 fn mass_decomposition_with_bounds(inputs: &[Series], kwargs: DecompositionKwargs) -> PolarsResult<Series> {
-    let s = &inputs[0];
-    let ca = s.struct_()?;
-    let len = ca.len();
+    let input_series = &inputs[0];
+    let input_struct = input_series.struct_()?;
+    let num_rows = input_struct.len();
 
-    let mass_series = ca.field_by_name("mass")?;
+    let mass_series = input_struct.field_by_name("mass")?;
     let masses = mass_series.f64()?;
-    let min_bounds_series = ca.field_by_name("min_bounds")?;
-    let min_bounds_ca = min_bounds_series.array()?;
-    let max_bounds_series = ca.field_by_name("max_bounds")?;
-    let max_bounds_ca = max_bounds_series.array()?;
+    let min_bounds_series = input_struct.field_by_name("min_bounds")?;
+    let min_bounds_arrays: &ArrayChunked = min_bounds_series.array()?;
+    let max_bounds_series = input_struct.field_by_name("max_bounds")?;
+    let max_bounds_arrays: &ArrayChunked = max_bounds_series.array()?;
 
-    let mut formulas_series_vec: Vec<Series> = Vec::with_capacity(len);
-    let mut formulas_str_series_vec: Vec<Series> = Vec::with_capacity(len);
-    let mut errors_series_vec: Vec<Series> = Vec::with_capacity(len);
+    // Debug: Check for nulls
+    let min_nulls = min_bounds_arrays.null_count();
+    let max_nulls = max_bounds_arrays.null_count();
+    eprintln!("min_bounds null count: {}", min_nulls);
+    eprintln!("max_bounds null count: {}", max_nulls);
 
-    for ((mass_opt, min_bounds_opt), max_bounds_opt) in masses.into_iter().zip(min_bounds_ca).zip(max_bounds_ca) {
+    let mut formulas_series_vec: Vec<Series> = Vec::with_capacity(num_rows);
+    let mut formulas_str_series_vec: Vec<Series> = Vec::with_capacity(num_rows);
+    let mut errors_series_vec: Vec<Series> = Vec::with_capacity(num_rows);
+
+    for (mass_opt, min_bounds_opt, max_bounds_opt) in multizip((masses.into_iter(), min_bounds_arrays, max_bounds_arrays)) {
         if let (Some(mass), Some(min_bounds_arr), Some(max_bounds_arr)) = (mass_opt, min_bounds_opt, max_bounds_opt) {
-            let min_bounds_ca = min_bounds_arr.as_any().downcast_ref::<Int32Array>().unwrap();
-            let min_bounds_sl: &[i32] = min_bounds_ca.values();
-            let max_bounds_ca = max_bounds_arr.as_any().downcast_ref::<Int32Array>().unwrap();
-            let max_bounds_sl: &[i32] = max_bounds_ca.values();
+            // Direct downcast to Int32Array - the iterator already unwrapped the FixedSizeListArray layer
+            let min_bounds_values = min_bounds_arr.as_any().downcast_ref::<Int32Array>()
+                .ok_or_else(|| PolarsError::ComputeError(
+                    format!("min_bounds could not be downcast to Int32Array. Actual type: {:?}", min_bounds_arr.dtype()).into()
+                ))?;
+            let min_bounds_slice: &[i32] = min_bounds_values.values();
+            
+            let max_bounds_values = max_bounds_arr.as_any().downcast_ref::<Int32Array>()
+                .ok_or_else(|| PolarsError::ComputeError(
+                    format!("max_bounds could not be downcast to Int32Array. Actual type: {:?}", max_bounds_arr.dtype()).into()
+                ))?;
+            let max_bounds_slice: &[i32] = max_bounds_values.values();
 
             let mut min_bounds = [0; NUM_ELEMENTS];
             let mut max_bounds = [0; NUM_ELEMENTS];
-            min_bounds.copy_from_slice(min_bounds_sl);
-            max_bounds.copy_from_slice(max_bounds_sl);
+            min_bounds.copy_from_slice(min_bounds_slice);
+            max_bounds.copy_from_slice(max_bounds_slice);
 
             let params = DecompositionParams {
                 tolerance_ppm: kwargs.tolerance_ppm,
@@ -132,21 +146,35 @@ fn mass_decomposition_with_bounds(inputs: &[Series], kwargs: DecompositionKwargs
             let mut decomposer = MassDecomposer::new(min_bounds, max_bounds);
             let (formulas, errors_ppm) = decomposer.decompose(mass, &params);
 
-            let mut formulas_builder = ListPrimitiveChunkedBuilder::<Int32Type>::new("formulas".into(), formulas.len(), NUM_ELEMENTS, DataType::Int32);
+            // Why: Build arrays directly for formulas - same approach as mass_decomposition
+            let formulas_vec: Vec<Option<Series>> = formulas
+                .iter()
+                .map(|formula| {
+                    let arr = Int32Array::from_slice(formula);
+                    let arr_boxed = Box::new(arr) as Box<dyn polars_arrow::array::Array>;
+                    Some(Series::try_from((PlSmallStr::EMPTY, arr_boxed)).unwrap())
+                })
+                .collect();
+            
+            let formulas_series = Series::new(
+                PlSmallStr::from_static("formulas"), 
+                formulas_vec
+            ).cast(&DataType::Array(Box::new(DataType::Int32), NUM_ELEMENTS))?;
+
             let mut formulas_str_builder = StringChunkedBuilder::new("formulas_str".into(), formulas.len());
             let mut errors_builder = PrimitiveChunkedBuilder::<Float64Type>::new("errors".into(), errors_ppm.len());
 
             for (formula, error) in formulas.iter().zip(errors_ppm.iter()) {
-                formulas_builder.append_slice(formula);
                 formulas_str_builder.append_value(formula_to_string(formula));
                 errors_builder.append_value(*error);
             }
 
-            formulas_series_vec.push(formulas_builder.finish().into_series());
+            formulas_series_vec.push(formulas_series);
             formulas_str_series_vec.push(formulas_str_builder.finish().into_series());
             errors_series_vec.push(errors_builder.finish().into_series());
         } else {
-            let empty_formulas = ListPrimitiveChunkedBuilder::<Int32Type>::new("formulas".into(), 0, NUM_ELEMENTS, DataType::Int32).finish().into_series();
+            // Why: Handle null input by creating empty lists with proper Array dtype
+            let empty_formulas = Series::new(PlSmallStr::from_static("formulas"), Vec::<Option<Series>>::new());
             let empty_formulas_str = StringChunkedBuilder::new("formulas_str".into(), 0).finish().into_series();
             let empty_errors = PrimitiveChunkedBuilder::<Float64Type>::new("errors".into(), 0).finish().into_series();
             
@@ -156,7 +184,7 @@ fn mass_decomposition_with_bounds(inputs: &[Series], kwargs: DecompositionKwargs
         }
     }
     
-    let out = StructChunked::from_series("mass_decomposition_with_bounds".into(), len, [
+    let out = StructChunked::from_series("mass_decomposition_with_bounds".into(), num_rows, [
         &Series::new("formulas".into(), formulas_series_vec),
         &Series::new("formulas_str".into(), formulas_str_series_vec),
         &Series::new("errors".into(), errors_series_vec),
