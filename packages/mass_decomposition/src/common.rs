@@ -33,6 +33,8 @@ pub struct DecompositionKwargs {
     pub min_dbe: f64,
     pub max_dbe: f64,
     pub dbe_mode: String,
+    pub min_bounds: Option<Formula>,
+    pub max_bounds: Option<Formula>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
