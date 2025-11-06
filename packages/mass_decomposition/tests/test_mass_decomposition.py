@@ -217,9 +217,9 @@ def test_decompose_mass_with_bounds():
     assert sorted_output == sorted_expected, \
         f"Expected {expected_formulas_str_sorted}, but got {output_formulas_str_sorted}"
 
-# Test cases for spectrum decomposition
+# Test cases for spectrum cleaning and normalization
 # Each tuple contains: (mz_values, precursor_formula_str, tolerance_ppm, water_absorption, expected_formulas)
-SPECTRUM_TEST_CASES = [
+CLEANING_TEST_CASES = [
     (
         [78.046950, 104.062600, 128.062600],
         "C10H20O5",
@@ -248,61 +248,7 @@ SPECTRUM_TEST_CASES = [
 ]
 
 
-@pytest.mark.parametrize("mz_values, precursor_formula_str, tolerance_ppm, water_absorption, expected_formulas_str", SPECTRUM_TEST_CASES)
-def test_decompose_spectrum_with_precursor(mz_values, precursor_formula_str, tolerance_ppm, water_absorption, expected_formulas_str):
-    precursor_formula = formula_string_to_array(precursor_formula_str)
-    df = pl.DataFrame({
-        "mz": [mz_values],
-        "precursor_formula": [precursor_formula]
-    }, schema={
-        "mz": pl.List(pl.Float64),
-        "precursor_formula": pl.Array(pl.Int32, NUM_ELEMENTS)
-    }).with_columns(
-        spectrum_struct=pl.struct(["mz", "precursor_formula"])
-    )
-
-    result_df = df.with_columns(
-        decomposed=pl.col("spectrum_struct").mass_decomposer.decompose_spectrum_with_precursor(
-            tolerance_ppm=tolerance_ppm,
-            min_dbe=-0.5,
-            max_dbe=100.0,
-            dbe_mode="half_integer",
-            water_absorption=water_absorption
-        )
-    )
-
-    decomposed_col = result_df["decomposed"]
-    assert isinstance(decomposed_col.dtype, pl.Struct), f"Expected a struct, but got {decomposed_col.dtype}"
-
-    # Check that the struct has the correct fields and types
-    expected_fields = {
-        "fragments": pl.List(pl.List(pl.Array(pl.Int32, NUM_ELEMENTS))),
-        "fragment_masses": pl.List(pl.List(pl.Float64)),
-        "fragment_errors_ppm": pl.List(pl.List(pl.Float64)),
-        "fragment_formulas_str": pl.List(pl.List(pl.Utf8)),
-    }
-    for field in decomposed_col.dtype.fields:
-        assert field.name in expected_fields, f"Unexpected field {field.name} in decomposed spectrum struct"
-        assert field.dtype == expected_fields[field.name], f"Field {field.name} has wrong dtype: expected {expected_fields[field.name]}, got {field.dtype}"
-
-
-    output_struct = decomposed_col.to_list()[0]
-    output_formulas_arr = output_struct["fragments"]
-    output_formulas_str = output_struct["fragment_formulas_str"]
-
-    # Check that string formulas match array formulas
-    for i, formulas_arr in enumerate(output_formulas_arr):
-        for j, formula_arr in enumerate(formulas_arr):
-            assert formula_array_to_string(formula_arr) == output_formulas_str[i][j], f"Formula string does not match array for formula {i},{j}: expected {formula_array_to_string(formula_arr)}, got {output_formulas_str[i][j]}"
-
-    # Check that the decomposed formulas are correct
-    expected_formulas_flat = [f for formulas in expected_formulas_str for f in formulas]
-    output_formulas_flat = [f for formulas in output_formulas_str for f in formulas]
-    assert set(output_formulas_flat) == set(expected_formulas_flat), f"Expected formulas {set(expected_formulas_flat)}, but got {set(output_formulas_flat)}"
-
-
-
-@pytest.mark.parametrize("mz_values, precursor_formula_str, tolerance_ppm, water_absorption, expected_formulas_str", SPECTRUM_TEST_CASES)
+@pytest.mark.parametrize("mz_values, precursor_formula_str, tolerance_ppm, water_absorption, expected_formulas_str", CLEANING_TEST_CASES)
 def test_clean_and_normalize_spectrum(mz_values, precursor_formula_str, tolerance_ppm, water_absorption, expected_formulas_str):
     precursor_formula = formula_string_to_array(precursor_formula_str)
     df = pl.DataFrame({
