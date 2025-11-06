@@ -109,12 +109,15 @@ def test_decompose_mass(mass, tolerance_ppm, min_bounds_dict, max_bounds_dict, e
             dbe_mode="half_integer",
         ).alias("decomposed").struct.unnest()
     )
-    print(result_df.schema)
-    print(result_df)
-    output_formulas_arr = result_df.item(0, "formulas")
-    print("Output formulas (arrays):", output_formulas_arr)
+    # print("Result DataFrame:", result_df.schema)
+    assert result_df.schema == pl.Schema({'mass': pl.Float64, 'formulas': pl.List(pl.Array(pl.Int32, shape=(15,))), 'formulas_str': pl.List(pl.String), 'errors': pl.List(pl.Float64)})
+    
+    
+    output_formulas_arr = result_df.item(0, "formulas").to_list()
+    assert isinstance(output_formulas_arr, list), f"Expected list of formulas, but got {type(output_formulas_arr)}, which is {output_formulas_arr}"
+    # print("Output formulas (arrays):", output_formulas_arr, "type:", type(output_formulas_arr))
     expected_formulas_arr = [formula_string_to_array(s) for s in expected_formulas_str]
-    return
+    # return
 
     sorted_output = sorted(output_formulas_arr)
     sorted_expected = sorted(expected_formulas_arr)
@@ -125,100 +128,113 @@ def test_decompose_mass(mass, tolerance_ppm, min_bounds_dict, max_bounds_dict, e
     assert sorted_output == sorted_expected, \
         f"Expected {expected_formulas_str_sorted}, but got {output_formulas_str_sorted}"
 
-# def test_decompose_mass_no_result():
-#     """
-#     Tests that an empty list is returned when no formula can be found.
-#     """
-#     df = pl.DataFrame({"mass": [1.0]})  # A mass too small to form any formula
+def test_decompose_mass_no_result():
+    """
+    Tests that an empty list is returned when no formula can be found.
+    """
+    df = pl.DataFrame({"mass": [1.0]})  # A mass too small to form any formula
 
-#     min_bounds = bounds_to_array({"C": 1})
-#     max_bounds = bounds_to_array({"C": 10})
+    min_bounds = bounds_to_array({"C": 1})
+    max_bounds = bounds_to_array({"C": 10})
 
-#     result_df = df.with_columns(
-#         decomposed=pl.col("mass").mass_decomposer.decompose_mass(
-#             min_bounds=min_bounds,
-#             max_bounds=max_bounds,
-#         )
-#     )
+    result_df = df.with_columns(
+        pl.col("mass").mass_decomposer.decompose_mass(
+            tolerance_ppm=5.0,
+            min_bounds=min_bounds,
+            max_bounds=max_bounds,
+        ).alias("decomposed").struct.unnest()
+    )
     
-#     assert result_df.item(0, "decomposed").to_list() == []
+    assert result_df.item(0, "formulas") == []
+    assert result_df.item(0, "formulas_str") == []
+    assert result_df.item(0, "errors") == []
 
-# def test_decompose_mass_output_type_and_shape():
-#     """
-#     Tests the output type and shape of the decompose_mass function.
-#     """
-#     df = pl.DataFrame({"mass": [100.0, 200.0]})
+def test_decompose_mass_output_type_and_shape():
+    """
+    Tests the output type and shape of the decompose_mass function.
+    """
+    df = pl.DataFrame({"mass": [100.0, 200.0]})
     
-#     result_df = df.with_columns(
-#         decomposed=pl.col("mass").mass_decomposer.decompose_mass()
-#     )
+    result_df = df.with_columns(
+        pl.col("mass").mass_decomposer.decompose_mass().alias("decomposed")
+    )
 
-#     decomposed_col = result_df["decomposed"]
+    decomposed_col = result_df["decomposed"]
     
-#     expected_dtype = pl.List(pl.Array(pl.Int32, NUM_ELEMENTS))
-#     assert decomposed_col.dtype == expected_dtype, f"Column dtype should be {expected_dtype}, but got {decomposed_col.dtype}"
-
-#     assert len(result_df) == len(df), "Number of rows should not change"
-
-# def test_decompose_mass_with_bounds():
-#     """
-#     Tests the decompose_mass_with_bounds function with per-mass bounds.
-#     """
+    # Check that it returns a struct with the correct fields
+    assert isinstance(decomposed_col.dtype, pl.Struct), f"Expected a struct, but got {decomposed_col.dtype}"
     
-#     min_bounds_1 = bounds_to_array({"C": 0, "H": 0})
-#     max_bounds_1 = bounds_to_array({"C": 10, "H": 10})
+    expected_fields = {
+        "formulas": pl.List(pl.Array(pl.Int32, NUM_ELEMENTS)),
+        "formulas_str": pl.List(pl.String),
+        "errors": pl.List(pl.Float64),
+    }
     
-#     min_bounds_2 = bounds_to_array({"C": 0, "H": 1, "O": 0, "N": 0})
-#     max_bounds_2 = bounds_to_array({"C": 20, "H": 40, "O": 10, "N": 5})
+    for field in decomposed_col.dtype.fields:
+        assert field.name in expected_fields, f"Unexpected field {field.name}"
+        assert field.dtype == expected_fields[field.name], f"Field {field.name} has wrong dtype: expected {expected_fields[field.name]}, got {field.dtype}"
 
-#     df = pl.DataFrame({
-#         "mass_data": [
-#             {
-#                 "mass": 78.04695, # C6H6
-#                 "min_bounds": min_bounds_1,
-#                 "max_bounds": max_bounds_1,
-#             },
-#             {
-#                 "mass": 140.1062,
-#                 "min_bounds": min_bounds_2,
-#                 "max_bounds": max_bounds_2,
-#             },
-#         ]
-#     }, 
-#     schema={
-#         "mass_data": pl.Struct([
-#             pl.Field("mass", pl.Float64),
-#             pl.Field("min_bounds", pl.Array(pl.Int32, NUM_ELEMENTS)),
-#             pl.Field("max_bounds", pl.Array(pl.Int32, NUM_ELEMENTS)),
-#         ])
-#     })
+    assert len(result_df) == len(df), "Number of rows should not change"
 
-#     result_df = df.with_columns(
-#         decomposed=pl.col("mass_data").mass_decomposer.decompose_mass_with_bounds(
-#             tolerance_ppm=10.0,
-#             dbe_mode="half_integer",
-#         )
-#     )
-
-#     # Check first result
-#     output_formulas_1 = result_df.item(0, "decomposed").to_list()
-#     expected_formulas_1_str = ["C6H6"]
-#     expected_formulas_1_arr = [formula_string_to_array(s) for s in expected_formulas_1_str]
-#     assert sorted(output_formulas_1) == sorted(expected_formulas_1_arr)
-
-#     # Check second result
-#     output_formulas_2 = result_df.item(1, "decomposed").to_list()
-#     expected_formulas_2_str = ["C6H12N4", "C8H14NO"]
-#     expected_formulas_2_arr = [formula_string_to_array(s) for s in expected_formulas_2_str]
+def test_decompose_mass_with_bounds():
+    """
+    Tests the decompose_mass_with_bounds function with per-mass bounds.
+    """
     
-#     sorted_output = sorted(output_formulas_2)
-#     sorted_expected = sorted(expected_formulas_2_arr)
+    min_bounds_1 = bounds_to_array({"C": 0, "H": 0})
+    max_bounds_1 = bounds_to_array({"C": 10, "H": 10})
+    
+    min_bounds_2 = bounds_to_array({"C": 0, "H": 1, "O": 0, "N": 0})
+    max_bounds_2 = bounds_to_array({"C": 20, "H": 40, "O": 10, "N": 5})
 
-#     output_formulas_str_sorted = sorted([formula_array_to_string(f) for f in output_formulas_2])
-#     expected_formulas_str_sorted = sorted(expected_formulas_2_str)
+    df = pl.DataFrame({
+        "mass_data": [
+            {
+                "mass": 78.04695, # C6H6
+                "min_bounds": min_bounds_1,
+                "max_bounds": max_bounds_1,
+            },
+            {
+                "mass": 140.1062,
+                "min_bounds": min_bounds_2,
+                "max_bounds": max_bounds_2,
+            },
+        ]
+    }, 
+    schema={
+        "mass_data": pl.Struct([
+            pl.Field("mass", pl.Float64),
+            pl.Field("min_bounds", pl.Array(pl.Int32, NUM_ELEMENTS)),
+            pl.Field("max_bounds", pl.Array(pl.Int32, NUM_ELEMENTS)),
+        ])
+    })
 
-#     assert sorted_output == sorted_expected, \
-#         f"Expected {expected_formulas_str_sorted}, but got {output_formulas_str_sorted}"
+    result_df = df.with_columns(
+        pl.col("mass_data").mass_decomposer.decompose_mass_with_bounds(
+            tolerance_ppm=10.0,
+            dbe_mode="half_integer",
+        ).alias("decomposed").struct.unnest()
+    )
+
+    # Check first result
+    output_formulas_1 = result_df.item(0, "formulas")
+    expected_formulas_1_str = ["C6H6"]
+    expected_formulas_1_arr = [formula_string_to_array(s) for s in expected_formulas_1_str]
+    assert sorted(output_formulas_1) == sorted(expected_formulas_1_arr)
+
+    # Check second result
+    output_formulas_2 = result_df.item(1, "formulas")
+    expected_formulas_2_str = ["C6H12N4", "C8H14NO"]
+    expected_formulas_2_arr = [formula_string_to_array(s) for s in expected_formulas_2_str]
+    
+    sorted_output = sorted(output_formulas_2)
+    sorted_expected = sorted(expected_formulas_2_arr)
+
+    output_formulas_str_sorted = sorted([formula_array_to_string(f) for f in output_formulas_2])
+    expected_formulas_str_sorted = sorted(expected_formulas_2_str)
+
+    assert sorted_output == sorted_expected, \
+        f"Expected {expected_formulas_str_sorted}, but got {output_formulas_str_sorted}"
 
 # # Test cases for spectrum cleaning and normalization
 # # Each tuple contains: (mz_values, precursor_formula_str, tolerance_ppm, water_absorption, expected_formulas)
