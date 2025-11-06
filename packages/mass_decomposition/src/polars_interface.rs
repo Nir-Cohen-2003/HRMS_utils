@@ -62,7 +62,7 @@ fn mass_decomposition(inputs: &[Series], kwargs: DecompositionKwargs) -> PolarsR
         .flatten()
         .collect();
 
-    let out = StructChunked::new("mass_decomposition".into(), &series_vec)?;
+    let out = StructChunked::from_series("mass_decomposition".into(), series_vec.iter().collect::<Vec<_>>().as_slice())?;
     Ok(out.into_series())
 }
 
@@ -128,7 +128,7 @@ fn mass_decomposition_with_bounds(inputs: &[Series], kwargs: DecompositionKwargs
         .flatten()
         .collect();
     
-    let out = StructChunked::new("mass_decomposition_with_bounds".into(), &series_vec)?;
+    let out = StructChunked::from_series("mass_decomposition_with_bounds".into(), series_vec.iter().collect::<Vec<_>>().as_slice())?;
     Ok(out.into_series())
 }
 
@@ -198,7 +198,7 @@ fn spectrum_decomposition(inputs: &[Series], kwargs: SpectrumDecompositionParams
         .flatten()
         .collect();
 
-    let out = StructChunked::new("spectrum_decomposition".into(), &series_vec)?;
+    let out = StructChunked::from_series("spectrum_decomposition".into(), series_vec.iter().collect::<Vec<_>>().as_slice())?;
     Ok(out.into_series())
 }
 
@@ -285,6 +285,6 @@ fn spectrum_decomposition_normalized(inputs: &[Series], kwargs: CleanAndNormaliz
         .flatten()
         .collect();
 
-    let out = StructChunked::new("spectrum_decomposition_normalized".into(), &series_vec)?;
+    let out = StructChunked::from_series("spectrum_decomposition_normalized".into(), series_vec.iter().collect::<Vec<_>>().as_slice())?;
     Ok(out.into_series())
 }
