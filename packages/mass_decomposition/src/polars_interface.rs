@@ -26,44 +26,56 @@ fn mass_decomposition(inputs: &[Series], kwargs: DecompositionKwargs) -> PolarsR
     let min_bounds = kwargs.min_bounds.unwrap_or([0; NUM_ELEMENTS]);
     let max_bounds = kwargs.max_bounds.unwrap_or([100; NUM_ELEMENTS]);
 
-    let series_vec: Vec<Series> = masses
-        .into_iter()
-        .par_bridge()
-        .map(|mass_opt| {
-            mass_opt.map(|mass| {
-                let params = DecompositionParams {
-                    tolerance_ppm: kwargs.tolerance_ppm,
-                    min_dbe: kwargs.min_dbe,
-                    max_dbe: kwargs.max_dbe,
-                    dbe_mode: kwargs.dbe_mode.clone(),
-                    min_bounds,
-                    max_bounds,
-                };
-                let mut decomposer = MassDecomposer::new(min_bounds, max_bounds);
-                let results = decomposer.decompose(mass, &params);
+    // Why: Build three separate vectors to hold the list series for each field
+    let mut formulas_series_vec: Vec<Series> = Vec::with_capacity(len);
+    let mut formulas_str_series_vec: Vec<Series> = Vec::with_capacity(len);
+    let mut errors_series_vec: Vec<Series> = Vec::with_capacity(len);
 
-                let mut formulas_builder = ListPrimitiveChunkedBuilder::<Int32Type>::new("formulas".into(), results.len(), NUM_ELEMENTS, DataType::Int32);
-                let mut formulas_str_builder = StringChunkedBuilder::new("formulas_str".into(), results.len());
-                let mut errors_builder = PrimitiveChunkedBuilder::<Float64Type>::new("errors".into(), results.len());
+    for mass_opt in masses.into_iter() {
+        if let Some(mass) = mass_opt {
+            let params = DecompositionParams {
+                tolerance_ppm: kwargs.tolerance_ppm,
+                min_dbe: kwargs.min_dbe,
+                max_dbe: kwargs.max_dbe,
+                dbe_mode: kwargs.dbe_mode.clone(),
+                min_bounds,
+                max_bounds,
+            };
+            let mut decomposer = MassDecomposer::new(min_bounds, max_bounds);
+            let results = decomposer.decompose(mass, &params);
 
-                for res in results {
-                    formulas_builder.append_slice(&res.formula);
-                    formulas_str_builder.append_value(formula_to_string(&res.formula));
-                    errors_builder.append_value(res.error_ppm);
-                }
+            let mut formulas_builder = ListPrimitiveChunkedBuilder::<Int32Type>::new("formulas".into(), results.len(), NUM_ELEMENTS, DataType::Int32);
+            let mut formulas_str_builder = StringChunkedBuilder::new("formulas_str".into(), results.len());
+            let mut errors_builder = PrimitiveChunkedBuilder::<Float64Type>::new("errors".into(), results.len());
 
-                let s_formulas = formulas_builder.finish().into_series();
-                let s_formulas_str = formulas_str_builder.finish().into_series();
-                let s_errors = errors_builder.finish().into_series();
+            for res in results {
+                formulas_builder.append_slice(&res.formula);
+                formulas_str_builder.append_value(formula_to_string(&res.formula));
+                errors_builder.append_value(res.error_ppm);
+            }
 
-                let df = DataFrame::new(vec![s_formulas.into(), s_formulas_str.into(), s_errors.into()]).unwrap();
-                df.into_struct("".into()).into_series()
-            })
-        })
-        .flatten()
-        .collect();
+            formulas_series_vec.push(formulas_builder.finish().into_series());
+            formulas_str_series_vec.push(formulas_str_builder.finish().into_series());
+            errors_series_vec.push(errors_builder.finish().into_series());
+        } else {
+            // Why: Handle null input by creating empty lists
+            let empty_formulas = ListPrimitiveChunkedBuilder::<Int32Type>::new("formulas".into(), 0, NUM_ELEMENTS, DataType::Int32).finish().into_series();
+            let empty_formulas_str = StringChunkedBuilder::new("formulas_str".into(), 0).finish().into_series();
+            let empty_errors = PrimitiveChunkedBuilder::<Float64Type>::new("errors".into(), 0).finish().into_series();
+            
+            formulas_series_vec.push(empty_formulas);
+            formulas_str_series_vec.push(empty_formulas_str);
+            errors_series_vec.push(empty_errors);
+        }
+    }
 
-    let out = StructChunked::from_series("mass_decomposition".into(), series_vec.len(), series_vec.iter())?;
+    // Why: Create the struct directly from the three field series
+    let out = StructChunked::from_series("mass_decomposition".into(), len, [
+        &Series::new("formulas".into(), formulas_series_vec),
+        &Series::new("formulas_str".into(), formulas_str_series_vec),
+        &Series::new("errors".into(), errors_series_vec),
+    ].iter().copied())?;
+    
     Ok(out.into_series())
 }
 
@@ -80,57 +92,63 @@ fn mass_decomposition_with_bounds(inputs: &[Series], kwargs: DecompositionKwargs
     let max_bounds_series = ca.field_by_name("max_bounds")?;
     let max_bounds_ca = max_bounds_series.array()?;
 
-    let series_vec: Vec<Series> = masses.into_iter()
-        .zip(min_bounds_ca)
-        .zip(max_bounds_ca)
-        .par_bridge()
-        .map(|((mass_opt, min_bounds_opt), max_bounds_opt)| {
-            if let (Some(mass), Some(min_bounds_arr), Some(max_bounds_arr)) = (mass_opt, min_bounds_opt, max_bounds_opt) {
-                let min_bounds_ca = min_bounds_arr.as_any().downcast_ref::<Int32Array>().unwrap();
-                let min_bounds_sl: &[i32] = min_bounds_ca.values();
-                let max_bounds_ca = max_bounds_arr.as_any().downcast_ref::<Int32Array>().unwrap();
-                let max_bounds_sl: &[i32] = max_bounds_ca.values();
+    let mut formulas_series_vec: Vec<Series> = Vec::with_capacity(len);
+    let mut formulas_str_series_vec: Vec<Series> = Vec::with_capacity(len);
+    let mut errors_series_vec: Vec<Series> = Vec::with_capacity(len);
 
-                let mut min_bounds = [0; NUM_ELEMENTS];
-                let mut max_bounds = [0; NUM_ELEMENTS];
-                min_bounds.copy_from_slice(min_bounds_sl);
-                max_bounds.copy_from_slice(max_bounds_sl);
+    for ((mass_opt, min_bounds_opt), max_bounds_opt) in masses.into_iter().zip(min_bounds_ca).zip(max_bounds_ca) {
+        if let (Some(mass), Some(min_bounds_arr), Some(max_bounds_arr)) = (mass_opt, min_bounds_opt, max_bounds_opt) {
+            let min_bounds_ca = min_bounds_arr.as_any().downcast_ref::<Int32Array>().unwrap();
+            let min_bounds_sl: &[i32] = min_bounds_ca.values();
+            let max_bounds_ca = max_bounds_arr.as_any().downcast_ref::<Int32Array>().unwrap();
+            let max_bounds_sl: &[i32] = max_bounds_ca.values();
 
-                let params = DecompositionParams {
-                    tolerance_ppm: kwargs.tolerance_ppm,
-                    min_dbe: kwargs.min_dbe,
-                    max_dbe: kwargs.max_dbe,
-                    dbe_mode: kwargs.dbe_mode.clone(),
-                    min_bounds,
-                    max_bounds,
-                };
-                let mut decomposer = MassDecomposer::new(min_bounds, max_bounds);
-                let results = decomposer.decompose(mass, &params);
+            let mut min_bounds = [0; NUM_ELEMENTS];
+            let mut max_bounds = [0; NUM_ELEMENTS];
+            min_bounds.copy_from_slice(min_bounds_sl);
+            max_bounds.copy_from_slice(max_bounds_sl);
 
-                let mut formulas_builder = ListPrimitiveChunkedBuilder::<Int32Type>::new("formulas".into(), results.len(), NUM_ELEMENTS, DataType::Int32);
-                let mut formulas_str_builder = StringChunkedBuilder::new("formulas_str".into(), results.len());
-                let mut errors_builder = PrimitiveChunkedBuilder::<Float64Type>::new("errors".into(), results.len());
+            let params = DecompositionParams {
+                tolerance_ppm: kwargs.tolerance_ppm,
+                min_dbe: kwargs.min_dbe,
+                max_dbe: kwargs.max_dbe,
+                dbe_mode: kwargs.dbe_mode.clone(),
+                min_bounds,
+                max_bounds,
+            };
+            let mut decomposer = MassDecomposer::new(min_bounds, max_bounds);
+            let results = decomposer.decompose(mass, &params);
 
-                for res in results {
-                    formulas_builder.append_slice(&res.formula);
-                    formulas_str_builder.append_value(formula_to_string(&res.formula));
-                    errors_builder.append_value(res.error_ppm);
-                }
+            let mut formulas_builder = ListPrimitiveChunkedBuilder::<Int32Type>::new("formulas".into(), results.len(), NUM_ELEMENTS, DataType::Int32);
+            let mut formulas_str_builder = StringChunkedBuilder::new("formulas_str".into(), results.len());
+            let mut errors_builder = PrimitiveChunkedBuilder::<Float64Type>::new("errors".into(), results.len());
 
-                let s_formulas = formulas_builder.finish().into_series();
-                let s_formulas_str = formulas_str_builder.finish().into_series();
-                let s_errors = errors_builder.finish().into_series();
-
-                let df = DataFrame::new(vec![s_formulas.into(), s_formulas_str.into(), s_errors.into()]).unwrap();
-                Some(df.into_struct("".into()).into_series())
-            } else {
-                None
+            for res in results {
+                formulas_builder.append_slice(&res.formula);
+                formulas_str_builder.append_value(formula_to_string(&res.formula));
+                errors_builder.append_value(res.error_ppm);
             }
-        })
-        .flatten()
-        .collect();
+
+            formulas_series_vec.push(formulas_builder.finish().into_series());
+            formulas_str_series_vec.push(formulas_str_builder.finish().into_series());
+            errors_series_vec.push(errors_builder.finish().into_series());
+        } else {
+            let empty_formulas = ListPrimitiveChunkedBuilder::<Int32Type>::new("formulas".into(), 0, NUM_ELEMENTS, DataType::Int32).finish().into_series();
+            let empty_formulas_str = StringChunkedBuilder::new("formulas_str".into(), 0).finish().into_series();
+            let empty_errors = PrimitiveChunkedBuilder::<Float64Type>::new("errors".into(), 0).finish().into_series();
+            
+            formulas_series_vec.push(empty_formulas);
+            formulas_str_series_vec.push(empty_formulas_str);
+            errors_series_vec.push(empty_errors);
+        }
+    }
     
-    let out = StructChunked::from_series("mass_decomposition_with_bounds".into(), series_vec.len(), series_vec.iter())?;
+    let out = StructChunked::from_series("mass_decomposition_with_bounds".into(), len, [
+        &Series::new("formulas".into(), formulas_series_vec),
+        &Series::new("formulas_str".into(), formulas_str_series_vec),
+        &Series::new("errors".into(), errors_series_vec),
+    ].iter().copied())?;
+    
     Ok(out.into_series())
 }
 
@@ -157,67 +175,81 @@ fn spectrum_decomposition_normalized(inputs: &[Series], kwargs: CleanAndNormaliz
     let precursor_series = ca.field_by_name("precursor_formula")?;
     let precursor_ca = precursor_series.array()?;
 
-    let series_vec: Vec<Series> = masses_ca.into_iter()
-        .zip(intensities_ca)
-        .zip(precursor_ca)
-        .par_bridge()
-        .map(|((masses_opt, intensities_opt), precursor_opt)| {
-            if let (Some(masses_list), Some(intensities_list), Some(precursor_arr)) = (masses_opt, intensities_opt, precursor_opt) {
-                let masses: Vec<f64> = masses_list.f64().unwrap().into_no_null_iter().collect();
-                let intensities: Vec<f64> = intensities_list.f64().unwrap().into_no_null_iter().collect();
-                let precursor_ca = precursor_arr.as_any().downcast_ref::<Int32Array>().unwrap();
-                let precursor_sl: &[i32] = precursor_ca.values();
-                let mut precursor_formula = [0; NUM_ELEMENTS];
-                precursor_formula.copy_from_slice(precursor_sl);
+    let mut formulas_series_vec: Vec<Series> = Vec::with_capacity(len);
+    let mut formulas_str_series_vec: Vec<Series> = Vec::with_capacity(len);
+    let mut normalized_masses_series_vec: Vec<Series> = Vec::with_capacity(len);
+    let mut intensities_series_vec: Vec<Series> = Vec::with_capacity(len);
+    let mut errors_series_vec: Vec<Series> = Vec::with_capacity(len);
 
-                let params = SpectrumDecompositionParams {
-                    tolerance_ppm: kwargs.tolerance_ppm,
-                    min_dbe: kwargs.min_dbe,
-                    max_dbe: kwargs.max_dbe,
-                    dbe_mode: kwargs.dbe_mode.clone(),
-                    water_absorption: kwargs.water_absorption,
-                };
+    for ((masses_opt, intensities_opt), precursor_opt) in masses_ca.into_iter().zip(intensities_ca).zip(precursor_ca) {
+        if let (Some(masses_list), Some(intensities_list), Some(precursor_arr)) = (masses_opt, intensities_opt, precursor_opt) {
+            let masses: Vec<f64> = masses_list.f64().unwrap().into_no_null_iter().collect();
+            let intensities: Vec<f64> = intensities_list.f64().unwrap().into_no_null_iter().collect();
+            let precursor_ca = precursor_arr.as_any().downcast_ref::<Int32Array>().unwrap();
+            let precursor_sl: &[i32] = precursor_ca.values();
+            let mut precursor_formula = [0; NUM_ELEMENTS];
+            precursor_formula.copy_from_slice(precursor_sl);
 
-                let mut decomposer = SpectrumDecomposer::new();
-                let result = decomposer.clean_and_normalize_spectrum_iterative(
-                    &masses,
-                    &intensities,
-                    &precursor_formula,
-                    &params,
-                    kwargs.max_allowed_normalized_mass_error_ppm,
-                    10, // max_iterations
-                    1e-9, // convergence_tolerance
-                );
+            let params = SpectrumDecompositionParams {
+                tolerance_ppm: kwargs.tolerance_ppm,
+                min_dbe: kwargs.min_dbe,
+                max_dbe: kwargs.max_dbe,
+                dbe_mode: kwargs.dbe_mode.clone(),
+                water_absorption: kwargs.water_absorption,
+            };
 
-                let mut formulas_builder = ListPrimitiveChunkedBuilder::<Int32Type>::new("formulas".into(), result.fragments.len(), NUM_ELEMENTS, DataType::Int32);
-                let mut formulas_str_builder = StringChunkedBuilder::new("formulas_str".into(), result.fragments.len());
-                let mut normalized_masses_builder = PrimitiveChunkedBuilder::<Float64Type>::new("normalized_masses".into(), result.fragments.len());
-                let mut intensities_builder = PrimitiveChunkedBuilder::<Float64Type>::new("intensities".into(), result.fragments.len());
-                let mut errors_builder = PrimitiveChunkedBuilder::<Float64Type>::new("errors".into(), result.fragments.len());
+            let mut decomposer = SpectrumDecomposer::new();
+            let result = decomposer.clean_and_normalize_spectrum_iterative(
+                &masses,
+                &intensities,
+                &precursor_formula,
+                &params,
+                kwargs.max_allowed_normalized_mass_error_ppm,
+                10, // max_iterations
+                1e-9, // convergence_tolerance
+            );
 
-                for frag in result.fragments {
-                    formulas_builder.append_slice(&frag.formula);
-                    formulas_str_builder.append_value(formula_to_string(&frag.formula));
-                    normalized_masses_builder.append_value(frag.normalized_mass);
-                    intensities_builder.append_value(frag.intensity);
-                    errors_builder.append_value(frag.error_ppm);
-                }
+            let mut formulas_builder = ListPrimitiveChunkedBuilder::<Int32Type>::new("formulas".into(), result.fragments.len(), NUM_ELEMENTS, DataType::Int32);
+            let mut formulas_str_builder = StringChunkedBuilder::new("formulas_str".into(), result.fragments.len());
+            let mut normalized_masses_builder = PrimitiveChunkedBuilder::<Float64Type>::new("normalized_masses".into(), result.fragments.len());
+            let mut intensities_builder = PrimitiveChunkedBuilder::<Float64Type>::new("intensities".into(), result.fragments.len());
+            let mut errors_builder = PrimitiveChunkedBuilder::<Float64Type>::new("errors".into(), result.fragments.len());
 
-                let s_formulas = formulas_builder.finish().into_series();
-                let s_formulas_str = formulas_str_builder.finish().into_series();
-                let s_normalized_masses = normalized_masses_builder.finish().into_series();
-                let s_intensities = intensities_builder.finish().into_series();
-                let s_errors = errors_builder.finish().into_series();
-
-                let df = DataFrame::new(vec![s_formulas.into(), s_formulas_str.into(), s_normalized_masses.into(), s_intensities.into(), s_errors.into()]).unwrap();
-                Some(df.into_struct("".into()).into_series())
-            } else {
-                None
+            for frag in result.fragments {
+                formulas_builder.append_slice(&frag.formula);
+                formulas_str_builder.append_value(formula_to_string(&frag.formula));
+                normalized_masses_builder.append_value(frag.normalized_mass);
+                intensities_builder.append_value(frag.intensity);
+                errors_builder.append_value(frag.error_ppm);
             }
-        })
-        .flatten()
-        .collect();
 
-    let out = StructChunked::from_series("spectrum_decomposition_normalized".into(), series_vec.len(), series_vec.iter())?;
+            formulas_series_vec.push(formulas_builder.finish().into_series());
+            formulas_str_series_vec.push(formulas_str_builder.finish().into_series());
+            normalized_masses_series_vec.push(normalized_masses_builder.finish().into_series());
+            intensities_series_vec.push(intensities_builder.finish().into_series());
+            errors_series_vec.push(errors_builder.finish().into_series());
+        } else {
+            let empty_formulas = ListPrimitiveChunkedBuilder::<Int32Type>::new("formulas".into(), 0, NUM_ELEMENTS, DataType::Int32).finish().into_series();
+            let empty_formulas_str = StringChunkedBuilder::new("formulas_str".into(), 0).finish().into_series();
+            let empty_normalized_masses = PrimitiveChunkedBuilder::<Float64Type>::new("normalized_masses".into(), 0).finish().into_series();
+            let empty_intensities = PrimitiveChunkedBuilder::<Float64Type>::new("intensities".into(), 0).finish().into_series();
+            let empty_errors = PrimitiveChunkedBuilder::<Float64Type>::new("errors".into(), 0).finish().into_series();
+            
+            formulas_series_vec.push(empty_formulas);
+            formulas_str_series_vec.push(empty_formulas_str);
+            normalized_masses_series_vec.push(empty_normalized_masses);
+            intensities_series_vec.push(empty_intensities);
+            errors_series_vec.push(empty_errors);
+        }
+    }
+
+    let out = StructChunked::from_series("spectrum_decomposition_normalized".into(), len, [
+        &Series::new("formulas".into(), formulas_series_vec),
+        &Series::new("formulas_str".into(), formulas_str_series_vec),
+        &Series::new("normalized_masses".into(), normalized_masses_series_vec),
+        &Series::new("intensities".into(), intensities_series_vec),
+        &Series::new("errors".into(), errors_series_vec),
+    ].iter().copied())?;
+    
     Ok(out.into_series())
 }
