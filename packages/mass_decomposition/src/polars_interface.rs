@@ -213,6 +213,7 @@ fn spectrum_decomposition_normalized(inputs: &[Series], kwargs: CleanAndNormaliz
         .zip(precursor_ca.into_no_null_iter());
     // Process all spectra and collect raw results
     let results: Vec<Option<CleanedAndNormalizedSpectrumResult>> = zipped_iter
+        .par_bridge()
         .map(|((masses_list, intensities_list), precursor_arr)| {
            
                 let masses: &[f64] = masses_list.f64().expect("masses should be f64 list").cont_slice().expect("masses should be contiguous slice");
