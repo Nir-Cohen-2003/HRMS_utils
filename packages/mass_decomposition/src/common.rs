@@ -1,4 +1,3 @@
-
 use serde::Deserialize;
 
 pub const NUM_ELEMENTS: usize = 15;
@@ -23,8 +22,6 @@ pub struct DecompositionParams {
     pub min_dbe: f64,
     pub max_dbe: f64,
     pub dbe_mode: String,
-    pub min_bounds: Formula,
-    pub max_bounds: Formula,
 }
 
 #[derive(Debug, Clone, Deserialize)]

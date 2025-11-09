@@ -34,8 +34,6 @@ fn mass_decomposition(inputs: &[Series], kwargs: DecompositionKwargs) -> PolarsR
         min_dbe: kwargs.min_dbe,
         max_dbe: kwargs.max_dbe,
         dbe_mode: kwargs.dbe_mode.clone(),
-        min_bounds,
-        max_bounds,
     };
     
     // Force initialization by doing a dummy decompose (or add explicit init method)
@@ -154,8 +152,6 @@ fn mass_decomposition_with_bounds(inputs: &[Series], kwargs: DecompositionKwargs
                         min_dbe: kwargs.min_dbe,
                         max_dbe: kwargs.max_dbe,
                         dbe_mode: kwargs.dbe_mode.clone(),
-                        min_bounds,
-                        max_bounds,
                     };
                     let mut decomposer = MassDecomposer::new(min_bounds, max_bounds);
                     let (formulas, errors_ppm) = decomposer.decompose(mass, &params);

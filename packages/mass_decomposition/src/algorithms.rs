@@ -369,8 +369,6 @@ impl SpectrumDecomposer {
                 min_dbe: params.min_dbe,
                 max_dbe: params.max_dbe,
                 dbe_mode: params.dbe_mode.clone(),
-                min_bounds,
-                max_bounds,
             });
             all_results.push(result);
         }
