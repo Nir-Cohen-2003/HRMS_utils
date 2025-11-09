@@ -79,14 +79,26 @@ def create_mock_nist(size:int = 10000) -> pl.DataFrame:
 def test_roundtrip_decomposition(size: int = 10000):
     df = create_mock_nist(size=size)
     
+    # Add intensities column (all ones)
+    df = df.with_columns(
+        intensities=pl.col("mz").list.eval(pl.lit(1.0))
+    )
+    
+    # Create the spectrum struct
+    df = df.with_columns(
+        spectrum_struct=pl.struct(["mz", "intensities", "precursor_formula"])
+    )
+    
     start = perf_counter()
     
     result = df.with_columns(
-        decomposed_formula=pl.struct([
-            pl.col("mz"),
-            pl.col("precursor_formula"),
-        ]).mass_decomposer.decompose_spectrum_with_precursor(
-            tolerance_ppm=5.0
+        corrected=pl.col("spectrum_struct").mass_decomposer.clean_and_normalize_spectrum(
+            tolerance_ppm=5.0,
+            max_allowed_normalized_mass_error_ppm=2.0,
+            min_dbe=-0.5,
+            max_dbe=30.0,
+            dbe_mode="half_integer",
+            water_absorption=False
         )
     )
     
@@ -95,7 +107,7 @@ def test_roundtrip_decomposition(size: int = 10000):
     print(f"Spectrum decomposition for {size} rows took {end - start:.4f} seconds")
     assert result is not None
     assert len(result) == size
-    assert 'decomposed_formula' in result.columns
+    assert 'corrected' in result.columns
 
 
 def _min_bound(formula_arr:np.ndarray):
