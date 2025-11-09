@@ -3,13 +3,12 @@ use polars::datatypes::{DataType, Int32Type, Float64Type};
 use pyo3_polars::derive::polars_expr;
 use rayon::prelude::*;
 use crate::algorithms::{MassDecomposer, SpectrumDecomposer};
-use crate::common::{DecompositionParams, SpectrumDecompositionParams, formula_to_string, NUM_ELEMENTS, CleanAndNormalizeSpectrumKwargs, DecompositionKwargs};
+use crate::common::{DecompositionParams, SpectrumDecompositionParams, formula_to_string, NUM_ELEMENTS, CleanAndNormalizeSpectrumKwargs,CleanedAndNormalizedSpectrumResult, DecompositionKwargs};
 use polars::series::Series;
 use polars::chunked_array::builder::{
     ListPrimitiveChunkedBuilder, PrimitiveChunkedBuilder, StringChunkedBuilder
 };
 use polars_arrow::array::{Int32Array};
-
 
 fn mass_decomposition_output(_fields: &[Field]) -> PolarsResult<Field> {
     let formula_field = Field::new("formulas".into(), DataType::List(Box::new(DataType::Array(Box::new(DataType::Int32), NUM_ELEMENTS))));
@@ -34,22 +33,27 @@ fn mass_decomposition(inputs: &[Series], kwargs: DecompositionKwargs) -> PolarsR
         dbe_mode: kwargs.dbe_mode.clone(),
     };
 
-    // Process masses in parallel - return raw data instead of Series
-    let results: Vec<(Vec<[i32; NUM_ELEMENTS]>, Vec<f64>)> = masses
+    // Process masses in parallel with indices to preserve order
+    let mut indexed_results: Vec<(usize, Vec<[i32; NUM_ELEMENTS]>, Vec<f64>)> = masses
         .into_no_null_iter()
+        .enumerate()
         .par_bridge()
-        .map(|mass| {
+        .map(|(idx, mass)| {
             let mut thread_decomposer = decomposer.clone();
-            thread_decomposer.decompose(mass, &params)
+            let (formulas, errors) = thread_decomposer.decompose(mass, &params);
+            (idx, formulas, errors)
         })
         .collect();
+
+    // Sort by index to restore original order
+    indexed_results.sort_unstable_by_key(|(idx, _, _)| *idx);
 
     // Build Series once after collecting all results
     let mut formulas_series_vec = Vec::with_capacity(len);
     let mut formulas_str_series_vec = Vec::with_capacity(len);
     let mut errors_series_vec = Vec::with_capacity(len);
 
-    for (formulas, errors_ppm) in results {
+    for (_idx, formulas, errors_ppm) in indexed_results {
         // Build formulas series
         let formulas_vec: Vec<Option<Series>> = formulas
             .iter()
@@ -101,15 +105,16 @@ fn mass_decomposition_with_bounds(inputs: &[Series], kwargs: DecompositionKwargs
     let min_bounds_arrays = min_bounds_series.array()?;
     let max_bounds_arrays = max_bounds_series.array()?;
 
-    // 2. EFFICIENT STEP: Zip the iterators first
+    // 2. Zip and enumerate to preserve order
     let zipped_iter = masses_ca.into_no_null_iter()
         .zip(min_bounds_arrays.into_no_null_iter())
-        .zip(max_bounds_arrays.into_no_null_iter());
+        .zip(max_bounds_arrays.into_no_null_iter())
+        .enumerate();
 
-    // 3. Process the zipped iterator in parallel - return raw data
-    let results: Vec<(Vec<[i32; NUM_ELEMENTS]>, Vec<f64>)> = zipped_iter
+    // 3. Process in parallel with indices
+    let mut indexed_results: Vec<(usize, Vec<[i32; NUM_ELEMENTS]>, Vec<f64>)> = zipped_iter
         .par_bridge()
-        .map(|((mass, min_bounds_arr), max_bounds_arr)| {
+        .map(|(idx, ((mass, min_bounds_arr), max_bounds_arr))| {
             let min_bounds_values: &[i32] = min_bounds_arr.i32()
                 .expect("min_bounds should be i32 array")
                 .cont_slice()
@@ -132,16 +137,20 @@ fn mass_decomposition_with_bounds(inputs: &[Series], kwargs: DecompositionKwargs
             };
             
             let mut decomposer = MassDecomposer::new(min_bounds, max_bounds);
-            decomposer.decompose(mass, &params)
+            let (formulas, errors) = decomposer.decompose(mass, &params);
+            (idx, formulas, errors)
         })
         .collect();
 
-    // 4. Build Series once after collecting all results
+    // 4. Sort by index to restore original order
+    indexed_results.sort_unstable_by_key(|(idx, _, _)| *idx);
+
+    // 5. Build Series in correct order
     let mut formulas_series_vec = Vec::with_capacity(num_rows);
     let mut formulas_str_series_vec = Vec::with_capacity(num_rows);
     let mut errors_series_vec = Vec::with_capacity(num_rows);
 
-    for (formulas, errors_ppm) in results {
+    for (_idx, formulas, errors_ppm) in indexed_results {
         // Build formulas series
         let formulas_vec: Vec<Option<Series>> = formulas
             .iter()
@@ -181,7 +190,7 @@ fn spectrum_decomposition_normalized_output(_fields: &[Field]) -> PolarsResult<F
     let formula_str_field = Field::new("formulas_str".into(), DataType::List(Box::new(DataType::String)));
     let normalized_masses_field = Field::new("normalized_masses".into(), DataType::List(Box::new(DataType::Float64)));
     let intensities_field = Field::new("intensities".into(), DataType::List(Box::new(DataType::Float64)));
-    let error_field = Field::new("errors".into(), DataType::List(Box::new(DataType::Float64)));
+    let error_field = Field::new("errors_ppm".into(), DataType::List(Box::new(DataType::Float64)));
     let v = vec![formula_field, formula_str_field, normalized_masses_field, intensities_field, error_field];
     Ok(Field::new("spectrum_decomposition_normalized".into(), DataType::Struct(v)))
 }
@@ -192,72 +201,102 @@ fn spectrum_decomposition_normalized(inputs: &[Series], kwargs: CleanAndNormaliz
     let ca = s.struct_()?;
     let len = ca.len();
 
-    let masses_series = ca.field_by_name("fragment_masses")?;
-    let masses_ca = masses_series.list()?;
-    let intensities_series = ca.field_by_name("fragment_intensities")?;
-    let intensities_ca = intensities_series.list()?;
+    let masses_series = ca.field_by_name("mz")?;
+    let intensities_series = ca.field_by_name("intensities")?;
     let precursor_series = ca.field_by_name("precursor_formula")?;
+    
+    let masses_ca = masses_series.list()?;
+    let intensities_ca = intensities_series.list()?;
     let precursor_ca = precursor_series.array()?;
+    let zipped_iter = masses_ca.into_no_null_iter()
+        .zip(intensities_ca.into_no_null_iter())
+        .zip(precursor_ca.into_no_null_iter());
+    // Process all spectra and collect raw results
+    let results: Vec<Option<CleanedAndNormalizedSpectrumResult>> = zipped_iter
+        .map(|((masses_list, intensities_list), precursor_arr)| {
+           
+                let masses: &[f64] = masses_list.f64().expect("masses should be f64 list").cont_slice().expect("masses should be contiguous slice");
+                let intensities: &[f64] = intensities_list.f64().expect("intensities should be f64 list").cont_slice().expect("intensities should be contiguous slice");
+                let precursor_sl = precursor_arr.i32().expect("precursor_formula should be i32 array").cont_slice().expect("precursor_formula should be contiguous slice");
+                let mut precursor_formula = [0; NUM_ELEMENTS];
+                precursor_formula.copy_from_slice(precursor_sl);
 
+                let params = SpectrumDecompositionParams {
+                    tolerance_ppm: kwargs.tolerance_ppm,
+                    min_dbe: kwargs.min_dbe,
+                    max_dbe: kwargs.max_dbe,
+                    dbe_mode: kwargs.dbe_mode.clone(),
+                    water_absorption: kwargs.water_absorption,
+                };
+
+                let mut decomposer = SpectrumDecomposer::new();
+                let result = decomposer.clean_and_normalize_spectrum_iterative(
+                    &masses,
+                    &intensities,
+                    &precursor_formula,
+                    &params,
+                    kwargs.max_allowed_normalized_mass_error_ppm,
+                    10,
+                    1e-9,
+                );
+                
+                Some(result)
+        })
+        .collect();
+
+    // Build Series once after collecting all results
     let mut formulas_series_vec: Vec<Series> = Vec::with_capacity(len);
     let mut formulas_str_series_vec: Vec<Series> = Vec::with_capacity(len);
     let mut normalized_masses_series_vec: Vec<Series> = Vec::with_capacity(len);
     let mut intensities_series_vec: Vec<Series> = Vec::with_capacity(len);
     let mut errors_series_vec: Vec<Series> = Vec::with_capacity(len);
 
-    for ((masses_opt, intensities_opt), precursor_opt) in masses_ca.into_iter().zip(intensities_ca).zip(precursor_ca) {
-        if let (Some(masses_list), Some(intensities_list), Some(precursor_arr)) = (masses_opt, intensities_opt, precursor_opt) {
-            let masses: Vec<f64> = masses_list.f64().unwrap().into_no_null_iter().collect();
-            let intensities: Vec<f64> = intensities_list.f64().unwrap().into_no_null_iter().collect();
-            let precursor_ca = precursor_arr.as_any().downcast_ref::<Int32Array>().unwrap();
-            let precursor_sl: &[i32] = precursor_ca.values();
-            let mut precursor_formula = [0; NUM_ELEMENTS];
-            precursor_formula.copy_from_slice(precursor_sl);
+    for result_opt in results {
+        if let Some(result) = result_opt {
+            // Build formulas series
+            let formulas_vec: Vec<Option<Series>> = result.fragments
+                .iter()
+                .map(|frag| {
+                    let arr = Int32Array::from_slice(&frag.formula);
+                    let arr_boxed = Box::new(arr) as Box<dyn polars_arrow::array::Array>;
+                    Some(Series::try_from((PlSmallStr::EMPTY, arr_boxed)).unwrap())
+                })
+                .collect();
+            
+            let formulas_series = Series::new(
+                PlSmallStr::from_static("formulas"), 
+                formulas_vec
+            ).cast(&DataType::Array(Box::new(DataType::Int32), NUM_ELEMENTS)).unwrap();
 
-            let params = SpectrumDecompositionParams {
-                tolerance_ppm: kwargs.tolerance_ppm,
-                min_dbe: kwargs.min_dbe,
-                max_dbe: kwargs.max_dbe,
-                dbe_mode: kwargs.dbe_mode.clone(),
-                water_absorption: kwargs.water_absorption,
-            };
+            // Build other series
+            let formulas_str: Vec<String> = result.fragments.iter()
+                .map(|frag| formula_to_string(&frag.formula))
+                .collect();
+            
+            let normalized_masses: Vec<f64> = result.fragments.iter()
+                .map(|frag| frag.normalized_mass)
+                .collect();
+            
+            let intensities: Vec<f64> = result.fragments.iter()
+                .map(|frag| frag.intensity)
+                .collect();
+            
+            let errors: Vec<f64> = result.fragments.iter()
+                .map(|frag| frag.error_ppm)
+                .collect();
 
-            let mut decomposer = SpectrumDecomposer::new();
-            let result = decomposer.clean_and_normalize_spectrum_iterative(
-                &masses,
-                &intensities,
-                &precursor_formula,
-                &params,
-                kwargs.max_allowed_normalized_mass_error_ppm,
-                10, // Why: 10 iterations is sufficient for mass calibration convergence in typical HRMS data
-                1e-9, // Why: Tight convergence tolerance ensures accurate mass calibration fit
-            );
-
-            let mut formulas_builder = ListPrimitiveChunkedBuilder::<Int32Type>::new("formulas".into(), result.fragments.len(), NUM_ELEMENTS, DataType::Int32);
-            let mut formulas_str_builder = StringChunkedBuilder::new("formulas_str".into(), result.fragments.len());
-            let mut normalized_masses_builder = PrimitiveChunkedBuilder::<Float64Type>::new("normalized_masses".into(), result.fragments.len());
-            let mut intensities_builder = PrimitiveChunkedBuilder::<Float64Type>::new("intensities".into(), result.fragments.len());
-            let mut errors_builder = PrimitiveChunkedBuilder::<Float64Type>::new("errors".into(), result.fragments.len());
-
-            for frag in result.fragments {
-                formulas_builder.append_slice(&frag.formula);
-                formulas_str_builder.append_value(formula_to_string(&frag.formula));
-                normalized_masses_builder.append_value(frag.normalized_mass);
-                intensities_builder.append_value(frag.intensity);
-                errors_builder.append_value(frag.error_ppm);
-            }
-
-            formulas_series_vec.push(formulas_builder.finish().into_series());
-            formulas_str_series_vec.push(formulas_str_builder.finish().into_series());
-            normalized_masses_series_vec.push(normalized_masses_builder.finish().into_series());
-            intensities_series_vec.push(intensities_builder.finish().into_series());
-            errors_series_vec.push(errors_builder.finish().into_series());
+            formulas_series_vec.push(formulas_series);
+            formulas_str_series_vec.push(Series::new("formulas_str".into(), formulas_str));
+            normalized_masses_series_vec.push(Series::new("normalized_masses".into(), normalized_masses));
+            intensities_series_vec.push(Series::new("intensities".into(), intensities));
+            errors_series_vec.push(Series::new("errors_ppm".into(), errors));
         } else {
-            let empty_formulas = ListPrimitiveChunkedBuilder::<Int32Type>::new("formulas".into(), 0, NUM_ELEMENTS, DataType::Int32).finish().into_series();
-            let empty_formulas_str = StringChunkedBuilder::new("formulas_str".into(), 0).finish().into_series();
-            let empty_normalized_masses = PrimitiveChunkedBuilder::<Float64Type>::new("normalized_masses".into(), 0).finish().into_series();
-            let empty_intensities = PrimitiveChunkedBuilder::<Float64Type>::new("intensities".into(), 0).finish().into_series();
-            let empty_errors = PrimitiveChunkedBuilder::<Float64Type>::new("errors".into(), 0).finish().into_series();
+            // Empty series for null entries
+            let empty_formulas = Series::new_empty(PlSmallStr::from_static("formulas"), &DataType::List(Box::new(DataType::Array(Box::new(DataType::Int32), NUM_ELEMENTS))));
+            let empty_formulas_str = Series::new_empty(PlSmallStr::from_static("formulas_str"), &DataType::List(Box::new(DataType::String)));
+            let empty_normalized_masses = Series::new_empty(PlSmallStr::from_static("normalized_masses"), &DataType::List(Box::new(DataType::Float64)));
+            let empty_intensities = Series::new_empty(PlSmallStr::from_static("intensities"), &DataType::List(Box::new(DataType::Float64)));
+            let empty_errors = Series::new_empty(PlSmallStr::from_static("errors_ppm"), &DataType::List(Box::new(DataType::Float64)));
             
             formulas_series_vec.push(empty_formulas);
             formulas_str_series_vec.push(empty_formulas_str);
@@ -272,7 +311,7 @@ fn spectrum_decomposition_normalized(inputs: &[Series], kwargs: CleanAndNormaliz
         &Series::new("formulas_str".into(), formulas_str_series_vec),
         &Series::new("normalized_masses".into(), normalized_masses_series_vec),
         &Series::new("intensities".into(), intensities_series_vec),
-        &Series::new("errors".into(), errors_series_vec),
+        &Series::new("errors_ppm".into(), errors_series_vec),
     ].iter().copied())?;
     
     Ok(out.into_series())

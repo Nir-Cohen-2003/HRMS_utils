@@ -81,7 +81,7 @@ TEST_CASES = [
         {"C": 20, "H": 20, "O": 10, "P": 0, "N": 10, "S": 0, "Si": 0, "Cl": 0,"Br": 1},
         ["C6H5Br"]
     )
-]
+]*10
 
 def bounds_to_array(bounds: dict[str, int]) -> list[int]:
     """Converts a dictionary of bounds to a fixed-size array."""
@@ -199,7 +199,7 @@ def test_decompose_mass_with_bounds():
                 "min_bounds": min_bounds_2,
                 "max_bounds": max_bounds_2,
             },
-        ]
+        ]*10
     }, 
     schema={
         "mass_data": pl.Struct([
@@ -215,6 +215,8 @@ def test_decompose_mass_with_bounds():
             dbe_mode="half_integer",
         ).alias("decomposed").struct.unnest()
     )
+    print("Result DataFrame schema:", result_df.schema)
+    # print("Result DataFrame:", result_df)
 
     # Check first result
     output_formulas_1 = result_df.item(0, "formulas").to_list()
@@ -236,93 +238,97 @@ def test_decompose_mass_with_bounds():
     assert sorted_output == sorted_expected, \
         f"Expected {expected_formulas_str_sorted}, but got {output_formulas_str_sorted}"
 
-# # Test cases for spectrum cleaning and normalization
-# # Each tuple contains: (mz_values, precursor_formula_str, tolerance_ppm, water_absorption, expected_formulas)
-# CLEANING_TEST_CASES = [
-#     (
-#         [78.046950, 104.062600, 128.062600],
-#         "C10H20O5",
-#         5.0,
-#         False,
-#         [ #expected formulas for each mz
-#             ["C6H6"],
-#             ["C8H8"],
-#             ["C10H8"]
-#         ]
-#     ),
-#     (
-#         [78.046950,84.056172, 104.062600, 128.062600,152.1182],
-#         "C8H14N3",
-#         5.0,
-#         False,
-#         [ #expected formulas for each mz
-#             ["C6H6"],
-#             ["C3H6N3"],
-#             ["C8H8"],
-#             [],
-#             ["C8H14N3"]
+# Test cases for spectrum cleaning and normalization
+# Each tuple contains: (mz_values, precursor_formula_str, tolerance_ppm, water_absorption, expected_formulas)
+CLEANING_TEST_CASES = [
+    (
+        [78.046950, 104.062600, 128.062600],
+        "C10H20O5",
+        5.0,
+        False,
+        [ #expected formulas for each mz
+            ["C6H6"],
+            ["C8H8"],
+            ["C10H8"]
+        ]
+    ),
+    (
+        [78.046950,84.056172, 104.062600, 128.062600,152.1182],
+        "C8H14N3",
+        5.0,
+        False,
+        [ #expected formulas for each mz
+            ["C6H6"],
+            ["C3H6N3"],
+            ["C8H8"],
+            [],
+            ["C8H14N3"]
 
-#         ]
-#     ),
-# ]
+        ]
+    ),
+]
 
 
-# @pytest.mark.parametrize("mz_values, precursor_formula_str, tolerance_ppm, water_absorption, expected_formulas_str", CLEANING_TEST_CASES)
-# def test_clean_and_normalize_spectrum(mz_values, precursor_formula_str, tolerance_ppm, water_absorption, expected_formulas_str):
-#     precursor_formula = formula_string_to_array(precursor_formula_str)
-#     df = pl.DataFrame({
-#         "mz": [mz_values],
-#         "intensity": [[100.0] * len(mz_values)],
-#         "precursor_formula": [precursor_formula]
-#     }, schema={
-#         "mz": pl.List(pl.Float64),
-#         "intensity": pl.List(pl.Float64),
-#         "precursor_formula": pl.Array(pl.Int32, NUM_ELEMENTS)
-#     }).with_columns(
-#         spectrum_struct=pl.struct(["mz", "intensity", "precursor_formula"])
-#     )
+@pytest.mark.parametrize("mz_values, precursor_formula_str, tolerance_ppm, water_absorption, expected_formulas_str", CLEANING_TEST_CASES)
+def test_clean_and_normalize_spectrum(mz_values, precursor_formula_str, tolerance_ppm, water_absorption, expected_formulas_str):
+    precursor_formula = formula_string_to_array(precursor_formula_str)
+    df = pl.DataFrame({
+        "mz": [mz_values],
+        "intensities": [[100.0] * len(mz_values)],
+        "precursor_formula": [precursor_formula]
+    }, schema={
+        "mz": pl.List(pl.Float64),
+        "intensities": pl.List(pl.Float64),
+        "precursor_formula": pl.Array(pl.Int32, NUM_ELEMENTS)
+    }).with_columns(
+        spectrum_struct=pl.struct(["mz", "intensities", "precursor_formula"])
+    )
 
-#     result_df = df.with_columns(
-#         corrected=pl.col("spectrum_struct").mass_decomposer.clean_and_normalize_spectrum(
-#             tolerance_ppm=tolerance_ppm,
-#             max_allowed_normalized_mass_error_ppm=2.0,
-#             min_dbe=-10.0,
-#             max_dbe=100.0,
-#             dbe_mode="any",
-#             water_absorption=water_absorption
-#         )
-#     )
+    result_df = df.with_columns(
+        corrected=pl.col("spectrum_struct").mass_decomposer.clean_and_normalize_spectrum(
+            tolerance_ppm=tolerance_ppm,
+            max_allowed_normalized_mass_error_ppm=2.0,
+            min_dbe=-10.0,
+            max_dbe=100.0,
+            dbe_mode="any",
+            water_absorption=water_absorption
+        )
+    )
 
-#     corrected_col = result_df["corrected"]
-#     assert isinstance(corrected_col.dtype, pl.Struct), f"Expected a struct, but got {corrected_col.dtype}"
+    corrected_col = result_df["corrected"]
+    assert isinstance(corrected_col.dtype, pl.Struct), f"Expected a struct, but got {corrected_col.dtype}"
 
-#     # Check that the struct has the correct fields and types
-#     expected_fields = {
-#         "masses_normalized": pl.List(pl.Float64),
-#         "cleaned_intensities": pl.List(pl.Float64),
-#         "fragment_formulas": pl.List(pl.Array(pl.Int32, NUM_ELEMENTS)),
-#         "fragment_errors_ppm": pl.List(pl.Float64),
-#         "fragment_formulas_str": pl.List(pl.Utf8),
-#     }
-#     for field in corrected_col.dtype.fields:
-#         assert field.name in expected_fields, f"Unexpected field {field.name} in corrected spectrum struct"
-#         assert field.dtype == expected_fields[field.name], f"Field {field.name} has wrong dtype: expected {expected_fields[field.name]}, got {field.dtype}"
+    # Check that the struct has the correct fields and types
+    expected_fields = {
+        "normalized_masses": pl.List(pl.Float64),
+        "intensities": pl.List(pl.Float64),
+        "formulas": pl.List(pl.Array(pl.Int32, NUM_ELEMENTS)),
+        "errors_ppm": pl.List(pl.Float64),
+        "formulas_str": pl.List(pl.Utf8),
+    }
+    for field in corrected_col.dtype.fields:
+        assert field.name in expected_fields, f"Unexpected field {field.name} in corrected spectrum struct"
+        assert field.dtype == expected_fields[field.name], f"Field {field.name} has wrong dtype: expected {expected_fields[field.name]}, got {field.dtype}"
 
-#     # Check that only fragments with a formula are returned
-#     expected_formulas_flat = [f for formulas in expected_formulas_str for f in formulas]
-#     output_struct = corrected_col.to_list()[0]
-#     output_formulas_arr = output_struct["fragment_formulas"]
-#     output_formulas_str = output_struct["fragment_formulas_str"]
+    # Check that only fragments with a formula are returned
+    expected_formulas_flat = [f for formulas in expected_formulas_str for f in formulas]
+    expected_formulas_arr = [formula_string_to_array(s) for s in expected_formulas_flat]
+    
+    output_struct = corrected_col.to_list()[0]
+    output_formulas_arr = output_struct["formulas"]
+    output_formulas_str = output_struct["formulas_str"]
 
-#     # Check that string formulas match array formulas
-#     for i, formula_arr in enumerate(output_formulas_arr):
-#         assert formula_array_to_string(formula_arr) == output_formulas_str[i], f"Formula string does not match array for formula {i}: expected {formula_array_to_string(formula_arr)}, got {output_formulas_str[i]}"
+    # Check that string formulas match array formulas
+    for i, formula_arr in enumerate(output_formulas_arr):
+        assert formula_array_to_string(formula_arr) == output_formulas_str[i], f"Formula string does not match array for formula {i}: expected {formula_array_to_string(formula_arr)}, got {output_formulas_str[i]}"
 
-#     assert len(output_formulas_str) <= len(expected_formulas_flat), f"Expected at most {len(expected_formulas_flat)} formulas, but got {len(output_formulas_str)}"
+    assert len(output_formulas_arr) <= len(expected_formulas_arr), f"Expected at most {len(expected_formulas_arr)} formulas, but got {len(output_formulas_arr)}"
 
-#     # Check that the correct formula is chosen
-#     for formula in output_formulas_str:
-#         assert formula in expected_formulas_flat, f"Unexpected formula {formula} in output, expected one of {expected_formulas_flat}"
+    # Check that the correct formula is chosen (compare arrays, but print strings on error)
+    for formula_arr in output_formulas_arr:
+        formula_str = formula_array_to_string(formula_arr)
+        assert formula_arr in expected_formulas_arr, \
+            f"Unexpected formula {formula_str} in output, expected one of {expected_formulas_flat}"
 
 if __name__ == "__main__":
     test_decompose_mass(TEST_CASES[0][0], TEST_CASES[0][1], TEST_CASES[0][2], TEST_CASES[0][3], TEST_CASES[0][4])
