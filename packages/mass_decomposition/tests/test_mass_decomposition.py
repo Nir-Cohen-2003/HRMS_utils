@@ -81,7 +81,7 @@ TEST_CASES = [
         {"C": 20, "H": 20, "O": 10, "P": 0, "N": 10, "S": 0, "Si": 0, "Cl": 0,"Br": 1},
         ["C6H5Br"]
     )
-]*10
+]*2
 
 def bounds_to_array(bounds: dict[str, int]) -> list[int]:
     """Converts a dictionary of bounds to a fixed-size array."""
@@ -199,7 +199,7 @@ def test_decompose_mass_with_bounds():
                 "min_bounds": min_bounds_2,
                 "max_bounds": max_bounds_2,
             },
-        ]*10
+        ]*2
     }, 
     schema={
         "mass_data": pl.Struct([
@@ -266,7 +266,21 @@ CLEANING_TEST_CASES = [
 
         ]
     ),
-]
+    (
+        [78.046950,84.056172, 104.062600, 168.113687,152.1182],
+        "C8H14N3",
+        5.0,
+        True,
+        [ #expected formulas for each mz
+            ["C6H6"],
+            ["C3H6N3"],
+            ["C8H8"],
+            ["C8H14N3O"],
+            ["C8H14N3"]
+
+        ]
+    ),
+]*2
 
 
 @pytest.mark.parametrize("mz_values, precursor_formula_str, tolerance_ppm, water_absorption, expected_formulas_str", CLEANING_TEST_CASES)
@@ -290,7 +304,7 @@ def test_clean_and_normalize_spectrum(mz_values, precursor_formula_str, toleranc
             max_allowed_normalized_mass_error_ppm=2.0,
             min_dbe=-10.0,
             max_dbe=100.0,
-            dbe_mode="any",
+            dbe_mode="half_integer",
             water_absorption=water_absorption
         )
     )
