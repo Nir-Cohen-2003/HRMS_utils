@@ -25,7 +25,6 @@ fn mass_decomposition(inputs: &[Series], kwargs: DecompositionKwargs) -> PolarsR
     let min_bounds: [i32; 15] = kwargs.min_bounds.unwrap();
     let max_bounds: [i32; 15] = kwargs.max_bounds.unwrap();
 
-    // Initialize decomposer once - now fully initialized in constructor
     let decomposer = MassDecomposer::new(min_bounds, max_bounds);
     
     let params = DecompositionParams {
@@ -35,56 +34,46 @@ fn mass_decomposition(inputs: &[Series], kwargs: DecompositionKwargs) -> PolarsR
         dbe_mode: kwargs.dbe_mode.clone(),
     };
 
-    // Process masses in parallel - no dummy decompose needed
-    let results: Vec<(Series, Series, Series)> = masses
+    // Process masses in parallel - return raw data instead of Series
+    let results: Vec<(Vec<[i32; NUM_ELEMENTS]>, Vec<f64>)> = masses
         .into_no_null_iter()
         .par_bridge()
         .map(|mass| {
-            // Clone decomposer for each thread
             let mut thread_decomposer = decomposer.clone();
-            let (formulas, errors_ppm) = thread_decomposer.decompose(mass, &params);
-
-            let formulas_vec: Vec<Option<Series>> = formulas
-                .iter()
-                .map(|formula| {
-                    let arr = Int32Array::from_slice(formula);
-                    let arr_boxed = Box::new(arr) as Box<dyn polars_arrow::array::Array>;
-                    Some(Series::try_from((PlSmallStr::EMPTY, arr_boxed)).unwrap())
-                })
-                .collect();
-            
-            let formulas_series = Series::new(
-                PlSmallStr::from_static("formulas"), 
-                formulas_vec
-            ).cast(&DataType::Array(Box::new(DataType::Int32), NUM_ELEMENTS)).unwrap();
-
-            let mut formulas_str_builder = StringChunkedBuilder::new("formulas_str".into(), formulas.len());
-            let mut errors_builder = PrimitiveChunkedBuilder::<Float64Type>::new("errors".into(), errors_ppm.len());
-
-            for (formula, error) in formulas.iter().zip(errors_ppm.iter()) {
-                formulas_str_builder.append_value(formula_to_string(formula));
-                errors_builder.append_value(*error);
-            }
-
-            (
-                formulas_series,
-                formulas_str_builder.finish().into_series(),
-                errors_builder.finish().into_series()
-            )
+            thread_decomposer.decompose(mass, &params)
         })
         .collect();
 
-    // Unzip results
-    let (formulas_series_vec, formulas_str_series_vec, errors_series_vec): (Vec<Series>, Vec<Series>, Vec<Series>) = 
-        results.into_iter().fold(
-            (Vec::with_capacity(len), Vec::with_capacity(len), Vec::with_capacity(len)),
-            |(mut f, mut fs, mut e), (formula, formula_str, error)| {
-                f.push(formula);
-                fs.push(formula_str);
-                e.push(error);
-                (f, fs, e)
-            }
-        );
+    // Build Series once after collecting all results
+    let mut formulas_series_vec = Vec::with_capacity(len);
+    let mut formulas_str_series_vec = Vec::with_capacity(len);
+    let mut errors_series_vec = Vec::with_capacity(len);
+
+    for (formulas, errors_ppm) in results {
+        // Build formulas series
+        let formulas_vec: Vec<Option<Series>> = formulas
+            .iter()
+            .map(|formula| {
+                let arr = Int32Array::from_slice(formula);
+                let arr_boxed = Box::new(arr) as Box<dyn polars_arrow::array::Array>;
+                Some(Series::try_from((PlSmallStr::EMPTY, arr_boxed)).unwrap())
+            })
+            .collect();
+        
+        let formulas_series = Series::new(
+            PlSmallStr::from_static("formulas"), 
+            formulas_vec
+        ).cast(&DataType::Array(Box::new(DataType::Int32), NUM_ELEMENTS)).unwrap();
+
+        // Build strings and errors
+        let formulas_str: Vec<String> = formulas.iter()
+            .map(|f| formula_to_string(f))
+            .collect();
+
+        formulas_series_vec.push(formulas_series);
+        formulas_str_series_vec.push(Series::new("formulas_str".into(), formulas_str));
+        errors_series_vec.push(Series::new("errors".into(), errors_ppm));
+    }
 
     let out = StructChunked::from_series("mass_decomposition".into(), len, [
         &Series::new("formulas".into(), formulas_series_vec),
