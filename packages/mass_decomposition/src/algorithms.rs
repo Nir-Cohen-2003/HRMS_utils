@@ -9,6 +9,7 @@ struct Weight {
     max_count: i32,
 }
 
+#[derive(Clone)]
 pub struct MassDecomposer {
     weights: Vec<Weight>,
     ert: Vec<Vec<i64>>,

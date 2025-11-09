@@ -19,33 +19,37 @@ fn mass_decomposition_output(_fields: &[Field]) -> PolarsResult<Field> {
     let v = vec![formula_field, formula_str_field, error_field];
     Ok(Field::new("mass_decomposition".into(), DataType::Struct(v)))
 }
-
 #[polars_expr(output_type_func=mass_decomposition_output)]
 fn mass_decomposition(inputs: &[Series], kwargs: DecompositionKwargs) -> PolarsResult<Series> {
     let masses = inputs[0].f64()?;
     let len = masses.len();
-    let min_bounds = kwargs.min_bounds.unwrap_or([0; NUM_ELEMENTS]);
-    let max_bounds = kwargs.max_bounds.unwrap_or([100; NUM_ELEMENTS]);
+    let min_bounds: [i32; 15] = kwargs.min_bounds.unwrap();
+    let max_bounds: [i32; 15] = kwargs.max_bounds.unwrap();
 
-    // Why: Build three separate vectors to hold the list series for each field
-    let mut formulas_series_vec: Vec<Series> = Vec::with_capacity(len);
-    let mut formulas_str_series_vec: Vec<Series> = Vec::with_capacity(len);
-    let mut errors_series_vec: Vec<Series> = Vec::with_capacity(len);
+    // Initialize decomposer once
+    let mut decomposer = MassDecomposer::new(min_bounds, max_bounds);
+    
+    let params = DecompositionParams {
+        tolerance_ppm: kwargs.tolerance_ppm,
+        min_dbe: kwargs.min_dbe,
+        max_dbe: kwargs.max_dbe,
+        dbe_mode: kwargs.dbe_mode.clone(),
+        min_bounds,
+        max_bounds,
+    };
+    
+    // Force initialization by doing a dummy decompose (or add explicit init method)
+    let _ = decomposer.decompose(100.0, &params);
 
-    for mass_opt in masses.into_iter() {
-        if let Some(mass) = mass_opt {
-            let params = DecompositionParams {
-                tolerance_ppm: kwargs.tolerance_ppm,
-                min_dbe: kwargs.min_dbe,
-                max_dbe: kwargs.max_dbe,
-                dbe_mode: kwargs.dbe_mode.clone(),
-                min_bounds,
-                max_bounds,
-            };
-            let mut decomposer = MassDecomposer::new(min_bounds, max_bounds);
-            let (formulas, errors_ppm) = decomposer.decompose(mass, &params);
+    // Process masses in parallel
+    let results: Vec<(Series, Series, Series)> = masses
+        .into_no_null_iter()
+        .par_bridge()
+        .map(|mass| {
+            // Clone decomposer for each thread (shares read-only data, clones mutable state)
+            let mut thread_decomposer = decomposer.clone();
+            let (formulas, errors_ppm) = thread_decomposer.decompose(mass, &params);
 
-            // Why: Build arrays directly for formulas
             let formulas_vec: Vec<Option<Series>> = formulas
                 .iter()
                 .map(|formula| {
@@ -58,7 +62,7 @@ fn mass_decomposition(inputs: &[Series], kwargs: DecompositionKwargs) -> PolarsR
             let formulas_series = Series::new(
                 PlSmallStr::from_static("formulas"), 
                 formulas_vec
-            ).cast(&DataType::Array(Box::new(DataType::Int32), NUM_ELEMENTS))?;
+            ).cast(&DataType::Array(Box::new(DataType::Int32), NUM_ELEMENTS)).unwrap();
 
             let mut formulas_str_builder = StringChunkedBuilder::new("formulas_str".into(), formulas.len());
             let mut errors_builder = PrimitiveChunkedBuilder::<Float64Type>::new("errors".into(), errors_ppm.len());
@@ -68,22 +72,26 @@ fn mass_decomposition(inputs: &[Series], kwargs: DecompositionKwargs) -> PolarsR
                 errors_builder.append_value(*error);
             }
 
-            formulas_series_vec.push(formulas_series);
-            formulas_str_series_vec.push(formulas_str_builder.finish().into_series());
-            errors_series_vec.push(errors_builder.finish().into_series());
-        } else {
-            // Why: Handle null input by creating empty lists with proper Array dtype
-            let empty_formulas = Series::new(PlSmallStr::from_static("formulas"), Vec::<Option<Series>>::new());
-            let empty_formulas_str = StringChunkedBuilder::new("formulas_str".into(), 0).finish().into_series();
-            let empty_errors = PrimitiveChunkedBuilder::<Float64Type>::new("errors".into(), 0).finish().into_series();
-            
-            formulas_series_vec.push(empty_formulas);
-            formulas_str_series_vec.push(empty_formulas_str);
-            errors_series_vec.push(empty_errors);
-        }
-    }
+            (
+                formulas_series,
+                formulas_str_builder.finish().into_series(),
+                errors_builder.finish().into_series()
+            )
+        })
+        .collect();
 
-    // Why: Create the struct directly from the three field series
+    // Unzip results
+    let (formulas_series_vec, formulas_str_series_vec, errors_series_vec): (Vec<Series>, Vec<Series>, Vec<Series>) = 
+        results.into_iter().fold(
+            (Vec::with_capacity(len), Vec::with_capacity(len), Vec::with_capacity(len)),
+            |(mut f, mut fs, mut e), (formula, formula_str, error)| {
+                f.push(formula);
+                fs.push(formula_str);
+                e.push(error);
+                (f, fs, e)
+            }
+        );
+
     let out = StructChunked::from_series("mass_decomposition".into(), len, [
         &Series::new("formulas".into(), formulas_series_vec),
         &Series::new("formulas_str".into(), formulas_str_series_vec),
@@ -92,6 +100,8 @@ fn mass_decomposition(inputs: &[Series], kwargs: DecompositionKwargs) -> PolarsR
     
     Ok(out.into_series())
 }
+
+
 
 #[polars_expr(output_type_func=mass_decomposition_output)]
 fn mass_decomposition_with_bounds(inputs: &[Series], kwargs: DecompositionKwargs) -> PolarsResult<Series> {
