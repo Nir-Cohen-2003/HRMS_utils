@@ -5,11 +5,10 @@ use rayon::prelude::*;
 use crate::algorithms::{MassDecomposer, SpectrumDecomposer};
 use crate::common::{DecompositionParams, SpectrumDecompositionParams, formula_to_string, NUM_ELEMENTS, CleanAndNormalizeSpectrumKwargs, DecompositionKwargs};
 use polars::series::Series;
-use polars::frame::DataFrame;
 use polars::chunked_array::builder::{
     ListPrimitiveChunkedBuilder, PrimitiveChunkedBuilder, StringChunkedBuilder
 };
-use polars_arrow::array::{Int32Array, FixedSizeListArray};
+use polars_arrow::array::{Int32Array};
 
 
 fn mass_decomposition_output(_fields: &[Field]) -> PolarsResult<Field> {
@@ -26,8 +25,8 @@ fn mass_decomposition(inputs: &[Series], kwargs: DecompositionKwargs) -> PolarsR
     let min_bounds: [i32; 15] = kwargs.min_bounds.unwrap();
     let max_bounds: [i32; 15] = kwargs.max_bounds.unwrap();
 
-    // Initialize decomposer once
-    let mut decomposer = MassDecomposer::new(min_bounds, max_bounds);
+    // Initialize decomposer once - now fully initialized in constructor
+    let decomposer = MassDecomposer::new(min_bounds, max_bounds);
     
     let params = DecompositionParams {
         tolerance_ppm: kwargs.tolerance_ppm,
@@ -35,16 +34,13 @@ fn mass_decomposition(inputs: &[Series], kwargs: DecompositionKwargs) -> PolarsR
         max_dbe: kwargs.max_dbe,
         dbe_mode: kwargs.dbe_mode.clone(),
     };
-    
-    // Force initialization by doing a dummy decompose (or add explicit init method)
-    let _ = decomposer.decompose(100.0, &params);
 
-    // Process masses in parallel
+    // Process masses in parallel - no dummy decompose needed
     let results: Vec<(Series, Series, Series)> = masses
         .into_no_null_iter()
         .par_bridge()
         .map(|mass| {
-            // Clone decomposer for each thread (shares read-only data, clones mutable state)
+            // Clone decomposer for each thread
             let mut thread_decomposer = decomposer.clone();
             let (formulas, errors_ppm) = thread_decomposer.decompose(mass, &params);
 

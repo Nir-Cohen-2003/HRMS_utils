@@ -1,4 +1,4 @@
-use crate::common::{Formula, DecompositionParams, NUM_ELEMENTS, ATOMIC_MASSES, check_dbe, MIN_MASS_FOR_TOLERANCE, SpectrumDecompositionParams, CleanedAndNormalizedSpectrumResult, CorrectedFragment, DecomposedFragment};
+use crate::common::{Formula, DecompositionParams, NUM_ELEMENTS, ATOMIC_MASSES, check_dbe, MIN_MASS_FOR_TOLERANCE, SpectrumDecompositionParams, CleanedAndNormalizedSpectrumResult, CorrectedFragment};
 
 #[derive(Debug, Clone)]
 struct Weight {
@@ -27,7 +27,7 @@ impl MassDecomposer {
         let mut decomposer = MassDecomposer {
             weights: Vec::new(),
             ert: Vec::new(),
-            precision: 0.0,
+            precision: 1.0 / 5963.337687,  // Fixed precision for mass spectrometry
             min_error: 0.0,
             max_error: 0.0,
             is_initialized: false,
@@ -36,7 +36,19 @@ impl MassDecomposer {
             temp_counts: Vec::new(),
         };
         decomposer.init_money_changing();
+        decomposer.initialize();
         decomposer
+    }
+
+    fn initialize(&mut self) {
+        if self.precision == 0.0 {
+            return;
+        }
+        self.discretize_masses();
+        self.divide_by_gcd();
+        self.calc_ert();
+        self.compute_errors();
+        self.is_initialized = true;
     }
 
     fn init_money_changing(&mut self) {
@@ -263,19 +275,7 @@ impl MassDecomposer {
     }
 
     pub fn decompose(&mut self, target_mass: f64, params: &DecompositionParams) -> (Vec<Formula>, Vec<f64>) {
-        if !self.is_initialized {
-            // self.precision = (params.tolerance_ppm * 50.0f64 * 2.0f64) / 1_000_000.0f64;
-            self.precision = 1.0 / 5963.337687;
-            if self.precision == 0.0f64 {
-                return (Vec::new(), Vec::new());
-            }
-            self.discretize_masses();
-            self.divide_by_gcd();
-            self.calc_ert();
-            self.compute_errors();
-            self.is_initialized = true;
-        }
-
+        // Remove initialization check - it's done in constructor now
         let mass_from = target_mass - (params.tolerance_ppm * target_mass) / 1_000_000.0f64;
         let mass_to = target_mass + (params.tolerance_ppm * target_mass) / 1_000_000.0f64;
         
