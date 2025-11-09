@@ -3,6 +3,7 @@ import numpy as np
 from time import perf_counter
 import mass_decomposition
 import sys
+import argparse
 
 
 ########################## H,  B, C,  N,  O,  F, Na,Si, P, S, Cl, K, As,Br, I
@@ -218,9 +219,37 @@ def benchmark_mass_decomposition(size: int):
 
 
 if __name__ == "__main__":
-    size = 10000
-    if len(sys.argv) > 1:
-        size = int(sys.argv[1])
-    
-    test_roundtrip_decomposition(size)
-    benchmark_mass_decomposition(size)
+    parser = argparse.ArgumentParser(
+        description="Run spectrum roundtrip and mass decomposition benchmarks. Flags may be placed before or after the size argument."
+    )
+    parser.add_argument(
+        "size",
+        nargs="?",
+        type=int,
+        default=10000,
+        help="Number of mock spectra (default: 10000)."
+    )
+    parser.add_argument(
+        "--no-spectrum",
+        action="store_true",
+        dest="no_spectrum",
+        help="Disable the spectrum roundtrip decomposition test."
+    )
+    parser.add_argument(
+        "--no-mass",
+        action="store_true",
+        dest="no_mass",
+        help="Disable the mass decomposition benchmark."
+    )
+
+    args = parser.parse_args()
+
+    if not args.no_spectrum:
+        test_roundtrip_decomposition(args.size)
+    else:
+        print("Skipping spectrum decomposition test")
+
+    if not args.no_mass:
+        benchmark_mass_decomposition(args.size)
+    else:
+        print("Skipping mass decomposition benchmark")

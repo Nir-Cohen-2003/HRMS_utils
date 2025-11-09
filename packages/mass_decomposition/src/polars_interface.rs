@@ -122,7 +122,7 @@ fn mass_decomposition_with_bounds(inputs: &[Series], kwargs: DecompositionKwargs
                 (Some(mass), Some(min_bounds_arr), Some(max_bounds_arr)) => {
                     // Downcast to Int32Array
                     // print min_bounds_arr, and its type for debugging
-                    println!("min_bounds_arr: {:?}, type: {:?}", min_bounds_arr, min_bounds_arr.dtype());
+                    // println!("min_bounds_arr: {:?}, type: {:?}", min_bounds_arr, min_bounds_arr.dtype());
                     
                     let min_bounds_values: &[i32] = min_bounds_arr.i32()
                         .expect("min_bounds should be i32 array")
