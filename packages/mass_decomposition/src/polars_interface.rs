@@ -102,97 +102,70 @@ fn mass_decomposition_with_bounds(inputs: &[Series], kwargs: DecompositionKwargs
     let max_bounds_arrays = max_bounds_series.array()?;
 
     // 2. EFFICIENT STEP: Zip the iterators first
-    let zipped_iter = masses_ca.into_iter()
-        .zip(min_bounds_arrays.into_iter())
-        .zip(max_bounds_arrays.into_iter());
+    let zipped_iter = masses_ca.into_no_null_iter()
+        .zip(min_bounds_arrays.into_no_null_iter())
+        .zip(max_bounds_arrays.into_no_null_iter());
 
-    // 3. Process the zipped iterator in parallel
-    // .par_bridge() converts a standard Iterator into a ParallelIterator
-    let results: Vec<(Series, Series, Series)> = zipped_iter
+    // 3. Process the zipped iterator in parallel - return raw data
+    let results: Vec<(Vec<[i32; NUM_ELEMENTS]>, Vec<f64>)> = zipped_iter
         .par_bridge()
-        .map(|((mass_opt, min_bounds_opt), max_bounds_opt)| {
-            match (mass_opt, min_bounds_opt, max_bounds_opt) {
-                (Some(mass), Some(min_bounds_arr), Some(max_bounds_arr)) => {
-                    // Downcast to Int32Array
-                    // print min_bounds_arr, and its type for debugging
-                    // println!("min_bounds_arr: {:?}, type: {:?}", min_bounds_arr, min_bounds_arr.dtype());
-                    
-                    let min_bounds_values: &[i32] = min_bounds_arr.i32()
-                        .expect("min_bounds should be i32 array")
-                        .cont_slice()
-                        .expect("min_bounds should be contiguous slice");
-                    let max_bounds_values: &[i32] = max_bounds_arr.i32()
-                        .expect("max_bounds should be i32 array")
-                        .cont_slice()
-                        .expect("max_bounds should be contiguous slice");
-                    // now chek that we got result, pani
+        .map(|((mass, min_bounds_arr), max_bounds_arr)| {
+            let min_bounds_values: &[i32] = min_bounds_arr.i32()
+                .expect("min_bounds should be i32 array")
+                .cont_slice()
+                .expect("min_bounds should be contiguous slice");
+            let max_bounds_values: &[i32] = max_bounds_arr.i32()
+                .expect("max_bounds should be i32 array")
+                .cont_slice()
+                .expect("max_bounds should be contiguous slice");
 
-                    let mut min_bounds = [0; NUM_ELEMENTS];
-                    let mut max_bounds = [0; NUM_ELEMENTS];
-                    min_bounds.copy_from_slice(min_bounds_values);
-                    max_bounds.copy_from_slice(max_bounds_values);
+            let mut min_bounds: [i32; 15] = [0; NUM_ELEMENTS];
+            let mut max_bounds: [i32; 15] = [0; NUM_ELEMENTS];
+            min_bounds.copy_from_slice(min_bounds_values);
+            max_bounds.copy_from_slice(max_bounds_values);
 
-                    let params = DecompositionParams {
-                        tolerance_ppm: kwargs.tolerance_ppm,
-                        min_dbe: kwargs.min_dbe,
-                        max_dbe: kwargs.max_dbe,
-                        dbe_mode: kwargs.dbe_mode.clone(),
-                    };
-                    let mut decomposer = MassDecomposer::new(min_bounds, max_bounds);
-                    let (formulas, errors_ppm) = decomposer.decompose(mass, &params);
-
-                    // Build arrays directly for formulas
-                    let formulas_vec: Vec<Option<Series>> = formulas
-                        .iter()
-                        .map(|formula| {
-                            let arr = Int32Array::from_slice(formula);
-                            let arr_boxed = Box::new(arr) as Box<dyn polars_arrow::array::Array>;
-                            Some(Series::try_from((PlSmallStr::EMPTY, arr_boxed)).unwrap())
-                        })
-                        .collect();
-                    
-                    let formulas_series = Series::new(
-                        PlSmallStr::from_static("formulas"), 
-                        formulas_vec
-                    ).cast(&DataType::Array(Box::new(DataType::Int32), NUM_ELEMENTS)).unwrap();
-
-                    let mut formulas_str_builder = StringChunkedBuilder::new("formulas_str".into(), formulas.len());
-                    let mut errors_builder = PrimitiveChunkedBuilder::<Float64Type>::new("errors".into(), errors_ppm.len());
-
-                    for (formula, error) in formulas.iter().zip(errors_ppm.iter()) {
-                        formulas_str_builder.append_value(formula_to_string(formula));
-                        errors_builder.append_value(*error);
-                    }
-
-                    (
-                        formulas_series,
-                        formulas_str_builder.finish().into_series(),
-                        errors_builder.finish().into_series()
-                    )
-                }
-                _ => {
-                    // Handle null input by creating empty lists with proper Array dtype
-                    let empty_formulas = Series::new(PlSmallStr::from_static("formulas"), Vec::<Option<Series>>::new());
-                    let empty_formulas_str = StringChunkedBuilder::new("formulas_str".into(), 0).finish().into_series();
-                    let empty_errors = PrimitiveChunkedBuilder::<Float64Type>::new("errors".into(), 0).finish().into_series();
-                    
-                    (empty_formulas, empty_formulas_str, empty_errors)
-                }
-            }
+            let params = DecompositionParams {
+                tolerance_ppm: kwargs.tolerance_ppm,
+                min_dbe: kwargs.min_dbe,
+                max_dbe: kwargs.max_dbe,
+                dbe_mode: kwargs.dbe_mode.clone(),
+            };
+            
+            let mut decomposer = MassDecomposer::new(min_bounds, max_bounds);
+            decomposer.decompose(mass, &params)
         })
         .collect();
 
-    // 4. Unzip results into separate vectors
-    let (formulas_series_vec, formulas_str_series_vec, errors_series_vec): (Vec<Series>, Vec<Series>, Vec<Series>) = 
-        results.into_iter().fold(
-            (Vec::with_capacity(num_rows), Vec::with_capacity(num_rows), Vec::with_capacity(num_rows)),
-            |(mut f, mut fs, mut e), (formula, formula_str, error)| {
-                f.push(formula);
-                fs.push(formula_str);
-                e.push(error);
-                (f, fs, e)
-            }
-        );
+    // 4. Build Series once after collecting all results
+    let mut formulas_series_vec = Vec::with_capacity(num_rows);
+    let mut formulas_str_series_vec = Vec::with_capacity(num_rows);
+    let mut errors_series_vec = Vec::with_capacity(num_rows);
+
+    for (formulas, errors_ppm) in results {
+        // Build formulas series
+        let formulas_vec: Vec<Option<Series>> = formulas
+            .iter()
+            .map(|formula| {
+                let arr = Int32Array::from_slice(formula);
+                let arr_boxed = Box::new(arr) as Box<dyn polars_arrow::array::Array>;
+                Some(Series::try_from((PlSmallStr::EMPTY, arr_boxed)).unwrap())
+            })
+            .collect();
+        
+        let formulas_series = Series::new(
+            PlSmallStr::from_static("formulas"), 
+            formulas_vec
+        ).cast(&DataType::Array(Box::new(DataType::Int32), NUM_ELEMENTS)).unwrap();
+
+        // Build strings and errors
+        let formulas_str: Vec<String> = formulas.iter()
+            .map(|f| formula_to_string(f))
+            .collect();
+
+        formulas_series_vec.push(formulas_series);
+        formulas_str_series_vec.push(Series::new("formulas_str".into(), formulas_str));
+        errors_series_vec.push(Series::new("errors".into(), errors_ppm));
+    }
     
     let out = StructChunked::from_series("mass_decomposition_with_bounds".into(), num_rows, [
         &Series::new("formulas".into(), formulas_series_vec),
