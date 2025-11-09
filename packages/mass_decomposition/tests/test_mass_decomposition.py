@@ -217,13 +217,13 @@ def test_decompose_mass_with_bounds():
     )
 
     # Check first result
-    output_formulas_1 = result_df.item(0, "formulas")
+    output_formulas_1 = result_df.item(0, "formulas").to_list()
     expected_formulas_1_str = ["C6H6"]
     expected_formulas_1_arr = [formula_string_to_array(s) for s in expected_formulas_1_str]
     assert sorted(output_formulas_1) == sorted(expected_formulas_1_arr)
 
     # Check second result
-    output_formulas_2 = result_df.item(1, "formulas")
+    output_formulas_2 = result_df.item(1, "formulas").to_list()
     expected_formulas_2_str = ["C6H12N4", "C8H14NO"]
     expected_formulas_2_arr = [formula_string_to_array(s) for s in expected_formulas_2_str]
     

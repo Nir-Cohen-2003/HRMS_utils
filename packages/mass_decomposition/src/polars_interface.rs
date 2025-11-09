@@ -10,7 +10,8 @@ use polars::chunked_array::builder::{
     ListPrimitiveChunkedBuilder, PrimitiveChunkedBuilder, StringChunkedBuilder
 };
 use polars_arrow::array::{Int32Array, FixedSizeListArray};
-use itertools::multizip;
+
+
 fn mass_decomposition_output(_fields: &[Field]) -> PolarsResult<Field> {
     let formula_field = Field::new("formulas".into(), DataType::List(Box::new(DataType::Array(Box::new(DataType::Int32), NUM_ELEMENTS))));
     let formula_str_field = Field::new("formulas_str".into(), DataType::List(Box::new(DataType::String)));
@@ -99,90 +100,108 @@ fn mass_decomposition_with_bounds(inputs: &[Series], kwargs: DecompositionKwargs
     let num_rows = input_struct.len();
 
     let mass_series = input_struct.field_by_name("mass")?;
-    let masses = mass_series.f64()?;
     let min_bounds_series = input_struct.field_by_name("min_bounds")?;
-    let min_bounds_arrays: &ArrayChunked = min_bounds_series.array()?;
     let max_bounds_series = input_struct.field_by_name("max_bounds")?;
-    let max_bounds_arrays: &ArrayChunked = max_bounds_series.array()?;
 
-    // Debug: Check for nulls
-    let min_nulls = min_bounds_arrays.null_count();
-    let max_nulls = max_bounds_arrays.null_count();
-    eprintln!("min_bounds null count: {}", min_nulls);
-    eprintln!("max_bounds null count: {}", max_nulls);
+    // 1. Downcast to appropriate chunked arrays
+    let masses_ca = mass_series.f64()?;
+    let min_bounds_arrays = min_bounds_series.array()?;
+    let max_bounds_arrays = max_bounds_series.array()?;
 
-    let mut formulas_series_vec: Vec<Series> = Vec::with_capacity(num_rows);
-    let mut formulas_str_series_vec: Vec<Series> = Vec::with_capacity(num_rows);
-    let mut errors_series_vec: Vec<Series> = Vec::with_capacity(num_rows);
+    // 2. EFFICIENT STEP: Zip the iterators first
+    let zipped_iter = masses_ca.into_iter()
+        .zip(min_bounds_arrays.into_iter())
+        .zip(max_bounds_arrays.into_iter());
 
-    for (mass_opt, min_bounds_opt, max_bounds_opt) in multizip((masses.into_iter(), min_bounds_arrays, max_bounds_arrays)) {
-        if let (Some(mass), Some(min_bounds_arr), Some(max_bounds_arr)) = (mass_opt, min_bounds_opt, max_bounds_opt) {
-            // Direct downcast to Int32Array - the iterator already unwrapped the FixedSizeListArray layer
-            let min_bounds_values = min_bounds_arr.as_any().downcast_ref::<Int32Array>()
-                .ok_or_else(|| PolarsError::ComputeError(
-                    format!("min_bounds could not be downcast to Int32Array. Actual type: {:?}", min_bounds_arr.dtype()).into()
-                ))?;
-            let min_bounds_slice: &[i32] = min_bounds_values.values();
-            
-            let max_bounds_values = max_bounds_arr.as_any().downcast_ref::<Int32Array>()
-                .ok_or_else(|| PolarsError::ComputeError(
-                    format!("max_bounds could not be downcast to Int32Array. Actual type: {:?}", max_bounds_arr.dtype()).into()
-                ))?;
-            let max_bounds_slice: &[i32] = max_bounds_values.values();
+    // 3. Process the zipped iterator in parallel
+    // .par_bridge() converts a standard Iterator into a ParallelIterator
+    let results: Vec<(Series, Series, Series)> = zipped_iter
+        .par_bridge()
+        .map(|((mass_opt, min_bounds_opt), max_bounds_opt)| {
+            match (mass_opt, min_bounds_opt, max_bounds_opt) {
+                (Some(mass), Some(min_bounds_arr), Some(max_bounds_arr)) => {
+                    // Downcast to Int32Array
+                    // print min_bounds_arr, and its type for debugging
+                    println!("min_bounds_arr: {:?}, type: {:?}", min_bounds_arr, min_bounds_arr.dtype());
+                    
+                    let min_bounds_values: &[i32] = min_bounds_arr.i32()
+                        .expect("min_bounds should be i32 array")
+                        .cont_slice()
+                        .expect("min_bounds should be contiguous slice");
+                    let max_bounds_values: &[i32] = max_bounds_arr.i32()
+                        .expect("max_bounds should be i32 array")
+                        .cont_slice()
+                        .expect("max_bounds should be contiguous slice");
+                    // now chek that we got result, pani
 
-            let mut min_bounds = [0; NUM_ELEMENTS];
-            let mut max_bounds = [0; NUM_ELEMENTS];
-            min_bounds.copy_from_slice(min_bounds_slice);
-            max_bounds.copy_from_slice(max_bounds_slice);
+                    let mut min_bounds = [0; NUM_ELEMENTS];
+                    let mut max_bounds = [0; NUM_ELEMENTS];
+                    min_bounds.copy_from_slice(min_bounds_values);
+                    max_bounds.copy_from_slice(max_bounds_values);
 
-            let params = DecompositionParams {
-                tolerance_ppm: kwargs.tolerance_ppm,
-                min_dbe: kwargs.min_dbe,
-                max_dbe: kwargs.max_dbe,
-                dbe_mode: kwargs.dbe_mode.clone(),
-                min_bounds,
-                max_bounds,
-            };
-            let mut decomposer = MassDecomposer::new(min_bounds, max_bounds);
-            let (formulas, errors_ppm) = decomposer.decompose(mass, &params);
+                    let params = DecompositionParams {
+                        tolerance_ppm: kwargs.tolerance_ppm,
+                        min_dbe: kwargs.min_dbe,
+                        max_dbe: kwargs.max_dbe,
+                        dbe_mode: kwargs.dbe_mode.clone(),
+                        min_bounds,
+                        max_bounds,
+                    };
+                    let mut decomposer = MassDecomposer::new(min_bounds, max_bounds);
+                    let (formulas, errors_ppm) = decomposer.decompose(mass, &params);
 
-            // Why: Build arrays directly for formulas - same approach as mass_decomposition
-            let formulas_vec: Vec<Option<Series>> = formulas
-                .iter()
-                .map(|formula| {
-                    let arr = Int32Array::from_slice(formula);
-                    let arr_boxed = Box::new(arr) as Box<dyn polars_arrow::array::Array>;
-                    Some(Series::try_from((PlSmallStr::EMPTY, arr_boxed)).unwrap())
-                })
-                .collect();
-            
-            let formulas_series = Series::new(
-                PlSmallStr::from_static("formulas"), 
-                formulas_vec
-            ).cast(&DataType::Array(Box::new(DataType::Int32), NUM_ELEMENTS))?;
+                    // Build arrays directly for formulas
+                    let formulas_vec: Vec<Option<Series>> = formulas
+                        .iter()
+                        .map(|formula| {
+                            let arr = Int32Array::from_slice(formula);
+                            let arr_boxed = Box::new(arr) as Box<dyn polars_arrow::array::Array>;
+                            Some(Series::try_from((PlSmallStr::EMPTY, arr_boxed)).unwrap())
+                        })
+                        .collect();
+                    
+                    let formulas_series = Series::new(
+                        PlSmallStr::from_static("formulas"), 
+                        formulas_vec
+                    ).cast(&DataType::Array(Box::new(DataType::Int32), NUM_ELEMENTS)).unwrap();
 
-            let mut formulas_str_builder = StringChunkedBuilder::new("formulas_str".into(), formulas.len());
-            let mut errors_builder = PrimitiveChunkedBuilder::<Float64Type>::new("errors".into(), errors_ppm.len());
+                    let mut formulas_str_builder = StringChunkedBuilder::new("formulas_str".into(), formulas.len());
+                    let mut errors_builder = PrimitiveChunkedBuilder::<Float64Type>::new("errors".into(), errors_ppm.len());
 
-            for (formula, error) in formulas.iter().zip(errors_ppm.iter()) {
-                formulas_str_builder.append_value(formula_to_string(formula));
-                errors_builder.append_value(*error);
+                    for (formula, error) in formulas.iter().zip(errors_ppm.iter()) {
+                        formulas_str_builder.append_value(formula_to_string(formula));
+                        errors_builder.append_value(*error);
+                    }
+
+                    (
+                        formulas_series,
+                        formulas_str_builder.finish().into_series(),
+                        errors_builder.finish().into_series()
+                    )
+                }
+                _ => {
+                    // Handle null input by creating empty lists with proper Array dtype
+                    let empty_formulas = Series::new(PlSmallStr::from_static("formulas"), Vec::<Option<Series>>::new());
+                    let empty_formulas_str = StringChunkedBuilder::new("formulas_str".into(), 0).finish().into_series();
+                    let empty_errors = PrimitiveChunkedBuilder::<Float64Type>::new("errors".into(), 0).finish().into_series();
+                    
+                    (empty_formulas, empty_formulas_str, empty_errors)
+                }
             }
+        })
+        .collect();
 
-            formulas_series_vec.push(formulas_series);
-            formulas_str_series_vec.push(formulas_str_builder.finish().into_series());
-            errors_series_vec.push(errors_builder.finish().into_series());
-        } else {
-            // Why: Handle null input by creating empty lists with proper Array dtype
-            let empty_formulas = Series::new(PlSmallStr::from_static("formulas"), Vec::<Option<Series>>::new());
-            let empty_formulas_str = StringChunkedBuilder::new("formulas_str".into(), 0).finish().into_series();
-            let empty_errors = PrimitiveChunkedBuilder::<Float64Type>::new("errors".into(), 0).finish().into_series();
-            
-            formulas_series_vec.push(empty_formulas);
-            formulas_str_series_vec.push(empty_formulas_str);
-            errors_series_vec.push(empty_errors);
-        }
-    }
+    // 4. Unzip results into separate vectors
+    let (formulas_series_vec, formulas_str_series_vec, errors_series_vec): (Vec<Series>, Vec<Series>, Vec<Series>) = 
+        results.into_iter().fold(
+            (Vec::with_capacity(num_rows), Vec::with_capacity(num_rows), Vec::with_capacity(num_rows)),
+            |(mut f, mut fs, mut e), (formula, formula_str, error)| {
+                f.push(formula);
+                fs.push(formula_str);
+                e.push(error);
+                (f, fs, e)
+            }
+        );
     
     let out = StructChunked::from_series("mass_decomposition_with_bounds".into(), num_rows, [
         &Series::new("formulas".into(), formulas_series_vec),
