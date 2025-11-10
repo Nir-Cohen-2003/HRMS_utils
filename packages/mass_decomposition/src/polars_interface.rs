@@ -36,8 +36,7 @@ fn mass_decomposition(inputs: &[Series], kwargs: DecompositionKwargs) -> PolarsR
         .enumerate()
         .par_bridge()
         .map(|(idx, mass)| {
-            let mut thread_decomposer = decomposer.clone();
-            let (formulas, errors) = thread_decomposer.decompose(mass, &params);
+            let (formulas, errors) = decomposer.decompose(mass, &params);
             (idx, formulas, errors)
         })
         .collect();
@@ -133,7 +132,7 @@ fn mass_decomposition_with_bounds(inputs: &[Series], kwargs: DecompositionKwargs
                 dbe_mode: kwargs.dbe_mode.clone(),
             };
             
-            let mut decomposer = MassDecomposer::new(min_bounds, max_bounds);
+            let decomposer = MassDecomposer::new(min_bounds, max_bounds);
             let (formulas, errors) = decomposer.decompose(mass, &params);
             (idx, formulas, errors)
         })
@@ -227,7 +226,7 @@ fn spectrum_decomposition_normalized(inputs: &[Series], kwargs: CleanAndNormaliz
                     water_absorption: kwargs.water_absorption,
                 };
 
-                let mut decomposer = SpectrumDecomposer::new();
+                let decomposer = SpectrumDecomposer::new();
                 let result = decomposer.clean_and_normalize_spectrum_iterative(
                     &masses,
                     &intensities,

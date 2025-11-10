@@ -19,7 +19,7 @@ pub struct MassDecomposer {
     is_initialized: bool,
     min_bounds: Formula,
     max_bounds: Formula,
-    temp_counts: Vec<i32>,
+    integer_weight_masses: Vec<i64>,
 }
 
 impl MassDecomposer {
@@ -33,7 +33,7 @@ impl MassDecomposer {
             is_initialized: false,
             min_bounds,
             max_bounds,
-            temp_counts: Vec::new(),
+            integer_weight_masses: Vec::new(),
         };
         decomposer.init_money_changing();
         decomposer.initialize();
@@ -46,6 +46,7 @@ impl MassDecomposer {
         }
         self.discretize_masses();
         self.divide_by_gcd();
+        self.integer_weight_masses = self.weights.iter().map(|w| w.integer_mass).collect();
         self.calc_ert();
         self.compute_errors();
         self.is_initialized = true;
@@ -185,23 +186,19 @@ impl MassDecomposer {
         self.ert[remainder as usize][i] <= m
     }
 
-    fn integer_decompose(&mut self, mass: i64) -> Vec<Formula> {
-        let mut results = Vec::with_capacity(100);
+    fn integer_decompose(&self, mass: i64, results: &mut Vec<(Formula, f64)>, target_mass: f64, tolerance_da: f64, params: &DecompositionParams) {
         let k = self.weights.len();
         if k == 0 {
-            return results;
+            return;
         }
 
-        let weight_masses: Vec<i64> = self.weights.iter().map(|w| w.integer_mass).collect();
+        let weight_masses = &self.integer_weight_masses;
         let a = weight_masses[0];
         if a <= 0 {
-            return results;
+            return;
         }
 
-        if self.temp_counts.len() < k {
-            self.temp_counts.resize(k, 0);
-        }
-        self.temp_counts.fill(0);
+        let mut temp_counts = vec![0; k];
 
         let mut i = (k - 1) as isize;
         let mut m = mass;
@@ -211,19 +208,19 @@ impl MassDecomposer {
             if !self.decomposable_fast(i as usize, m, remainder) {
                 loop {
                     if i >= (k - 1) as isize {
-                        return results;
+                        return;
                     }
                     if self.decomposable_fast(i as usize, m, m % a) {
                         break;
                     }
-                    m += self.temp_counts[i as usize] as i64 * weight_masses[i as usize];
-                    self.temp_counts[i as usize] = 0;
+                    m += temp_counts[i as usize] as i64 * weight_masses[i as usize];
+                    temp_counts[i as usize] = 0;
                     i += 1;
                 }
 
                 if i < k as isize {
                     m -= weight_masses[i as usize];
-                    self.temp_counts[i as usize] += 1;
+                    temp_counts[i as usize] += 1;
                 }
             } else {
                 while i > 0 {
@@ -235,14 +232,14 @@ impl MassDecomposer {
 
                 if i == 0 {
                     if a > 0 {
-                        self.temp_counts[0] = (m / a) as i32;
+                        temp_counts[0] = (m / a) as i32;
                     } else {
-                        self.temp_counts[0] = 0;
+                        temp_counts[0] = 0;
                     }
 
                     let mut valid_formula = true;
                     for j in 0..k {
-                        if self.temp_counts[j] < self.weights[j].min_count || self.temp_counts[j] > self.weights[j].max_count {
+                        if temp_counts[j] < self.weights[j].min_count || temp_counts[j] > self.weights[j].max_count {
                             valid_formula = false;
                             break;
                         }
@@ -251,55 +248,51 @@ impl MassDecomposer {
                     if valid_formula {
                         let mut res = [0; NUM_ELEMENTS];
                         for j in 0..k {
-                            res[self.weights[j].original_index] = self.temp_counts[j];
+                            res[self.weights[j].original_index] = temp_counts[j];
                         }
-                        results.push(res);
+                        
+                        // Perform validation here instead of in decompose
+                        let formula_mass: f64 = res.iter().enumerate().map(|(i, &count)| ATOMIC_MASSES[i] * count as f64).sum();
+                        let error = formula_mass - target_mass;
+                        if error.abs() <= tolerance_da && check_dbe(&res, params.min_dbe, params.max_dbe, &params.dbe_mode) {
+                            let error_ppm = (error / formula_mass) * 1e6;
+                            results.push((res, error_ppm));
+                        }
                     }
                     i += 1;
                 }
 
-                while i < k as isize && self.temp_counts[i as usize] >= self.weights[i as usize].max_count {
-                    m += self.temp_counts[i as usize] as i64 * weight_masses[i as usize];
-                    self.temp_counts[i as usize] = 0;
+                while i < k as isize && temp_counts[i as usize] >= self.weights[i as usize].max_count {
+                    m += temp_counts[i as usize] as i64 * weight_masses[i as usize];
+                    temp_counts[i as usize] = 0;
                     i += 1;
                 }
 
                 if i < k as isize {
                     m -= weight_masses[i as usize];
-                    self.temp_counts[i as usize] += 1;
+                    temp_counts[i as usize] += 1;
                 } else {
-                    return results;
+                    return;
                 }
             }
         }
     }
 
-    pub fn decompose(&mut self, target_mass: f64, params: &DecompositionParams) -> (Vec<Formula>, Vec<f64>) {
+    pub fn decompose(&self, target_mass: f64, params: &DecompositionParams) -> (Vec<Formula>, Vec<f64>) {
         // Remove initialization check - it's done in constructor now
         let mass_from = target_mass - (params.tolerance_ppm * target_mass) / 1_000_000.0f64;
         let mass_to = target_mass + (params.tolerance_ppm * target_mass) / 1_000_000.0f64;
         
         let (start, end) = self.integer_bound(mass_from, mass_to);
         
-        let mut all_results = Vec::new();
-        for m in start..=end {
-            let mut results = self.integer_decompose(m);
-            all_results.append(&mut results);
-        }
-        
+        let mut results = Vec::new();
         let tolerance_da = params.tolerance_ppm * 1e-6f64 * target_mass.max(MIN_MASS_FOR_TOLERANCE);
 
-        let mut formulas = Vec::new();
-        let mut errors_ppm = Vec::new();
-
-        for f in all_results {
-            let formula_mass: f64 = f.iter().enumerate().map(|(i, &count)| ATOMIC_MASSES[i] * count as f64).sum();
-            let error = formula_mass - target_mass;
-            if error.abs() <= tolerance_da && check_dbe(&f, params.min_dbe, params.max_dbe, &params.dbe_mode) {
-                formulas.push(f);
-                errors_ppm.push((error / formula_mass) * 1e6);
-            }
+        for m in start..=end {
+            self.integer_decompose(m, &mut results, target_mass, tolerance_da, params);
         }
+        
+        let (formulas, errors_ppm) = results.into_iter().unzip();
 
         (formulas, errors_ppm)
     }
@@ -347,7 +340,7 @@ impl SpectrumDecomposer {
     }
 
     pub fn decompose_spectrum_with_precursor(
-        &mut self,
+        &self,
         mz_values: &[f64],
         precursor_formula: &Formula,
         params: &SpectrumDecompositionParams,
@@ -362,7 +355,7 @@ impl SpectrumDecomposer {
 
         let mut all_results = Vec::with_capacity(mz_values.len());
 
-        let mut decomposer = MassDecomposer::new(min_bounds, max_bounds);
+        let decomposer = MassDecomposer::new(min_bounds, max_bounds);
         for &mass in mz_values {
             let result: (Vec<Formula>, Vec<f64>) = decomposer.decompose(mass, &DecompositionParams {
                 tolerance_ppm: params.tolerance_ppm,
@@ -377,7 +370,7 @@ impl SpectrumDecomposer {
     }
 
     pub fn clean_and_normalize_spectrum_iterative(
-        &mut self,
+        &self,
         fragment_masses: &[f64],
         fragment_intensities: &[f64],
         precursor_formula: &Formula,
@@ -394,20 +387,23 @@ impl SpectrumDecomposer {
         );
 
         let mut linear_fit = (0.0, 0.0);
+        let mut fit_points = Vec::new();
+        let mut formula_errors = Vec::new();
+        let mut formula_weights = Vec::new();
 
         for _ in 0..max_iterations {
-            let mut fit_points = Vec::new();
+            fit_points.clear();
 
             for (i, (formulas,_errors_ppm)) in fragment_solutions.iter().enumerate() {
-                if formulas.len() == 0 {
+                if formulas.is_empty() {
                     continue;
                 }
 
                 let measured_mass = fragment_masses[i];
                 let predicted_error = linear_fit.0 + linear_fit.1 * measured_mass;
 
-                let mut formula_errors = Vec::new();
-                let mut formula_weights = Vec::new();
+                formula_errors.clear();
+                formula_weights.clear();
 
                 for (_formula_idx, formula) in formulas.iter().enumerate() {
                     let calc_mass: f64 = formula.iter().enumerate().map(|(i, &count)| ATOMIC_MASSES[i] * count as f64).sum();
