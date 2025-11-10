@@ -2,7 +2,7 @@
 name = "mass_decomposition"
 version = "0.1.0"
 license = "Apache-2.0"
-
+license-files = ["LICENSE"]
 [tool.maturin]
 features = ["pyo3/extension-module"]
 module-name = "mass_decomposition._internal"

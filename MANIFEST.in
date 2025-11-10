@@ -1,3 +1,0 @@
-include src/hrms_utils/formula_annotation/mass_decomposition_impl/*.pyx
-include src/hrms_utils/formula_annotation/mass_decomposition_impl/*.cpp
-include src/hrms_utils/formula_annotation/mass_decomposition_impl/*.hpp
