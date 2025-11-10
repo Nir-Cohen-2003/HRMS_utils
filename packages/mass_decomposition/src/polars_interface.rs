@@ -227,8 +227,7 @@ fn spectrum_decomposition_normalized(inputs: &[Series], kwargs: CleanAndNormaliz
                 let intensities: &[f64] = intensities_ca.cont_slice().expect("intensities should be contiguous slice");
                 
                 let precursor_sl= precursor_arr.i32().expect("precursor_formula should be i32 array").downcast_as_array().values();
-
-                // let precursor_sl: &polars_arrow::buffer::Buffer<i32>= precursor_sl_chunked.;
+                
                 let mut precursor_formula: [i32; 15] = [0; NUM_ELEMENTS];
                 precursor_formula.copy_from_slice(precursor_sl);
                 let precursor_formula: [i32; 15] = precursor_formula;

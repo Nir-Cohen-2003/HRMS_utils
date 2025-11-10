@@ -17,14 +17,22 @@ backend = { name = "pixi-build-python", version = "*" }
 publish-prefix = {cmd="rattler-build upload prefix --channel nir-cohen"}
 publish-anaconda = {cmd="rattler-build upload anaconda --owner Nir_Cohen --channel main"}
 [dependencies]
-rattler-build = ">=0.1.0"
-rust = ">=1.70"
+rattler-build = ">=0.48.0"
+# rust = ">=1.91.0"
+# rust-src = "*"
+# compilers = "*"
+# cargo-bundle-licenses = "*"
+# maturin = ">=1.09.0"
+
+[package.build-dependencies]
+rattler-build = ">=0.48.0"
+rust = ">=1.91.0"
+rust-src = "*"
 compilers = "*"
 cargo-bundle-licenses = "*"
-maturin = ">=1.0"
-
+maturin = ">=1.09.0"
 [package.host-dependencies] 
-maturin = ">=1.0,<2.0"
+maturin = ">=1.09.0,<2.0"
 
 [package.run-dependencies]
 polars = ">=1.34.0"
