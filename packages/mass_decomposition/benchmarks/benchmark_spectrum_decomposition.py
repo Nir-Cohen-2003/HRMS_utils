@@ -93,8 +93,8 @@ def test_roundtrip_decomposition(size: int = 10000):
     
     result = df.with_columns(
         corrected=pl.col("spectrum_struct").mass_decomposition.clean_and_normalize_spectrum(
-            tolerance_ppm=5.0,
-            max_allowed_normalized_mass_error_ppm=2.0,
+            raw_fragment_tolerance_ppm=5.0,
+            normalized_fragment_tolerance_ppm=2.0,
             min_dbe=-0.5,
             max_dbe=30.0,
             dbe_mode="half_integer",

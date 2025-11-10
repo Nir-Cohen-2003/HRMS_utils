@@ -43,7 +43,6 @@ MSDIAL_columns_to_output= [
     'msms_m/z', 'msms_intensity', 
     'isobars',
     'msms_m/z_cleaned', 'msms_intensity_cleaned',
-    'spectral_entropy',
     'energy_is_too_low', 'energy_is_too_high',
     'ms1_isotopes_m/z', 'ms1_isotopes_intensity'
 ]
@@ -102,7 +101,6 @@ def get_chromatogram(path: str | Path)-> pl.DataFrame :
         isobars: pl.List(pl.Int64)
         msms_m/z_cleaned: pl.List(pl.Float64)
         msms_intensity_cleaned: pl.List(pl.Float64)
-        spectral_entropy: pl.Float32
         energy_is_too_low: pl.Boolean
         energy_is_too_high: pl.Boolean
         ms1_isotopes_m/z: pl.List(pl.Float64)
@@ -111,7 +109,6 @@ def get_chromatogram(path: str | Path)-> pl.DataFrame :
     chromatogram = _get_chromatogram_basic(path=path)
     chromatogram = _annotate_isobars_and_clean_spectrum(chromatogram=chromatogram)
     chromatogram = _add_energy_annotation(chromatogram=chromatogram)
-    chromatogram = _add_entropy(chromatogram=chromatogram)
     chromatogram = chromatogram.select(MSDIAL_columns_to_output)
     if not isinstance(chromatogram,pl.DataFrame):
         raise Exception("failed getting chromatogram from the file: " + str(path))
@@ -196,20 +193,17 @@ def subtract_blank_frame(
         
         subtract_df_ms2 = subtract_df_ms2.filter(
             pl.struct(
-                pl.col('msms_intensity'),
-                pl.col('msms_m/z'),
-                pl.col('msms_intensity_blank'),
-                pl.col('msms_m/z_blank')
-            ).map_batches(
-                lambda spectra: _entropy_score_batch(
-                    spectra.struct.field('msms_m/z').to_numpy(),
-                    spectra.struct.field('msms_intensity').to_numpy(),
-                    spectra.struct.field('msms_m/z_blank').to_numpy(),
-                    spectra.struct.field('msms_intensity_blank').to_numpy(),
-                    config
-                    ),
-                return_dtype=pl.Float64,
-                is_elementwise=True
+                pl.col('msms_intensity').alias('intensities1'),
+                pl.col('msms_m/z').alias('mz1'),
+                pl.col('msms_intensity_blank').alias('intensities2'),
+                pl.col('msms_m/z_blank').alias('mz2'),
+                pl.col('Precursor_mz_MSDIAL').alias('precursor_mz1'),
+                pl.col('Precursor_mz_MSDIAL_blank').alias('precursor_mz2'),
+            ).spectral_similarity.dotprod_similarity(
+                ms2_tolerance_in_ppm=config.ms2_mass_tolerance,
+                clean_spectra_first=True,
+                noise_threshold=0.001,
+                ignore_precursor=True,
             ).ge(config.ms2_fit))
         
         subtract_df = pl.concat([subtract_df_ms2,subtract_lf_rt_strict.collect(engine="streaming")])
@@ -302,8 +296,8 @@ def annotate_chromatogram_with_formulas(
         Per-element maximum counts inferred for the precursor formula (from isotopic pattern).
     - non_ionized_mass: Float
         Precursor neutral mass = Precursor_mz_MSDIAL - addcut_mass.
-    - decomposed_formulas: List(Array(Int32, shape=(NUM_ELEMENTS,)))
-        Candidate elemental formula(s) for the precursor (each is an integer vector of
+    - precursor_formula: Array(Int32, shape=(NUM_ELEMENTS,))
+        Candidate elemental formula for the precursor (each is an integer vector of
         element counts). The function explodes this column so each output row contains
         exactly one candidate formula (a single Array(Int32,...)).
     - non_ionized_msms_m/z: List(Float)
@@ -357,36 +351,32 @@ def annotate_chromatogram_with_formulas(
 
     # Mass decomposition
     chromatogram = chromatogram.with_columns(
-        non_ionized_mass=pl.col("Precursor_mz_MSDIAL") - addcut_mass
-    ).with_columns(
-        pl.struct({
-            "mass": pl.col("non_ionized_mass"),
-            "min_bounds": pl.col("min_bounds"),
-            "max_bounds": pl.col("max_bounds"),
-        })
-        .mass_decomposition.decompose_mass_with_bounds(
+        pl.struct(
+            pl.col("Precursor_mz_MSDIAL").alias("mass"),
+            pl.col("min_bounds"),
+            pl.col("max_bounds"),
+        ).mass_decomposition.decompose_mass_with_bounds(
             tolerance_ppm=precursor_mass_accuracy_ppm,
         )
         .alias("decomposed_formulas_struct")
     ).with_columns(
-        pl.col("decomposed_formulas_struct").struct.field("formulas").alias("decomposed_formulas"),
-        pl.col("decomposed_formulas_struct").struct.field("formulas_str").alias("decomposed_formulas_str"),
-        pl.col("decomposed_formulas_struct").struct.field("errors_ppm").alias("decomposed_errors_ppm"),
+        pl.col("decomposed_formulas_struct").struct.field("formulas").alias("precursor_formula"),
+        pl.col("decomposed_formulas_struct").struct.field("formulas_str").alias("precursor_formula_str"),
+        pl.col("decomposed_formulas_struct").struct.field("errors_ppm").alias("precursor_errors_ppm"),
     ).drop(["bounds", "decomposed_formulas_struct"])
 
-    chromatogram = chromatogram.with_columns(pl.col("msms_m/z").sub(addcut_mass).alias("non_ionized_msms_m/z"))
-    chromatogram = chromatogram.explode(["decomposed_formulas", "decomposed_formulas_str", "decomposed_errors_ppm"])
+    chromatogram = chromatogram.explode(["precursor_formula", "precursor_formula_str", "precursor_errors_ppm"])
 
     # Cleaning + normalization
-    chromatogram = chromatogram.with_columns(
-        pl.struct({
-            "mz": pl.col("non_ionized_msms_m/z"),
-            "intensities": pl.col("msms_intensity"),
-            "precursor_formula": pl.col("decomposed_formulas"),
-        })
+    chromatogram = chromatogram.rechunk().with_columns(
+        pl.struct(
+            pl.col("msms_m/z").alias("mz"),
+            pl.col("msms_intensity").alias("intensities"),
+            pl.col("precursor_formula"),
+        )
         .mass_decomposition.clean_and_normalize_spectrum(
-            tolerance_ppm=fragment_mass_accuracy_ppm,
-            max_allowed_normalized_mass_error_ppm=normalized_fragment_mass_accuracy_ppm,
+            raw_fragment_tolerance_ppm=fragment_mass_accuracy_ppm,
+            normalized_fragment_tolerance_ppm=normalized_fragment_mass_accuracy_ppm,
         )
         .alias("cleaned_spectra")
     ).with_columns(
@@ -440,20 +430,7 @@ def _add_energy_annotation(chromatogram:pl.DataFrame) -> pl.DataFrame:
     ).select(['Peak ID','energy_is_too_high','energy_is_too_low'])
     return chromatogram.join(other=chromatogram_with_msms,on='Peak ID',how='left')
 
-def _add_entropy(chromatogram:pl.DataFrame)-> pl.DataFrame:
-    chromatogram = chromatogram.with_columns(
-        pl.struct(
-            pl.col('msms_m/z'),
-            pl.col('msms_intensity')
-        ).map_batches(
-            lambda spectra: _calculate_spectral_entropy_wrapper_batch(
-                spectra.struct.field('msms_m/z').to_numpy(),
-                spectra.struct.field('msms_intensity').to_numpy()),
-            return_dtype=pl.Float32,
-            is_elementwise=True
-        ).alias('spectral_entropy')
-    )
-    return chromatogram
+
 
 def _convert_MSMS_to_list(chromatogram: pl.LazyFrame | pl.DataFrame) -> pl.LazyFrame | pl.DataFrame:
 

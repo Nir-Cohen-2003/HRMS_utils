@@ -1,5 +1,5 @@
 from hrms_utils.formats import get_chromatogram, annotate_chromatogram_with_formulas
-from hrms_utils.formula_annotation.mass_decomposition import NUM_ELEMENTS
+from mass_decomposition import NUM_ELEMENTS
 import polars as pl
 from pathlib import Path
 import timeit
@@ -93,15 +93,15 @@ if __name__ == "__main__":
         )
 
     print(f"Number of annotated formulas: {annotated_chromatogram.filter(
-        pl.col('decomposed_formulas').is_not_null()
+        pl.col('precursor_formula').is_not_null()
     ).height}")
     print(f"number of peaks with any annotation: {annotated_chromatogram.filter(
-        pl.col('decomposed_formulas').is_not_null()
+        pl.col('precursor_formula').is_not_null()
     ).unique(subset=pl.col('Peak ID')).height}")
 
     show_columns = [
         "Peak ID", "Precursor_mz_MSDIAL", "Height", 
-        "decomposed_formulas", "decomposed_formulas_str",
+        "precursor_formula", "precursor_formula_str",
         "cleaned_spectrum_formulas", "cleaned_spectrum_formulas_str", "cleaned_fragment_errors_ppm", "cleaned_msms_mz"
     ]
     # Show top-level columns including normalized masses and single-formula assignments

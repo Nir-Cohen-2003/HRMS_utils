@@ -96,10 +96,13 @@ fn mass_decomposition_with_bounds(inputs: &[Series], kwargs: DecompositionKwargs
     let min_bounds_series = input_struct.field_by_name("min_bounds")?;
     let max_bounds_series = input_struct.field_by_name("max_bounds")?;
 
+    let masses_chunked = mass_series.rechunk();
+    let min_bounds_chunked = min_bounds_series.rechunk();
+    let max_bounds_chunked = max_bounds_series.rechunk();
     // 1. Downcast to appropriate chunked arrays
-    let masses_ca = mass_series.f64()?;
-    let min_bounds_arrays = min_bounds_series.array()?;
-    let max_bounds_arrays = max_bounds_series.array()?;
+    let masses_ca: &ChunkedArray<Float64Type> = masses_chunked.f64()?;
+    let min_bounds_arrays: &ChunkedArray<FixedSizeListType> = min_bounds_chunked.array()?;
+    let max_bounds_arrays: &ChunkedArray<FixedSizeListType> = max_bounds_chunked.array()?;
 
     // 2. Zip and enumerate to preserve order
     let zipped_iter = masses_ca.into_no_null_iter()
@@ -193,30 +196,42 @@ fn spectrum_decomposition_normalized_output(_fields: &[Field]) -> PolarsResult<F
 
 #[polars_expr(output_type_func=spectrum_decomposition_normalized_output)]
 fn spectrum_decomposition_normalized(inputs: &[Series], kwargs: CleanAndNormalizeSpectrumKwargs) -> PolarsResult<Series> {
-    let s = &inputs[0];
-    let ca = s.struct_()?;
-    let len = ca.len();
+    let s: &Series = &inputs[0];
+    let ca: &ChunkedArray<StructType> = s.struct_()?;
+    let len: usize = ca.len();
 
-    let masses_series = ca.field_by_name("mz")?;
-    let intensities_series = ca.field_by_name("intensities")?;
-    let precursor_series = ca.field_by_name("precursor_formula")?;
-    
-    let masses_ca = masses_series.list()?;
-    let intensities_ca = intensities_series.list()?;
-    let precursor_ca = precursor_series.array()?;
+    let masses_series: Series = ca.field_by_name("mz")?;
+    let intensities_series: Series = ca.field_by_name("intensities")?;
+    let precursor_series: Series = ca.field_by_name("precursor_formula")?;
+
+    let masses_chunked: Series = masses_series.rechunk();
+    let intensities_chunked: Series = intensities_series.rechunk();
+    let precursor_chunked: Series = precursor_series.rechunk();
+
+    let masses_ca: &ChunkedArray<ListType> = masses_chunked.list()?;
+    let intensities_ca: &ChunkedArray<ListType> = intensities_chunked.list()?;
+    let precursor_ca: &ChunkedArray<FixedSizeListType> = precursor_chunked.array()?;
+
     let zipped_iter = masses_ca.into_no_null_iter()
         .zip(intensities_ca.into_no_null_iter())
         .zip(precursor_ca.into_no_null_iter());
+    
     // Process all spectra and collect raw results
     let results: Vec<Option<CleanedAndNormalizedSpectrumResult>> = zipped_iter
         .par_bridge()
         .map(|((masses_list, intensities_list), precursor_arr)| {
-           
-                let masses: &[f64] = masses_list.f64().expect("masses should be f64 list").cont_slice().expect("masses should be contiguous slice");
-                let intensities: &[f64] = intensities_list.f64().expect("intensities should be f64 list").cont_slice().expect("intensities should be contiguous slice");
-                let precursor_sl = precursor_arr.i32().expect("precursor_formula should be i32 array").cont_slice().expect("precursor_formula should be contiguous slice");
-                let mut precursor_formula = [0; NUM_ELEMENTS];
+                let masses_ca = masses_list.f64().expect("masses should be f64 list");
+                let intensities_ca = intensities_list.f64().expect("intensities should be f64 list");
+
+                let masses: &[f64] = masses_ca.cont_slice().expect("masses should be contiguous slice");
+                let intensities: &[f64] = intensities_ca.cont_slice().expect("intensities should be contiguous slice");
+                
+                let precursor_sl= precursor_arr.i32().expect("precursor_formula should be i32 array").downcast_as_array().values();
+
+                // let precursor_sl: &polars_arrow::buffer::Buffer<i32>= precursor_sl_chunked.;
+                let mut precursor_formula: [i32; 15] = [0; NUM_ELEMENTS];
                 precursor_formula.copy_from_slice(precursor_sl);
+                let precursor_formula: [i32; 15] = precursor_formula;
 
                 let params = SpectrumDecompositionParams {
                     tolerance_ppm: kwargs.raw_fragment_tolerance_ppm,
