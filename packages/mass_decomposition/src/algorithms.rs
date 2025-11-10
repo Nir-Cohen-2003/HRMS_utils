@@ -362,9 +362,9 @@ impl SpectrumDecomposer {
 
         let mut all_results = Vec::with_capacity(mz_values.len());
 
+        let mut decomposer = MassDecomposer::new(min_bounds, max_bounds);
         for &mass in mz_values {
-            let mut decomposer = MassDecomposer::new(min_bounds, max_bounds);
-            let result = decomposer.decompose(mass, &DecompositionParams {
+            let result: (Vec<Formula>, Vec<f64>) = decomposer.decompose(mass, &DecompositionParams {
                 tolerance_ppm: params.tolerance_ppm,
                 min_dbe: params.min_dbe,
                 max_dbe: params.max_dbe,
