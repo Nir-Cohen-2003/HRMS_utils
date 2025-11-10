@@ -102,7 +102,7 @@ def test_decompose_mass(mass, tolerance_ppm, min_bounds_dict, max_bounds_dict, e
     max_bounds = bounds_to_array(max_bounds_dict)
 
     result_df = df.with_columns(
-        pl.col("mass").mass_decomposer.decompose_mass(
+        pl.col("mass").mass_decomposition.decompose_mass(
             tolerance_ppm=tolerance_ppm,
             min_bounds=min_bounds,
             max_bounds=max_bounds,
@@ -138,7 +138,7 @@ def test_decompose_mass_no_result():
     max_bounds = bounds_to_array({"C": 10})
 
     result_df = df.with_columns(
-        pl.col("mass").mass_decomposer.decompose_mass(
+        pl.col("mass").mass_decomposition.decompose_mass(
             tolerance_ppm=5.0,
             min_bounds=min_bounds,
             max_bounds=max_bounds,
@@ -156,7 +156,7 @@ def test_decompose_mass_output_type_and_shape():
     df = pl.DataFrame({"mass": [100.0, 200.0]})
     
     result_df = df.with_columns(
-        pl.col("mass").mass_decomposer.decompose_mass().alias("decomposed")
+        pl.col("mass").mass_decomposition.decompose_mass().alias("decomposed")
     )
 
     decomposed_col = result_df["decomposed"]
@@ -210,7 +210,7 @@ def test_decompose_mass_with_bounds():
     })
     print("Input DataFrame schema:", df.schema)
     result_df = df.with_columns(
-        pl.col("mass_data").mass_decomposer.decompose_mass_with_bounds(
+        pl.col("mass_data").mass_decomposition.decompose_mass_with_bounds(
             tolerance_ppm=10.0,
             dbe_mode="half_integer",
         ).alias("decomposed").struct.unnest()
@@ -299,9 +299,9 @@ def test_clean_and_normalize_spectrum(mz_values, precursor_formula_str, toleranc
     )
 
     result_df = df.with_columns(
-        corrected=pl.col("spectrum_struct").mass_decomposer.clean_and_normalize_spectrum(
-            tolerance_ppm=tolerance_ppm,
-            max_allowed_normalized_mass_error_ppm=2.0,
+        corrected=pl.col("spectrum_struct").mass_decomposition.clean_and_normalize_spectrum(
+            raw_fragment_tolerance_ppm=tolerance_ppm,
+            normalized_fragment_tolerance_ppm=2.0,
             min_dbe=-10.0,
             max_dbe=100.0,
             dbe_mode="half_integer",

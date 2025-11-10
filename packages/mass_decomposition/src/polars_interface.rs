@@ -219,7 +219,7 @@ fn spectrum_decomposition_normalized(inputs: &[Series], kwargs: CleanAndNormaliz
                 precursor_formula.copy_from_slice(precursor_sl);
 
                 let params = SpectrumDecompositionParams {
-                    tolerance_ppm: kwargs.tolerance_ppm,
+                    tolerance_ppm: kwargs.raw_fragment_tolerance_ppm,
                     min_dbe: kwargs.min_dbe,
                     max_dbe: kwargs.max_dbe,
                     dbe_mode: kwargs.dbe_mode.clone(),
@@ -232,7 +232,7 @@ fn spectrum_decomposition_normalized(inputs: &[Series], kwargs: CleanAndNormaliz
                     &intensities,
                     &precursor_formula,
                     &params,
-                    kwargs.max_allowed_normalized_mass_error_ppm,
+                    kwargs.normalized_fragment_tolerance_ppm,
                     10,
                     1e-9,
                 );

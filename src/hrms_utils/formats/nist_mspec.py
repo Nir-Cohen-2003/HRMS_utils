@@ -171,7 +171,12 @@ def _annotate_spectra(data: T, raw_fragment_tolerance_ppm: float, normalized_fra
             pl.col("raw_spectrum_mz").alias("mz"),
             pl.col("raw_spectrum_intensity").alias("intensities")
         ]).mass_decomposition.clean_and_normalize_spectrum(
-            
+                raw_fragment_tolerance_ppm=raw_fragment_tolerance_ppm,
+                normalized_fragment_tolerance_ppm=normalized_fragment_tolerance_ppm,
+                min_dbe= -0.5,
+                max_dbe= 40,
+                dbe_mode="half_integer",
+                water_absorption=True,
         ).alias("cleaned_normalized_spectra")
     ).with_columns( # Extract results and add adduct_mass back to normalized masses
         pl.col("cleaned_normalized_spectra").struct.field("normalized_masses").alias("cleaned_normalized_mz"),

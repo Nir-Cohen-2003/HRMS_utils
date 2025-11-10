@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 LIB = Path(__file__).parent
 
 # Placeholder for the Polars expression namespace
-@pl.api.register_expr_namespace("mass_decomposer")
+@pl.api.register_expr_namespace("mass_decomposition")
 class MassDecomposerUtils:
     def __init__(self, expr: pl.Expr):
         self._expr = expr
@@ -124,8 +124,8 @@ class MassDecomposerUtils:
 
     def clean_and_normalize_spectrum(
         self,
-        tolerance_ppm: float = 5.0,
-        max_allowed_normalized_mass_error_ppm: float = 2.0,
+        raw_fragment_tolerance_ppm: float = 5.0,
+        normalized_fragment_tolerance_ppm: float = 2.0,
         min_dbe: float = -10.0,
         max_dbe: float = 100.0,
         dbe_mode: str = "any",
@@ -140,8 +140,8 @@ class MassDecomposerUtils:
                 "precursor_formula": Array[int, 15],
             })
         Args:
-            tolerance_ppm: The mass tolerance in ppm for the initial decomposition.
-            max_allowed_normalized_mass_error_ppm: The maximum allowed mass error in ppm after normalization.
+            raw_fragment_tolerance_ppm: The mass tolerance in ppm for the initial decomposition.
+            normalized_fragment_tolerance_ppm: The maximum allowed mass error in ppm after normalization.
             min_dbe: The minimum degree of unsaturation.
             max_dbe: The maximum degree of unsaturation.
             dbe_mode: The DBE mode, one of 'integer', 'half_integer', 'any'.
@@ -157,8 +157,8 @@ class MassDecomposerUtils:
             })
         """
         kwargs = {
-            "tolerance_ppm": tolerance_ppm,
-            "max_allowed_normalized_mass_error_ppm": max_allowed_normalized_mass_error_ppm,
+            "raw_fragment_tolerance_ppm": raw_fragment_tolerance_ppm,
+            "normalized_fragment_tolerance_ppm": normalized_fragment_tolerance_ppm,
             "min_dbe": min_dbe,
             "max_dbe": max_dbe,
             "dbe_mode": dbe_mode,

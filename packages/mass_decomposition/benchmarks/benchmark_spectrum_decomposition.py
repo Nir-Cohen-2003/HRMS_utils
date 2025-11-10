@@ -92,7 +92,7 @@ def test_roundtrip_decomposition(size: int = 10000):
     start = perf_counter()
     
     result = df.with_columns(
-        corrected=pl.col("spectrum_struct").mass_decomposer.clean_and_normalize_spectrum(
+        corrected=pl.col("spectrum_struct").mass_decomposition.clean_and_normalize_spectrum(
             tolerance_ppm=5.0,
             max_allowed_normalized_mass_error_ppm=2.0,
             min_dbe=-0.5,
@@ -180,11 +180,11 @@ def benchmark_mass_decomposition(size: int):
     print("\nScenario 1: Uniform bounds")
     start = perf_counter()
     nist_uniform_bounds = nist.with_columns(
-        decomposed=pl.col("PrecursorMZ").mass_decomposer.decompose_mass(
+        decomposed=pl.col("PrecursorMZ").mass_decomposition.decompose_mass(
             tolerance_ppm=5.0,
             min_bounds=MIN_FORMULA,
             max_bounds=MAX_FORMULA,
-            min_dbe=0.0,
+            min_dbe=-0.5,
             max_dbe=40.0,
         )
     )
@@ -204,7 +204,7 @@ def benchmark_mass_decomposition(size: int):
             pl.col("PrecursorMZ").alias("mass"), 
             pl.col("min_bounds"), 
             pl.col("max_bounds")
-        ]).mass_decomposer.decompose_mass_with_bounds(
+        ]).mass_decomposition.decompose_mass_with_bounds(
             tolerance_ppm=5.0,
         )
     ).drop(["min_bounds", "max_bounds"])
@@ -221,7 +221,7 @@ def benchmark_mass_decomposition(size: int):
             pl.col("PrecursorMZ").alias("mass"), 
             pl.col("min_bounds"), 
             pl.col("max_bounds")
-        ]).mass_decomposer.decompose_mass_with_bounds(
+        ]).mass_decomposition.decompose_mass_with_bounds(
             tolerance_ppm=5.0,
         )
     ).drop(["min_bounds", "max_bounds"])

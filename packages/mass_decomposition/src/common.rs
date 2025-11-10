@@ -45,8 +45,8 @@ pub struct SpectrumDecompositionParams {
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct CleanAndNormalizeSpectrumKwargs {
-    pub tolerance_ppm: f64,
-    pub max_allowed_normalized_mass_error_ppm: f64,
+    pub raw_fragment_tolerance_ppm: f64,
+    pub normalized_fragment_tolerance_ppm: f64,
     pub min_dbe: f64,
     pub max_dbe: f64,
     pub dbe_mode: String,

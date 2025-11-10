@@ -7,7 +7,6 @@ from dataclasses import dataclass
 from typing import List, Tuple, Dict
 from numba import  jit
 from ..formula_annotation.isotopic_pattern import deduce_isotopic_pattern
-# from ..formula_annotation.mass_decomposition import decompose_mass_per_bounds_verbose, clean_and_normalize_spectra_known_precursor_verbose, NUM_ELEMENTS
 from ..formula_annotation.element_table import ELEMENT_INDEX, ELEMENT_MASSES
 import mass_decomposition
 from mass_decomposition import NUM_ELEMENTS
@@ -222,7 +221,7 @@ def subtract_blank_frame(
 def annotate_chromatogram_with_formulas(
     chromatogram: pl.DataFrame,
     addcut_mass: float = PROTON_MASS,
-    max_bounds: dict|None = None,
+    max_bounds: dict | None = None,
     precursor_mass_accuracy_ppm: float = 3.0,
     fragment_mass_accuracy_ppm: float = 5.0,
     normalized_fragment_mass_accuracy_ppm: float = 4.0,
@@ -324,7 +323,7 @@ def annotate_chromatogram_with_formulas(
 
     Notes and behavior
     - The function relies on domain utilities: deduce_isotopic_pattern,
-      decompose_mass_per_bounds and clean_and_normalize_spectra_known_precursor. Any
+      and the mass_decomposition polars plugin. Any
       change in those APIs must be propagated here.
     - One input precursor row may expand into multiple output rows (one per candidate
       decomposition) because of the explosion of "decomposed_formulas".
@@ -349,7 +348,7 @@ def annotate_chromatogram_with_formulas(
                 intensity_relative_tolerance=isotopic_intensity_relative_tolerance,
                 max_bounds=max_bounds,
             ),
-            return_dtype=pl.Array(inner=pl.Int32, shape=(2*NUM_ELEMENTS,))
+            return_dtype=pl.Array(inner=pl.Int32, shape=(2 * NUM_ELEMENTS,))
         ).alias("bounds")
     ).with_columns(
         pl.col("bounds").arr.slice(0, length=NUM_ELEMENTS).list.to_array(width=NUM_ELEMENTS).alias("min_bounds"),
@@ -358,60 +357,46 @@ def annotate_chromatogram_with_formulas(
 
     # Mass decomposition
     chromatogram = chromatogram.with_columns(
-        non_ionized_mass = pl.col("Precursor_mz_MSDIAL") - addcut_mass
+        non_ionized_mass=pl.col("Precursor_mz_MSDIAL") - addcut_mass
     ).with_columns(
-        pl.struct(
-            ["non_ionized_mass", "min_bounds", "max_bounds"]
-        ).map_batches(
-            lambda batch: decompose_mass_per_bounds_verbose(
-                batch.struct.field("non_ionized_mass"),
-                batch.struct.field("min_bounds"),
-                batch.struct.field("max_bounds"),
-                tolerance_ppm=precursor_mass_accuracy_ppm,
-            ),
-            return_dtype=pl.Struct({
-                "decomposed_formulas": pl.List(pl.Array(inner=pl.Int32, shape=(NUM_ELEMENTS,))),
-                "decomposed_formulas_str": pl.List(pl.String),
-            })
-        ).alias("decomposed_formulas_struct")).with_columns(
-            pl.col("decomposed_formulas_struct").struct.unnest()
-        ).drop(["bounds", "decomposed_formulas_struct"])
+        pl.struct({
+            "mass": pl.col("non_ionized_mass"),
+            "min_bounds": pl.col("min_bounds"),
+            "max_bounds": pl.col("max_bounds"),
+        })
+        .mass_decomposition.decompose_mass_with_bounds(
+            tolerance_ppm=precursor_mass_accuracy_ppm,
+        )
+        .alias("decomposed_formulas_struct")
+    ).with_columns(
+        pl.col("decomposed_formulas_struct").struct.field("formulas").alias("decomposed_formulas"),
+        pl.col("decomposed_formulas_struct").struct.field("formulas_str").alias("decomposed_formulas_str"),
+        pl.col("decomposed_formulas_struct").struct.field("errors_ppm").alias("decomposed_errors_ppm"),
+    ).drop(["bounds", "decomposed_formulas_struct"])
 
     chromatogram = chromatogram.with_columns(pl.col("msms_m/z").sub(addcut_mass).alias("non_ionized_msms_m/z"))
-    chromatogram = chromatogram.explode(["decomposed_formulas", "decomposed_formulas_str"])
-    
-    # Cleaning + normalization (updated API requires observed precursor mass series)
+    chromatogram = chromatogram.explode(["decomposed_formulas", "decomposed_formulas_str", "decomposed_errors_ppm"])
+
+    # Cleaning + normalization
     chromatogram = chromatogram.with_columns(
-        pl.struct(["decomposed_formulas", "non_ionized_mass", "non_ionized_msms_m/z", "msms_intensity"]).map_batches(
-            lambda batch: clean_and_normalize_spectra_known_precursor_verbose(
-                precursor_formula_series=batch.struct.field("decomposed_formulas"),
-                precursor_masses_series=batch.struct.field("non_ionized_mass"),
-                fragment_masses_series=batch.struct.field("non_ionized_msms_m/z"),
-                fragment_intensities_series=batch.struct.field("msms_intensity"),
-                tolerance_ppm=fragment_mass_accuracy_ppm,
-                max_allowed_normalized_mass_error_ppm=normalized_fragment_mass_accuracy_ppm,
-            ),
-            return_dtype=pl.Struct({
-                "masses_normalized": pl.List(pl.Float64),
-                "cleaned_intensities": pl.List(pl.Float64),
-                "fragment_formulas": pl.List(pl.Array(inner=pl.Int32, shape=(NUM_ELEMENTS,))),
-                "fragment_formulas_str": pl.List(pl.String),
-                "fragment_errors_ppm": pl.List(pl.Float64),
-            }),
-        ).alias("cleaned_spectra")
+        pl.struct({
+            "mz": pl.col("non_ionized_msms_m/z"),
+            "intensities": pl.col("msms_intensity"),
+            "precursor_formula": pl.col("decomposed_formulas"),
+        })
+        .mass_decomposition.clean_and_normalize_spectrum(
+            tolerance_ppm=fragment_mass_accuracy_ppm,
+            max_allowed_normalized_mass_error_ppm=normalized_fragment_mass_accuracy_ppm,
+        )
+        .alias("cleaned_spectra")
     ).with_columns(
-        pl.col("cleaned_spectra").struct.unnest()
-    ).rename(
-        {
-            "masses_normalized": "cleaned_msms_mz",
-            "cleaned_intensities": "cleaned_msms_intensity",
-            "fragment_formulas": "cleaned_spectrum_formulas",
-            "fragment_formulas_str": "cleaned_spectrum_formulas_str",
-            "fragment_errors_ppm": "cleaned_fragment_errors_ppm",
-        }
-    ).drop(
-        "cleaned_spectra"
-    )
+        pl.col("cleaned_spectra").struct.field("normalized_masses").alias("cleaned_msms_mz"),
+        pl.col("cleaned_spectra").struct.field("intensities").alias("cleaned_msms_intensity"),
+        pl.col("cleaned_spectra").struct.field("formulas").alias("cleaned_spectrum_formulas"),
+        pl.col("cleaned_spectra").struct.field("formulas_str").alias("cleaned_spectrum_formulas_str"),
+        pl.col("cleaned_spectra").struct.field("errors_ppm").alias("cleaned_fragment_errors_ppm"),
+    ).drop("cleaned_spectra")
+    
     return chromatogram
 
 def _entropy_score(
