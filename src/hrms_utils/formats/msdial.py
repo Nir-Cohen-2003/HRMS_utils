@@ -7,8 +7,10 @@ from dataclasses import dataclass
 from typing import List, Tuple, Dict
 from numba import  jit
 from ..formula_annotation.isotopic_pattern import deduce_isotopic_pattern
-from ..formula_annotation.mass_decomposition import decompose_mass_per_bounds_verbose, clean_and_normalize_spectra_known_precursor_verbose, NUM_ELEMENTS
+# from ..formula_annotation.mass_decomposition import decompose_mass_per_bounds_verbose, clean_and_normalize_spectra_known_precursor_verbose, NUM_ELEMENTS
 from ..formula_annotation.element_table import ELEMENT_INDEX, ELEMENT_MASSES
+import mass_decomposition
+from mass_decomposition import NUM_ELEMENTS
 
 PROTON_MASS = ELEMENT_MASSES[ELEMENT_INDEX['H']]
 

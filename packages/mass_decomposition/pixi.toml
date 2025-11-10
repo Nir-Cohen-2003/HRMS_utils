@@ -5,6 +5,8 @@ preview = ["pixi-build"]
 [package]
 name = "mass_decomposition"
 version = "0.1.0"
+license = "Apache-2.0"
+license-file = "LICENSE"
 description = "A rust package for mass decomposition"
 authors = []
 

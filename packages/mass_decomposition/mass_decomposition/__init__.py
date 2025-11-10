@@ -9,7 +9,7 @@ import polars as pl
 from polars.plugins import register_plugin_function
 
 from ._internal import __version__ as __version__
-
+from ._internal import NUM_ELEMENTS
 if TYPE_CHECKING:
     from .typing import IntoExprColumn
 
@@ -33,6 +33,9 @@ class MassDecomposerUtils:
         """
         Decompose a mass into possible chemical formulas.
 
+        Input expression: 
+            pl.Float64
+
         Args:
             tolerance_ppm: The mass tolerance in ppm.
             min_dbe: The minimum degree of unsaturation.
@@ -40,6 +43,14 @@ class MassDecomposerUtils:
             dbe_mode: The DBE mode, one of 'integer', 'half_integer', 'any'.
             min_bounds: The minimum elemental counts for the formula.
             max_bounds: The maximum elemental counts for the formula.
+
+        Returns:
+            A Polars expression with the decomposition results, of the type:
+            pl.Struct({
+                "formulas": pl.List(pl.Array(pl.Int32, 15)),
+                "formulas_str": pl.List(pl.String),
+                "errors_ppm": pl.List(pl.Float64),
+            })
         """
         from ._internal import NUM_ELEMENTS
 
@@ -75,16 +86,26 @@ class MassDecomposerUtils:
         """
         Decompose a mass into possible chemical formulas, with per-mass bounds.
 
-        The input expression is expected to be a struct with the following fields:
-        - 'mass': float, the mass to decompose
-        - 'min_bounds': list[int], the minimum elemental counts for the formula
-        - 'max_bounds': list[int], the maximum elemental counts for the formula
+        Input expression: 
+            pl.Struct({
+                "mass": pl.Float64,
+                "min_bounds": pl.Array(pl.Int32),
+                "max_bounds": pl.Array(pl.Int32),
+            })
 
         Args:
             tolerance_ppm: The mass tolerance in ppm.
             min_dbe: The minimum degree of unsaturation.
             max_dbe: The maximum degree of unsaturation.
             dbe_mode: The DBE mode, one of 'integer', 'half_integer', 'any'.
+
+        Returns:
+            A Polars expression with the decomposition results, of the type:
+            pl.Struct({
+                "formulas": pl.List(pl.Array(pl.Int32, 15)),
+                "formulas_str": pl.List(pl.String),
+                "errors_ppm": pl.List(pl.Float64),
+            })
         """
         kwargs = {
             "tolerance_ppm": tolerance_ppm,
@@ -112,12 +133,12 @@ class MassDecomposerUtils:
     ) -> pl.Expr:
         """
         Clean and normalize a spectrum with a known precursor.
-        takes polars expression fo the type:
-        pl.strcut({
-            "mz": List[float64],
-            "intensities": List[float64],
-            "precursor_formula": Array[int, 15],
-        })
+        Input expression:
+            pl.Struct({
+                "mz": List[float64],
+                "intensities": List[float64],
+                "precursor_formula": Array[int, 15],
+            })
         Args:
             tolerance_ppm: The mass tolerance in ppm for the initial decomposition.
             max_allowed_normalized_mass_error_ppm: The maximum allowed mass error in ppm after normalization.
@@ -128,11 +149,11 @@ class MassDecomposerUtils:
         Returns:
             A Polars expression with the cleaned and normalized spectrum, of the type:
             pl.Struct({
-                "masses_normalized": pl.List(pl.Float64),
-                "cleaned_intensities": pl.List(pl.Float64),
-                "fragment_formulas": pl.List(pl.Array(inner=pl.Int32,shape=(num_elements,))),
-                "fragment_formulas_str": pl.List(pl.String),
-                "fragment_errors_ppm": pl.List(pl.Float64),
+                "formulas": pl.List(pl.Array(pl.Int32, 15)),
+                "formulas_str": pl.List(pl.String),
+                "normalized_masses": pl.List(pl.Float64),
+                "intensities": pl.List(pl.Float64),
+                "errors_ppm": pl.List(pl.Float64),
             })
         """
         kwargs = {
