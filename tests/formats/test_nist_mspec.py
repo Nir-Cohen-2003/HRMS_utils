@@ -55,7 +55,7 @@ def run_mspec_reader_profile(msp_file_path: Path):
         print(f"  - {col}: {count} unique values, values: {spectra_df[col].unique().to_list()}")
     
     # Always print values for specific columns (USER-CONFIGURABLE)
-    always_print_cols = ["Instrument", "Instrument_type", "Ionization", "Ion_mode", "MSLEVEL", "Precursor_type"]
+    always_print_cols = ["Instrument", "Instrument_type", "Ionization", "Ion_mode", "MSLEVEL"]
     print("\nAlways printed columns:")
     for col in always_print_cols:
         if col in spectra_df.columns:

@@ -5,7 +5,7 @@ import polars.selectors as plcs
 from typing import TypeVar, cast, Dict,Iterable
 from ..formula_annotation.utils import formula_fits_mass, format_formula_string_to_array,  get_precursor_ion_formula_array, num_elements
 from ..formula_annotation.element_table import ADDUCT_MASSES
-from ..formula_annotation.mass_decomposition import clean_and_normalize_spectra_known_precursor_verbose
+import mass_decomposition
 import spectral_similarity 
 from pathlib import Path 
 from scipy.stats import linregress
@@ -167,34 +167,18 @@ def _annotate_spectra(data: T, raw_fragment_tolerance_ppm: float, normalized_fra
     return cast(T,
     data_frame.with_columns(
         pl.struct([
-            pl.col("precursor_formula_array"),
-            pl.col("raw_spectrum_mz"),
-            pl.col("raw_spectrum_intensity")
-        ]).map_batches(
-            function = lambda batch: clean_and_normalize_spectra_known_precursor_verbose(
-                precursor_formula_series=batch.struct.field("precursor_formula_array"),
-                fragment_masses_series=batch.struct.field("raw_spectrum_mz"),
-                fragment_intensities_series=batch.struct.field("raw_spectrum_intensity"),
-                tolerance_ppm=raw_fragment_tolerance_ppm,
-                max_allowed_normalized_mass_error_ppm=normalized_fragment_tolerance_ppm,
-                min_dbe=-0.5,#protonated can be seen as having DBE of -0.5, since there is one extra H
-                dbe_mode="half_integer"
-            ),
-            return_dtype=pl.Struct({
-                "masses_normalized": pl.List(pl.Float64),
-                "cleaned_intensities": pl.List(pl.Float64),
-                "fragment_formulas": pl.List(pl.Array(inner=pl.Int32,shape=(num_elements,))),
-                "fragment_formulas_str": pl.List(pl.String),
-                "fragment_errors_ppm": pl.List(pl.Float64),
-            }),
-            is_elementwise=True
+            pl.col("precursor_formula_array").alias("precursor_formula"),
+            pl.col("raw_spectrum_mz").alias("mz"),
+            pl.col("raw_spectrum_intensity").alias("intensities")
+        ]).mass_decomposition.clean_and_normalize_spectrum(
+            
         ).alias("cleaned_normalized_spectra")
     ).with_columns( # Extract results and add adduct_mass back to normalized masses
-        pl.col("cleaned_normalized_spectra").struct.field("masses_normalized").alias("cleaned_normalized_mz"),
-        pl.col("cleaned_normalized_spectra").struct.field("cleaned_intensities").alias("cleaned_normalized_intensity"),
-        pl.col("cleaned_normalized_spectra").struct.field("fragment_formulas").alias("cleaned_fragment_formulas"),
-        pl.col("cleaned_normalized_spectra").struct.field("fragment_errors_ppm").alias("cleaned_fragment_errors_ppm"),
-        pl.col("cleaned_normalized_spectra").struct.field("fragment_formulas_str").alias("cleaned_fragment_formulas_str"),
+        pl.col("cleaned_normalized_spectra").struct.field("normalized_masses").alias("cleaned_normalized_mz"),
+        pl.col("cleaned_normalized_spectra").struct.field("intensities").alias("cleaned_normalized_intensity"),
+        pl.col("cleaned_normalized_spectra").struct.field("formulas").alias("cleaned_fragment_formulas"),
+        pl.col("cleaned_normalized_spectra").struct.field("formulas_str").alias("cleaned_fragment_formulas_str"),
+        pl.col("cleaned_normalized_spectra").struct.field("errors_ppm").alias("cleaned_fragment_errors_ppm"),
     ).drop(
         "cleaned_normalized_spectra"
     ).with_columns(

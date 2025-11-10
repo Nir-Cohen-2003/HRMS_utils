@@ -23,7 +23,7 @@ dependencies = [
 ]
 
 [build-system]
-requires = ["setuptools>=68", "wheel", "cython>=3.0.0", "numpy"]
-build-backend = "setuptools.build_meta"
+build-backend = "hatchling.build"
+requires = ["hatchling>=1.13.2", "wheel"]
 
 

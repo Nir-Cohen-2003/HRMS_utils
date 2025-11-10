@@ -112,7 +112,12 @@ class MassDecomposerUtils:
     ) -> pl.Expr:
         """
         Clean and normalize a spectrum with a known precursor.
-
+        takes polars expression fo the type:
+        pl.strcut({
+            "mz": List[float64],
+            "intensities": List[float64],
+            "precursor_formula": Array[int, 15],
+        })
         Args:
             tolerance_ppm: The mass tolerance in ppm for the initial decomposition.
             max_allowed_normalized_mass_error_ppm: The maximum allowed mass error in ppm after normalization.
@@ -120,6 +125,15 @@ class MassDecomposerUtils:
             max_dbe: The maximum degree of unsaturation.
             dbe_mode: The DBE mode, one of 'integer', 'half_integer', 'any'.
             water_absorption: Whether to allow for water absorption.
+        Returns:
+            A Polars expression with the cleaned and normalized spectrum, of the type:
+            pl.Struct({
+                "masses_normalized": pl.List(pl.Float64),
+                "cleaned_intensities": pl.List(pl.Float64),
+                "fragment_formulas": pl.List(pl.Array(inner=pl.Int32,shape=(num_elements,))),
+                "fragment_formulas_str": pl.List(pl.String),
+                "fragment_errors_ppm": pl.List(pl.Float64),
+            })
         """
         kwargs = {
             "tolerance_ppm": tolerance_ppm,

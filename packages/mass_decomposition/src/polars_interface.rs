@@ -10,7 +10,7 @@ use polars_arrow::array::{Int32Array};
 fn mass_decomposition_output(_fields: &[Field]) -> PolarsResult<Field> {
     let formula_field = Field::new("formulas".into(), DataType::List(Box::new(DataType::Array(Box::new(DataType::Int32), NUM_ELEMENTS))));
     let formula_str_field = Field::new("formulas_str".into(), DataType::List(Box::new(DataType::String)));
-    let error_field = Field::new("errors".into(), DataType::List(Box::new(DataType::Float64)));
+    let error_field = Field::new("errors_ppm".into(), DataType::List(Box::new(DataType::Float64)));
     let v = vec![formula_field, formula_str_field, error_field];
     Ok(Field::new("mass_decomposition".into(), DataType::Struct(v)))
 }
@@ -72,13 +72,13 @@ fn mass_decomposition(inputs: &[Series], kwargs: DecompositionKwargs) -> PolarsR
 
         formulas_series_vec.push(formulas_series);
         formulas_str_series_vec.push(Series::new("formulas_str".into(), formulas_str));
-        errors_series_vec.push(Series::new("errors".into(), errors_ppm));
+        errors_series_vec.push(Series::new("errors_ppm".into(), errors_ppm));
     }
 
     let out = StructChunked::from_series("mass_decomposition".into(), len, [
         &Series::new("formulas".into(), formulas_series_vec),
         &Series::new("formulas_str".into(), formulas_str_series_vec),
-        &Series::new("errors".into(), errors_series_vec),
+        &Series::new("errors_ppm".into(), errors_series_vec),
     ].iter().copied())?;
     
     Ok(out.into_series())
@@ -169,13 +169,13 @@ fn mass_decomposition_with_bounds(inputs: &[Series], kwargs: DecompositionKwargs
 
         formulas_series_vec.push(formulas_series);
         formulas_str_series_vec.push(Series::new("formulas_str".into(), formulas_str));
-        errors_series_vec.push(Series::new("errors".into(), errors_ppm));
+        errors_series_vec.push(Series::new("errors_ppm".into(), errors_ppm));
     }
     
     let out = StructChunked::from_series("mass_decomposition_with_bounds".into(), num_rows, [
         &Series::new("formulas".into(), formulas_series_vec),
         &Series::new("formulas_str".into(), formulas_str_series_vec),
-        &Series::new("errors".into(), errors_series_vec),
+        &Series::new("errors_ppm".into(), errors_series_vec),
     ].iter().copied())?;
     
     Ok(out.into_series())
