@@ -140,7 +140,7 @@ class SpectralUtils:
         ms2_tolerance_in_ppm: float,
         intensity_power: float = 1.0,
         mass_power: float = 0.0,
-        clean_spectra_first: bool = True,
+        clean_spectra_first: bool = False,
         noise_threshold: float = 0.001,
         ignore_precursor: bool = False,
         permissive: bool = False,

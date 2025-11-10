@@ -170,7 +170,7 @@ def _annotate_spectra(data: T, raw_fragment_tolerance_ppm: float, normalized_fra
             pl.col("precursor_formula_array").alias("precursor_formula"),
             pl.col("raw_spectrum_mz").alias("mz"),
             pl.col("raw_spectrum_intensity").alias("intensities")
-        ]).mass_decomposition.clean_and_normalize_spectrum(
+        ]).mass_decomposition.clean_and_normalize_spectrum(#type: ignore[missing-attribute]
                 raw_fragment_tolerance_ppm=raw_fragment_tolerance_ppm,
                 normalized_fragment_tolerance_ppm=normalized_fragment_tolerance_ppm,
                 min_dbe= -0.5,
@@ -190,9 +190,11 @@ def _annotate_spectra(data: T, raw_fragment_tolerance_ppm: float, normalized_fra
          pl.struct([
             pl.col("cleaned_normalized_mz").alias("mz1"),
             pl.col("cleaned_normalized_intensity").alias("intensities1"),
+            pl.col("PrecursorMZ").alias("precursor_mz1"),
             pl.col("raw_spectrum_mz").alias("mz2"),
-            pl.col("raw_spectrum_intensity").alias("intensities2")
-        ]).spectral_similarity.explained_intensity(permissive=True,ms2_tolerance_in_ppm=15.0).alias("explained_intensity"))
+            pl.col("raw_spectrum_intensity").alias("intensities2"),
+            pl.col("PrecursorMZ").alias("precursor_mz2"),
+        ]).spectral_similarity.explained_intensity(permissive=True,ms2_tolerance_in_ppm=15.0).alias("explained_intensity")) #type: ignore[missing-attribute]
     )
 
 def _add_precursor_type_indicators(data: T) -> T:

@@ -1,3 +1,4 @@
+import sys
 import time
 from pathlib import Path
 import traceback
@@ -15,7 +16,12 @@ def run_mspec_reader_profile(msp_file_path: Path):
     
     # Read the MSPEC file
     try:
-        spectra_df = read_MSPEC_file(msp_file_path,raw_fragment_tolerance_ppm=10.0, normalized_fragment_tolerance_ppm=10.0, molecular_ion_tolerance_ppm=5.0)
+        spectra_df = read_MSPEC_file(
+            msp_file_path,
+            raw_fragment_tolerance_ppm=10.0,
+            normalized_fragment_tolerance_ppm=10.0,
+            molecular_ion_tolerance_ppm=5.0
+        )
         is_empty = spectra_df.is_empty()
     except Exception as e:
         print(f"An error occurred while reading the MSPEC file: {e}")
@@ -81,6 +87,7 @@ def run_mspec_reader_profile(msp_file_path: Path):
     if all(col in spectra_df.columns for col in not_found_cols):
         count = spectra_df.filter((pl.col("Instrument") == "NOT FOUND") & (pl.col("Instrument_type") == "NOT FOUND") & (pl.col("Ionization") == "NOT FOUND")).height
         print(f"  - Rows with 'Instrument', 'Instrument_type', AND 'Ionization' as 'NOT FOUND': {count}")
+    
     # print how many are orbi, tof or other
     orbi_count = spectra_df.filter(pl.col("is_orbitrap")).height
     tof_count = spectra_df.filter(pl.col("is_TOF")).height
@@ -89,6 +96,7 @@ def run_mspec_reader_profile(msp_file_path: Path):
     print(f"  - Orbitrap: {orbi_count}")
     print(f"  - TOF: {tof_count}")
     print(f"  - Other: {other_count}")
+    
     # print how many of the orbi, TOF are ESI
     esi_orbi_count = spectra_df.filter(pl.col("is_ESI") & pl.col("is_orbitrap")).height
     esi_tof_count = spectra_df.filter(pl.col("is_ESI") & pl.col("is_TOF")).height
@@ -98,7 +106,7 @@ def run_mspec_reader_profile(msp_file_path: Path):
     print(f"  - ESI TOF: {esi_tof_count}")
     print(f"  - ESI Other: {esi_other_count}")
 
-    # print teh distribution of "explained_intensity" column if it exists
+    # print the distribution of "explained_intensity" column if it exists
     if "explained_intensity" in spectra_df.columns:
         print("\n'explained_intensity' column statistics, for clean precursors only:")
         entropy_stats = spectra_df.filter(pl.col("clean_precursor")).select([
@@ -110,14 +118,43 @@ def run_mspec_reader_profile(msp_file_path: Path):
         ]).to_dict(as_series=False)
         for stat, value in entropy_stats.items():
             print(f"  - {stat}: {value[0]}")
-    print(spectra_df.filter(pl.col("clean_precursor"),pl.col("Precursor_type").eq("[M+H]+")).sort(by="explained_intensity").head(1).select(["precursor_formula_array","explained_intensity","NIST_ID","raw_spectrum_mz","cleaned_normalized_mz","cleaned_fragment_formulas_str","cleaned_fragment_errors_ppm"]).to_init_repr())
+    
+    print(spectra_df.filter(
+        pl.col("clean_precursor"),
+        pl.col("Precursor_type").eq("[M+H]+")
+    ).sort(by="explained_intensity").head(1).select([
+        "precursor_formula_array",
+        "explained_intensity",
+        "NIST_ID",
+        "raw_spectrum_mz",
+        "cleaned_normalized_mz",
+        "cleaned_fragment_formulas_str",
+        "cleaned_fragment_errors_ppm"
+    ]).to_init_repr())
+
 
 if __name__ == "__main__":
-    # Make data_dir relative to this test file's location (resolve to absolute path)
-    data_dir = (Path(__file__).resolve().parent.parent / "data").resolve()
-    assert data_dir.exists(), f"data directory not found: {data_dir}"
-    files_to_test = [f for f in os.listdir(data_dir) if f.lower().endswith(('.msp', '.mspec'))]
-    
-    for file_name in files_to_test:
-        file_path = data_dir / file_name
-        run_mspec_reader_profile(file_path)
+    if len(sys.argv) > 1:
+        # CLI mode: process provided file or directory path
+        input_path = Path(sys.argv[1]).resolve()
+        assert input_path.exists(), f"Input path does not exist: {input_path}"
+        
+        if input_path.is_file():
+            assert input_path.suffix.lower() in ['.msp', '.mspec'], f"File must have .msp or .mspec extension, got: {input_path.suffix}"
+            run_mspec_reader_profile(input_path)
+        elif input_path.is_dir():
+            files_to_test = [f for f in input_path.iterdir() if f.is_file() and f.suffix.lower() in ['.msp', '.mspec']]
+            assert len(files_to_test) > 0, f"No MSPEC/MSP files found in directory: {input_path}"
+            for file_path in sorted(files_to_test):
+                run_mspec_reader_profile(file_path)
+        else:
+            raise ValueError(f"Path is neither a file nor a directory: {input_path}")
+    else:
+        # Default mode: process all files in tests/data directory
+        data_dir = (Path(__file__).resolve().parent.parent / "data").resolve()
+        assert data_dir.exists(), f"data directory not found: {data_dir}"
+        files_to_test = [f for f in os.listdir(data_dir) if f.lower().endswith(('.msp', '.mspec'))]
+        
+        for file_name in files_to_test:
+            file_path = data_dir / file_name
+            run_mspec_reader_profile(file_path)

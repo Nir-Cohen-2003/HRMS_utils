@@ -62,12 +62,12 @@ pub fn clean_spectrum(
     });
 
     if apply_full_cleaning {
-        let tolerance = (ms2_tolerance_in_ppm * 1e-6 * MASS_THRESHOLD_FOR_PPM).max(ms2_tolerance_in_ppm * 1e-6 * precursor_mz);
         if ignore_precursor {
             // ignore fragments in the 1 Da range below the precursor, including it.
             cleaned_peaks.retain(|peak| peak.mz < precursor_mz - 1.0);
         } else {
             // ignore fragments in the 1 Da range below the precursor, not including it.
+            let tolerance = ms2_tolerance_in_ppm * 1e-6 *(MASS_THRESHOLD_FOR_PPM).max(precursor_mz);
             cleaned_peaks.retain(|peak| peak.mz < precursor_mz - 1.0 || (peak.mz - precursor_mz).abs() < tolerance);
         }
     }
