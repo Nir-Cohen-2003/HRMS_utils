@@ -101,7 +101,7 @@ def get_simulated_nist_similarity_pair(
             pl.col("precursor_mz2"),
             pl.col("mz2"),
             pl.col("intensities2"),
-        ]).spectral.general_cosine_similarity(
+        ]).spectral_similarity.general_cosine_similarity(
             intensity_power=intensity_power,
             mass_power=mass_power,
             ms2_tolerance_in_ppm=tolerance_ppm,
@@ -215,7 +215,7 @@ def optimize_similarity_parameters(
                     pl.col("precursor_mz2"),
                     pl.col("mz2"),
                     pl.col("intensities2"),
-                ]).spectral.general_cosine_similarity(
+                ]).spectral_similarity.general_cosine_similarity(
                     intensity_power=intensity_power,
                     mass_power=mass_power,
                     ms2_tolerance_in_ppm=tolerance_ppm,

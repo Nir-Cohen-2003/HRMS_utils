@@ -2,13 +2,13 @@ import polars as pl
 import numpy as np
 from pathlib import Path
 from time import time
-from ms_entropy import calculate_spectral_entropy, calculate_entropy_similarity
 from dataclasses import dataclass
 from typing import List, Tuple, Dict
 from numba import  jit
 from ..formula_annotation.isotopic_pattern import deduce_isotopic_pattern
 from ..formula_annotation.element_table import ELEMENT_INDEX, ELEMENT_MASSES
 import mass_decomposition
+import spectral_similarity
 from mass_decomposition import NUM_ELEMENTS
 
 PROTON_MASS = ELEMENT_MASSES[ELEMENT_INDEX['H']]
@@ -399,24 +399,6 @@ def annotate_chromatogram_with_formulas(
     
     return chromatogram
 
-def _entropy_score(
-        spec1_mz:np.ndarray, spec1_intensity:np.ndarray,
-        spec2_mz:np.ndarray, spec2_intensity:np.ndarray) -> np.float64:
-    if any(x is None for x in [spec1_mz,spec2_mz,spec1_intensity,spec2_intensity]):
-        return -1
-    spec1 = np.column_stack((spec1_mz,spec1_intensity))
-    spec1 = np.array(spec1,dtype=np.float32)
-    spec2 = np.column_stack((spec2_mz,spec2_intensity))
-    spec2 = np.array(spec2,dtype=np.float32)
-    score = calculate_entropy_similarity(
-        spec1,spec2,
-        ms2_tolerance_in_ppm=config.ms2_mass_tolerance*10e6,
-        clean_spectra=True,
-        noise_threshold=config.noise_threshold)
-    score = np.float64(score)
-    return score
-_entropy_score_batch=np.vectorize(_entropy_score)
-
 
 def _get_chromatogram_basic(path: str | Path)-> pl.LazyFrame :
     chromatogram = pl.read_csv(
@@ -472,12 +454,6 @@ def _add_entropy(chromatogram:pl.DataFrame)-> pl.DataFrame:
         ).alias('spectral_entropy')
     )
     return chromatogram
-
-def _calculate_spectral_entropy_wrapper(mz,intesity):
-    spectrum = np.column_stack((mz,intesity))
-    spectrum = np.array(spectrum,dtype=np.float32)
-    return calculate_spectral_entropy(spectrum)
-_calculate_spectral_entropy_wrapper_batch=np.vectorize(_calculate_spectral_entropy_wrapper)
 
 def _convert_MSMS_to_list(chromatogram: pl.LazyFrame | pl.DataFrame) -> pl.LazyFrame | pl.DataFrame:
 

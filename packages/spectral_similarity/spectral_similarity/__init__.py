@@ -12,7 +12,7 @@ if TYPE_CHECKING:
     from .typing import IntoExprColumn
 
 LIB = Path(__file__).parent
-@pl.api.register_expr_namespace("spectral")
+@pl.api.register_expr_namespace("spectral_similarity")
 class SpectralUtils:
     def __init__(self, expr : pl.Expr):
         self._expr = expr
