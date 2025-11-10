@@ -26,11 +26,19 @@ class SpectralUtils:
     ) -> pl.Expr:
         """
         Calculate spectral similarity between two spectra using spectral entropy.
-        takes a struct with fields:
-        - mz1: List[Float64]
-        - intensities1: List[Float64]
-        - mz2: List[Float64]
-        - intensities2: List[Float64]
+
+        Input expression requirements:
+        - The expression must evaluate to a Struct column with the following fields:
+          - mz1: List[Float64]            # m/z values for spectrum 1 (polars List series)
+          - intensities1: List[Float64]   # intensities for spectrum 1
+          - mz2: List[Float64]            # m/z values for spectrum 2
+          - intensities2: List[Float64]   # intensities for spectrum 2
+          - precursor_mz1: Float64        # precursor m/z for spectrum 1
+          - precursor_mz2: Float64        # precursor m/z for spectrum 2
+
+        Return:
+        - A pl.Expr that evaluates elementwise to a Float64 similarity score (nullable).
+          Rows where required fields are missing will produce null.
         """
         kwargs = {
             "ms2_tolerance_in_ppm": ms2_tolerance_in_ppm,
@@ -60,14 +68,14 @@ class SpectralUtils:
         """
         Calculate a general weighted cosine similarity between two spectra.
 
-        Args:
-            intensity_power: The power to raise the intensity to.
-            mass_power: The power to raise the mass to.
-            ms2_tolerance_in_ppm: The tolerance for matching peaks in ppm.
-            clean_spectra_first: Whether to clean the spectra before calculating similarity.
-            noise_threshold: The noise threshold for cleaning.
-            precursor_mz: The precursor m/z to filter fragments.
-            ignore_precursor: Whether to ignore the precursor peak.
+        Input expression requirements:
+        - Same struct as entropy_similarity:
+          mz1, intensities1, mz2, intensities2 (List[Float64]) and
+          precursor_mz1, precursor_mz2 (Float64).
+
+        Return:
+        - A pl.Expr that evaluates elementwise to a Float64 similarity score (nullable).
+        - The score is computed using the provided intensity_power and mass_power.
         """
         kwargs = {
             "intensity_power": intensity_power,
@@ -95,7 +103,9 @@ class SpectralUtils:
         ignore_precursor: bool = False,
     ) -> pl.Expr:
         """
-        Calculate mass weighted cosine similarity (intensity^0.5, mass^2).
+        Mass-weighted cosine similarity (intensity^0.5, mass^2).
+
+        Input/Return: same struct input and Float64 (nullable) output as general_cosine_similarity.
         """
         return self.general_cosine_similarity(
             intensity_power=0.5,
@@ -113,7 +123,9 @@ class SpectralUtils:
         ignore_precursor: bool = False,
     ) -> pl.Expr:
         """
-        Calculate NIST-like dot product similarity (intensity^0.5, mass^0.0).
+        NIST-like dot product similarity (intensity^0.5, mass^0.0).
+
+        Input/Return: same struct input and Float64 (nullable) output as general_cosine_similarity.
         """
         return self.general_cosine_similarity(
             intensity_power=0.5,
@@ -134,8 +146,16 @@ class SpectralUtils:
         permissive: bool = False,
     ) -> pl.Expr:
         """
-        Calculate explained intensity.
-        Assumes spectrum 1 is a subset of spectrum 2.
+        Calculate explained intensity. Assumes spectrum 1 is a subset of spectrum 2.
+
+        Input expression requirements:
+        - Same struct as other similarity functions:
+          mz1, intensities1, mz2, intensities2 (List[Float64]) and
+          precursor_mz1, precursor_mz2 (Float64).
+
+        Return:
+        - A pl.Expr that evaluates elementwise to a Float64 explained-intensity score (nullable).
+        - Rows with missing required fields will produce null.
         """
         kwargs = {
             "intensity_power": intensity_power,

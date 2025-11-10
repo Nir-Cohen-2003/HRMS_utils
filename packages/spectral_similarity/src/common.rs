@@ -39,22 +39,20 @@ pub const MASS_THRESHOLD_FOR_PPM: f64 = 200.0;
 /// Cleans a spectrum with the given parameters.
 pub fn clean_spectrum(
     peaks: &[Peak],
+    precursor_mz: f64,
     min_mz: Option<f64>,
     max_mz: Option<f64>,
     noise_threshold: Option<f64>,
     ms2_tolerance_in_ppm: f64,
     max_peak_num: Option<usize>,
     normalize_intensity: bool,
-    precursor_mz: Option<f64>,
-    ignore_precursor: Option<bool>,
+    ignore_precursor: bool,
     apply_full_cleaning: bool,
 ) -> Spectrum {
     let mut cleaned_peaks: Vec<Peak> = peaks.to_vec();
 
     let mut effective_max_mz = max_mz.unwrap_or(f64::MAX);
-    if let Some(pmz) = precursor_mz {
-        effective_max_mz = pmz;
-    }
+    effective_max_mz = effective_max_mz.min(precursor_mz);
 
     // 1. Remove empty peaks and filter by mz
     cleaned_peaks.retain(|peak| {
@@ -64,15 +62,13 @@ pub fn clean_spectrum(
     });
 
     if apply_full_cleaning {
-        if let Some(pmz) = precursor_mz {
-            let tolerance = (ms2_tolerance_in_ppm * 1e-6 * MASS_THRESHOLD_FOR_PPM).max(ms2_tolerance_in_ppm * 1e-6 * pmz);
-            if ignore_precursor.unwrap() {
-                // ignore fragments in the 1 Da range below the precursor, including it.
-                cleaned_peaks.retain(|peak| peak.mz < pmz - 1.0);
-            } else {
-                // ignore fragments in the 1 Da range below the precursor, not including it.
-                cleaned_peaks.retain(|peak| peak.mz < pmz - 1.0 || (peak.mz - pmz).abs() < tolerance);
-            }
+        let tolerance = (ms2_tolerance_in_ppm * 1e-6 * MASS_THRESHOLD_FOR_PPM).max(ms2_tolerance_in_ppm * 1e-6 * precursor_mz);
+        if ignore_precursor {
+            // ignore fragments in the 1 Da range below the precursor, including it.
+            cleaned_peaks.retain(|peak| peak.mz < precursor_mz - 1.0);
+        } else {
+            // ignore fragments in the 1 Da range below the precursor, not including it.
+            cleaned_peaks.retain(|peak| peak.mz < precursor_mz - 1.0 || (peak.mz - precursor_mz).abs() < tolerance);
         }
     }
 

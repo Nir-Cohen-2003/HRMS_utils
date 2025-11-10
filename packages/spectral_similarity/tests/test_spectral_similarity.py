@@ -14,7 +14,8 @@ def test_entropy_similarity():
                     "intensities1": [0.5, 0.8, 1.0],
                     "mz2": [100.0, 200.0, 300.0],
                     "intensities2": [0.5, 0.8, 1.0],
-                    "precursor_mz": 400.0,
+                    "precursor_mz1": 400.0,
+                    "precursor_mz2": 400.0,
                 }
             ]
         },
@@ -25,7 +26,8 @@ def test_entropy_similarity():
                     "intensities1": pl.List(pl.Float64),
                     "mz2": pl.List(pl.Float64),
                     "intensities2": pl.List(pl.Float64),
-                    "precursor_mz": pl.Float64,
+                    "precursor_mz1": pl.Float64,
+                    "precursor_mz2": pl.Float64,
                 }
             )
         },
@@ -54,7 +56,8 @@ def test_entropy_similarity_precursor_filtering():
                     "intensities1": [1.0, 1.0, 1.0, 1.0],
                     "mz2": [100.0, 200.0],
                     "intensities2": [1.0, 1.0],
-                    "precursor_mz": 200.0,
+                    "precursor_mz1": 200.0,
+                    "precursor_mz2": 200.0,
                 }
             ]
         },
@@ -65,7 +68,8 @@ def test_entropy_similarity_precursor_filtering():
                     "intensities1": pl.List(pl.Float64),
                     "mz2": pl.List(pl.Float64),
                     "intensities2": pl.List(pl.Float64),
-                    "precursor_mz": pl.Float64,
+                    "precursor_mz1": pl.Float64,
+                    "precursor_mz2": pl.Float64,
                 }
             )
         },
@@ -93,7 +97,8 @@ def test_entropy_similarity_precursor_filtering():
                     "intensities1": [1.0, 1.0, 1.0],
                     "mz2": [100.0, 200.0],
                     "intensities2": [1.0, 1.0],
-                    "precursor_mz": 300.0,
+                    "precursor_mz1": 300.0,
+                    "precursor_mz2": 300.0,
                 }
             ]
         },
@@ -104,7 +109,8 @@ def test_entropy_similarity_precursor_filtering():
                     "intensities1": pl.List(pl.Float64),
                     "mz2": pl.List(pl.Float64),
                     "intensities2": pl.List(pl.Float64),
-                    "precursor_mz": pl.Float64,
+                    "precursor_mz1": pl.Float64,
+                    "precursor_mz2": pl.Float64,
                 }
             )
         },
@@ -132,7 +138,8 @@ def test_cosine_similarity_basic():
                     "intensities1": [0.5, 0.8, 1.0],
                     "mz2": [100.0, 200.0, 400.0],
                     "intensities2": [0.5, 0.8, 1.0],
-                    "precursor_mz": 400.0,
+                    "precursor_mz1": 400.0,
+                    "precursor_mz2": 400.0,
                 }
             ]
         },
@@ -143,7 +150,8 @@ def test_cosine_similarity_basic():
                     "intensities1": pl.List(pl.Float64),
                     "mz2": pl.List(pl.Float64),
                     "intensities2": pl.List(pl.Float64),
-                    "precursor_mz": pl.Float64,
+                    "precursor_mz1": pl.Float64,
+                    "precursor_mz2": pl.Float64,
                 }
             )
         },
@@ -189,7 +197,8 @@ def test_cosine_similarity_with_precursor_filtering():
                     "intensities1": [0.5, 0.8, 1.0],
                     "mz2": [100.0, 200.0, 400.0],
                     "intensities2": [0.5, 0.8, 1.0],
-                    "precursor_mz": 400.0,
+                    "precursor_mz1": 400.0,
+                    "precursor_mz2": 400.0,
                 }
             ]
         },
@@ -200,7 +209,8 @@ def test_cosine_similarity_with_precursor_filtering():
                     "intensities1": pl.List(pl.Float64),
                     "mz2": pl.List(pl.Float64),
                     "intensities2": pl.List(pl.Float64),
-                    "precursor_mz": pl.Float64,
+                    "precursor_mz1": pl.Float64,
+                    "precursor_mz2": pl.Float64,
                 }
             )
         },
@@ -260,7 +270,8 @@ def test_explained_intensity_basic():
                     "intensities1": [0.5, 0.8],
                     "mz2": [100.0, 200.0, 400.0],
                     "intensities2": [0.5, 0.8, 1.0],
-                    "precursor_mz": 400.0,
+                    "precursor_mz1": 400.0,
+                    "precursor_mz2": 400.0,
                 }
             ]
         },
@@ -271,7 +282,8 @@ def test_explained_intensity_basic():
                     "intensities1": pl.List(pl.Float64),
                     "mz2": pl.List(pl.Float64),
                     "intensities2": pl.List(pl.Float64),
-                    "precursor_mz": pl.Float64,
+                    "precursor_mz1": pl.Float64,
+                    "precursor_mz2": pl.Float64,
                 }
             )
         },
@@ -298,7 +310,8 @@ def test_explained_intensity_subset_validation():
                     "intensities1": [0.5, 0.8, 1.0],
                     "mz2": [100.0, 200.0, 400.0],
                     "intensities2": [0.5, 0.8, 1.0],
-                    "precursor_mz": 400.0,
+                    "precursor_mz1": 400.0,
+                    "precursor_mz2": 400.0,
                 }
             ]
         },
@@ -309,7 +322,8 @@ def test_explained_intensity_subset_validation():
                     "intensities1": pl.List(pl.Float64),
                     "mz2": pl.List(pl.Float64),
                     "intensities2": pl.List(pl.Float64),
-                    "precursor_mz": pl.Float64
+                    "precursor_mz1": pl.Float64,
+                    "precursor_mz2": pl.Float64
                 }
             )
         }
@@ -342,7 +356,8 @@ def test_explained_intensity_options():
                     "intensities1": [0.5, 0.8, 1.0],
                     "mz2": [100.0, 200.0, 400.0],
                     "intensities2": [0.5, 0.8, 1.0],
-                    "precursor_mz": 400.0,
+                    "precursor_mz1": 400.0,
+                    "precursor_mz2": 400.0,
                 }
             ]
         },
@@ -350,7 +365,8 @@ def test_explained_intensity_options():
             "spectra": pl.Struct({
                 "mz1": pl.List(pl.Float64), "intensities1": pl.List(pl.Float64),
                 "mz2": pl.List(pl.Float64), "intensities2": pl.List(pl.Float64),
-                "precursor_mz": pl.Float64
+                "precursor_mz1": pl.Float64,
+                "precursor_mz2": pl.Float64
             })
         }
     )
@@ -381,7 +397,8 @@ def test_explained_intensity_options():
                     "intensities1": [0.5, 0.8],
                     "mz2": [100.0, 200.0, 400.0],
                     "intensities2": [0.5, 0.8, 1.0],
-                    "precursor_mz": 400.0,
+                    "precursor_mz1": 400.0,
+                    "precursor_mz2": 400.0,
                 }
             ]
         },
@@ -389,7 +406,8 @@ def test_explained_intensity_options():
             "spectra": pl.Struct({
                 "mz1": pl.List(pl.Float64), "intensities1": pl.List(pl.Float64),
                 "mz2": pl.List(pl.Float64), "intensities2": pl.List(pl.Float64),
-                "precursor_mz": pl.Float64
+                "precursor_mz1": pl.Float64,
+                "precursor_mz2": pl.Float64
             })
         }
     )

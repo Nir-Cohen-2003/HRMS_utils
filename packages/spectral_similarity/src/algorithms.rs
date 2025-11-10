@@ -68,14 +68,16 @@ pub fn calculate_unweighted_entropy_similarity(
 pub fn calculate_entropy_similarity(
     spec_a: &Spectrum,
     spec_b: &Spectrum,
+    precursor_mz_a: f64, // Required
+    precursor_mz_b: f64, // Required
     ms2_tolerance_in_ppm: f64,
     clean_spectra_first: bool,
     noise_threshold: Option<f64>,
-    precursor_mz: Option<f64>,
-    ignore_precursor: Option<bool>,
+    ignore_precursor: bool,
 ) -> f64 {
-    let mut a = clean_spectrum(&spec_a.peaks, None, precursor_mz, noise_threshold, 2.0 * ms2_tolerance_in_ppm, None, true, precursor_mz, ignore_precursor, clean_spectra_first);
-    let mut b = clean_spectrum(&spec_b.peaks, None, precursor_mz, noise_threshold, 2.0 * ms2_tolerance_in_ppm, None, true, precursor_mz, ignore_precursor, clean_spectra_first);
+    // Why: Each spectrum cleaned relative to its own precursor for symmetric filtering
+    let mut a = clean_spectrum(&spec_a.peaks, precursor_mz_a, None, None, noise_threshold, 2.0 * ms2_tolerance_in_ppm, None, true, ignore_precursor, clean_spectra_first);
+    let mut b = clean_spectrum(&spec_b.peaks, precursor_mz_b, None, None, noise_threshold, 2.0 * ms2_tolerance_in_ppm, None, true, ignore_precursor, clean_spectra_first);
 
     if a.peaks.is_empty() || b.peaks.is_empty() { return 0.0; }
     apply_weight_to_intensity(&mut a);
@@ -83,20 +85,22 @@ pub fn calculate_entropy_similarity(
     calculate_unweighted_entropy_similarity(&a, &b, ms2_tolerance_in_ppm)
 }
 
+// Why: Apply same pattern to other similarity functions
 pub fn general_cosine_similarity(
     spec_a: &Spectrum,
     spec_b: &Spectrum,
+    precursor_mz_a: f64,
+    precursor_mz_b: f64,
     ms2_tolerance_in_ppm: f64,
     intensity_power: f64,
     mass_power: f64,
     clean_spectra_first: bool,
     noise_threshold: Option<f64>,
-    precursor_mz: Option<f64>,
-    ignore_precursor: Option<bool>,
+    ignore_precursor: bool,
 ) -> f64 {
     let (a_cleaned, b_cleaned) = (
-        clean_spectrum(&spec_a.peaks, None, precursor_mz, noise_threshold, 2.0 * ms2_tolerance_in_ppm, None, false, precursor_mz, ignore_precursor, clean_spectra_first),
-        clean_spectrum(&spec_b.peaks, None, precursor_mz, noise_threshold, 2.0 * ms2_tolerance_in_ppm, None, false, precursor_mz, ignore_precursor, clean_spectra_first)
+        clean_spectrum(&spec_a.peaks, precursor_mz_a, None, None, noise_threshold, 2.0 * ms2_tolerance_in_ppm, None, false, ignore_precursor, clean_spectra_first),
+        clean_spectrum(&spec_b.peaks, precursor_mz_b, None, None, noise_threshold, 2.0 * ms2_tolerance_in_ppm, None, false, ignore_precursor, clean_spectra_first)
     );
 
     if a_cleaned.peaks.is_empty() || b_cleaned.peaks.is_empty() { return 0.0; }
@@ -157,18 +161,19 @@ pub fn general_cosine_similarity(
 pub fn calculate_explained_intensity(
     spec_a: &Spectrum,
     spec_b: &Spectrum,
+    precursor_mz_a: f64,
+    precursor_mz_b: f64,
     ms2_tolerance_in_ppm: f64,
     intensity_power: f64,
     mass_power: f64,
     clean_spectra_first: bool,
     noise_threshold: Option<f64>,
-    precursor_mz: Option<f64>,
-    ignore_precursor: Option<bool>,
-    permissive: Option<bool>,
+    ignore_precursor: bool,
+    permissive: bool,
 ) -> f64 {
     let (a_cleaned, b_cleaned) = (
-        clean_spectrum(&spec_a.peaks, None, precursor_mz, noise_threshold, 2.0 * ms2_tolerance_in_ppm, None, false, precursor_mz, ignore_precursor, clean_spectra_first),
-        clean_spectrum(&spec_b.peaks, None, precursor_mz, noise_threshold, 2.0 * ms2_tolerance_in_ppm, None, false, precursor_mz, ignore_precursor, clean_spectra_first)
+        clean_spectrum(&spec_a.peaks, precursor_mz_a, None, None, noise_threshold, 2.0 * ms2_tolerance_in_ppm, None, false, ignore_precursor, clean_spectra_first),
+        clean_spectrum(&spec_b.peaks, precursor_mz_b, None, None, noise_threshold, 2.0 * ms2_tolerance_in_ppm, None, false, ignore_precursor, clean_spectra_first)
     );
 
     if a_cleaned.peaks.is_empty() { return 0.0; }
@@ -187,7 +192,6 @@ pub fn calculate_explained_intensity(
     let mut a_idx = 0;
     let mut b_idx = 0;
     let mut sum_a = 0.0;
-    let permissive_flag = permissive.unwrap();
 
     while a_idx < weighted_peaks_a.len() && b_idx < weighted_peaks_b.len() {
         let mass_a = weighted_peaks_a[a_idx].0;
@@ -195,7 +199,7 @@ pub fn calculate_explained_intensity(
         let mass_diff = weighted_peaks_a[a_idx].0 - weighted_peaks_b[b_idx].0;
 
         if mass_diff < -tolerance {
-            if !permissive_flag {
+            if !permissive {
                 return -1.0;
             }
             a_idx += 1;
@@ -208,7 +212,7 @@ pub fn calculate_explained_intensity(
         }
     }
 
-    if !permissive_flag && a_idx < weighted_peaks_a.len() {
+    if !permissive && a_idx < weighted_peaks_a.len() {
         return -1.0;
     }
 
