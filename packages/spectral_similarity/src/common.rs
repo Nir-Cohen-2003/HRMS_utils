@@ -57,20 +57,21 @@ pub fn clean_spectrum(
     }
 
     // 1. Remove empty peaks and filter by mz
-    cleaned_peaks.retain(|p| {
-        p.intensity > 0.0
-            && p.mz >= min_mz.unwrap_or(0.0)
-            && p.mz <= effective_max_mz
+    cleaned_peaks.retain(|peak| {
+        peak.intensity > 0.0
+            && peak.mz >= min_mz.unwrap_or(0.0)
+            && peak.mz <= effective_max_mz
     });
 
     if apply_full_cleaning {
         if let Some(pmz) = precursor_mz {
-            if ignore_precursor.unwrap_or(false) {
-                let tolerance = (ms2_tolerance_in_ppm * 1e-6 * MASS_THRESHOLD_FOR_PPM).max(ms2_tolerance_in_ppm * 1e-6 * pmz);
-                cleaned_peaks.retain(|p| (p.mz - pmz).abs() > tolerance);
+            let tolerance = (ms2_tolerance_in_ppm * 1e-6 * MASS_THRESHOLD_FOR_PPM).max(ms2_tolerance_in_ppm * 1e-6 * pmz);
+            if ignore_precursor.unwrap() {
+                // ignore fragments in the 1 Da range below the precursor, including it.
+                cleaned_peaks.retain(|peak| peak.mz < pmz - 1.0);
             } else {
-                // ignore fragments in the 1 Da range below it too.
-                cleaned_peaks.retain(|p| p.mz < pmz - 1.0);
+                // ignore fragments in the 1 Da range below the precursor, not including it.
+                cleaned_peaks.retain(|peak| peak.mz < pmz - 1.0 || (peak.mz - pmz).abs() < tolerance);
             }
         }
     }

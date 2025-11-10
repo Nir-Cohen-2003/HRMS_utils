@@ -95,12 +95,11 @@ def get_simulated_nist_similarity_pair(
     # Why: compute similarity using the compiled Rust implementation
     result = pair_df.with_columns(
         rust_similarity=pl.struct([
-            pl.col("precursor_mz1"),
             pl.col("mz1"),
             pl.col("intensities1"),
-            pl.col("precursor_mz2"),
             pl.col("mz2"),
             pl.col("intensities2"),
+            pl.col("precursor_mz1").alias("precursor_mz"),
         ]).spectral_similarity.general_cosine_similarity(
             intensity_power=intensity_power,
             mass_power=mass_power,
@@ -209,12 +208,11 @@ def optimize_similarity_parameters(
             # Why: compute similarity using current trial parameters
             result = pair_df.with_columns(
                 rust_similarity=pl.struct([
-                    pl.col("precursor_mz1"),
                     pl.col("mz1"),
                     pl.col("intensities1"),
-                    pl.col("precursor_mz2"),
                     pl.col("mz2"),
                     pl.col("intensities2"),
+                    pl.col("precursor_mz1").alias("precursor_mz"),
                 ]).spectral_similarity.general_cosine_similarity(
                     intensity_power=intensity_power,
                     mass_power=mass_power,

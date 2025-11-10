@@ -80,13 +80,14 @@ def test_dotprod_similarity_against_nist() -> None:
     # 3. Get query spectra by joining on NIST_ID
     # Why: query_ID in search results corresponds to NIST_ID in the database
     query_spectra: pl.DataFrame = nist_results_df.select("query_ID").unique().join(
-        nist_spectra_db.select(["NIST_ID", "raw_spectrum_mz", "raw_spectrum_intensity"]),
+        nist_spectra_db.select(["NIST_ID", "PrecursorMZ", "raw_spectrum_mz", "raw_spectrum_intensity"]),
         left_on="query_ID",
         right_on="NIST_ID",
         how="inner"
     ).rename({
         "raw_spectrum_mz": "mz1",
-        "raw_spectrum_intensity": "intensities1"
+        "raw_spectrum_intensity": "intensities1",
+        "PrecursorMZ": "precursor_mz"
     })
 
     # 4. Join query spectra to results
@@ -126,6 +127,7 @@ def test_dotprod_similarity_against_nist() -> None:
             pl.col("intensities1"),
             pl.col("mz2"),
             pl.col("intensities2"),
+            pl.col("precursor_mz"),
         ]).alias("spectra_pair_struct")
     )
 

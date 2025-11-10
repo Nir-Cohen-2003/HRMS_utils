@@ -187,7 +187,7 @@ pub fn calculate_explained_intensity(
     let mut a_idx = 0;
     let mut b_idx = 0;
     let mut sum_a = 0.0;
-    let permissive_flag = permissive.unwrap_or(false);
+    let permissive_flag = permissive.unwrap();
 
     while a_idx < weighted_peaks_a.len() && b_idx < weighted_peaks_b.len() {
         let mass_a = weighted_peaks_a[a_idx].0;

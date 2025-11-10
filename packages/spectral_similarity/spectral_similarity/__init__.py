@@ -19,11 +19,10 @@ class SpectralUtils:
 
     def entropy_similarity(
         self,
-        ms2_tolerance_in_ppm: float | None = None,
-        clean_spectra_first: bool | None = None,
-        noise_threshold: float | None = 0.001,
-        precursor_mz: float | None = None,
-        ignore_precursor: bool | None = None,
+        ms2_tolerance_in_ppm: float ,
+        clean_spectra_first: bool = True,
+        noise_threshold: float = 0.001,
+        ignore_precursor: bool = False,
     ) -> pl.Expr:
         """
         Calculate spectral similarity between two spectra using spectral entropy.
@@ -37,7 +36,6 @@ class SpectralUtils:
             "ms2_tolerance_in_ppm": ms2_tolerance_in_ppm,
             "clean_spectra_first": clean_spectra_first,
             "noise_threshold": noise_threshold,
-            "precursor_mz": precursor_mz,
             "ignore_precursor": ignore_precursor,
         }
         kwargs = {k: v for k, v in kwargs.items() if v is not None}
@@ -54,11 +52,10 @@ class SpectralUtils:
         self,
         intensity_power: float,
         mass_power: float,
-        ms2_tolerance_in_ppm: float | None = None,
-        clean_spectra_first: bool | None = None,
-        noise_threshold: float | None = 0.001,
-        precursor_mz: float | None = None,
-        ignore_precursor: bool | None = None,
+        ms2_tolerance_in_ppm: float,
+        clean_spectra_first: bool = True,
+        noise_threshold: float = 0.001,
+        ignore_precursor: bool = False,
     ) -> pl.Expr:
         """
         Calculate a general weighted cosine similarity between two spectra.
@@ -78,7 +75,6 @@ class SpectralUtils:
             "ms2_tolerance_in_ppm": ms2_tolerance_in_ppm,
             "clean_spectra_first": clean_spectra_first,
             "noise_threshold": noise_threshold,
-            "precursor_mz": precursor_mz,
             "ignore_precursor": ignore_precursor,
         }
         kwargs = {k: v for k, v in kwargs.items() if v is not None}
@@ -93,11 +89,10 @@ class SpectralUtils:
 
     def mass_weighted_cosine_similarity(
         self,
-        ms2_tolerance_in_ppm: float | None = None,
-        clean_spectra_first: bool | None = None,
-        noise_threshold: float | None = 0.001,
-        precursor_mz: float | None = None,
-        ignore_precursor: bool | None = None,
+        ms2_tolerance_in_ppm: float,
+        clean_spectra_first: bool = True,
+        noise_threshold: float = 0.001,
+        ignore_precursor: bool = False,
     ) -> pl.Expr:
         """
         Calculate mass weighted cosine similarity (intensity^0.5, mass^2).
@@ -108,16 +103,14 @@ class SpectralUtils:
             ms2_tolerance_in_ppm=ms2_tolerance_in_ppm,
             clean_spectra_first=clean_spectra_first,
             noise_threshold=noise_threshold,
-            precursor_mz=precursor_mz,
             ignore_precursor=ignore_precursor,
         )
     def dotprod_similarity(
         self,
-        ms2_tolerance_in_ppm: float | None = None,
-        clean_spectra_first: bool | None = None,
-        noise_threshold: float | None = 0.001,
-        precursor_mz: float | None = None,
-        ignore_precursor: bool | None = None,
+        ms2_tolerance_in_ppm: float,
+        clean_spectra_first: bool = True,
+        noise_threshold: float = 0.001,
+        ignore_precursor: bool = False,
     ) -> pl.Expr:
         """
         Calculate NIST-like dot product similarity (intensity^0.5, mass^0.0).
@@ -128,18 +121,16 @@ class SpectralUtils:
             ms2_tolerance_in_ppm=ms2_tolerance_in_ppm,
             clean_spectra_first=clean_spectra_first,
             noise_threshold=noise_threshold,
-            precursor_mz=precursor_mz,
             ignore_precursor=ignore_precursor,
         )
     def explained_intensity(
         self,
-        intensity_power: float | None = 1.0,
-        mass_power: float | None = 0.0,
-        ms2_tolerance_in_ppm: float | None = None,
-        clean_spectra_first: bool | None = None,
-        noise_threshold: float | None = 0.001,
-        precursor_mz: float | None = None,
-        ignore_precursor: bool | None = None,
+        ms2_tolerance_in_ppm: float,
+        intensity_power: float = 1.0,
+        mass_power: float = 0.0,
+        clean_spectra_first: bool = True,
+        noise_threshold: float = 0.001,
+        ignore_precursor: bool = False,
         permissive: bool = False,
     ) -> pl.Expr:
         """
@@ -152,7 +143,6 @@ class SpectralUtils:
             "ms2_tolerance_in_ppm": ms2_tolerance_in_ppm,
             "clean_spectra_first": clean_spectra_first,
             "noise_threshold": noise_threshold,
-            "precursor_mz": precursor_mz,
             "ignore_precursor": ignore_precursor,
             "permissive": permissive,
         }
