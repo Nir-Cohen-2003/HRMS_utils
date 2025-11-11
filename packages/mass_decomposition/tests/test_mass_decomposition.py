@@ -289,7 +289,19 @@ CLEANING_TEST_CASES = [
             ["C5H5"],
             ["C5H7"]
         ]
-    )
+    ),
+    (
+        [72.0804, 76.0389, 118.0859],
+        "C5H12NO2",
+        5.0,
+        False,
+        [
+            ["C4H10N"],    # 72.0804
+            ["C2H6NO2"],   # 76.0389
+            ["C5H11NO2"],  # 118.0859 (protonated precursor)
+        ]
+    ),
+
 ]*2
 
 
@@ -353,6 +365,223 @@ def test_clean_and_normalize_spectrum(mz_values, precursor_formula_str, toleranc
         formula_str = formula_array_to_string(formula_arr)
         assert formula_arr in expected_formulas_arr, \
             f"Unexpected formula {formula_str} in output, expected one of {expected_formulas_flat}"
+
+def test_decompose_mass_batch():
+    """
+    Tests the decompose_mass_with_bounds function with a batch of test cases in a single dataframe.
+    This ensures that results are returned in the correct order when processing multiple masses
+    with different bounds per mass.
+    """
+    test_cases = [
+        (78.04695,{"C": 0, "H": 0}, {"C": 10, "H": 10}, ["C6H6"]),
+        (140.1062, {"C": 0, "H": 1, "O": 0, "N": 0}, {"C": 20, "H": 40, "O": 10, "N": 5}, ["C6H12N4"]),
+        (182.073165, {"C": 0, "H": 0, "O": 0}, {"C": 20, "H": 20, "O": 10, "P": 3, "N": 10, "S": 5, "Si": 5, "Cl": 5}, ["C13H10O", "C9H13NOP", "C5H10N6Si", "C10H13ClN","C5H16N2OP2","C5H14N2O3S","C3H14N5P2","CH13N7PSi","C6H16ClN2P","C4H14N2O4Si"]),
+        (182.073165,  {"C": 0, "H": 0, "O": 0}, {"C": 20, "H": 20, "O": 10, "P": 3, "N": 10, "S": 5, "Si": 0, "Cl": 0}, ["C13H10O", "C9H13NOP","C5H16N2OP2","C5H14N2O3S","C3H14N5P2"]),
+        (182.0732, {"C": 0, "H": 0, "O": 0}, {"C": 20, "H": 20, "O": 10, "P": 0, "N": 10, "S": 5, "Si": 0, "Cl": 1}, ["C13H10O", "C10H13ClN","C5H14N2O3S"]),
+        (112.007978, {"C": 0, "H": 0, "O": 0, "Cl": 1}, {"C": 20, "H": 20, "O": 10, "P": 0, "N": 10, "S": 5, "Si": 0, "Cl": 1}, ["C6H5Cl"]),
+        (155.957461,  {"C": 0, "H": 0, "O": 0, "Cl": 1}, {"C": 20, "H": 20, "O": 10, "P": 0, "N": 10, "S": 0, "Si": 0, "Cl": 0, "Br": 1}, ["C6H5Br"]),
+    ]
+    
+    masses = [tc[0] for tc in test_cases]
+    min_bounds_list = [bounds_to_array(tc[1]) for tc in test_cases]
+    max_bounds_list = [bounds_to_array(tc[2]) for tc in test_cases]
+    expected_formulas_list = [tc[3] for tc in test_cases]
+    
+    # Create DataFrame with per-mass bounds
+    df = pl.DataFrame({
+        "mass_data": [
+            {
+                "mass": mass,
+                "min_bounds": min_bounds,
+                "max_bounds": max_bounds,
+            }
+            for mass, min_bounds, max_bounds in zip(masses, min_bounds_list, max_bounds_list)
+        ],
+        "row_id": list(range(len(masses)))  # Track original order
+    }, schema={
+        "mass_data": pl.Struct([
+            pl.Field("mass", pl.Float64),
+            pl.Field("min_bounds", pl.Array(pl.Int32, NUM_ELEMENTS)),
+            pl.Field("max_bounds", pl.Array(pl.Int32, NUM_ELEMENTS)),
+        ]),
+        "row_id": pl.Int32
+    })
+    
+    result_df = df.with_columns(
+        pl.col("mass_data").mass_decomposition.decompose_mass_with_bounds(
+            min_dbe=-0.5,
+            max_dbe=40.0,
+            tolerance_ppm=5.0,
+            dbe_mode="half_integer",
+        ).alias("decomposed").struct.unnest()
+    )
+    
+    # Verify schema
+    assert result_df.schema["formulas"] == pl.List(pl.Array(pl.Int32, shape=(15,)))
+    assert result_df.schema["formulas_str"] == pl.List(pl.String)
+    assert result_df.schema["errors_ppm"] == pl.List(pl.Float64)
+    
+    # Check that we got the same number of rows back in the same order
+    assert len(result_df) == len(test_cases), f"Expected {len(test_cases)} rows, got {len(result_df)}"
+    assert result_df["row_id"].to_list() == list(range(len(test_cases))), "Row order was not preserved"
+    
+    # For each row, verify that the expected formulas are present (order within formulas list may vary)
+    for i, expected_formulas_str in enumerate(expected_formulas_list):
+        output_formulas_arr = result_df.item(i, "formulas").to_list()
+        expected_formulas_arr = [formula_string_to_array(s) for s in expected_formulas_str]
+        
+        sorted_output = sorted(output_formulas_arr)
+        sorted_expected = sorted(expected_formulas_arr)
+
+        output_formulas_str_sorted = sorted([formula_array_to_string(f) for f in output_formulas_arr])
+        expected_formulas_str_sorted = sorted(expected_formulas_str)
+
+        assert sorted_expected == sorted_output, \
+            f"Row {i} (mass={masses[i]}): Expected {expected_formulas_str_sorted}, but got {output_formulas_str_sorted}"
+
+def test_clean_and_normalize_spectrum_batch_no_water():
+    """
+    Tests the clean_and_normalize_spectrum function with a batch of spectra WITHOUT water absorption.
+    This ensures that results are returned in the correct order when processing multiple spectra.
+    """
+    cleaning_test_cases = [
+        ([78.046950, 104.062600, 128.062600], "C10H20O5", [["C6H6"], ["C8H8"], ["C10H8"]]),
+        ([78.046950, 84.056172, 104.062600, 128.062600, 152.1182], "C8H14N3", [["C6H6"], ["C3H6N3"], ["C8H8"], [], ["C8H14N3"]]),
+        ([53.0385, 55.0542], "C10H25N2O2", [["C5H5"], ["C5H7"]]),
+        ([72.0804, 76.0389, 118.0859], "C5H12NO2", [["C4H10N"], ["C2H6NO2"], ["C5H11NO2"]]),
+    ]
+    
+    mz_list = [tc[0] for tc in cleaning_test_cases]
+    precursor_formulas_str = [tc[1] for tc in cleaning_test_cases]
+    expected_formulas_list = [tc[2] for tc in cleaning_test_cases]
+    
+    precursor_formulas = [formula_string_to_array(s) for s in precursor_formulas_str]
+    intensities_list = [[100.0] * len(mz) for mz in mz_list]
+    
+    df = pl.DataFrame({
+        "row_id": list(range(len(mz_list))),
+        "mz": mz_list,
+        "intensities": intensities_list,
+        "precursor_formula": precursor_formulas
+    }, schema={
+        "row_id": pl.Int32,
+        "mz": pl.List(pl.Float64),
+        "intensities": pl.List(pl.Float64),
+        "precursor_formula": pl.Array(pl.Int32, NUM_ELEMENTS)
+    }).with_columns(
+        spectrum_struct=pl.struct(["mz", "intensities", "precursor_formula"])
+    )
+    
+    result_df = df.with_columns(
+        corrected=pl.col("spectrum_struct").mass_decomposition.clean_and_normalize_spectrum(
+            raw_fragment_tolerance_ppm=5.0,
+            normalized_fragment_tolerance_ppm=5.0,
+            min_dbe=-10.0,
+            max_dbe=100.0,
+            dbe_mode="half_integer",
+            water_absorption=False
+        )
+    )
+    
+    # Check that we got the same number of rows back in the same order
+    assert len(result_df) == len(cleaning_test_cases), f"Expected {len(cleaning_test_cases)} rows, got {len(result_df)}"
+    assert result_df["row_id"].to_list() == list(range(len(cleaning_test_cases))), "Row order was not preserved"
+    
+    # Verify each spectrum
+    for i, expected_formulas_str_list in enumerate(expected_formulas_list):
+        output_struct = result_df["corrected"].to_list()[i]
+        output_formulas_arr = output_struct["formulas"]
+        output_formulas_str = output_struct["formulas_str"]
+        
+        # Check that string formulas match array formulas
+        for j, formula_arr in enumerate(output_formulas_arr):
+            assert formula_array_to_string(formula_arr) == output_formulas_str[j], \
+                f"Row {i}: Formula string does not match array for formula {j}"
+        
+        # Flatten expected formulas (remove empty lists)
+        expected_formulas_flat = [f for formulas in expected_formulas_str_list for f in formulas]
+        expected_formulas_arr = [formula_string_to_array(s) for s in expected_formulas_flat]
+        
+        assert len(output_formulas_arr) <= len(expected_formulas_arr), \
+            f"Row {i}: Expected at most {len(expected_formulas_arr)} formulas, but got {len(output_formulas_arr)}"
+        
+        # Check that all output formulas are in expected formulas
+        for formula_arr in output_formulas_arr:
+            formula_str = formula_array_to_string(formula_arr)
+            assert formula_arr in expected_formulas_arr, \
+                f"Row {i}: Unexpected formula {formula_str} in output, expected one of {expected_formulas_flat}"
+
+def test_clean_and_normalize_spectrum_batch_with_water():
+    """
+    Tests the clean_and_normalize_spectrum function with a batch of spectra WITH water absorption.
+    This ensures that results are returned in the correct order when processing multiple spectra.
+    """
+    cleaning_test_cases = [
+        ([78.046950, 104.062600, 128.062600], "C10H20O5", [["C6H6"], ["C8H8"], ["C10H8"]]),
+        ([78.046950, 84.056172, 104.062600, 168.113687, 152.1182], "C8H14N3", [["C6H6"], ["C3H6N3"], ["C8H8"], ["C8H14N3O"], ["C8H14N3"]]),
+        ([53.0385, 55.0542], "C10H25N2O2", [["C5H5"], ["C5H7"]]),
+        ([72.0804, 76.0389, 118.0859], "C5H12NO2", [["C4H10N"], ["C2H6NO2"], ["C5H11NO2"]]),
+    ]
+    
+    mz_list = [tc[0] for tc in cleaning_test_cases]
+    precursor_formulas_str = [tc[1] for tc in cleaning_test_cases]
+    expected_formulas_list = [tc[2] for tc in cleaning_test_cases]
+    
+    precursor_formulas = [formula_string_to_array(s) for s in precursor_formulas_str]
+    intensities_list = [[100.0] * len(mz) for mz in mz_list]
+    
+    df = pl.DataFrame({
+        "row_id": list(range(len(mz_list))),
+        "mz": mz_list,
+        "intensities": intensities_list,
+        "precursor_formula": precursor_formulas
+    }, schema={
+        "row_id": pl.Int32,
+        "mz": pl.List(pl.Float64),
+        "intensities": pl.List(pl.Float64),
+        "precursor_formula": pl.Array(pl.Int32, NUM_ELEMENTS)
+    }).with_columns(
+        spectrum_struct=pl.struct(["mz", "intensities", "precursor_formula"])
+    )
+    
+    result_df = df.with_columns(
+        corrected=pl.col("spectrum_struct").mass_decomposition.clean_and_normalize_spectrum(
+            raw_fragment_tolerance_ppm=5.0,
+            normalized_fragment_tolerance_ppm=5.0,
+            min_dbe=-10.0,
+            max_dbe=100.0,
+            dbe_mode="half_integer",
+            water_absorption=True
+        )
+    )
+    
+    # Check that we got the same number of rows back in the same order
+    assert len(result_df) == len(cleaning_test_cases), f"Expected {len(cleaning_test_cases)} rows, got {len(result_df)}"
+    assert result_df["row_id"].to_list() == list(range(len(cleaning_test_cases))), "Row order was not preserved"
+    
+    # Verify each spectrum
+    for i, expected_formulas_str_list in enumerate(expected_formulas_list):
+        output_struct = result_df["corrected"].to_list()[i]
+        output_formulas_arr = output_struct["formulas"]
+        output_formulas_str = output_struct["formulas_str"]
+        
+        # Check that string formulas match array formulas
+        for j, formula_arr in enumerate(output_formulas_arr):
+            assert formula_array_to_string(formula_arr) == output_formulas_str[j], \
+                f"Row {i}: Formula string does not match array for formula {j}"
+        
+        # Flatten expected formulas (remove empty lists)
+        expected_formulas_flat = [f for formulas in expected_formulas_str_list for f in formulas]
+        expected_formulas_arr = [formula_string_to_array(s) for s in expected_formulas_flat]
+        
+        assert len(output_formulas_arr) <= len(expected_formulas_arr), \
+            f"Row {i}: Expected at most {len(expected_formulas_arr)} formulas, but got {len(output_formulas_arr)}"
+        
+        # Check that all output formulas are in expected formulas
+        for formula_arr in output_formulas_arr:
+            formula_str = formula_array_to_string(formula_arr)
+            assert formula_arr in expected_formulas_arr, \
+                f"Row {i}: Unexpected formula {formula_str} in output, expected one of {expected_formulas_flat}"
 
 if __name__ == "__main__":
     test_decompose_mass(TEST_CASES[0][0], TEST_CASES[0][1], TEST_CASES[0][2], TEST_CASES[0][3], TEST_CASES[0][4])

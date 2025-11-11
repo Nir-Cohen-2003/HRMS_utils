@@ -79,7 +79,7 @@ class MassDecomposerUtils:
     def decompose_mass_with_bounds(
         self,
         tolerance_ppm: float = 5.0,
-        min_dbe: float = 0.0,
+        min_dbe: float = -0.5,
         max_dbe: float = 40.0,
         dbe_mode: str = "integer",
     ) -> pl.Expr:
