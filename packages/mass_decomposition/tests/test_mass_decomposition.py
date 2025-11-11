@@ -110,7 +110,7 @@ def test_decompose_mass(mass, tolerance_ppm, min_bounds_dict, max_bounds_dict, e
         ).alias("decomposed").struct.unnest()
     )
     # print("Result DataFrame:", result_df.schema)
-    assert result_df.schema == pl.Schema({'mass': pl.Float64, 'formulas': pl.List(pl.Array(pl.Int32, shape=(15,))), 'formulas_str': pl.List(pl.String), 'errors': pl.List(pl.Float64)})
+    assert result_df.schema == pl.Schema({'mass': pl.Float64, 'formulas': pl.List(pl.Array(pl.Int32, shape=(15,))), 'formulas_str': pl.List(pl.String), "errors_ppm": pl.List(pl.Float64)})
     
     
     output_formulas_arr = result_df.item(0, "formulas").to_list()
@@ -147,7 +147,7 @@ def test_decompose_mass_no_result():
     
     assert result_df.item(0, "formulas").to_list() == []
     assert result_df.item(0, "formulas_str").to_list() == []
-    assert result_df.item(0, "errors").to_list() == []
+    assert result_df.item(0, "errors_ppm").to_list() == []
 
 def test_decompose_mass_output_type_and_shape():
     """
@@ -167,7 +167,7 @@ def test_decompose_mass_output_type_and_shape():
     expected_fields = {
         "formulas": pl.List(pl.Array(pl.Int32, NUM_ELEMENTS)),
         "formulas_str": pl.List(pl.String),
-        "errors": pl.List(pl.Float64),
+        "errors_ppm": pl.List(pl.Float64),
     }
     
     for field in decomposed_col.dtype.fields:
@@ -280,6 +280,16 @@ CLEANING_TEST_CASES = [
 
         ]
     ),
+    (
+        [53.0385, 55.0542],
+        "C10H25N2O2",
+        5.0,
+        False,
+        [ #expected formulas for each mz
+            ["C5H5"],
+            ["C5H7"]
+        ]
+    )
 ]*2
 
 
