@@ -67,17 +67,29 @@ pub fn formula_to_string(formula: &Formula) -> String {
 }
 
 pub fn check_dbe(formula: &Formula, min_dbe: f64, max_dbe: f64, dbe_mode: &str) -> bool {
-    let h_count = formula[0];
+    
     let c_count = formula[2];
+    let si_count = formula[7];
+    
+    
+    let b_count = formula[1];
     let n_count = formula[3];
+    let p_count = formula[8];
+    let as_count = formula[12];
+    
+    let h_count = formula[0];
+    let na_count = formula[6];
+    let k_count = formula[11];
     let f_count = formula[5];
     let cl_count = formula[10];
     let br_count = formula[13];
     let i_count = formula[14];
-    let p_count = formula[8];
-
-    let dbe = (c_count as f64) - (h_count as f64 / 2.0) + (n_count as f64 / 2.0) + (p_count as f64 / 2.0) - 
-              ((f_count + cl_count + br_count + i_count) as f64 / 2.0) + 1.0;
+    
+    let dbe = (
+        (c_count+ si_count) as f64) + 
+        ((n_count + p_count+ b_count+ as_count) as f64 / 2.0) - 
+        ((h_count+f_count + cl_count + br_count + i_count + na_count + k_count) as f64 / 2.0) 
+        + 1.0;
 
     if dbe < min_dbe || dbe > max_dbe {
         return false;
