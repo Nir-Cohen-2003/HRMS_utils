@@ -1,11 +1,11 @@
 use crate::common::{Formula, NUM_ELEMENTS, ATOMIC_MASSES};
-use std::sync::OnceLock;
+use std::sync::{OnceLock, Arc};
 
 #[derive(Debug, Clone)]
 pub struct PrecomputedDecomposer {
     pub element_mask: [bool; NUM_ELEMENTS],
     pub weights_data: Vec<(usize, f64, i64)>, // (original_index, mass, integer_mass)
-    pub ert: Vec<Vec<i64>>,
+    pub ert: Arc<Vec<Vec<i64>>>,  // Wrap in Arc
     pub precision: f64,
     pub min_error: f64,
     pub max_error: f64,
@@ -48,7 +48,7 @@ fn build_precomputed(element_mask: &[bool; NUM_ELEMENTS]) -> PrecomputedDecompos
         return PrecomputedDecomposer {
             element_mask: *element_mask,
             weights_data: Vec::new(),
-            ert: Vec::new(),
+            ert: Arc::new(Vec::new()),
             precision: 1.0 / 80000.0,
             min_error: 0.0,
             max_error: 0.0,
@@ -138,7 +138,7 @@ fn build_precomputed(element_mask: &[bool; NUM_ELEMENTS]) -> PrecomputedDecompos
     PrecomputedDecomposer {
         element_mask: *element_mask,
         weights_data: weights,
-        ert,
+        ert: Arc::new(ert),  // Wrap in Arc
         precision,
         min_error,
         max_error,

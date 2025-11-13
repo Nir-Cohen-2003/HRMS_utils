@@ -1,5 +1,6 @@
 use crate::common::{Formula, DecompositionParams, NUM_ELEMENTS, ATOMIC_MASSES, check_dbe, MIN_MASS_FOR_TOLERANCE, SpectrumDecompositionParams, CleanedAndNormalizedSpectrumResult, CorrectedFragment};
 use crate::precomputed::{find_best_precomputed, PrecomputedDecomposer};
+use std::sync::Arc;
 
 #[derive(Debug, Clone)]
 struct Weight {
@@ -12,7 +13,7 @@ struct Weight {
 #[derive(Clone)]
 pub struct MassDecomposer {
     weights: Vec<Weight>,
-    ert: Vec<Vec<i64>>,
+    ert: Arc<Vec<Vec<i64>>>,  // Change to Arc
     precision: f64,
     min_error: f64,
     max_error: f64,
@@ -26,7 +27,7 @@ impl MassDecomposer {
     pub fn new(min_bounds: Formula, max_bounds: Formula) -> Self {
         let mut decomposer = MassDecomposer {
             weights: Vec::new(),
-            ert: Vec::new(),
+            ert: Arc::new(Vec::new()),
             precision: 1.0 / 80000.0,
             min_error: 0.0,
             max_error: 0.0,
@@ -48,7 +49,7 @@ impl MassDecomposer {
         self.precision = precomp.precision;
         self.min_error = precomp.min_error;
         self.max_error = precomp.max_error;
-        self.ert = precomp.ert.clone();
+        self.ert = Arc::clone(&precomp.ert);  // Just clone the Arc, not the data
         
         // Build weights from precomputed data with actual bounds
         // IMPORTANT: We must include ALL elements from the precomputed decomposer,
@@ -57,12 +58,12 @@ impl MassDecomposer {
         for &(original_index, _mass, integer_mass) in &precomp.weights_data {
             // Always add the weight if it's in the precomputed decomposer
             // The bounds checking will filter out invalid formulas later
-            self.weights.push(Weight {
-                original_index,
-                integer_mass,
-                min_count: self.min_bounds[original_index],
-                max_count: self.max_bounds[original_index],
-            });
+                self.weights.push(Weight {
+                    original_index,
+                    integer_mass,
+                    min_count: self.min_bounds[original_index],
+                    max_count: self.max_bounds[original_index],
+                });
         }
         
         self.integer_weight_masses = self.weights.iter().map(|w| w.integer_mass).collect();
@@ -83,9 +84,10 @@ impl MassDecomposer {
         if m < 0 {
             return false;
         }
+        // Access through Arc - no performance penalty
         self.ert[remainder as usize][i] <= m
     }
-
+    
     fn integer_decompose(&self, mass: i64, results: &mut Vec<(Formula, f64)>, target_mass: f64, tolerance_da: f64, params: &DecompositionParams) {
         let k = self.weights.len();
         if k == 0 {
