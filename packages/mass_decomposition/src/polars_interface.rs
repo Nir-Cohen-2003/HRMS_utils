@@ -18,8 +18,8 @@ fn mass_decomposition_output(_fields: &[Field]) -> PolarsResult<Field> {
 fn mass_decomposition(inputs: &[Series], kwargs: DecompositionKwargs) -> PolarsResult<Series> {
     let masses = inputs[0].f64()?;
     let len = masses.len();
-    let min_bounds: [i32; 15] = kwargs.min_bounds.unwrap();
-    let max_bounds: [i32; 15] = kwargs.max_bounds.unwrap();
+    let min_bounds: [i32; NUM_ELEMENTS] = kwargs.min_bounds.unwrap();
+    let max_bounds: [i32; NUM_ELEMENTS] = kwargs.max_bounds.unwrap();
 
     let decomposer = MassDecomposer::new(min_bounds, max_bounds);
     
@@ -123,8 +123,8 @@ fn mass_decomposition_with_bounds(inputs: &[Series], kwargs: DecompositionKwargs
                 .cont_slice()
                 .expect("max_bounds should be contiguous slice");
 
-            let mut min_bounds: [i32; 15] = [0; NUM_ELEMENTS];
-            let mut max_bounds: [i32; 15] = [0; NUM_ELEMENTS];
+            let mut min_bounds: [i32; NUM_ELEMENTS] = [0; NUM_ELEMENTS];
+            let mut max_bounds: [i32; NUM_ELEMENTS] = [0; NUM_ELEMENTS];
             min_bounds.copy_from_slice(min_bounds_values);
             max_bounds.copy_from_slice(max_bounds_values);
 
@@ -228,9 +228,9 @@ fn spectrum_decomposition_normalized(inputs: &[Series], kwargs: CleanAndNormaliz
             
             let precursor_sl= precursor_arr.i32().expect("precursor_formula should be i32 array").downcast_as_array().values();
             
-            let mut precursor_formula: [i32; 15] = [0; NUM_ELEMENTS];
+            let mut precursor_formula: [i32; NUM_ELEMENTS] = [0; NUM_ELEMENTS];
             precursor_formula.copy_from_slice(precursor_sl);
-            let precursor_formula: [i32; 15] = precursor_formula;
+            let precursor_formula: [i32; NUM_ELEMENTS] = precursor_formula;
 
             let params = SpectrumDecompositionParams {
                 tolerance_ppm: kwargs.raw_fragment_tolerance_ppm,

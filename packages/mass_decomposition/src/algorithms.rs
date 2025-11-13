@@ -27,7 +27,7 @@ impl MassDecomposer {
         let mut decomposer = MassDecomposer {
             weights: Vec::new(),
             ert: Vec::new(),
-            precision: 1.0 / 5963.337687,  // Fixed precision for mass spectrometry
+            precision: 1.0 / 80000.0,  // Fixed precision for mass spectrometry
             min_error: 0.0,
             max_error: 0.0,
             is_initialized: false,
@@ -237,6 +237,7 @@ impl MassDecomposer {
                         temp_counts[0] = 0;
                     }
 
+                    // Check bounds explicitly against min/max_bounds (not just weights)
                     let mut valid_formula = true;
                     for j in 0..k {
                         if temp_counts[j] < self.weights[j].min_count || temp_counts[j] > self.weights[j].max_count {
@@ -251,12 +252,28 @@ impl MassDecomposer {
                             res[self.weights[j].original_index] = temp_counts[j];
                         }
                         
-                        // Perform validation here instead of in decompose
-                        let formula_mass: f64 = res.iter().enumerate().map(|(i, &count)| ATOMIC_MASSES[i] * count as f64).sum();
-                        let error = formula_mass - target_mass;
-                        if error.abs() <= tolerance_da && check_dbe(&res, params.min_dbe, params.max_dbe, &params.dbe_mode) {
-                            let error_ppm = (error / formula_mass) * 1e6;
-                            results.push((res, error_ppm));
+                        // Double-check bounds against original min/max_bounds
+                        for elem_idx in 0..NUM_ELEMENTS {
+                            if res[elem_idx] < self.min_bounds[elem_idx] || res[elem_idx] > self.max_bounds[elem_idx] {
+                                valid_formula = false;
+                                break;
+                            }
+                        }
+
+                        if valid_formula {
+                            // Check DBE before calculating mass
+                            if !check_dbe(&res, params.min_dbe, params.max_dbe, &params.dbe_mode) {
+                                valid_formula = false;
+                            }
+                        }
+
+                        if valid_formula {
+                            let formula_mass: f64 = res.iter().enumerate().map(|(idx, &count)| ATOMIC_MASSES[idx] * count as f64).sum();
+                            let error = formula_mass - target_mass;
+                            if error.abs() <= tolerance_da {
+                                let error_ppm = (error / formula_mass) * 1e6;
+                                results.push((res, error_ppm));
+                            }
                         }
                     }
                     i += 1;
@@ -348,7 +365,7 @@ impl SpectrumDecomposer {
         let mut max_bounds = precursor_formula.clone();
         if params.water_absorption {
             max_bounds[0] += 2; // H
-            max_bounds[4] += 1; // O
+            max_bounds[3] += 1; // O 
         }
         let max_bounds = max_bounds;
         let min_bounds = [0; NUM_ELEMENTS];

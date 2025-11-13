@@ -6,10 +6,10 @@ import sys
 import argparse
 
 
-########################## H,  B, C,  N,  O,  F, Na,Si, P, S, Cl, K, As,Br, I
-MIN_FORMULA: list[int] = [ 0,  0, 0,  0,  0,  0, 0, 0,  0, 0, 0,  0, 0, 0,  0]
-MAX_FORMULA: list[int] = [100, 1, 60, 30, 30, 30, 0, 5, 10, 5, 10, 0, 1, 2,  3]
-NUM_ELEMENTS = 15
+########################## H,C,  N,  O,  F, Na, P, S, Cl, K, Br, I
+MIN_FORMULA: list[int] = [ 0, 0,  0,  0,  0, 0,  0, 0, 0,  0,0,  0]
+MAX_FORMULA: list[int] = [100,60, 30, 30, 30, 0, 10, 5, 10, 0, 2,  3]
+NUM_ELEMENTS = 12
 
 def create_mock_nist(size:int = 10000) -> pl.DataFrame:
     """
@@ -17,7 +17,7 @@ def create_mock_nist(size:int = 10000) -> pl.DataFrame:
     The DataFrame will have size rows and the following columns:
     - NIST_ID: unique identifier
     - PrecursorMZ: precursor mass
-    - precursor_formula: precursor formula (length 15)
+    - precursor_formula: precursor formula (length 12)
     - mz: list of fragment m/z values (computed from the fragment formulas below)
     """
     np.random.seed(42)  # For reproducibility
@@ -25,32 +25,29 @@ def create_mock_nist(size:int = 10000) -> pl.DataFrame:
 
     element_masses = np.array([
         1.007825,    # H
-        11.009305,   # B
         12.0000,     # C
         14.003074,   # N
         15.994915,   # O
         18.998403,   # F
         22.989770,   # Na
-        27.9769265,  # Si
         30.973762,   # P
         31.972071,   # S
         34.96885271, # Cl
         38.963707,   # K
-        74.921596,   # As
         78.918338,   # Br
         126.904468,  # I
     ], dtype=np.float64)
 
     # Precursor formula (example: C6H13NO2 replicated 4× in this ordering: H,B,C,N,O,...)
     formula_array = np.array([
-        13, 0, 6, 1, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+        13, 6, 1, 2, 0, 0, 0, 0, 0, 0, 0, 0
     ], dtype=np.int32) * 4
 
     # Supplied fragment formulas (use as-is)
     fragments = [
-        np.array([4, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], dtype=np.int32) * 2,
-        np.array([11, 0, 6, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], dtype=np.int32),
-        np.array([11, 0, 6, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], dtype=np.int32) * 2,
+        np.array([4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], dtype=np.int32) * 2,
+        np.array([11, 6, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0], dtype=np.int32),
+        np.array([11, 6, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0], dtype=np.int32) * 2,
     ]
 
     precursor_mass = float(np.sum(formula_array * element_masses))
@@ -73,7 +70,7 @@ def create_mock_nist(size:int = 10000) -> pl.DataFrame:
     
     return df.cast({
         "mz": pl.List(pl.Float64),
-        "precursor_formula": pl.Array(pl.Int32, 15),
+        "precursor_formula": pl.Array(pl.Int32, 12),
     })
 
 def test_roundtrip_decomposition(size: int = 10000):
@@ -114,40 +111,34 @@ def _min_bound(formula_arr:np.ndarray):
     min_formula = np.array(MIN_FORMULA, dtype=np.int32)
     result_arr = np.zeros((formula_arr.shape[0], NUM_ELEMENTS), dtype=np.int32)
     result_arr[:, 0] = min_formula[0]  # H
-    result_arr[:, 1] = np.where(formula_arr[:, 1]>0, 1, 0)  # B: B if B>0, else 0
-    result_arr[:, 2] = np.maximum(0,formula_arr[:, 2] - 1)  # C: C-1, clipped to [0, MAX]
-    result_arr[:, 3] = np.where(formula_arr[:, 3] > 0, 1, 0)  # N: N if N>0, else 0
-    result_arr[:, 4] = min_formula[4]  # O
-    result_arr[:, 5] = min_formula[5]  # F
-    result_arr[:, 6] = min_formula[6]  # Na
-    result_arr[:, 7] = min_formula[7]  # Si
-    result_arr[:, 8] = min_formula[8]  # P
-    result_arr[:, 9] = np.where(formula_arr[:, 9] > 0, 1, 0)
-    result_arr[:, 10] = formula_arr[:, 10]  # Cl: exact
-    result_arr[:, 11] = min_formula[11]  # K
-    result_arr[:, 12] = min_formula[12]  # As
-    result_arr[:, 13] = formula_arr[:, 13]  # Br: exact
-    result_arr[:, 14] = min_formula[14]  # I
+    result_arr[:, 1] = np.maximum(0,formula_arr[:, 1] - 1)  # C: C-1, clipped to [0, MAX]
+    result_arr[:, 2] = np.where(formula_arr[:, 1] > 0, 1, 0)  # N: N if N>0, else 0
+    result_arr[:, 3] = min_formula[3]  # O
+    result_arr[:, 4] = min_formula[4]  # F
+    result_arr[:, 5] = min_formula[5]  # Na
+    result_arr[:, 6] = min_formula[6]  # P
+    result_arr[:, 7] = np.where(formula_arr[:, 7] > 0, 1, 0)
+    result_arr[:, 8] = formula_arr[:, 8]  # Cl: exact
+    result_arr[:, 9] = min_formula[9]  # K
+    result_arr[:, 10] = formula_arr[:, 10]  # Br: exact
+    result_arr[:, 11] = min_formula[11]  # I
     return result_arr
 
 def _max_bound(formula_arr:np.ndarray):
     max_formula = np.array(MAX_FORMULA, dtype=np.int32)
     result_arr = np.zeros((formula_arr.shape[0], NUM_ELEMENTS), dtype=np.int32)
     result_arr[:, 0] = max_formula[0]  # H
-    result_arr[:, 1] = np.maximum(0,formula_arr[:, 1])  # B
-    result_arr[:, 2] = np.maximum(0,formula_arr[:, 2] + 1)  # C: C+1, clipped to [0, MAX]
-    result_arr[:, 3] = np.where(formula_arr[:, 3] > 0, max_formula[3], 0)  # N: N if N>0, else 0
-    result_arr[:, 4] = max_formula[4]  # O
-    result_arr[:, 5] = max_formula[5]  # F
-    result_arr[:, 6] = max_formula[6]  # Na
-    result_arr[:, 7] = max_formula[7]  # Si
-    result_arr[:, 8] = max_formula[8]  # P
-    result_arr[:, 9] = np.where(formula_arr[:, 9] > 0, max_formula[9], 0)  # S: 0 if S==0 else MAX, evaluated elementwise
-    result_arr[:, 10] = formula_arr[:, 10]  # Cl: exact
-    result_arr[:, 11] = max_formula[11]  # K
-    result_arr[:, 12] = max_formula[12]  # As
-    result_arr[:, 13] = formula_arr[:, 13]  # Br: exact
-    result_arr[:, 14] = max_formula[14]  # I
+    result_arr[:, 1] = np.maximum(0,formula_arr[:, 1] + 1)  # C: C+1, clipped to [0, MAX]
+    result_arr[:, 2] = np.where(formula_arr[:, 2] > 0, max_formula[3], 0)  # N: N if N>0, else 0
+    result_arr[:, 3] = max_formula[3]  # O
+    result_arr[:, 4] = max_formula[4]  # F
+    result_arr[:, 5] = max_formula[5]  # Na
+    result_arr[:, 6] = max_formula[6]  # P
+    result_arr[:, 7] = np.where(formula_arr[:, 7] > 0, max_formula[9], 0)  # S: 0 if S==0 else MAX, evaluated elementwise
+    result_arr[:, 8] = formula_arr[:, 8]  # Cl: exact
+    result_arr[:, 9] = max_formula[9]  # K
+    result_arr[:, 10] = formula_arr[:, 10]  # Br: exact
+    result_arr[:, 11] = max_formula[11]  # I
     return result_arr
 
 def create_isotopic_bounds(df:pl.DataFrame, formula_col: str = "precursor_formula") -> pl.DataFrame:

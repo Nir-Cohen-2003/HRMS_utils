@@ -43,7 +43,7 @@ testing = {features = ["testing"], solve-group = "testing"}
 
 [feature.testing.tasks]
 test_all = {cmd = ["pytest", "-vv", "tests/"] ,env = { POLARS_VERBOSE= "1" }}
-test_simple= {cmd = "python tests/test_mass_decomposition.py", env ={ POLARS_VERBOSE= "1" }}
+# test_simple= {cmd = "python tests/test_mass_decomposition.py", env ={ POLARS_VERBOSE= "1" }}
 benchmark = {cmd = "python benchmarks/benchmark_spectrum_decomposition.py", env = { POLARS_VERBOSE= "1" }}
 [feature.testing.dependencies]
 polars = ">=1.35.0,<2"
