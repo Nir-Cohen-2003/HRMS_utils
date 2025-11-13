@@ -19,7 +19,7 @@ const COMMON_ELEMENT_SETS: &[([bool; NUM_ELEMENTS], &str)] = &[
     ([true, true, true, true, true, false, true, true, false, false, true, false], "CHNOFPSBr"),
     ([true, true, true, true, true, false, true, true, true, false, true, false], "CHNOFPSClBr"),
     // Full set - all elements
-    ([true; NUM_ELEMENTS], "ALL"),
+    ([true; NUM_ELEMENTS], "ALL"), //NEVER REMOVE THIS LINE
 ];
 
 static PRECOMPUTED_CACHE: OnceLock<Vec<PrecomputedDecomposer>> = OnceLock::new();

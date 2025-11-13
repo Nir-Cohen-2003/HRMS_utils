@@ -37,14 +37,10 @@ impl MassDecomposer {
             integer_weight_masses: Vec::new(),
         };
         
-        // Try to use precomputed data
-        if let Some(precomp) = find_best_precomputed(&max_bounds) {
-            decomposer.load_from_precomputed(precomp);
-        } else {
-            // Fall back to runtime computation
-            decomposer.init_money_changing();
-            decomposer.initialize();
-        }
+        // Always use precomputed data (guaranteed to find at least "ALL" preset)
+        let precomp = find_best_precomputed(&max_bounds)
+            .expect("Precomputed cache must contain at least the 'ALL' preset");
+        decomposer.load_from_precomputed(precomp);
         
         decomposer
     }
@@ -73,135 +69,6 @@ impl MassDecomposer {
         
         self.integer_weight_masses = self.weights.iter().map(|w| w.integer_mass).collect();
         self.is_initialized = true;
-    }
-
-    fn initialize(&mut self) {
-        if self.precision == 0.0 {
-            return;
-        }
-        self.discretize_masses();
-        self.divide_by_gcd();
-        self.integer_weight_masses = self.weights.iter().map(|w| w.integer_mass).collect();
-        self.calc_ert();
-        self.compute_errors();
-        self.is_initialized = true;
-    }
-
-    fn init_money_changing(&mut self) {
-        self.weights.clear();
-        for i in 0..NUM_ELEMENTS {
-            if self.max_bounds[i] > 0 {
-                self.weights.push(Weight {
-                    original_index: i,
-                    mass: ATOMIC_MASSES[i],
-                    integer_mass: 0,
-                    min_count: self.min_bounds[i],
-                    max_count: self.max_bounds[i],
-                });
-            }
-        }
-        self.weights.sort_by(|a, b| a.mass.partial_cmp(&b.mass).unwrap());
-    }
-
-    fn gcd(u: i64, v: i64) -> i64 {
-        let mut u = u;
-        let mut v = v;
-        while v != 0 {
-            let r = u % v;
-            u = v;
-            v = r;
-        }
-        u
-    }
-
-    fn discretize_masses(&mut self) {
-        for weight in &mut self.weights {
-            weight.integer_mass = (weight.mass / self.precision) as i64;
-        }
-    }
-
-    fn divide_by_gcd(&mut self) {
-        if self.weights.len() < 2 {
-            return;
-        }
-        let mut d = self.weights[0].integer_mass;
-        if self.weights.len() > 1 {
-            d = Self::gcd(self.weights[0].integer_mass, self.weights[1].integer_mass);
-            for i in 2..self.weights.len() {
-                d = Self::gcd(d, self.weights[i].integer_mass);
-                if d == 1 {
-                    break;
-                }
-            }
-        }
-        if d > 1 {
-            self.precision *= d as f64;
-            for weight in &mut self.weights {
-                weight.integer_mass /= d;
-            }
-        }
-    }
-
-    fn calc_ert(&mut self) {
-        if self.weights.is_empty() {
-            return;
-        }
-        let first_long_val = self.weights[0].integer_mass;
-        if first_long_val <= 0 {
-            // This should not happen in mass spectrometry data
-            return;
-        }
-
-        self.ert = vec![vec![0; self.weights.len()]; first_long_val as usize];
-        self.ert[0][0] = 0;
-        for i in 1..first_long_val as usize {
-            self.ert[i][0] = i64::MAX;
-        }
-
-        for j in 1..self.weights.len() {
-            self.ert[0][j] = 0;
-            let d = Self::gcd(first_long_val, self.weights[j].integer_mass);
-            for p in 0..d {
-                let mut n = i64::MAX;
-                for i in (p..first_long_val).step_by(d as usize) {
-                    if self.ert[i as usize][j - 1] < n {
-                        n = self.ert[i as usize][j - 1];
-                    }
-                }
-
-                if n == i64::MAX {
-                    for i in (p..first_long_val).step_by(d as usize) {
-                        self.ert[i as usize][j] = i64::MAX;
-                    }
-                } else {
-                    for _ in 0..first_long_val / d {
-                        n += self.weights[j].integer_mass;
-                        let r = (n % first_long_val) as usize;
-                        if self.ert[r][j - 1] < n {
-                            n = self.ert[r][j - 1];
-                        }
-                        self.ert[r][j] = n;
-                    }
-                }
-            }
-        }
-    }
-    
-    fn compute_errors(&mut self) {
-        self.min_error = 0.0;
-        self.max_error = 0.0;
-        for weight in &self.weights {
-            if weight.mass == 0.0 {
-                continue;
-            }
-            let error = (self.precision * weight.integer_mass as f64 - weight.mass) / weight.mass;
-            if error < self.min_error {
-                self.min_error = error;
-            }
-            if error > self.max_error {
-                self.max_error = error;
-            }
-        }
     }
 
     fn integer_bound(&self, mass_from: f64, mass_to: f64) -> (i64, i64) {
