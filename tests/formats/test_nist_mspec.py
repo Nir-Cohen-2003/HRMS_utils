@@ -19,7 +19,7 @@ def run_mspec_reader_profile(msp_file_path: Path):
         spectra_df = read_MSPEC_file(
             msp_file_path,
             raw_fragment_tolerance_ppm=10.0,
-            normalized_fragment_tolerance_ppm=10.0,
+            normalized_fragment_tolerance_ppm=5.0,
             molecular_ion_tolerance_ppm=5.0
         )
         is_empty = spectra_df.is_empty()

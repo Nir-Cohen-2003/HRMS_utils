@@ -27,7 +27,6 @@ class ElementInfo(NamedTuple):
 # Ordered by monoisotopic mass (lowest to highest)
 ELEMENTS: Tuple[ElementInfo, ...] = (
     ElementInfo('H',   1.007825,    r'H(\d+|[A-Z]|$){1}',    '1H',   0.0, None),
-    ElementInfo('B',  11.009305,    r'B(\d+|[A-Z]|$){1}',   '11B',   0.0, None),
     ElementInfo('C',  12.000000,    r'C(\d+|[A-Z]|$){1}',   '12C',   0.0,
         IsotopicDistribution(
             mass_differences=(1.003355,), 
@@ -45,7 +44,6 @@ ELEMENTS: Tuple[ElementInfo, ...] = (
     ElementInfo('O',  15.994915,    r'O(\d+|[A-Z]|$){1}',   '16O',   0.0, None),
     ElementInfo('F',  18.998403,    r'F(\d+|[A-Z]|$){1}',   '19F',   0.0, None),
     ElementInfo('Na', 22.989770,    r'Na(\d+|[A-Z]|$){1}',  '23Na',  0.0, None),
-    ElementInfo('Si', 27.9769265,   r'Si(\d+|[A-Z]|$){1}',  '28Si',  0.0, None),
     ElementInfo('P',  30.973762,    r'P(\d+|[A-Z]|$){1}',   '31P',   0.0, None),
     ElementInfo('S',  31.972071,    r'S(\d+|[A-Z]|$){1}',   '32S',   0.0,
         IsotopicDistribution(
@@ -62,7 +60,6 @@ ELEMENTS: Tuple[ElementInfo, ...] = (
         )
     ),
     ElementInfo('K',  38.963707,    r'K(\d+|[A-Z]|$){1}',   '39K',   1.99820, None),
-    ElementInfo('As', 74.921596,    r'As(\d+|[A-Z]|$){1}',  '75As',  0.0, None),
     ElementInfo('Br', 78.918338,    r'Br(\d+|[A-Z]|$){1}',  '79Br',  1.99795,
         IsotopicDistribution(
             mass_differences=(1.99795,), 
@@ -83,18 +80,15 @@ ELEMENT_ISOTOPIC_DISTRIBUTIONS: Tuple[Optional[IsotopicDistribution], ...] = tup
 DEFAULT_MIN_BOUND = {symbol: 0 for symbol in ELEMENT_SYMBOLS}
 DEFAULT_MAX_BOUND = {
     'H': 100,
-    'B': 0,
     'C': 50,
     'N': 20,
     'O': 20,
     'F': 40,
     'Na': 0,
-    'Si': 0,
     'P': 5,
     'S': 5,
     'Cl': 10,
     'K': 0,
-    'As': 0,
     'Br': 10,
     'I': 5,
 }
