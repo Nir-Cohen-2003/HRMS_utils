@@ -35,12 +35,79 @@ fn gcd(u: i64, v: i64) -> i64 {
     u
 }
 
+/// Finds the optimal blowup factor (1/precision) to minimize relative error.
+/// Based on the algorithm from Böcker & Lipták's mass decomposition paper.
+/// Generates candidates until they become too sparse to improve the ratio.
+fn find_optimal_blowup(atomic_masses: &[f64]) -> f64 {
+    let mut candidates = Vec::new();
+    
+    // Generate candidates for each mass until the ratio stops improving
+    // We'll generate candidates up to a point where they're very sparse
+    let max_k = 100000; // Just to prevent infinite loops in edge cases
+    
+    for &mass in atomic_masses {
+        if mass <= 0.0 {
+            continue;
+        }
+        
+        for k in 1..=max_k {
+            let b_val = k as f64 / mass;
+            candidates.push(b_val);
+        }
+    }
+    
+    // Remove duplicates and sort
+    candidates.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    candidates.dedup_by(|a, b| (*a - *b).abs() < 1e-10);
+    
+    // Evaluate each candidate to find the one minimizing Delta(b)/b
+    let mut best_b = 1.0 / 100000.0; // fallback default
+    let mut min_ratio = f64::INFINITY;
+    
+    for b in candidates {
+        if b <= 0.0 {
+            continue;
+        }
+        
+        // Calculate max relative error (Delta) for this b across all elements
+        let mut current_max_error = 0.0;
+        
+        for &mass in atomic_masses {
+            if mass <= 0.0 {
+                continue;
+            }
+            
+            let val = b * mass;
+            // Add small epsilon for float stability at integer boundaries
+            let floor_val = (val + 1e-9).floor();
+            
+            let error = b - (floor_val / mass);
+            if error > current_max_error {
+                current_max_error = error;
+            }
+        }
+        
+        // Calculate ratio Delta(b) / b
+        let ratio = current_max_error / b;
+        
+        if ratio < min_ratio {
+            min_ratio = ratio;
+            best_b = b;
+        }
+    }
+    
+    best_b
+}
+
 fn build_precomputed(element_mask: &[bool; NUM_ELEMENTS]) -> PrecomputedDecomposer {
     // Build weights for this element set
     let mut weights: Vec<(usize, f64, i64)> = Vec::new();
+    let mut vocabulary_masses = Vec::new();
+    
     for i in 0..NUM_ELEMENTS {
         if element_mask[i] {
             weights.push((i, ATOMIC_MASSES[i], 0));
+            vocabulary_masses.push(ATOMIC_MASSES[i]);
         }
     }
     
@@ -57,13 +124,16 @@ fn build_precomputed(element_mask: &[bool; NUM_ELEMENTS]) -> PrecomputedDecompos
     
     weights.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap());
     
+    // Calculate optimal blowup factor (1/precision) based on vocabulary
+    let optimal_blowup = find_optimal_blowup(&vocabulary_masses);
+    let mut precision = 1.0 / optimal_blowup;
+    
     // Discretize masses
-    let mut precision = 1.0 / 80000.0;
     for w in &mut weights {
         w.2 = (w.1 / precision) as i64;
     }
     
-    // Divide by GCD
+    // Divide by GCD to further optimize
     if weights.len() >= 2 {
         let mut d = gcd(weights[0].2, weights[1].2);
         for i in 2..weights.len() {
@@ -138,7 +208,7 @@ fn build_precomputed(element_mask: &[bool; NUM_ELEMENTS]) -> PrecomputedDecompos
     PrecomputedDecomposer {
         element_mask: *element_mask,
         weights_data: weights,
-        ert: Arc::new(ert),  // Wrap in Arc
+        ert: Arc::new(ert),
         precision,
         min_error,
         max_error,

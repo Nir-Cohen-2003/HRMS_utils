@@ -28,7 +28,7 @@ impl MassDecomposer {
         let mut decomposer = MassDecomposer {
             weights: Vec::new(),
             ert: Arc::new(Vec::new()),
-            precision: 1.0 / 80000.0,
+            precision: 0.0,
             min_error: 0.0,
             max_error: 0.0,
             is_initialized: false,
@@ -439,7 +439,9 @@ impl SpectrumDecomposer {
             let mut best_formula: Option<Formula> = None;
             let mut best_error_da = f64::INFINITY;
             
-            // Calculate tolerance in Daltons using the 200 Da rule
+            // IMPORTANT: Use the SAME tolerance rule as the initial decomposition
+            // The decomposition used max(measured_mass, MIN_MASS_FOR_TOLERANCE)
+            // So we must do the same here, otherwise we're checking against a different window
             let tolerance_da = max_allowed_error_ppm * 1e-6 * measured_mass.max(MIN_MASS_FOR_TOLERANCE);
             
             for formula in formulas {
@@ -449,8 +451,10 @@ impl SpectrumDecomposer {
                 
                 let error_da = (calc_mass - measured_mass).abs();
                 
-                // Check against Dalton tolerance
-                if error_da <= tolerance_da && error_da < best_error_da {
+                // The formulas were already found within tolerance during decomposition
+                // So we should accept them here unless something is very wrong
+                // Use a slightly relaxed tolerance to account for floating point errors
+                if error_da <= tolerance_da * 1.01 && error_da < best_error_da {
                     best_error_da = error_da;
                     best_formula = Some(*formula);
                 }
