@@ -30,11 +30,13 @@ fn mass_decomposition(inputs: &[Series], kwargs: DecompositionKwargs) -> PolarsR
 
     let decomposer = Arc::new(MassDecomposer::new(min_bounds, max_bounds));
     
+    let allow_half_integer = kwargs.dbe_mode == "half_integer";
+    
     let params = Arc::new(DecompositionParams {
         tolerance_ppm: kwargs.tolerance_ppm,
         min_dbe: kwargs.min_dbe,
         max_dbe: kwargs.max_dbe,
-        dbe_mode: kwargs.dbe_mode.clone(),
+        allow_half_integer,
     });
 
     // Get contiguous slice and process in parallel
@@ -108,6 +110,8 @@ fn mass_decomposition_with_bounds(inputs: &[Series], kwargs: DecompositionKwargs
     let min_bounds_arrays: &ChunkedArray<FixedSizeListType> = min_bounds_chunked.array()?;
     let max_bounds_arrays: &ChunkedArray<FixedSizeListType> = max_bounds_chunked.array()?;
 
+    let allow_half_integer = kwargs.dbe_mode == "half_integer";
+
     // Extract all data in parallel
     let bounds_data: Vec<_> = (0..num_rows)
         .into_par_iter()
@@ -151,7 +155,7 @@ fn mass_decomposition_with_bounds(inputs: &[Series], kwargs: DecompositionKwargs
         tolerance_ppm: kwargs.tolerance_ppm,
         min_dbe: kwargs.min_dbe,
         max_dbe: kwargs.max_dbe,
-        dbe_mode: kwargs.dbe_mode.clone(),
+        allow_half_integer,
     });
     
     // Process each unique bounds set in parallel
@@ -237,7 +241,6 @@ fn spectrum_decomposition_normalized(inputs: &[Series], kwargs: CleanAndNormaliz
     let indexed_results: Vec<(usize, CleanedAndNormalizedSpectrumResult)> = (0..len)
         .into_par_iter()
         .filter_map(|idx| {
-            use polars_arrow::array::Array;
             
             // Get Arrow arrays directly
             let masses_list = masses_ca.get(idx)?;
@@ -271,11 +274,13 @@ fn spectrum_decomposition_normalized(inputs: &[Series], kwargs: CleanAndNormaliz
             }
             let min_bounds = [0; NUM_ELEMENTS];
             
+            let allow_half_integer = kwargs.dbe_mode == "half_integer";
+            
             let params = SpectrumDecompositionParams {
                 tolerance_ppm: kwargs.raw_fragment_tolerance_ppm,
                 min_dbe: kwargs.min_dbe,
                 max_dbe: kwargs.max_dbe,
-                dbe_mode: kwargs.dbe_mode.clone(),
+                allow_half_integer,
                 water_absorption: kwargs.water_absorption,
             };
 

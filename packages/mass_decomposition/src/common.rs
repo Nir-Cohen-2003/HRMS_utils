@@ -12,7 +12,7 @@ pub const ATOMIC_MASSES: [f64; NUM_ELEMENTS] = [
     38.963707,78.918338, 126.904468
 ];
 
-pub fn check_dbe(formula: &Formula, min_dbe: f64, max_dbe: f64, dbe_mode: &str) -> bool {
+pub fn check_dbe(formula: &Formula, min_dbe: f64, max_dbe: f64, allow_half_integer: bool) -> bool {
     
     let c_count = formula[1];
     
@@ -38,11 +38,10 @@ pub fn check_dbe(formula: &Formula, min_dbe: f64, max_dbe: f64, dbe_mode: &str) 
         return false;
     }
 
-    match dbe_mode {
-        "integer" => dbe.fract() == 0.0,
-        "half_integer" => (dbe * 2.0).fract() == 0.0,
-        "any" => true,
-        _ => false,
+    if allow_half_integer {
+        (dbe * 2.0).fract() == 0.0
+    } else {
+        dbe.fract() == 0.0
     }
 }
 
@@ -55,7 +54,7 @@ pub struct DecompositionParams {
     pub tolerance_ppm: f64,
     pub min_dbe: f64,
     pub max_dbe: f64,
-    pub dbe_mode: String,
+    pub allow_half_integer: bool,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -73,7 +72,7 @@ pub struct SpectrumDecompositionParams {
     pub tolerance_ppm: f64,
     pub min_dbe: f64,
     pub max_dbe: f64,
-    pub dbe_mode: String,
+    pub allow_half_integer: bool,
     pub water_absorption: bool,
 }
 

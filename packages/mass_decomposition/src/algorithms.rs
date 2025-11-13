@@ -155,7 +155,7 @@ impl MassDecomposer {
 
                     if valid_formula {
                         // Check DBE
-                        if !check_dbe(&res, params.min_dbe, params.max_dbe, &params.dbe_mode) {
+                        if !check_dbe(&res, params.min_dbe, params.max_dbe, params.allow_half_integer) {
                             valid_formula = false;
                         }
                     }
@@ -262,18 +262,17 @@ impl SpectrumDecomposer {
         mz_values: &[f64],
         params: &SpectrumDecompositionParams,
     ) -> Vec<(Vec<Formula>, Vec<f64>)> {
-        use rayon::prelude::*;
         
         let params_arc = Arc::new(DecompositionParams {
             tolerance_ppm: params.tolerance_ppm,
             min_dbe: params.min_dbe,
             max_dbe: params.max_dbe,
-            dbe_mode: params.dbe_mode.clone(),
+            allow_half_integer: params.allow_half_integer,
         });
 
         // Parallel decomposition - all fragments share the same decomposer
         mz_values
-            .par_iter()
+            .iter()
             .map(|&mass| self.decomposer.decompose(mass, &params_arc))
             .collect()
     }
