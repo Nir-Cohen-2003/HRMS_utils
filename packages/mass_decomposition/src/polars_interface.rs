@@ -6,6 +6,11 @@ use crate::algorithms::{MassDecomposer, SpectrumDecomposer};
 use crate::common::{DecompositionParams, SpectrumDecompositionParams, formula_to_string, NUM_ELEMENTS, CleanAndNormalizeSpectrumKwargs,CleanedAndNormalizedSpectrumResult, DecompositionKwargs};
 use polars::series::Series;
 use polars_arrow::array::{Int32Array};
+use std::collections::HashMap;
+use std::sync::Arc;
+use polars_arrow::array::PrimitiveArray;
+
+
 
 fn mass_decomposition_output(_fields: &[Field]) -> PolarsResult<Field> {
     let formula_field = Field::new("formulas".into(), DataType::List(Box::new(DataType::Array(Box::new(DataType::Int32), NUM_ELEMENTS))));
@@ -88,6 +93,7 @@ fn mass_decomposition(inputs: &[Series], kwargs: DecompositionKwargs) -> PolarsR
 
 #[polars_expr(output_type_func=mass_decomposition_output)]
 fn mass_decomposition_with_bounds(inputs: &[Series], kwargs: DecompositionKwargs) -> PolarsResult<Series> {
+    
     let input_series = &inputs[0];
     let input_struct = input_series.struct_()?;
     let num_rows = input_struct.len();
@@ -99,58 +105,77 @@ fn mass_decomposition_with_bounds(inputs: &[Series], kwargs: DecompositionKwargs
     let masses_chunked = mass_series.rechunk();
     let min_bounds_chunked = min_bounds_series.rechunk();
     let max_bounds_chunked = max_bounds_series.rechunk();
-    // 1. Downcast to appropriate chunked arrays
+    
     let masses_ca: &ChunkedArray<Float64Type> = masses_chunked.f64()?;
     let min_bounds_arrays: &ChunkedArray<FixedSizeListType> = min_bounds_chunked.array()?;
     let max_bounds_arrays: &ChunkedArray<FixedSizeListType> = max_bounds_chunked.array()?;
 
-    // 2. Zip and enumerate to preserve order
-    let zipped_iter = masses_ca.into_no_null_iter()
-        .zip(min_bounds_arrays.into_no_null_iter())
-        .zip(max_bounds_arrays.into_no_null_iter())
-        .enumerate();
+    // Group rows by bounds to reuse decomposers
+    let mut bounds_to_indices: HashMap<([i32; NUM_ELEMENTS], [i32; NUM_ELEMENTS]), Vec<usize>> = HashMap::new();
+    
+    for idx in 0..num_rows {
+        let min_bounds_arr = min_bounds_arrays.get(idx).unwrap();
+        let max_bounds_arr = max_bounds_arrays.get(idx).unwrap();
+        
+        // Downcast to PrimitiveArray<i32>
+        let min_bounds_values: &[i32] = min_bounds_arr
+            .as_any()
+            .downcast_ref::<PrimitiveArray<i32>>()
+            .expect("min_bounds should be i32 array")
+            .values()
+            .as_slice();
+        
+        let max_bounds_values: &[i32] = max_bounds_arr
+            .as_any()
+            .downcast_ref::<PrimitiveArray<i32>>()
+            .expect("max_bounds should be i32 array")
+            .values()
+            .as_slice();
 
-    // 3. Process in parallel with indices
-    let mut indexed_results: Vec<(usize, Vec<[i32; NUM_ELEMENTS]>, Vec<f64>)> = zipped_iter
-        .par_bridge()
-        .map(|(idx, ((mass, min_bounds_arr), max_bounds_arr))| {
-            let min_bounds_values: &[i32] = min_bounds_arr.i32()
-                .expect("min_bounds should be i32 array")
-                .cont_slice()
-                .expect("min_bounds should be contiguous slice");
-            let max_bounds_values: &[i32] = max_bounds_arr.i32()
-                .expect("max_bounds should be i32 array")
-                .cont_slice()
-                .expect("max_bounds should be contiguous slice");
+        let mut min_bounds: [i32; NUM_ELEMENTS] = [0; NUM_ELEMENTS];
+        let mut max_bounds: [i32; NUM_ELEMENTS] = [0; NUM_ELEMENTS];
+        min_bounds.copy_from_slice(min_bounds_values);
+        max_bounds.copy_from_slice(max_bounds_values);
+        
+        bounds_to_indices.entry((min_bounds, max_bounds))
+            .or_insert_with(Vec::new)
+            .push(idx);
+    }
 
-            let mut min_bounds: [i32; NUM_ELEMENTS] = [0; NUM_ELEMENTS];
-            let mut max_bounds: [i32; NUM_ELEMENTS] = [0; NUM_ELEMENTS];
-            min_bounds.copy_from_slice(min_bounds_values);
-            max_bounds.copy_from_slice(max_bounds_values);
-
-            let params = DecompositionParams {
-                tolerance_ppm: kwargs.tolerance_ppm,
-                min_dbe: kwargs.min_dbe,
-                max_dbe: kwargs.max_dbe,
-                dbe_mode: kwargs.dbe_mode.clone(),
-            };
+    // Process each unique bounds set in parallel
+    let params = Arc::new(DecompositionParams {
+        tolerance_ppm: kwargs.tolerance_ppm,
+        min_dbe: kwargs.min_dbe,
+        max_dbe: kwargs.max_dbe,
+        dbe_mode: kwargs.dbe_mode.clone(),
+    });
+    
+    let results_by_bounds: Vec<_> = bounds_to_indices.into_par_iter()
+        .flat_map(|((min_bounds, max_bounds), indices)| {
+            // Create decomposer once per unique bounds
+            let decomposer = Arc::new(MassDecomposer::new(min_bounds, max_bounds));
             
-            let decomposer = MassDecomposer::new(min_bounds, max_bounds);
-            let (formulas, errors) = decomposer.decompose(mass, &params);
-            (idx, formulas, errors)
+            // Process masses in parallel WITHIN each bounds group
+            indices.into_par_iter()
+                .map(|idx| {
+                    let mass = masses_ca.get(idx).unwrap();
+                    let (formulas, errors) = decomposer.decompose(mass, &params);
+                    (idx, formulas, errors)
+                })
+                .collect::<Vec<_>>()
         })
         .collect();
 
-    // 4. Sort by index to restore original order
+    // Sort by original index
+    let mut indexed_results = results_by_bounds;
     indexed_results.sort_unstable_by_key(|(idx, _, _)| *idx);
 
-    // 5. Build Series in correct order
+    // Build Series in correct order (rest stays the same)
     let mut formulas_series_vec = Vec::with_capacity(num_rows);
     let mut formulas_str_series_vec = Vec::with_capacity(num_rows);
     let mut errors_series_vec = Vec::with_capacity(num_rows);
 
     for (_idx, formulas, errors_ppm) in indexed_results {
-        // Build formulas series
         let formulas_vec: Vec<Option<Series>> = formulas
             .iter()
             .map(|formula| {
@@ -165,7 +190,6 @@ fn mass_decomposition_with_bounds(inputs: &[Series], kwargs: DecompositionKwargs
             formulas_vec
         ).cast(&DataType::Array(Box::new(DataType::Int32), NUM_ELEMENTS)).unwrap();
 
-        // Build strings and errors
         let formulas_str: Vec<String> = formulas.iter()
             .map(|f| formula_to_string(f))
             .collect();

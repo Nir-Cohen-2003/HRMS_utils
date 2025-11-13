@@ -13,21 +13,11 @@ pub struct PrecomputedDecomposer {
 
 // Define common element sets here - easily customizable
 const COMMON_ELEMENT_SETS: &[([bool; NUM_ELEMENTS], &str)] = &[
-    // CHNOPS - most common in organic chemistry
-    ([true, true, true, true, false, false, true, true, false, false, false, false], "CHNOPS"),
-    
-    // CHNOPSCl - with chlorine
-    ([true, true, true, true, false, false, true, true, true, false, false, false], "CHNOPSCl"),
-    
-    // CHNOPSClBr - with halogens
-    ([true, true, true, true, false, false, true, true, true, false, true, false], "CHNOPSClBr"),
-    
-    // CHNOF - for fluorinated compounds
-    ([true, true, true, true, true, false, false, false, false, false, false, false], "CHNOF"),
-    
-    // CHNONa - for sodium adducts
-    ([true, true, true, true, false, true, false, false, false, false, false, false], "CHNONa"),
-    
+    ([true, true, true, true, true, false, false, true, false, false, false, false], "CHNOFS"),
+    ([true, true, true, true, true, false, true, true, false, false, false, false], "CHNOFPS"),
+    ([true, true, true, true, true, false, true, true, true, false, false, false], "CHNOFPSCl"),
+    ([true, true, true, true, true, false, true, true, false, false, true, false], "CHNOFPSBr"),
+    ([true, true, true, true, true, false, true, true, true, false, true, false], "CHNOFPSClBr"),
     // Full set - all elements
     ([true; NUM_ELEMENTS], "ALL"),
 ];
@@ -164,7 +154,7 @@ pub fn init_precomputed_cache() {
     });
 }
 
-pub fn find_best_precomputed(min_bounds: &Formula, max_bounds: &Formula) -> Option<&'static PrecomputedDecomposer> {
+pub fn find_best_precomputed(max_bounds: &Formula) -> Option<&'static PrecomputedDecomposer> {
     let cache = PRECOMPUTED_CACHE.get_or_init(|| {
         COMMON_ELEMENT_SETS
             .iter()

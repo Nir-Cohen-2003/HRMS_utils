@@ -38,7 +38,7 @@ impl MassDecomposer {
         };
         
         // Try to use precomputed data
-        if let Some(precomp) = find_best_precomputed(&min_bounds, &max_bounds) {
+        if let Some(precomp) = find_best_precomputed(&max_bounds) {
             decomposer.load_from_precomputed(precomp);
         } else {
             // Fall back to runtime computation
@@ -56,17 +56,19 @@ impl MassDecomposer {
         self.ert = precomp.ert.clone();
         
         // Build weights from precomputed data with actual bounds
+        // IMPORTANT: We must include ALL elements from the precomputed decomposer,
+        // even if max_bounds is 0, to maintain consistency with the ERT table
         self.weights.clear();
         for &(original_index, mass, integer_mass) in &precomp.weights_data {
-            if self.max_bounds[original_index] > 0 {
-                self.weights.push(Weight {
-                    original_index,
-                    mass,
-                    integer_mass,
-                    min_count: self.min_bounds[original_index],
-                    max_count: self.max_bounds[original_index],
-                });
-            }
+            // Always add the weight if it's in the precomputed decomposer
+            // The bounds checking will filter out invalid formulas later
+            self.weights.push(Weight {
+                original_index,
+                mass,
+                integer_mass,
+                min_count: self.min_bounds[original_index],
+                max_count: self.max_bounds[original_index],
+            });
         }
         
         self.integer_weight_masses = self.weights.iter().map(|w| w.integer_mass).collect();

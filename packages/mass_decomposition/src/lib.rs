@@ -3,6 +3,7 @@ use pyo3_polars::PolarsAllocator;
 use crate::common::NUM_ELEMENTS;
 
 pub mod common;
+pub mod precomputed;
 pub mod algorithms;
 pub mod polars_interface;
 
