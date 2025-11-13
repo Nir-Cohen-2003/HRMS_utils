@@ -224,37 +224,42 @@ fn spectrum_decomposition_normalized(inputs: &[Series], kwargs: CleanAndNormaliz
     let ca: &ChunkedArray<StructType> = s.struct_()?;
     let len: usize = ca.len();
 
+    // Don't rechunk - work with existing chunks directly
     let masses_series: Series = ca.field_by_name("mz")?;
     let intensities_series: Series = ca.field_by_name("intensities")?;
     let precursor_series: Series = ca.field_by_name("precursor_formula")?;
 
-    // let masses_chunked: Series = masses_series.rechunk();
-    // let intensities_chunked: Series = intensities_series.rechunk();
-    // let precursor_chunked: Series = precursor_series.rechunk();
+    let masses_ca: &ChunkedArray<ListType> = masses_series.list()?;
+    let intensities_ca: &ChunkedArray<ListType> = intensities_series.list()?;
+    let precursor_ca: &ChunkedArray<FixedSizeListType> = precursor_series.array()?;
 
-    // let masses_ca: &ChunkedArray<ListType> = masses_chunked.list()?;
-    // let intensities_ca: &ChunkedArray<ListType> = intensities_chunked.list()?;
-    // let precursor_ca: &ChunkedArray<FixedSizeListType> = precursor_chunked.array()?;
-
-    let masses_ca = masses_series.list()?;
-    let intensities_ca = intensities_series.list()?;
-    let precursor_ca = precursor_series.array()?;
-
-    let zipped_iter = masses_ca.into_no_null_iter()
-        .zip(intensities_ca.into_no_null_iter())
-        .zip(precursor_ca.into_no_null_iter())
-        .enumerate();
-
-    let mut indexed_results: Vec<(usize, CleanedAndNormalizedSpectrumResult)> = zipped_iter
-        .par_bridge()
-        .map(|(idx, ((masses_list, intensities_list), precursor_arr))| {
-            let masses_ca = masses_list.f64().expect("masses should be f64 list");
-            let intensities_ca = intensities_list.f64().expect("intensities should be f64 list");
+    // Parallel extraction AND processing - work directly with Arrow arrays!
+    let indexed_results: Vec<(usize, CleanedAndNormalizedSpectrumResult)> = (0..len)
+        .into_par_iter()
+        .filter_map(|idx| {
+            use polars_arrow::array::Array;
             
-            let masses: &[f64] = masses_ca.cont_slice().expect("masses should be contiguous slice");
-            let intensities: &[f64] = intensities_ca.cont_slice().expect("intensities should be contiguous slice");
+            // Get Arrow arrays directly
+            let masses_list = masses_ca.get(idx)?;
+            let intensities_list = intensities_ca.get(idx)?;
+            let precursor_arr = precursor_ca.get(idx)?;
             
-            let precursor_sl = precursor_arr.i32().expect("precursor_formula should be i32 array").downcast_as_array().values();
+            // Extract f64 slices directly from Arrow PrimitiveArrays
+            let masses_arr = masses_list
+                .as_any()
+                .downcast_ref::<PrimitiveArray<f64>>()?;
+            let masses: &[f64] = masses_arr.values();
+            
+            let intensities_arr = intensities_list
+                .as_any()
+                .downcast_ref::<PrimitiveArray<f64>>()?;
+            let intensities: &[f64] = intensities_arr.values();
+            
+            // Extract precursor formula directly
+            let precursor_sl = precursor_arr
+                .as_any()
+                .downcast_ref::<PrimitiveArray<i32>>()?
+                .values();
             
             let mut precursor_formula: [i32; NUM_ELEMENTS] = [0; NUM_ELEMENTS];
             precursor_formula.copy_from_slice(precursor_sl);
@@ -285,16 +290,18 @@ fn spectrum_decomposition_normalized(inputs: &[Series], kwargs: CleanAndNormaliz
                 1e-9,
             );
             
-            (idx, result)
+            Some((idx, result))
         })
         .collect();
 
-    indexed_results.sort_unstable_by_key(|(idx, _)| *idx);
+    // Sort to restore order
+    let mut sorted_results = indexed_results;
+    sorted_results.sort_unstable_by_key(|(idx, _)| *idx);
 
-    let series_data: Vec<_> = indexed_results
+    // Build Series in parallel
+    let series_data: Vec<_> = sorted_results
         .into_par_iter()
         .map(|(_idx, result)| {
-            // Build formulas series
             let formulas_vec: Vec<Option<Series>> = result.fragments
                 .iter()
                 .map(|frag| {
@@ -335,7 +342,6 @@ fn spectrum_decomposition_normalized(inputs: &[Series], kwargs: CleanAndNormaliz
         })
         .collect();
 
-    // Unzip the parallel results
     let (formulas_series_vec, formulas_str_series_vec, normalized_masses_series_vec, intensities_series_vec, errors_series_vec): (Vec<_>, Vec<_>, Vec<_>, Vec<_>, Vec<_>) = 
         series_data.into_iter()
             .map(|(f, fs, nm, i, e)| (f, fs, nm, i, e))
