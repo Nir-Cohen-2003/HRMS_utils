@@ -4,7 +4,6 @@ use crate::precomputed::{find_best_precomputed, PrecomputedDecomposer};
 #[derive(Debug, Clone)]
 struct Weight {
     original_index: usize,
-    mass: f64,
     integer_mass: i64,
     min_count: i32,
     max_count: i32,
@@ -55,12 +54,11 @@ impl MassDecomposer {
         // IMPORTANT: We must include ALL elements from the precomputed decomposer,
         // even if max_bounds is 0, to maintain consistency with the ERT table
         self.weights.clear();
-        for &(original_index, mass, integer_mass) in &precomp.weights_data {
+        for &(original_index, _mass, integer_mass) in &precomp.weights_data {
             // Always add the weight if it's in the precomputed decomposer
             // The bounds checking will filter out invalid formulas later
             self.weights.push(Weight {
                 original_index,
-                mass,
                 integer_mass,
                 min_count: self.min_bounds[original_index],
                 max_count: self.max_bounds[original_index],
