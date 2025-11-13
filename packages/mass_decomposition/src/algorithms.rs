@@ -49,21 +49,20 @@ impl MassDecomposer {
         self.precision = precomp.precision;
         self.min_error = precomp.min_error;
         self.max_error = precomp.max_error;
-        self.ert = Arc::clone(&precomp.ert);  // Just clone the Arc, not the data
+        eprintln!("Loading precomputed decomposer with precision: {}, min_error: {}, max_error: {}", self.precision, self.min_error, self.max_error);
+        self.ert = Arc::clone(&precomp.ert);
         
         // Build weights from precomputed data with actual bounds
-        // IMPORTANT: We must include ALL elements from the precomputed decomposer,
-        // even if max_bounds is 0, to maintain consistency with the ERT table
+        // IMPORTANT: We must keep ALL elements from precomp.weights_data to maintain
+        // alignment with the ERT table, even if max_bounds is 0 for some elements
         self.weights.clear();
         for &(original_index, _mass, integer_mass) in &precomp.weights_data {
-            // Always add the weight if it's in the precomputed decomposer
-            // The bounds checking will filter out invalid formulas later
-                self.weights.push(Weight {
-                    original_index,
-                    integer_mass,
-                    min_count: self.min_bounds[original_index],
-                    max_count: self.max_bounds[original_index],
-                });
+            self.weights.push(Weight {
+                original_index,
+                integer_mass,
+                min_count: self.min_bounds[original_index],
+                max_count: self.max_bounds[original_index],
+            });
         }
         
         self.integer_weight_masses = self.weights.iter().map(|w| w.integer_mass).collect();
@@ -101,11 +100,29 @@ impl MassDecomposer {
         }
 
         let mut temp_counts = vec![0; k];
-
         let mut i = (k - 1) as isize;
         let mut m = mass;
 
+        // Debug output for masses above 400
+        let debug_mode = target_mass > 400.0;
+        let mut iteration_count = 0;
+        let max_iterations = 1_000_000; // Safety limit
+
+        if debug_mode {
+            eprintln!("=== Starting decompose: target={:.4}, mass={}, tolerance_da={:.4} ===", target_mass, mass, tolerance_da);
+        }
+
         loop {
+            iteration_count += 1;
+            if iteration_count > max_iterations {
+                eprintln!("ERROR: Exceeded max iterations ({}) for target_mass={:.4}", max_iterations, target_mass);
+                return;
+            }
+            
+            if debug_mode && iteration_count % 10000 == 0 {
+                eprintln!("Iteration {}: i={}, m={}", iteration_count, i, m);
+            }
+            
             let remainder = m % a;
             if !self.decomposable_fast(i as usize, m, remainder) {
                 loop {
@@ -148,28 +165,49 @@ impl MassDecomposer {
                         // Check weight bounds
                         if count < self.weights[j].min_count || count > self.weights[j].max_count {
                             valid_formula = false;
+                            if debug_mode {
+                                let formula_mass: f64 = res.iter().enumerate()
+                                    .map(|(idx, &c)| ATOMIC_MASSES[idx] * c as f64)
+                                    .sum::<f64>() + ATOMIC_MASSES[self.weights[j].original_index] * count as f64;
+                                eprintln!("FAIL (bounds): mass={:.4}, element_idx={}, count={}, min={}, max={}", 
+                                    formula_mass, self.weights[j].original_index, count, 
+                                    self.weights[j].min_count, self.weights[j].max_count);
+                            }
                             break;
                         }
                         res[self.weights[j].original_index] = count;
                     }
 
-                    if valid_formula {
-                        // Check DBE
-                        if !check_dbe(&res, params.min_dbe, params.max_dbe, params.allow_half_integer) {
-                            valid_formula = false;
-                        }
+                    if !valid_formula {
+                        i += 1;
+                        continue;
                     }
 
-                    if valid_formula {
-                        // Calculate mass and check tolerance
-                        let formula_mass: f64 = res.iter().enumerate()
-                            .map(|(idx, &count)| ATOMIC_MASSES[idx] * count as f64)
-                            .sum();
-                        let error = formula_mass - target_mass;
-                        
-                        if error.abs() <= tolerance_da {
-                            let error_ppm = (error / formula_mass) * 1e6;
-                            results.push((res, error_ppm));
+                    let formula_mass: f64 = res.iter().enumerate()
+                        .map(|(idx, &count)| ATOMIC_MASSES[idx] * count as f64)
+                        .sum();
+
+                    // Check DBE
+                    if !check_dbe(&res, params.min_dbe, params.max_dbe, params.allow_half_integer) {
+                        if debug_mode {
+                            eprintln!("FAIL (dbe): mass={:.4}", formula_mass);
+                        }
+                        i += 1;
+                        continue;
+                    }
+
+                    // Calculate mass and check tolerance
+                    let error = formula_mass - target_mass;
+                    
+                    if error.abs() <= tolerance_da {
+                        let error_ppm = (error / formula_mass) * 1e6;
+                        if debug_mode {
+                            eprintln!("PASS: mass={:.4}, error_da={:.4}, error_ppm={:.2}", formula_mass, error, error_ppm);
+                        }
+                        results.push((res, error_ppm));
+                    } else {
+                        if debug_mode {
+                            eprintln!("FAIL (tolerance): mass={:.4}, error_da={:.4} > tolerance_da={:.4}", formula_mass, error.abs(), tolerance_da);
                         }
                     }
                     
