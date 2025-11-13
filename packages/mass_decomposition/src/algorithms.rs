@@ -1,4 +1,5 @@
 use crate::common::{Formula, DecompositionParams, NUM_ELEMENTS, ATOMIC_MASSES, check_dbe, MIN_MASS_FOR_TOLERANCE, SpectrumDecompositionParams, CleanedAndNormalizedSpectrumResult, CorrectedFragment};
+use crate::precomputed::{find_best_precomputed, PrecomputedDecomposer};
 
 #[derive(Debug, Clone)]
 struct Weight {
@@ -27,7 +28,7 @@ impl MassDecomposer {
         let mut decomposer = MassDecomposer {
             weights: Vec::new(),
             ert: Vec::new(),
-            precision: 1.0 / 80000.0,  // Fixed precision for mass spectrometry
+            precision: 1.0 / 80000.0,
             min_error: 0.0,
             max_error: 0.0,
             is_initialized: false,
@@ -35,9 +36,41 @@ impl MassDecomposer {
             max_bounds,
             integer_weight_masses: Vec::new(),
         };
-        decomposer.init_money_changing();
-        decomposer.initialize();
+        
+        // Try to use precomputed data
+        if let Some(precomp) = find_best_precomputed(&min_bounds, &max_bounds) {
+            decomposer.load_from_precomputed(precomp);
+        } else {
+            // Fall back to runtime computation
+            decomposer.init_money_changing();
+            decomposer.initialize();
+        }
+        
         decomposer
+    }
+    
+    fn load_from_precomputed(&mut self, precomp: &PrecomputedDecomposer) {
+        self.precision = precomp.precision;
+        self.min_error = precomp.min_error;
+        self.max_error = precomp.max_error;
+        self.ert = precomp.ert.clone();
+        
+        // Build weights from precomputed data with actual bounds
+        self.weights.clear();
+        for &(original_index, mass, integer_mass) in &precomp.weights_data {
+            if self.max_bounds[original_index] > 0 {
+                self.weights.push(Weight {
+                    original_index,
+                    mass,
+                    integer_mass,
+                    min_count: self.min_bounds[original_index],
+                    max_count: self.max_bounds[original_index],
+                });
+            }
+        }
+        
+        self.integer_weight_masses = self.weights.iter().map(|w| w.integer_mass).collect();
+        self.is_initialized = true;
     }
 
     fn initialize(&mut self) {
