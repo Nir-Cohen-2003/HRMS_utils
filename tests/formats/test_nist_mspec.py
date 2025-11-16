@@ -18,9 +18,9 @@ def run_mspec_reader_profile(msp_file_path: Path):
     try:
         spectra_df = read_MSPEC_file(
             msp_file_path,
-            raw_fragment_tolerance_ppm=10.0,
-            normalized_fragment_tolerance_ppm=5.0,
-            molecular_ion_tolerance_ppm=5.0
+            raw_fragment_tolerance_ppm=15.0,
+            normalized_fragment_tolerance_ppm=10.0,
+            molecular_ion_tolerance_ppm=10.0
         )
         is_empty = spectra_df.is_empty()
     except Exception as e:
@@ -125,9 +125,12 @@ def run_mspec_reader_profile(msp_file_path: Path):
     ).sort(by="explained_intensity").head(1).select([
         "precursor_formula_array",
         "explained_intensity",
+        # "simple_explained_intensity",
         "NIST_ID",
         "raw_spectrum_mz",
+        "raw_spectrum_intensity",
         "cleaned_normalized_mz",
+        "cleaned_normalized_intensity",
         "cleaned_fragment_formulas_str",
         "cleaned_fragment_errors_ppm"
     ]).to_init_repr())

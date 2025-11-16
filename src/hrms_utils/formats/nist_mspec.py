@@ -187,14 +187,8 @@ def _annotate_spectra(data: T, raw_fragment_tolerance_ppm: float, normalized_fra
     ).drop(
         "cleaned_normalized_spectra"
     ).with_columns(
-         pl.struct([
-            pl.col("cleaned_normalized_mz").alias("mz1"),
-            pl.col("cleaned_normalized_intensity").alias("intensities1"),
-            pl.col("PrecursorMZ").alias("precursor_mz1"),
-            pl.col("raw_spectrum_mz").alias("mz2"),
-            pl.col("raw_spectrum_intensity").alias("intensities2"),
-            pl.col("PrecursorMZ").alias("precursor_mz2"),
-        ]).spectral_similarity.explained_intensity(permissive=True,ms2_tolerance_in_ppm=15.0).alias("explained_intensity")) #type: ignore[missing-attribute]
+        pl.col("cleaned_normalized_intensity").list.sum().truediv(pl.col("raw_spectrum_intensity").list.sum()).alias("explained_intensity")
+    )
     )
 
 def _add_precursor_type_indicators(data: T) -> T:
