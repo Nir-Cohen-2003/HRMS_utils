@@ -283,200 +283,99 @@ impl SpectrumDecomposer {
             .collect()
     }
 
-    pub fn clean_and_normalize_spectrum_iterative(
+    pub fn clean_and_normalize_spectrum(
         &self,
         fragment_masses: &[f64],
         fragment_intensities: &[f64],
         params: &SpectrumDecompositionParams,
         max_allowed_normalized_mass_error_ppm: f64,
-        max_iterations: usize,
-        convergence_tolerance: f64,
     ) -> CleanedAndNormalizedSpectrumResult {
         
         let fragment_solutions = self.decompose_spectrum(fragment_masses, params);
 
-        // Add minimum fragment requirement for reliable fitting
-        let fragments_with_solutions: usize = fragment_solutions.iter()
-            .filter(|(formulas, _)| !formulas.is_empty())
-            .count();
+        // Try to fit a calibration line if we have enough fragments
+        let use_normalization = fragment_solutions.iter().filter(|(f, _)| !f.is_empty()).count() >= 3;
         
-        // If too few fragments, use simpler approach without iterative refinement
-        if fragments_with_solutions < 3 {
-            return self.clean_and_normalize_spectrum_simple(
-                fragment_masses,
-                fragment_intensities,
-                &fragment_solutions,
-                max_allowed_normalized_mass_error_ppm
-            );
-        }
-
-        let mut linear_fit = (0.0, 0.0);
-        let mut fit_points = Vec::new();
-        let mut formula_errors = Vec::new();
-        let mut formula_weights = Vec::new();
-
-        for iteration in 0..max_iterations {
-            fit_points.clear();
-
-            for (i, (formulas, _errors_ppm)) in fragment_solutions.iter().enumerate() {
+        let (intercept, slope) = if use_normalization {
+            // Fit line through best formula for each fragment
+            let mut fit_points = Vec::new();
+            
+            for (i, (formulas, _)) in fragment_solutions.iter().enumerate() {
                 if formulas.is_empty() {
                     continue;
                 }
 
                 let measured_mass = fragment_masses[i];
-                let predicted_error = linear_fit.0 + linear_fit.1 * measured_mass;
-
-                formula_errors.clear();
-                formula_weights.clear();
-
-                for formula in formulas.iter() {
-                    let calc_mass: f64 = formula.iter().enumerate()
-                        .map(|(i, &count)| ATOMIC_MASSES[i] * count as f64)
-                        .sum();
-                    let error = calc_mass - measured_mass;
-                    formula_errors.push(error);
-
-                    let deviation = (error - predicted_error).abs();
-                    // Increase tolerance in early iterations to avoid premature convergence
-                    let tolerance_factor = if iteration < 3 { 3.0 } else { 1.0 };
-                    formula_weights.push(1.0 / (deviation + 1e-9 * tolerance_factor));
-                }
-
-                let total_weight: f64 = formula_weights.iter().sum();
-                if total_weight == 0.0 {
-                    continue;
-                }
-
-                let weighted_average_error: f64 = formula_errors.iter()
-                    .zip(formula_weights.iter())
-                    .map(|(&err, &w)| err * (w / total_weight))
-                    .sum();
+                
+                // Find formula with smallest absolute error
+                let best_error = formulas.iter()
+                    .map(|formula| {
+                        let calc_mass: f64 = formula.iter().enumerate()
+                            .map(|(j, &count)| ATOMIC_MASSES[j] * count as f64)
+                            .sum();
+                        calc_mass - measured_mass
+                    })
+                    .min_by(|a, b| a.abs().partial_cmp(&b.abs()).unwrap())
+                    .unwrap();
 
                 fit_points.push(FitPoint {
                     mass: measured_mass,
-                    error: weighted_average_error,
+                    error: best_error,
                     weight: fragment_intensities[i],
                 });
             }
+            
+            weighted_linear_regression(&fit_points)
+        } else {
+            (0.0, 0.0) // No correction
+        };
 
-            let new_linear_fit = weighted_linear_regression(&fit_points);
-
-            if (new_linear_fit.0 - linear_fit.0).abs() < convergence_tolerance &&
-               (new_linear_fit.1 - linear_fit.1).abs() < convergence_tolerance {
-                linear_fit = new_linear_fit;
-                break;
-            }
-            linear_fit = new_linear_fit;
-        }
-
-        let mut corrected_fragments = Vec::new();
-        for (i, (formulas, _errors_ppm)) in fragment_solutions.iter().enumerate() {
-            if formulas.is_empty() {
-                continue;
-            }
-
-            let measured_mass = fragment_masses[i];
-            let predicted_error = linear_fit.0 + linear_fit.1 * measured_mass;
-
-            let mut best_formula_idx: Option<usize> = None;
-            let mut min_deviation = f64::INFINITY;
-
-            for (formula_idx, formula) in formulas.iter().enumerate() {
-                let calc_mass: f64 = formula.iter().enumerate()
-                    .map(|(j, &count)| ATOMIC_MASSES[j] * count as f64)
-                    .sum();
-                let error = calc_mass - measured_mass;
-                let deviation = (error - predicted_error).abs();
-
-                if deviation < min_deviation {
-                    min_deviation = deviation;
-                    best_formula_idx = Some(formula_idx);
-                }
-            }
-
-            if let Some(idx) = best_formula_idx {
-                let formula = formulas[idx];
-                let calc_mass: f64 = formula.iter().enumerate()
-                    .map(|(j, &count)| ATOMIC_MASSES[j] * count as f64)
-                    .sum();
-                let correction = linear_fit.0 + linear_fit.1 * measured_mass;
-                let normalized_mass = measured_mass + correction;
-                let final_error_da = (calc_mass - normalized_mass).abs();
-                
-                // Calculate tolerance in Daltons using the 200 Da rule
-                let tolerance_da = max_allowed_normalized_mass_error_ppm * 1e-6 * normalized_mass.max(MIN_MASS_FOR_TOLERANCE);
-                
-                // Compare error in Daltons, not ppm
-                if final_error_da <= tolerance_da {
-                    // Calculate ppm for storage/reporting
-                    let final_error_ppm = ((calc_mass - normalized_mass) / calc_mass) * 1e6;
-                    
-                    corrected_fragments.push(CorrectedFragment {
-                        normalized_mass,
-                        intensity: fragment_intensities[i],
-                        formula,
-                        error_ppm: final_error_ppm,
-                    });
-                }
-            }
-        }
-
-        CleanedAndNormalizedSpectrumResult { fragments: corrected_fragments }
-    }
-
-    // Add simpler non-iterative method for cases with few fragments
-    fn clean_and_normalize_spectrum_simple(
-        &self,
-        fragment_masses: &[f64],
-        fragment_intensities: &[f64],
-        fragment_solutions: &[(Vec<Formula>, Vec<f64>)],
-        max_allowed_error_ppm: f64,
-    ) -> CleanedAndNormalizedSpectrumResult {
+        // Select best formula for each fragment
         let mut corrected_fragments = Vec::new();
         
         for (i, (formulas, _)) in fragment_solutions.iter().enumerate() {
             if formulas.is_empty() {
                 continue;
             }
-            
-            // Simply pick the formula with smallest absolute error
+
             let measured_mass = fragment_masses[i];
+            let correction = intercept + slope * measured_mass;
+            let normalized_mass = measured_mass + correction;
+            
+            // Calculate tolerance in Daltons
+            let tolerance_da = max_allowed_normalized_mass_error_ppm * 1e-6 * normalized_mass.max(MIN_MASS_FOR_TOLERANCE);
+
+            // Find formula closest to normalized mass within tolerance
             let mut best_formula: Option<Formula> = None;
             let mut best_error_da = f64::INFINITY;
-            
-            // Calculate tolerance in Daltons using the 200 Da rule
-            let tolerance_da = max_allowed_error_ppm * 1e-6 * measured_mass.max(MIN_MASS_FOR_TOLERANCE);
-            
-            for formula in formulas {
+            let mut best_calc_mass = 0.0;
+
+            for formula in formulas.iter() {
                 let calc_mass: f64 = formula.iter().enumerate()
                     .map(|(j, &count)| ATOMIC_MASSES[j] * count as f64)
                     .sum();
                 
-                let error_da = (calc_mass - measured_mass).abs();
+                let error_da = (calc_mass - normalized_mass).abs();
                 
-                // Check against Dalton tolerance
                 if error_da <= tolerance_da && error_da < best_error_da {
                     best_error_da = error_da;
                     best_formula = Some(*formula);
+                    best_calc_mass = calc_mass;
                 }
             }
-            
+
             if let Some(formula) = best_formula {
-                // Calculate ppm for reporting
-                let calc_mass: f64 = formula.iter().enumerate()
-                    .map(|(j, &count)| ATOMIC_MASSES[j] * count as f64)
-                    .sum();
-                let error_ppm = ((calc_mass - measured_mass) / calc_mass) * 1e6;
+                let error_ppm = ((best_calc_mass - normalized_mass) / best_calc_mass) * 1e6;
                 
                 corrected_fragments.push(CorrectedFragment {
-                    normalized_mass: measured_mass,
+                    normalized_mass,
                     intensity: fragment_intensities[i],
                     formula,
                     error_ppm,
                 });
             }
         }
-        
+
         CleanedAndNormalizedSpectrumResult { fragments: corrected_fragments }
     }
 }

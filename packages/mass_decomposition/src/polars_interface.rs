@@ -286,13 +286,11 @@ fn spectrum_decomposition_normalized(inputs: &[Series], kwargs: CleanAndNormaliz
 
             let decomposer = SpectrumDecomposer::new(min_bounds, max_bounds);
             
-            let result = decomposer.clean_and_normalize_spectrum_iterative(
+            let result = decomposer.clean_and_normalize_spectrum(
                 masses,
                 intensities,
                 &params,
                 kwargs.normalized_fragment_tolerance_ppm,
-                10,
-                1e-9,
             );
             
             Some((idx, result))

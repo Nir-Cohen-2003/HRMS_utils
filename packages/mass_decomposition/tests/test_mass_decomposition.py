@@ -100,6 +100,7 @@ def test_decompose_mass_batch():
         (112.007978, {"C": 0, "H": 0, "O": 0, "Cl": 1}, {"C": 20, "H": 20, "O": 10, "P": 0, "N": 10, "S": 5,  "Cl": 1}, ["C6H5Cl"]),
         (155.957461,  {"C": 0, "H": 0, "O": 0, "Br": 1}, {"C": 20, "H": 20, "O": 10, "P": 0, "N": 10, "S": 0, "Cl": 0, "Br": 1}, ["C6H5Br"]),
         (432.9951, {"C": 0, "H": 0, "O": 0, "F": 0, "N": 0, "S": 0, "Cl": 0, "Br": 0, "I": 0}, {"C": 10, "H": 11, "O": 6, "F": 6, "N": 2, "S": 2, "Cl": 0, "Br": 0, "I": 0}, ["C10H11F6N2O6S2"]),
+        (188.0114, {"C": 0, "H": 0, "O": 0, "Cl": 1}, {"C": 10, "H": 10, "O": 5, "N": 2, "Cl": 1,"S":0}, ["C7H7ClNO3"]),
     ]
     
     masses = [tc[0] for tc in test_cases]
@@ -195,7 +196,12 @@ def test_clean_and_normalize_spectrum_batch_no_water():
                 [],
                 ["C10H11F6N2O6S2"]
             ]
-        )
+        ),
+        (
+            [170.000, 188.0114],
+            "C7H7ClNO3",
+            [["C7H5ClNO2"], ["C7H7ClNO3"]],
+        ),
     ]
     
     mz_list = [tc[0] for tc in cleaning_test_cases]
