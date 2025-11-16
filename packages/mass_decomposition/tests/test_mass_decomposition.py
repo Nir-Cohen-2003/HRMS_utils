@@ -99,6 +99,7 @@ def test_decompose_mass_batch():
         (182.0732, {"C": 0, "H": 0, "O": 0}, {"C": 20, "H": 20, "O": 10, "P": 0, "N": 10, "S": 5,  "Cl": 1}, ["C13H10O",  "C10H13ClN","C5H14N2O3S"]),
         (112.007978, {"C": 0, "H": 0, "O": 0, "Cl": 1}, {"C": 20, "H": 20, "O": 10, "P": 0, "N": 10, "S": 5,  "Cl": 1}, ["C6H5Cl"]),
         (155.957461,  {"C": 0, "H": 0, "O": 0, "Br": 1}, {"C": 20, "H": 20, "O": 10, "P": 0, "N": 10, "S": 0, "Cl": 0, "Br": 1}, ["C6H5Br"]),
+        (432.9951, {"C": 0, "H": 0, "O": 0, "F": 0, "N": 0, "S": 0, "Cl": 0, "Br": 0, "I": 0}, {"C": 10, "H": 11, "O": 6, "F": 6, "N": 2, "S": 2, "Cl": 0, "Br": 0, "I": 0}, ["C10H11F6N2O6S2"]),
     ]
     
     masses = [tc[0] for tc in test_cases]
@@ -166,8 +167,35 @@ def test_clean_and_normalize_spectrum_batch_no_water():
     cleaning_test_cases = [
         ([78.046950, 104.062600, 128.062600], "C10H20O5", [["C6H6"], ["C8H8"], ["C10H8"]]),
         ([78.046950, 84.056172, 104.062600, 128.062600, 152.1182], "C8H14N3", [["C6H6"], ["C3H6N3"], ["C8H8"], [], ["C8H14N3"]]),
-        ([53.0385, 55.0542], "C10H25N2O2", [["C5H5"], ["C5H7"]]),
-        ([72.0804, 76.0389, 118.0859], "C5H12NO2", [["C4H10N"], ["C2H6NO2"], ["C5H11NO2"]]),
+        ([ 53.039125 , 55.0542], "C10H25N2O2", [["C4H5"], ["C4H7"]]),
+        ([72.0804, 76.0389, 118.0859], "C5H12NO2", [["C4H10N"], ["C2H6NO2"], ["C5H12NO2"]]),
+        ([57.0571, 58.0649, 59.0489, 69.0696, 71.0727, 73.0644, 86.0961], "C6H14NO2", [["C3H7N"], ["C3H8N"], ["C3H7O"], ["C5H9"], ["C4H9N"], ["C4H9O"], ["C5H12N"]]),
+
+        (
+            [
+                52.018724,53.0131, 54.0336, 55.0288, 55.0414, 56.0366, 56.0480,
+                56.0492, 57.0444, 66.0335, 67.0287, 69.0080, 69.0443, 79.0296,
+                80.0239, 81.0317, 83.0236, 93.0443, 94.0646, 105.0443, 139.0571
+            ],
+            "C5H8N4O2",
+            [
+                ["C3H2N"], ["C2HN2"], ["C3H4N"], ["C2H3N2"], ["C3H5N"], ["C2H4N2"], [],
+                ["C3H6N"], ["C2H5N2"], ["C4H4N"], ["C3H3N2"], ["C2HN2O"], ["C3H5N2"], ["C4H3N2"],
+                ["C3H2N3"], ["C3H3N3"], ["C3H3N2O"], ["C5H5N2"], [], [], []
+            ]
+        ),
+        (
+
+            [386.9900, 414.9846, 432.9582, 432.9698, 432.9951],
+            "C10H11F6N2O6S2",
+            [
+                ["C9H9F6N2O4S2"],
+                ["C10H9F6N2O5S2"],
+                [],
+                [],
+                ["C10H11F6N2O6S2"]
+            ]
+        )
     ]
     
     mz_list = [tc[0] for tc in cleaning_test_cases]
@@ -195,8 +223,8 @@ def test_clean_and_normalize_spectrum_batch_no_water():
         corrected=pl.col("spectrum_struct").mass_decomposition.clean_and_normalize_spectrum(
             raw_fragment_tolerance_ppm=5.0,
             normalized_fragment_tolerance_ppm=5.0,
-            min_dbe=-10.0,
-            max_dbe=100.0,
+            min_dbe=-0.5,
+            max_dbe=30.0,
             dbe_mode="half_integer",
             water_absorption=False
         )
@@ -217,18 +245,22 @@ def test_clean_and_normalize_spectrum_batch_no_water():
             assert formula_array_to_string(formula_arr) == output_formulas_str[j], \
                 f"Row {i}: Formula string does not match array for formula {j}"
         
-        # Flatten expected formulas (remove empty lists)
-        expected_formulas_flat = [f for formulas in expected_formulas_str_list for f in formulas]
-        expected_formulas_arr = [formula_string_to_array(s) for s in expected_formulas_flat]
+        # Flatten expected formulas (remove empty lists which represent invalid fragments)
+        expected_formulas_flat_str = [f for formulas in expected_formulas_str_list for f in formulas]
+        expected_formulas_flat_arr = [formula_string_to_array(s) for s in expected_formulas_flat_str]
         
-        assert len(output_formulas_arr) <= len(expected_formulas_arr), \
-            f"Row {i}: Expected at most {len(expected_formulas_arr)} formulas, but got {len(output_formulas_arr)}"
-        
-        # Check that all output formulas are in expected formulas
-        for formula_arr in output_formulas_arr:
-            formula_str = formula_array_to_string(formula_arr)
-            assert formula_arr in expected_formulas_arr, \
-                f"Row {i}: Unexpected formula {formula_str} in output, expected one of {expected_formulas_flat}"
+        # Sort both lists of arrays for a canonical comparison
+        sorted_output = sorted(output_formulas_arr)
+        sorted_expected = sorted(expected_formulas_flat_arr)
+
+        # For better error messages, convert back to strings for the assert message
+        output_formulas_str_sorted = sorted([formula_array_to_string(f) for f in output_formulas_arr])
+        expected_formulas_str_sorted = sorted(expected_formulas_flat_str)
+
+        assert sorted_expected == sorted_output, \
+            f"Row {i}: Cleaned spectrum formulas do not match expected.\n" \
+            f"Expected: {expected_formulas_str_sorted}\n" \
+            f"Got:      {output_formulas_str_sorted}"
 
 def test_clean_and_normalize_spectrum_batch_with_water():
     """
@@ -238,8 +270,9 @@ def test_clean_and_normalize_spectrum_batch_with_water():
     cleaning_test_cases = [
         ([78.046950, 104.062600, 128.062600], "C10H20O5", [["C6H6"], ["C8H8"], ["C10H8"]]),
         ([78.046950, 84.056172, 104.062600, 168.113687, 152.1182], "C8H14N3", [["C6H6"], ["C3H6N3"], ["C8H8"], ["C8H14N3O"], ["C8H14N3"]]),
-        ([53.0385, 55.0542], "C10H25N2O2", [["C5H5"], ["C5H7"]]),
-        ([72.0804, 76.0389, 118.0859], "C5H12NO2", [["C4H10N"], ["C2H6NO2"], ["C5H11NO2"]]),
+        ([53.0385, 55.0542], "C10H25N2O2", [["C4H5"], ["C4H7"]]),
+        ([72.0804, 76.0389, 118.0859], "C5H12NO2", [["C4H10N"], ["C2H6NO2"], ["C5H12NO2"]]),
+        ([57.0571, 58.0649, 59.0489, 69.0696, 71.0727, 73.0644, 86.0961], "C6H14NO2", [["C3H7N"], ["C3H8N"], ["C3H7O"], ["C5H9"], ["C4H9N"], ["C4H9O"], ["C5H12N"]])
     ]
     
     mz_list = [tc[0] for tc in cleaning_test_cases]
@@ -267,8 +300,8 @@ def test_clean_and_normalize_spectrum_batch_with_water():
         corrected=pl.col("spectrum_struct").mass_decomposition.clean_and_normalize_spectrum(
             raw_fragment_tolerance_ppm=5.0,
             normalized_fragment_tolerance_ppm=5.0,
-            min_dbe=-10.0,
-            max_dbe=100.0,
+            min_dbe=-0.5,
+            max_dbe=40.0,
             dbe_mode="half_integer",
             water_absorption=True
         )
@@ -289,15 +322,19 @@ def test_clean_and_normalize_spectrum_batch_with_water():
             assert formula_array_to_string(formula_arr) == output_formulas_str[j], \
                 f"Row {i}: Formula string does not match array for formula {j}"
         
-        # Flatten expected formulas (remove empty lists)
-        expected_formulas_flat = [f for formulas in expected_formulas_str_list for f in formulas]
-        expected_formulas_arr = [formula_string_to_array(s) for s in expected_formulas_flat]
+        # Flatten expected formulas (remove empty lists which represent invalid fragments)
+        expected_formulas_flat_str = [f for formulas in expected_formulas_str_list for f in formulas]
+        expected_formulas_flat_arr = [formula_string_to_array(s) for s in expected_formulas_flat_str]
         
-        assert len(output_formulas_arr) <= len(expected_formulas_arr), \
-            f"Row {i}: Expected at most {len(expected_formulas_arr)} formulas, but got {len(output_formulas_arr)}"
-        
-        # Check that all output formulas are in expected formulas
-        for formula_arr in output_formulas_arr:
-            formula_str = formula_array_to_string(formula_arr)
-            assert formula_arr in expected_formulas_arr, \
-                f"Row {i}: Unexpected formula {formula_str} in output, expected one of {expected_formulas_flat}"
+        # Sort both lists of arrays for a canonical comparison
+        sorted_output = sorted(output_formulas_arr)
+        sorted_expected = sorted(expected_formulas_flat_arr)
+
+        # For better error messages, convert back to strings for the assert message
+        output_formulas_str_sorted = sorted([formula_array_to_string(f) for f in output_formulas_arr])
+        expected_formulas_str_sorted = sorted(expected_formulas_flat_str)
+
+        assert sorted_expected == sorted_output, \
+            f"Row {i}: Cleaned spectrum formulas do not match expected.\n" \
+            f"Expected: {expected_formulas_str_sorted}\n" \
+            f"Got:      {output_formulas_str_sorted}"
