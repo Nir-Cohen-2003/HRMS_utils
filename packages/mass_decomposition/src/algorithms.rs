@@ -105,25 +105,30 @@ impl MassDecomposer {
         let mut i = (k - 1) as isize;
         let mut m = mass;
 
+        // ...
         loop {
+            if i >= k as isize {
+                return;
+            }
             let remainder = m % a;
             if !self.decomposable_fast(i as usize, m, remainder) {
                 loop {
-                    if i >= (k - 1) as isize {
-                        return;
-                    }
-                    if self.decomposable_fast(i as usize, m, m % a) {
-                        break;
-                    }
                     m += temp_counts[i as usize] as i64 * weight_masses[i as usize];
                     temp_counts[i as usize] = 0;
                     i += 1;
+                    
+                    if i >= k as isize {
+                        return; // Exit completely if we've exhausted all elements
+                    }
+                    
+                    if self.decomposable_fast(i as usize, m, m % a) {
+                        break;
+                    }
                 }
-
-                if i < k as isize {
-                    m -= weight_masses[i as usize];
-                    temp_counts[i as usize] += 1;
-                }
+                
+                // Only execute this if we didn't exit via return above
+                m -= weight_masses[i as usize];
+                temp_counts[i as usize] += 1;
             } else {
                 while i > 0 {
                     if !self.decomposable_fast((i - 1) as usize, m, remainder) {
