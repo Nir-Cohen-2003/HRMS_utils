@@ -178,7 +178,7 @@ def tree_spectral_info_score_polars(
 
     Args:
         precursors: A Polars Series of precursor formulas (List[Float64]).
-        fragments: A Polars Series of fragment formulas (List[List[Float64]]).
+        fragments: A Polars Series of fragment formulas (List[Array[Int32,some_length]]).
         distance_metric: The distance metric for comparing normalized formulas.
                          One of 'l1', 'l2', or 'cosine'. Defaults to 'l2'.
         ignore_hydrogens: If True, ignores the first element (hydrogen) when comparing formulas.

@@ -61,7 +61,7 @@ def run_mspec_reader_profile(msp_file_path: Path):
         print(f"  - {col}: {count} unique values, values: {spectra_df[col].unique().to_list()}")
     
     # Always print values for specific columns (USER-CONFIGURABLE)
-    always_print_cols = ["Instrument", "Instrument_type", "Ionization", "Ion_mode", "MSLEVEL"]
+    always_print_cols = ["instrument", "instrument_type", "ionization", "ion_mode", "mslevel"]
     print("\nAlways printed columns:")
     for col in always_print_cols:
         if col in spectra_df.columns:
@@ -75,7 +75,7 @@ def run_mspec_reader_profile(msp_file_path: Path):
     # Check for "NOT FOUND" values in specific columns
     print("\n'NOT FOUND' value counts:")
 
-    not_found_cols = ["Instrument", "Instrument_type", "Ionization"]
+    not_found_cols = ["instrument", "instrument_type", "ionization"]
     for i in range(len(not_found_cols)):
         for j in range(i + 1, len(not_found_cols)):
             col1 = not_found_cols[i]
@@ -85,8 +85,8 @@ def run_mspec_reader_profile(msp_file_path: Path):
                 print(f"  - Rows with '{col1}' AND '{col2}' as 'NOT FOUND': {count}")
 
     if all(col in spectra_df.columns for col in not_found_cols):
-        count = spectra_df.filter((pl.col("Instrument") == "NOT FOUND") & (pl.col("Instrument_type") == "NOT FOUND") & (pl.col("Ionization") == "NOT FOUND")).height
-        print(f"  - Rows with 'Instrument', 'Instrument_type', AND 'Ionization' as 'NOT FOUND': {count}")
+        count = spectra_df.filter((pl.col("instrument") == "NOT FOUND") & (pl.col("instrument_type") == "NOT FOUND") & (pl.col("ionization") == "NOT FOUND")).height
+        print(f"  - Rows with 'instrument', 'instrument_type', AND 'ionization' as 'NOT FOUND': {count}")
     
     # print how many are orbi, tof or other
     orbi_count = spectra_df.filter(pl.col("is_orbitrap")).height
@@ -121,12 +121,12 @@ def run_mspec_reader_profile(msp_file_path: Path):
     
     print(spectra_df.filter(
         pl.col("clean_precursor"),
-        pl.col("Precursor_type").eq("[M+H]+")
+        pl.col("precursor_type").eq("[M+H]+")
     ).sort(by="explained_intensity").head(1).select([
         "precursor_formula_array",
         "explained_intensity",
         # "simple_explained_intensity",
-        "NIST_ID",
+        "nist_id",
         "raw_spectrum_mz",
         "raw_spectrum_intensity",
         "cleaned_normalized_mz",

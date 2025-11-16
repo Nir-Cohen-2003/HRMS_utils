@@ -8,7 +8,7 @@ platforms = ["linux-64","win-64"]
 preview = ["pixi-build"]
 [package]
 name = "hrms_utils"
-version = "0.7.0"
+version = "0.8.0"
 license = "Apache-2.0"
 license-file = "LICENSE"
 authors = ["Nir Cohen"]
