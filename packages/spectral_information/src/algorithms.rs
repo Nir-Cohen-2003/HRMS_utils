@@ -1,3 +1,4 @@
+use mass_decomposition::common::NUM_ELEMENTS;
 
 pub fn l1_distance(a: &[f64], b: &[f64]) -> f64 {
     a.iter().zip(b.iter()).map(|(x, y)| (x - y).abs()).sum()
@@ -38,7 +39,7 @@ pub fn is_superformula(super_formula: &[f64], sub_formula: &[f64]) -> bool {
 
 pub fn calculate_score_for_spectrum(
     precursor_vec: Vec<f64>,
-    fragments_list: polars::prelude::ListChunked,
+    fragments_flat: Vec<f64>,
     distance_metric: &str,
     ignore_hydrogens: bool,
 ) -> Option<f64> {
@@ -66,10 +67,9 @@ pub fn calculate_score_for_spectrum(
     let mut all_formulas: Vec<Vec<f64>> = Vec::new();
     all_formulas.push(precursor_vec.clone());
 
-    for fragment_s_opt in fragments_list.into_iter() {
-        if let Some(fragment_s) = fragment_s_opt {
-            let fragment_ca = fragment_s.f64().unwrap();
-            all_formulas.push(fragment_ca.into_no_null_iter().collect());
+    for fragment in fragments_flat.chunks(NUM_ELEMENTS) {
+        if fragment.len() == NUM_ELEMENTS {
+            all_formulas.push(fragment.to_vec());
         }
     }
 

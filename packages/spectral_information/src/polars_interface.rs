@@ -28,15 +28,13 @@ pub fn tree_spectral_info_score(
         .cast(&DataType::Array(Box::new(DataType::Float64),NUM_ELEMENTS))?;
     let fragments_series = ca
         .field_by_name("fragment_formulas")?
-        .cast(&DataType::List(Box::new(DataType::Float64)))?;
+        .cast(&DataType::List(Box::new(DataType::Array(Box::new(DataType::Float64),NUM_ELEMENTS))))?;
 
-    let precursors_ca = precursor_series.array()?;
-    let fragments_ca = fragments_series.list()?;
+    let precursors_ca: &ChunkedArray<FixedSizeListType> = precursor_series.array()?;
+    let fragments_ca: &ChunkedArray<ListType> = fragments_series.list()?;
 
-    let precursor_vec : Vec<_> = precursors_ca.into_no_null_iter().collect();
-    let fragments_vec : Vec<_> = fragments_ca.into_no_null_iter().collect();
-    // let precursors = inputs[0].list()?;
-    // let fragments = inputs[1].list()?;
+    let precursor_vec : Vec<Series> = precursors_ca.into_no_null_iter().collect();
+    let fragments_vec : Vec<Series> = fragments_ca.into_no_null_iter().collect();
 
     let distance_metric = kwargs.distance_metric;
     let ignore_hydrogens = kwargs.ignore_hydrogens;
@@ -48,10 +46,19 @@ pub fn tree_spectral_info_score(
         .map(|(index, (precursor_s, fragments_s))| {      
             let precursor_ca: &ChunkedArray<Float64Type> = precursor_s.f64().unwrap();
             let precursor_vec: Vec<f64> = precursor_ca.into_no_null_iter().collect();
-            let fragments_list: &ChunkedArray<ListType> = fragments_s.list().unwrap();
-            let score: Option<f64>    = calculate_score_for_spectrum(
+            
+            let fragments_list: &ChunkedArray<FixedSizeListType> = fragments_s.array().unwrap();
+            let mut fragments_flat: Vec<f64> = Vec::new();
+            for fragment_series_opt in fragments_list.clone().into_iter() {
+                if let Some(fragment_series) = fragment_series_opt {
+                    let fragment_ca: &ChunkedArray<Float64Type> = fragment_series.f64().unwrap();
+                    fragments_flat.extend(fragment_ca.into_no_null_iter());
+                }
+            }
+
+            let score: Option<f64> = calculate_score_for_spectrum(
                 precursor_vec,
-                fragments_list.clone(),
+                fragments_flat,
                 &distance_metric,
                 ignore_hydrogens,
             );

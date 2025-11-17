@@ -5,8 +5,8 @@ from typing import TYPE_CHECKING
 
 import polars as pl
 from polars.plugins import register_plugin_function
-from ._internal import NUM_ELEMENTS
-from ._internal import __version__ as __version__
+from ._internal_spectral_information import NUM_ELEMENTS
+from ._internal_spectral_information import __version__ as __version__
 
 
 if TYPE_CHECKING:
@@ -31,8 +31,11 @@ class SpectralInfoNamespace:
         the entropy of the minimum distances between connected nodes in a normalized space.
 
         Args:
-            precursors: A Polars Series of precursor formulas (List[Float64]).
-            fragments: A Polars Series of fragment formulas (List[List[Float64]]).
+            A struct with the following fields: 
+            "precursor_formula": Array(Int32, NUM_ELEMENTS),
+            "fragment_formulas": List(Array(Int32, NUM_ELEMENTS)),
+            and with keywords:
+
             distance_metric: The distance metric for comparing normalized formulas.
                             One of 'l1', 'l2', or 'cosine'. Defaults to 'l2'.
             ignore_hydrogens: If True, ignores the first element (hydrogen) when comparing formulas.

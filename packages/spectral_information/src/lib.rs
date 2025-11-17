@@ -7,7 +7,7 @@ pub use polars_interface::*;
 use mass_decomposition::common::NUM_ELEMENTS;
 
 #[pymodule]
-fn _internal_spectral_info(_py: Python, m: &Bound<PyModule>) -> PyResult<()> {
+fn _internal_spectral_information(_py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     m.add("__version__", env!("CARGO_PKG_VERSION"))?;
     m.add("NUM_ELEMENTS", NUM_ELEMENTS)?;
     Ok(())

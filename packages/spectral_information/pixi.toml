@@ -32,7 +32,7 @@ default = {features = [], solve-group = "default"}
 testing = {features = ["testing"], solve-group = "testing"}
 
 [feature.testing.tasks]
-test = "pytest tests/test_spectral_information.py"
+test = {cmd = "pytest tests/test_spectral_information.py",env = { POLARS_VERBOSE = "1" } }
 
 [feature.testing.dependencies]
 polars = ">=1.33.0,<2"
