@@ -1,11 +1,15 @@
 [package]
-name = "mass_decomposition"
+name = "spectral_information"
 version = "0.1.0"
 edition = "2024"
 
+[features]
+default = []
+polars_global_allocator = []
+
 [lib]
-name = "mass_decomposition"
-crate-type = ["rlib","cdylib"]
+name = "spectral_information"
+crate-type = ["cdylib"]
 
 [dependencies]
 polars = { version = "*", features = ["dtype-struct","dtype-array", "dtype-full"] }
@@ -15,7 +19,5 @@ polars-arrow = { version = "*", default-features = false }
 pyo3-ffi = "*"
 rayon = "*"
 serde = { version = "1", features = ["derive"] }
-num-traits = "*"
-num-integer = "*"
-once_cell = "*"
 itertools = "*"
+mass_decomposition = { path = "../mass_decomposition" }
