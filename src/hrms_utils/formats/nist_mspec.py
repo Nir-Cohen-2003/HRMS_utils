@@ -5,9 +5,9 @@ import polars.selectors as plcs
 from typing import TypeVar, cast, Dict,Iterable
 from ..formula_annotation.utils import formula_fits_mass, format_formula_string_to_array,  get_precursor_ion_formula_array, num_elements
 from ..formula_annotation.element_table import ADDUCT_MASSES
-from ..spectral_information import spectral_info_score_polars
 import mass_decomposition
 import spectral_similarity 
+import spectral_information
 from pathlib import Path 
 from scipy.stats import linregress
 
@@ -275,18 +275,9 @@ def _add_spectral_information_score(data: T) -> T:
             
         data.with_columns(
             pl.struct([
-                pl.col("precursor_formula_array"),
-                pl.col("cleaned_fragment_formulas")
-                ]).map_batches(
-                    function= lambda batch: spectral_info_score_polars(
-                        precursors=batch.struct.field('precursor_formula_array'),
-                        fragments=batch.struct.field('cleaned_fragment_formulas'),
-                        distance_metric='l2',
-                        ignore_hydrogens=True
-                    ),
-                    return_dtype=pl.Float64,
-                    is_elementwise=True
-                ).alias("spectral_information_score")
+                pl.col("precursor_formula_array").alias('precursor_formula'),
+                pl.col("cleaned_fragment_formulas").alias('fragment_formulas')
+                ]).spectral_info.spectral_info_score(distance_metric="l2", ignore_hydrogens=True).alias("spectral_information_score")
         )
     )
 

@@ -37,7 +37,7 @@ jobs:
         run: pixi --version
 
       - name: Run tests
-        run: pixi run -e testing test
+        run: pixi run test
 
       - name: Build wheels
         run: pixi run cibw-wheels
