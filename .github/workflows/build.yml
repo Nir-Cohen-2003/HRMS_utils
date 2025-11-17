@@ -1,259 +1,72 @@
-name: Build Package
+name: Build and Publish
 
 on:
   push:
+    branches: [ main ]
+  pull_request:
     branches: [ main ]
   release:
     types: [ created ]
   workflow_dispatch:
 
 jobs:
-  build-and-publish-linux:
-    runs-on: ubuntu-latest
+  build:
+    name: Build on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ ubuntu-latest, windows-latest ]
+
     steps:
       - uses: actions/checkout@v4
 
       - name: Install pixi
         run: |
-          curl -fsSL https://pixi.sh/install.sh | bash
-          echo "$HOME/.pixi/bin" >> $GITHUB_PATH
-
-      - name: Ensure Docker
-        run: |
-          if ! command -v docker >/dev/null 2>&1; then
-            sudo apt-get update
-            sudo apt-get install -y docker.io
+          if [ "$RUNNER_OS" == "Linux" ]; then
+            curl -fsSL https://pixi.sh/install.sh | bash
+            echo "$HOME/.pixi/bin" >> $GITHUB_PATH
+          elif [ "$RUNNER_OS" == "Windows" ]; then
+            irm https://pixi.sh/install.ps1 | iex
+            echo "$HOME\.pixi\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
           fi
-          # Why: Start docker if not already running for cibuildwheel container builds
-          (sudo systemctl start docker 2>/dev/null || sudo service docker start 2>/dev/null || true)
-          docker --version
-          docker info || true
+        shell: bash
 
       - name: Show pixi version
         run: pixi --version
 
-      - name: Build wheels with cibuildwheel
+      # - name: Run tests
+      #   run: pixi run -e testing test
+
+      - name: Build wheels
         run: pixi run cibw-wheels
+        env:
+          # Set the packages to build
+          CIBW_PACKAGE: "packages/mass_decomposition packages/spectral_information packages/spectral_similarity ."
+          CIBW_SKIP: "*-win32 *musllinux*"
 
       - name: Build sdist
         run: pixi run sdist
 
-      - name: Build conda package
-        run: pixi build
-
-      - name: Upload wheel artifacts
+      - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: dist-linux
-          path: dist/
+          name: dist-${{ matrix.os }}
+          path: dist
 
-      - name: Upload conda artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: conda-linux
-          path: ./*.conda
-
-      - name: Publish to TestPyPI (Trusted Publishing)
-        if: github.event_name == 'release'
-        uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          repository-url: https://test.pypi.org/legacy/
-        continue-on-error: true
-
-      - name: Publish to PyPI (Trusted Publishing)
-        if: github.event_name == 'release'
-        uses: pypa/gh-action-pypi-publish@release/v1
-        continue-on-error: true
-
-      - name: Install rattler-build
-        if: github.event_name == 'release'
-        run: pixi global install rattler-build
-
-      - name: List conda packages
-        if: github.event_name == 'release'
-        run: ls -l ./*.conda
-
-      - name: Publish to prefix.dev
-        if: github.event_name == 'release'
-        run: |
-          for package in ./*.conda; do
-            pixi run publish-prefix --api-key "${{ secrets.PREFIX_API_KEY }}" "$package"
-          done
-        continue-on-error: true
-
-      - name: Publish to Anaconda.org
-        if: github.event_name == 'release'
-        run: |
-          for package in ./*.conda; do
-            pixi run publish-anaconda --api-key "${{ secrets.ANACONDA_API_KEY }}" "$package"
-          done
-        continue-on-error: true
-
-  build-and-publish-windows:
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install pixi
-        shell: pwsh
-        run: |
-          irm https://pixi.sh/install.ps1 | iex
-          echo "$HOME\.pixi\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-
-      - name: Show pixi version
-        run: pixi --version
-
-      - name: Build wheels with cibuildwheel
-        run: pixi run cibw-wheels
-
-      - name: Build conda package
-        run: pixi build
-
-      - name: Upload wheel artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: dist-windows
-          path: dist/
-
-      - name: Upload conda artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: conda-windows
-          path: ./*.conda
-
-      - name: Publish to TestPyPI (Trusted Publishing)
-        if: github.event_name == 'release'
-        uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          repository-url: https://test.pypi.org/legacy/
-        continue-on-error: true
-
-      - name: Publish to PyPI (Trusted Publishing)
-        if: github.event_name == 'release'
-        uses: pypa/gh-action-pypi-publish@release/v1
-        continue-on-error: true
-
-      - name: Install rattler-build
-        if: github.event_name == 'release'
-        run: pixi global install rattler-build
-
-      - name: List conda packages
-        if: github.event_name == 'release'
-        shell: pwsh
-        run: Get-ChildItem -Path . -Filter *.conda | Format-Table Name, Length
-
-      - name: Publish to prefix.dev
-        if: github.event_name == 'release'
-        shell: pwsh
-        run: |
-          Get-ChildItem -Path . -Filter *.conda | ForEach-Object {
-            pixi run publish-prefix --api-key "${{ secrets.PREFIX_API_KEY }}" $_.FullName
-          }
-        continue-on-error: true
-
-      - name: Publish to Anaconda.org
-        if: github.event_name == 'release'
-        shell: pwsh
-        run: |
-          Get-ChildItem -Path . -Filter *.conda | ForEach-Object {
-            pixi run publish-anaconda --api-key "${{ secrets.ANACONDA_API_KEY }}" $_.FullName
-          }
-        continue-on-error: true
-
-  build-and-publish-spectral-similarity:
+  publish:
+    name: Publish to PyPI
+    needs: build
     runs-on: ubuntu-latest
+    if: github.event_name == 'release' && github.event.action == 'created'
+
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Install pixi
-        run: |
-          curl -fsSL https://pixi.sh/install.sh | bash
-          echo "$HOME/.pixi/bin" >> $GITHUB_PATH
-
-      - name: Show pixi version
-        run: pixi --version
-
-      - name: Build conda package
-        run: pixi build
-        working-directory: packages/spectral_similarity
-
-      - name: Upload conda artifacts
-        uses: actions/upload-artifact@v4
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
         with:
-          name: conda-spectral-similarity-linux
-          path: packages/spectral_similarity/*.conda
+          path: dist
+          merge-multiple: true
 
-      - name: Install rattler-build
-        if: github.event_name == 'release'
-        run: pixi global install rattler-build
-
-      - name: List conda packages
-        if: github.event_name == 'release'
-        run: ls -l packages/spectral_similarity/*.conda
-
-      - name: Publish to prefix.dev
-        if: github.event_name == 'release'
-        run: |
-          for package in packages/spectral_similarity/*.conda; do
-            pixi run publish-prefix --api-key "${{ secrets.PREFIX_API_KEY }}" "$package"
-          done
-        continue-on-error: true
-
-      - name: Publish to Anaconda.org
-        if: github.event_name == 'release'
-        run: |
-          for package in packages/spectral_similarity/*.conda; do
-            pixi run publish-anaconda --api-key "${{ secrets.ANACONDA_API_KEY }}" "$package"
-          done
-        continue-on-error: true
-
-  build-and-publish-spectral-similarity-windows:
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install pixi
-        shell: pwsh
-        run: |
-          irm https://pixi.sh/install.ps1 | iex
-          echo "$HOME\\.pixi\\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-
-      - name: Show pixi version
-        run: pixi --version
-
-      - name: Build conda package
-        run: pixi build
-        working-directory: packages/spectral_similarity
-
-      - name: Upload conda artifacts
-        uses: actions/upload-artifact@v4
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
         with:
-          name: conda-spectral-similarity-windows
-          path: packages/spectral_similarity/*.conda
-
-      - name: Install rattler-build
-        if: github.event_name == 'release'
-        run: pixi global install rattler-build
-
-      - name: List conda packages
-        if: github.event_name == 'release'
-        shell: pwsh
-        run: Get-ChildItem -Path packages/spectral_similarity -Filter *.conda | Format-Table Name, Length
-
-      - name: Publish to prefix.dev
-        if: github.event_name == 'release'
-        shell: pwsh
-        run: |
-          Get-ChildItem -Path packages/spectral_similarity -Filter *.conda | ForEach-Object {
-            pixi run publish-prefix --api-key "${{ secrets.PREFIX_API_KEY }}" $_.FullName
-          }
-        continue-on-error: true
-
-      - name: Publish to Anaconda.org
-        if: github.event_name == 'release'
-        shell: pwsh
-        run: |
-          Get-ChildItem -Path packages/spectral_similarity -Filter *.conda | ForEach-Object {
-            pixi run publish-anaconda --api-key "${{ secrets.ANACONDA_API_KEY }}" $_.FullName
-          }
-        continue-on-error: true
+          password: ${{ secrets.PYPI_API_TOKEN }}
