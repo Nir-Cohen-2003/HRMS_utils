@@ -90,9 +90,35 @@ pub fn calculate_score_for_spectrum(
         _ => panic!("Invalid distance metric"),
     };
 
+    let mut unique_mask: Vec<bool> = vec![true; norm_formulas.len()];
+    if ignore_hydrogens && n_active > 1 {
+        for j in 0..norm_formulas.len() {
+            if !unique_mask[j] {
+                continue;
+            }
+            for l in (j + 1)..norm_formulas.len() {
+                if unique_mask[l] {
+                    let formula_j = &norm_formulas[j][1..];
+                    let formula_l = &norm_formulas[l][1..];
+                    
+                    let is_same = formula_j.iter().zip(formula_l.iter()).all(|(a, b)| (a - b).abs() < 1e-12);
+
+                    if is_same {
+                        unique_mask[l] = false;
+                    }
+                }
+            }
+        }
+    }
+
     let mut total_score = 0.0;
 
-    for (j, node_a_norm) in norm_formulas.iter().enumerate() {
+    for j in 0..norm_formulas.len() {
+        if !unique_mask[j] {
+            continue;
+        }
+        let node_a_norm = &norm_formulas[j];
+
         let node_a_compare = if ignore_hydrogens && n_active > 1 {
             &node_a_norm[1..]
         } else {
@@ -101,10 +127,11 @@ pub fn calculate_score_for_spectrum(
 
         let mut min_dist = f64::INFINITY;
 
-        for (l, node_b_norm) in norm_formulas.iter().enumerate() {
-            if j == l {
+        for l in 0..norm_formulas.len() {
+            if j == l || !unique_mask[l] {
                 continue;
             }
+            let node_b_norm = &norm_formulas[l];
 
             let node_b_compare = if ignore_hydrogens && n_active > 1 {
                 &node_b_norm[1..]
