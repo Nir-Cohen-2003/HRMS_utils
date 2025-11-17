@@ -84,7 +84,13 @@ connectorx = "*"
 sqlalchemy = "*"
 
 [feature.testing.tasks]
-test = "pytest"
+test = {cmd="echo 'All tests passed!'", depends-on = [
+    "test_nist_mspec",
+    "test_chromatogram",
+    "test_mol",
+    "test_info_score",
+    "test_entropy"
+  ]}
 check_all = "pyrefly check ./src/hrms_utils"
 check_nist_mspec = "pyrefly check ./src/hrms_utils/formats/nist_mspec.py"
 

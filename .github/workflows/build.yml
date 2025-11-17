@@ -20,16 +20,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install pixi
+      - name: Install pixi (Linux)
+        if: runner.os == 'Linux'
         run: |
-          if [ "$RUNNER_OS" == "Linux" ]; then
-            curl -fsSL https://pixi.sh/install.sh | bash
-            echo "$HOME/.pixi/bin" >> $GITHUB_PATH
-          elif [ "$RUNNER_OS" == "Windows" ]; then
-            powershell -ExecutionPolicy ByPass -c "irm -useb https://pixi.sh/install.ps1 | iex"
-            echo "$HOME\.pixi\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-          fi
-        shell: bash
+          curl -fsSL https://pixi.sh/install.sh | bash
+          echo "$HOME/.pixi/bin" >> $GITHUB_PATH
+
+      - name: Install pixi (Windows)
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: |
+          powershell -ExecutionPolicy ByPass -c "irm -useb https://pixi.sh/install.ps1 | iex"
+          echo "$HOME\.pixi\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
       - name: Show pixi version
         run: pixi --version
