@@ -34,8 +34,8 @@ jobs:
       - name: Show pixi version
         run: pixi --version
 
-      # - name: Run tests
-      #   run: pixi run -e testing test
+      - name: Run tests
+        run: pixi run -e testing test
 
       - name: Build wheels
         run: pixi run cibw-wheels
@@ -47,26 +47,63 @@ jobs:
       - name: Build sdist
         run: pixi run sdist
 
-      - name: Upload artifacts
+      - name: Upload wheel artifacts
         uses: actions/upload-artifact@v4
         with:
           name: dist-${{ matrix.os }}
           path: dist
 
+      - name: Build conda packages
+        run: |
+          pixi build
+          (cd packages/mass_decomposition && pixi build)
+          (cd packages/spectral_information && pixi build)
+          (cd packages/spectral_similarity && pixi build)
+        shell: bash
+
+      - name: Upload conda artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: conda-dist-${{ matrix.os }}
+          path: |
+            **/*.conda
+
   publish:
-    name: Publish to PyPI
+    name: Publish
     needs: build
     runs-on: ubuntu-latest
     if: github.event_name == 'release' && github.event.action == 'created'
 
     steps:
-      - name: Download all artifacts
+      - name: Download all wheel artifacts
         uses: actions/download-artifact@v4
         with:
           path: dist
+          pattern: dist-*
           merge-multiple: true
 
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           password: ${{ secrets.PYPI_API_TOKEN }}
+
+      - name: Download all conda artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: conda-dist
+          pattern: conda-dist-*
+          merge-multiple: true
+      
+      - name: Install pixi
+        run: |
+          curl -fsSL https://pixi.sh/install.sh | bash
+          echo "$HOME/.pixi/bin" >> $GITHUB_PATH
+        shell: bash
+
+      - name: Publish to prefix.dev and Anaconda.org
+        run: |
+          for package in conda-dist/**/*.conda; do
+            pixi run publish-prefix --api-key "${{ secrets.PREFIX_API_KEY }}" "$package"
+            pixi run publish-anaconda --api-key "${{ secrets.ANACONDA_API_KEY }}" "$package"
+          done
+        shell: bash
