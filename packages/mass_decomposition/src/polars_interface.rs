@@ -224,6 +224,8 @@ fn spectrum_decomposition_normalized_output(_fields: &[Field]) -> PolarsResult<F
 
 #[polars_expr(output_type_func=spectrum_decomposition_normalized_output)]
 fn spectrum_decomposition_normalized(inputs: &[Series], kwargs: CleanAndNormalizeSpectrumKwargs) -> PolarsResult<Series> {
+    // use std::time::Instant;
+    
     let s: &Series = &inputs[0];
     let ca: &ChunkedArray<StructType> = s.struct_()?;
     let len: usize = ca.len();
@@ -237,44 +239,43 @@ fn spectrum_decomposition_normalized(inputs: &[Series], kwargs: CleanAndNormaliz
     let intensities_ca: &ChunkedArray<ListType> = intensities_series.list()?;
     let precursor_ca: &ChunkedArray<FixedSizeListType> = precursor_series.array()?;
 
-    // Parallel extraction AND processing - work directly with Arrow arrays!
-    let indexed_results: Vec<(usize, CleanedAndNormalizedSpectrumResult)> = (0..len)
+    let masses_vec: Vec<Series> = masses_ca.into_no_null_iter().collect();
+    let intensities_vec: Vec<Series> = intensities_ca.into_no_null_iter().collect();
+    let precursor_vec: Vec<Series> = precursor_ca.into_no_null_iter().collect();
+
+    let allow_half_integer = kwargs.dbe_mode == "half_integer";
+    // Parallel extraction AND processing using zipped vectors
+    // let start_first_loop = Instant::now();
+    let indexed_results: Vec<(usize, CleanedAndNormalizedSpectrumResult)> = masses_vec
         .into_par_iter()
-        .filter_map(|idx| {
-            
-            // Get Arrow arrays directly
-            let masses_list = masses_ca.get(idx)?;
-            let intensities_list = intensities_ca.get(idx)?;
-            let precursor_arr = precursor_ca.get(idx)?;
-            
-            // Extract f64 slices directly from Arrow PrimitiveArrays
-            let masses_arr = masses_list
-                .as_any()
-                .downcast_ref::<PrimitiveArray<f64>>()?;
-            let masses: &[f64] = masses_arr.values();
-            
-            let intensities_arr = intensities_list
-                .as_any()
-                .downcast_ref::<PrimitiveArray<f64>>()?;
-            let intensities: &[f64] = intensities_arr.values();
-            
-            // Extract precursor formula directly
-            let precursor_sl = precursor_arr
-                .as_any()
-                .downcast_ref::<PrimitiveArray<i32>>()?
-                .values();
-            
+        .zip(intensities_vec.into_par_iter())
+        .zip(precursor_vec.into_par_iter())
+        .enumerate()
+        .map(|(idx, ((masses_list, intensities_list), precursor_arr))| {
+            // For List types, we need to downcast to ListArray first, then get values
+            let masses_ca:&ChunkedArray<Float64Type> = masses_list.f64().expect("masses should be a List(Float64)");
+            let masses_vec: Vec<f64> = masses_ca.into_no_null_iter().collect();
+            let masses:&[f64] = masses_vec.as_slice();
+
+            let intensities_ca:&ChunkedArray<Float64Type> = intensities_list.f64().expect("intensities should be a List(Float64)");
+            let intensities_vec: Vec<f64> = intensities_ca.into_no_null_iter().collect();
+            let intensities:&[f64] = intensities_vec.as_slice();
+
+            let precursor_ca:&ChunkedArray<Int32Type>   = precursor_arr.i32().expect("precursor_formula should be an Array(Int32,NUM_ELEMENTS)");
+            let precursor_vec: Vec<i32> = precursor_ca.into_no_null_iter().collect();
+            let precursor_slice: &[i32] = precursor_vec.as_slice();
+
             let mut precursor_formula: [i32; NUM_ELEMENTS] = [0; NUM_ELEMENTS];
-            precursor_formula.copy_from_slice(precursor_sl);
+            precursor_formula.copy_from_slice(precursor_slice);
             
             let mut max_bounds = precursor_formula.clone();
             if kwargs.water_absorption {
-                max_bounds[0] += 2;
-                max_bounds[3] += 1;
+                max_bounds[0] += 2; //H
+                max_bounds[3] += 1; //O
             }
             let min_bounds = [0; NUM_ELEMENTS];
             
-            let allow_half_integer = kwargs.dbe_mode == "half_integer";
+            
             
             let params = SpectrumDecompositionParams {
                 tolerance_ppm: kwargs.raw_fragment_tolerance_ppm,
@@ -293,15 +294,19 @@ fn spectrum_decomposition_normalized(inputs: &[Series], kwargs: CleanAndNormaliz
                 kwargs.normalized_fragment_tolerance_ppm,
             );
             
-            Some((idx, result))
+            (idx, result)
         })
         .collect();
-
+    // let first_loop_duration = start_first_loop.elapsed();
+    // println!("First loop (decomposition) took: {:?}", first_loop_duration);
+    // println!("Decomposition results collected");
+    
     // Sort to restore order
     let mut sorted_results = indexed_results;
     sorted_results.sort_unstable_by_key(|(idx, _)| *idx);
 
     // Build Series in parallel
+    // let start_second_loop = Instant::now();
     let series_data: Vec<_> = sorted_results
         .into_par_iter()
         .map(|(_idx, result)| {
@@ -344,6 +349,8 @@ fn spectrum_decomposition_normalized(inputs: &[Series], kwargs: CleanAndNormaliz
             )
         })
         .collect();
+    // let second_loop_duration = start_second_loop.elapsed();
+    // println!("Second loop (series building) took: {:?}", second_loop_duration);
 
     let (formulas_series_vec, formulas_str_series_vec, normalized_masses_series_vec, intensities_series_vec, errors_series_vec): (Vec<_>, Vec<_>, Vec<_>, Vec<_>, Vec<_>) = 
         series_data.into_iter()

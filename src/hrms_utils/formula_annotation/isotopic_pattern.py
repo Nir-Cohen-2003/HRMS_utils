@@ -3,7 +3,7 @@ import re
 from dataclasses import dataclass
 import polars as pl
 from typing import Dict, TypeVar, overload
-from .element_table import ELEMENTS, ELEMENT_SYMBOLS, DEFAULT_MIN_BOUND, DEFAULT_MAX_BOUND
+from .element_table import ELEMENTS, ELEMENT_SYMBOLS, DEFAULT_MIN_BOUND, DEFAULT_MAX_BOUND, NUM_ELEMENTS
 from numba import njit, jit
 NITROGEN_SEPARATION_RESOLUTION=1e5
 
@@ -307,25 +307,25 @@ def deduce_isotopic_pattern(
     # convert to a 2d array of shape (N, 8)
     deduced_bounds = np.array(deduced_bounds, dtype=np.float64).reshape(-1, 8)
     # construct one row of the base bound, from min_bounds and max bounds
-    base_bounds = np.zeros((1, 30), dtype=np.float64)
+    base_bounds = np.zeros((1, NUM_ELEMENTS*2), dtype=np.float64)
     # fill in the default values now:
-    # Fill in the base_bounds array with min_bounds (first 15) and max_bounds (last 15)
+    # Fill in the base_bounds array with min_bounds (first NUM_ELEMENTS) and max_bounds (last NUM_ELEMENTS)
     for idx, symbol in enumerate(ELEMENT_SYMBOLS):
         base_bounds[0, idx] = min_bounds[symbol]
-        base_bounds[0, idx + 15] = max_bounds[symbol]
+        base_bounds[0, idx + NUM_ELEMENTS] = max_bounds[symbol]
     # Now create the bounds_array by repeating base_bounds for each precursor
     bounds_array = np.repeat(base_bounds, len(deduced_bounds), axis=0)
     
     # now we copy the values, using vectorized operations
     # Copy deduced bounds for C, S, Cl, Br into the bounds_array.
     # The deduced_bounds array has shape (N, 8): [C_lower, S_lower, Cl_lower, Br_lower, C_upper, S_upper, Cl_upper, Br_upper]
-    # The bounds_array has shape (N, 30): [min_bounds..., max_bounds...]
+    # The bounds_array has shape (N, NUM_ELEMENTS*2): [min_bounds..., max_bounds...]
     # Fill in the appropriate indices for C, S, Cl, Br (both lower and upper bounds).
     for idx, symbol in enumerate(['C', 'S', 'Cl', 'Br']):
         bounds_array[:, ELEMENT_SYMBOLS.index(symbol)] = np.ceil(deduced_bounds[:, idx])      # lower bound
-        bounds_array[:, ELEMENT_SYMBOLS.index(symbol) + 15] = np.floor(deduced_bounds[:, idx + 4])  # upper bound
+        bounds_array[:, ELEMENT_SYMBOLS.index(symbol) + NUM_ELEMENTS] = np.floor(deduced_bounds[:, idx + 4])  # upper bound
 
-    return pl.Series(values=bounds_array.astype(np.int32), dtype=pl.Array(inner=pl.Int32, shape=(30,)))
+    return pl.Series(values=bounds_array.astype(np.int32), dtype=pl.Array(inner=pl.Int32, shape=(NUM_ELEMENTS*2,)))
 
 @jit(nopython=False)
 def deduce_isotopic_pattern_inner(

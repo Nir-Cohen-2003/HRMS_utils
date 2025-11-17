@@ -43,10 +43,10 @@ if __name__ == "__main__":
 
     # compute the spectral information scores
     chromatogram_df = chromatogram_df.with_columns(
-        pl.struct(["decomposed_formulas", "cleaned_spectrum_formulas"])
+        pl.struct(["precursor_formula", "cleaned_spectrum_formulas"])
           .map_batches(
               function=lambda s: spectral_info_score_polars(
-                  s.struct.field("decomposed_formulas"), 
+                  s.struct.field("precursor_formula"), 
                   s.struct.field("cleaned_spectrum_formulas")
               ),
               return_dtype=pl.Float64

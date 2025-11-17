@@ -214,7 +214,6 @@ def subtract_blank_frame(
 
 def annotate_chromatogram_with_formulas(
     chromatogram: pl.DataFrame,
-    addcut_mass: float = PROTON_MASS,
     max_bounds: dict | None = None,
     precursor_mass_accuracy_ppm: float = 3.0,
     fragment_mass_accuracy_ppm: float = 5.0,
@@ -348,7 +347,7 @@ def annotate_chromatogram_with_formulas(
         pl.col("bounds").arr.slice(0, length=NUM_ELEMENTS).list.to_array(width=NUM_ELEMENTS).alias("min_bounds"),
         pl.col("bounds").arr.slice(NUM_ELEMENTS, length=NUM_ELEMENTS).list.to_array(width=NUM_ELEMENTS).alias("max_bounds")
     )
-
+    print(chromatogram.schema)
     # Mass decomposition
     chromatogram = chromatogram.with_columns(
         pl.struct(
@@ -364,8 +363,8 @@ def annotate_chromatogram_with_formulas(
         pl.col("decomposed_formulas_struct").struct.field("formulas_str").alias("precursor_formula_str"),
         pl.col("decomposed_formulas_struct").struct.field("errors_ppm").alias("precursor_errors_ppm"),
     ).drop(["bounds", "decomposed_formulas_struct"])
-
     chromatogram = chromatogram.explode(["precursor_formula", "precursor_formula_str", "precursor_errors_ppm"])
+    print(chromatogram.schema)
 
     # Cleaning + normalization
     chromatogram = chromatogram.rechunk().with_columns(
@@ -377,6 +376,10 @@ def annotate_chromatogram_with_formulas(
         .mass_decomposition.clean_and_normalize_spectrum(
             raw_fragment_tolerance_ppm=fragment_mass_accuracy_ppm,
             normalized_fragment_tolerance_ppm=normalized_fragment_mass_accuracy_ppm,
+            min_dbe=-0.5,
+            max_dbe=30.0,
+            dbe_mode="half_integer",
+            water_absorption=False
         )
         .alias("cleaned_spectra")
     ).with_columns(
