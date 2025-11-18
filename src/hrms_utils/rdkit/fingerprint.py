@@ -1,3 +1,4 @@
+# pyrefly: ignore-errors
 import dataclasses
 from dataclasses import dataclass
 from typing import List, Literal, Dict, Any, Optional, Union, Iterable
@@ -10,7 +11,6 @@ from rdkit import RDLogger
 from numpy.typing import NDArray
 import numpy as np
 import polars as pl
-
 # RDLogger.DisableLog('rdApp.*')
 
 

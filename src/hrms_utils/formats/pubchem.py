@@ -6,7 +6,7 @@ import shutil
 from rdkit import Chem
 from rdkit.Chem.Descriptors import ExactMolWt # type: ignore[unresolved-import]
 import numpy as np
-from typing import Optional
+from typing import Optional, cast, BinaryIO
 from pathlib import Path
 
 def reduce_pubchem_data(pubchem:pl.DataFrame | pl.LazyFrame) -> pl.DataFrame|pl.LazyFrame:
@@ -155,12 +155,21 @@ def download_pubchem_data():
     pubcehm_inchi_address = 'https://ftp.ncbi.nlm.nih.gov/pubchem/Compound/Extras/CID-InChI-Key.gz'
 
     start = time()
+
+    # fail fast if url unreachable
     r = requests.get(pubcehm_smiles_address, stream=True)
+    r.raise_for_status()  # fail fast on bad status
+    # cast to BinaryIO to satisfy static type checker
     with open('/home/analytit_admin/Data/pubchem/CID-SMILES.gz', 'wb') as f:
-        shutil.copyfileobj(r.raw, f)
+        shutil.copyfileobj(cast(BinaryIO, r.raw), f)
+    r.close()
+
     r = requests.get(pubcehm_inchi_address, stream=True)
+    r.raise_for_status()
     with open('/home/analytit_admin/Data/pubchem/CID-InChI-Key.gz', 'wb') as f:
-        shutil.copyfileobj(r.raw, f)
+        shutil.copyfileobj(cast(BinaryIO, r.raw), f)
+    r.close()
+
     print('time : ', time()-start)
 
 def get_mass_from_smiles(smiles:str):

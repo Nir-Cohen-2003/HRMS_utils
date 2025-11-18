@@ -69,12 +69,11 @@ EPA_main_data_schema_initial = dict({
 })
 
 def read_file_idetifiers_only(file_path: Path | str):
-    file_path = Path(file_path) if isinstance(file_path, str) else file_path
-    assert isinstance(file_path, (Path, str)), "file_path must be a Path or str"
-    assert file_path.exists(), f"file_path does not exist: {file_path}"
-    assert file_path.suffix.lower() == '.xlsx', "file_path must be an Excel file with .xlsx extension"
+    file_path_inner = Path(file_path)
+    assert file_path_inner.exists(), f"file_path does not exist: {file_path_inner}"
+    assert file_path_inner.suffix.lower() == '.xlsx', "file_path must be an Excel file with .xlsx extension"
 
-    df = pl.read_excel(file_path, schema_overrides={
+    df = pl.read_excel(file_path_inner, schema_overrides={
         'AVERAGE_MASS': pl.Float64,
         'MONOISOTOPIC_MASS': pl.Float64})
     df = df.with_columns(
@@ -86,26 +85,24 @@ def read_file_idetifiers_only(file_path: Path | str):
     return df
 
 def read_xlsx_EPA_list_file_short_format(file_path: Path | str):
-    file_path = Path(file_path) if isinstance(file_path, str) else file_path
-    assert isinstance(file_path, (Path, str)), "file_path must be a Path or str"
-    assert file_path.exists(), f"file_path does not exist: {file_path}"
-    assert file_path.suffix.lower() == '.xlsx', "file_path must be an Excel file with .xlsx extension"
-    data = pl.read_excel(file_path).with_columns(
+    file_path_inner = Path(file_path)
+    assert file_path_inner.exists(), f"file_path does not exist: {file_path_inner}"
+    assert file_path_inner.suffix.lower() == '.xlsx', "file_path must be an Excel file with .xlsx extension"
+    data = pl.read_excel(file_path_inner).with_columns(
         pl.col('DTXSID').str.strip_prefix('DTXSID').cast(pl.Int64).alias('DTXSID'))
     return data
     
-def read_xlsx_EPA_list_file_full_format(file_path):
-    file_path = Path(file_path) if isinstance(file_path, str) else file_path
-    assert isinstance(file_path, (Path, str)), "file_path must be a Path or str"
-    assert file_path.exists(), f"file_path does not exist: {file_path}"
-    assert file_path.suffix.lower() == '.xlsx', "file_path must be an Excel file with .xlsx extension"
+def read_xlsx_EPA_list_file_full_format(file_path: Path | str):
+    file_path_inner = Path(file_path) 
+    assert file_path_inner.exists(), f"file_path does not exist: {file_path_inner}"
+    assert file_path_inner.suffix.lower() == '.xlsx', "file_path must be an Excel file with .xlsx extension"
     try:
-        main_df = pl.read_excel(file_path, sheet_name=['Main Data'], schema_overrides=EPA_main_data_schema_initial)
+        main_df = pl.read_excel(file_path_inner, sheet_name=['Main Data'], schema_overrides=EPA_main_data_schema_initial)
         main_df = main_df['Main Data']
     except (KeyError, ValueError):
         raise KeyError("The Excel file must contain a sheet named 'Main Data' with the expected schema. Are you sure this is a full format list (with Main Data and Synonym Identifier sheets), or a short format list (without synonyms, and only one sheet)?")
     try:
-        synonym_df = pl.read_excel(file_path, sheet_name=['Synonym Identifier'], infer_schema_length=None)
+        synonym_df = pl.read_excel(file_path_inner, sheet_name=['Synonym Identifier'], infer_schema_length=None)
         synonym_df = synonym_df['Synonym Identifier']
     except (KeyError, ValueError):
         raise KeyError("The Excel file must contain a sheet named 'Synonym Identifier'. are you sure this is a full format list (with Main Data and Synonym Identifier sheets), or a short format list (without synonyms, and only one sheet)?")

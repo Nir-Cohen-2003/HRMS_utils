@@ -277,7 +277,7 @@ def _add_spectral_information_score(data: T) -> T:
             pl.struct([
                 pl.col("precursor_formula_array").alias('precursor_formula'),
                 pl.col("cleaned_fragment_formulas").alias('fragment_formulas')
-                ]).spectral_info.spectral_info_score(distance_metric="l2", ignore_hydrogens=True).alias("spectral_information_score")
+                ]).spectral_info.spectral_info_score(distance_metric="l2", ignore_hydrogens=True).alias("spectral_information_score") #type: ignore[missing-attribute]
         )
     )
 

@@ -10,8 +10,9 @@ from ..formula_annotation.element_table import ELEMENT_INDEX, ELEMENT_MASSES
 import mass_decomposition
 import spectral_similarity
 from mass_decomposition import NUM_ELEMENTS
+from typing import TypeVar, cast, Dict,Iterable
 
-PROTON_MASS = ELEMENT_MASSES[ELEMENT_INDEX['H']]
+T = TypeVar('T', pl.DataFrame, pl.LazyFrame)
 
 
 MSDIAL_columns_to_read = {
@@ -81,11 +82,7 @@ class blank_config:
 
     @classmethod
     def from_dict(cls, config_dict: dict) -> 'blank_config':
-        kwargs = {}
-        for field_ in cls.__dataclass_fields__: # why complicate it and not just use cls(**config_dict)? because we want to avoid keys that are not in the dataclass
-            if field_ in config_dict and config_dict[field_] is not None:
-                kwargs[field_] = config_dict[field_]
-        return cls(**kwargs)
+        return cls(**config_dict)
 
 
 
@@ -199,7 +196,7 @@ def subtract_blank_frame(
                 pl.col('msms_m/z_blank').alias('mz2'),
                 pl.col('Precursor_mz_MSDIAL').alias('precursor_mz1'),
                 pl.col('Precursor_mz_MSDIAL_blank').alias('precursor_mz2'),
-            ).spectral_similarity.dotprod_similarity(
+            ).spectral_similarity.dotprod_similarity( #type: ignore[missing-attribute]
                 ms2_tolerance_in_ppm=config.ms2_mass_tolerance,
                 clean_spectra_first=True,
                 noise_threshold=0.001,
@@ -354,7 +351,7 @@ def annotate_chromatogram_with_formulas(
             pl.col("Precursor_mz_MSDIAL").alias("mass"),
             pl.col("min_bounds"),
             pl.col("max_bounds"),
-        ).mass_decomposition.decompose_mass_with_bounds(
+        ).mass_decomposition.decompose_mass_with_bounds( #type: ignore[missing-attribute]
             tolerance_ppm=precursor_mass_accuracy_ppm,
         )
         .alias("decomposed_formulas_struct")
@@ -373,7 +370,7 @@ def annotate_chromatogram_with_formulas(
             pl.col("msms_intensity").alias("intensities"),
             pl.col("precursor_formula"),
         )
-        .mass_decomposition.clean_and_normalize_spectrum(
+        .mass_decomposition.clean_and_normalize_spectrum( #type: ignore[missing-attribute]
             raw_fragment_tolerance_ppm=fragment_mass_accuracy_ppm,
             normalized_fragment_tolerance_ppm=normalized_fragment_mass_accuracy_ppm,
             min_dbe=-0.5,
@@ -393,14 +390,13 @@ def annotate_chromatogram_with_formulas(
     return chromatogram
 
 
-def _get_chromatogram_basic(path: str | Path)-> pl.LazyFrame :
+def _get_chromatogram_basic(path: str | Path)-> pl.DataFrame :
     chromatogram = pl.read_csv(
         source=path,has_header=True,skip_rows=0,separator="	", null_values='null',
-        columns=list(MSDIAL_columns_to_read.keys()),
+        columns=list(MSDIAL_columns_to_read.keys()), #type: ignore[no-matching-overload]
         schema_overrides=MSDIAL_columns_to_read)
     # chromatogram = chromatogram.select(MSDIAL_columns_to_read.keys())
-    chromatogram = _convert_MSMS_to_list(chromatogram).drop('MSMS spectrum')
-    chromatogram = _convert_MS1_to_list(chromatogram).drop('MS1 isotopes')
+    chromatogram = _convert_spectra_to_list(chromatogram).drop(['MSMS spectrum',"MS1 isotopes"])
     chromatogram=chromatogram.with_columns(
         pl.col('RT right (min)').sub(pl.col('RT left(min)')).alias('peak_width_min'),
         pl.col('Precursor m/z').round(0).cast(pl.Int64).alias('nominal_mass'),
@@ -435,47 +431,29 @@ def _add_energy_annotation(chromatogram:pl.DataFrame) -> pl.DataFrame:
 
 
 
-def _convert_MSMS_to_list(chromatogram: pl.LazyFrame | pl.DataFrame) -> pl.LazyFrame | pl.DataFrame:
+def _convert_spectra_to_list(chromatogram: T) -> T:
 
-    chromatogram = chromatogram.with_columns(
+    return cast(T,chromatogram.with_columns(
         pl.col('MSMS spectrum').str.extract_all(
             pattern=r'(\d+\.\d+)'
         ).list.eval(pl.element().cast(pl.Float64)).alias('msms_m/z'),
         pl.col('MSMS spectrum').str.extract_all(
             pattern=r'(\d+)\s|(\d+$)'
-        ).list.eval(pl.element().str.extract( pattern=r'(\d+)').cast(pl.Float64).round(4)).alias('msms_intensity')
-        #).alias('msms_intensity')
-    )
-    chromatogram = chromatogram.with_columns(
-        pl.col('msms_intensity').truediv(pl.col('msms_intensity').list.max())
-    )
-
-    return chromatogram
-
-def _convert_MS1_to_list(chromatogram: pl.LazyFrame | pl.DataFrame) -> pl.LazyFrame | pl.DataFrame:
-
-    chromatogram = chromatogram.with_columns(
+        ).list.eval(pl.element().str.extract( pattern=r'(\d+)').cast(pl.Float64).round(4)).alias('msms_intensity'),
         pl.col('MS1 isotopes').str.extract_all(
             pattern=r'(\d+\.\d+)'
         ).list.eval(pl.element().cast(pl.Float64)).alias('ms1_isotopes_m/z'),
         pl.col('MS1 isotopes').str.extract_all(
             pattern=r'(\d+)\s|(\d+$)'
         ).list.eval(pl.element().str.extract( pattern=r'(\d+)').cast(pl.Float64).round(4)).alias('ms1_isotopes_intensity')
-    )
-    # removed because we need to know the actual intensity of each, not only the relative.
-    # chromatogram = chromatogram.with_columns(
-    #     pl.col('ms1_isotopes_intensity').truediv(
-    #         pl.col('ms1_isotopes_intensity').list.get(
-    #             pl.col('ms1_isotopes_m/z').sub(pl.col('Precursor m/z')).list.eval(pl.element().abs()).list.arg_min()
-    #         )
-    #     )
-    # )
-    return chromatogram
+    ).with_columns(
+        pl.col('msms_intensity').truediv(pl.col('msms_intensity').list.max())
+    ))
 
 
-def _annotate_isobars_and_clean_spectrum(chromatogram: pl.LazyFrame | pl.DataFrame) -> pl.DataFrame:
-    chromatogram = chromatogram.lazy()
-    chromatogram_with_msms = chromatogram.filter(pl.col('msms_intensity').is_not_null()) #why? cause otherwise we don't know how to subtract spectrum
+def _annotate_isobars_and_clean_spectrum(chromatogram: T) -> pl.DataFrame:
+    chromatogram_lf = chromatogram.lazy()
+    chromatogram_with_msms = chromatogram_lf.filter(pl.col('msms_intensity').is_not_null()) #why? cause otherwise we don't know how to subtract spectrum
 
     
     isobars = chromatogram_with_msms.join_where(
@@ -493,15 +471,14 @@ def _annotate_isobars_and_clean_spectrum(chromatogram: pl.LazyFrame | pl.DataFra
     isobars = isobars.with_columns(pl.col('Peak ID_isobar').alias('isobars'))
     isobars = isobars.select(['Peak ID','isobars'])
 
-    chromatogram = chromatogram.join(isobars,on='Peak ID',how='left')
-    chromatogram = chromatogram.collect()
+    chromatogram_lf = chromatogram_lf.join(isobars,on='Peak ID',how='left')
+    chromatogram_df = chromatogram_lf.collect()
     
-    only_with_isobars = chromatogram.filter(pl.col('isobars').is_not_null())
+    only_with_isobars = chromatogram_df.filter(pl.col('isobars').is_not_null())
 
     # ugly workaround. didn't find a better way.
     only_with_isobars_rows = only_with_isobars.select(['Peak ID','msms_m/z','msms_intensity','RT (min)','isobars','Height']).rows_by_key(key=['Peak ID'],named=True,unique=True)
-    chromatogram_rows = chromatogram.rows_by_key(key=['Peak ID'],named=True,unique=True)
-
+    chromatogram_rows = chromatogram_df.rows_by_key(key=['Peak ID'],named=True,unique=True)
     for compound in only_with_isobars_rows:
         isobars = only_with_isobars_rows[compound]['isobars']
         for isobar in isobars:
@@ -528,7 +505,7 @@ def _annotate_isobars_and_clean_spectrum(chromatogram: pl.LazyFrame | pl.DataFra
         for key, value in row.items():
             if key not in result_dict:
                 result_dict[key] = []
-            result_dict[key].append(value)
+            result_dict[key].append(value) #type: ignore[missing-attribute]
 
     chromatogram3 = pl.DataFrame(
         result_dict,
@@ -548,8 +525,8 @@ def _annotate_isobars_and_clean_spectrum(chromatogram: pl.LazyFrame | pl.DataFra
         )
     chromatogram3 = chromatogram3.select(['Peak ID','msms_m/z','msms_intensity'])
 
-    chromatogram=chromatogram.join(chromatogram3, on="Peak ID",how="left", suffix="_cleaned")
-    chromatogram = chromatogram.with_columns( #converts empty lists to null
+    chromatogram_df=chromatogram_df.join(chromatogram3, on="Peak ID",how="left", suffix="_cleaned")
+    chromatogram_df = chromatogram_df.with_columns( #converts empty lists to null
         pl.when(
         pl.col('msms_m/z_cleaned').list.len().gt(0)
         ).then(pl.col('msms_m/z_cleaned')),
@@ -558,7 +535,7 @@ def _annotate_isobars_and_clean_spectrum(chromatogram: pl.LazyFrame | pl.DataFra
         ).then(pl.col('msms_intensity_cleaned'))) 
     
 
-    return chromatogram
+    return chromatogram_df
 
 def _subtract_isobar_spectra(
         compound_msms_mz,compound_msms_intensity,

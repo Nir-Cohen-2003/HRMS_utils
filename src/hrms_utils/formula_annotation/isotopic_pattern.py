@@ -1,3 +1,5 @@
+# pyrefly: ignore-errors
+
 import numpy as np
 import re
 from dataclasses import dataclass
@@ -284,7 +286,7 @@ def deduce_isotopic_pattern(
 
     ms1_mzs_arr = ms1_mzs.to_numpy()
     ms1_intensities_arr = ms1_intensities.to_numpy()
-    deduced_bounds = [None] * len(precursor_mzs)
+    deduced_bounds_list: list[np.ndarray] = []
     for i in range(len(precursor_mzs)):
         result = deduce_isotopic_pattern_inner(
             precursor_mz=precursor_mzs[i],
@@ -299,13 +301,10 @@ def deduce_isotopic_pattern(
             iso_zero_probs=iso_zero_probs,
             iso_first_probs=iso_first_probs
         )
-        # print(result)
-        if result is None:
-            # Fill with NaNs or zeros
-            result = [-1] * 8  # or [0.0] * 8
-        deduced_bounds[i] = result
+        deduced_bounds_list.append(result) # type: ignore[bad-argument-type]
     # convert to a 2d array of shape (N, 8)
-    deduced_bounds = np.array(deduced_bounds, dtype=np.float64).reshape(-1, 8)
+    # deduced_bounds = np.array(deduced_bounds, dtype=np.float64).reshape(-1, 8)
+    deduced_bounds: np.ndarray = np.vstack(deduced_bounds_list, dtype=np.float64)
     # construct one row of the base bound, from min_bounds and max bounds
     base_bounds = np.zeros((1, NUM_ELEMENTS*2), dtype=np.float64)
     # fill in the default values now:
@@ -340,7 +339,7 @@ def deduce_isotopic_pattern_inner(
         iso_mass_diffs: np.ndarray,
         iso_zero_probs: np.ndarray,
         iso_first_probs: np.ndarray
-):
+)-> np.ndarray:
     MASS_ACCURACY_PPM_TO_DA_THRESHOLD = 200
     ms1_mzs = np.atleast_1d(ms1_mzs)
     ms1_intensities = np.atleast_1d(ms1_intensities)
@@ -349,8 +348,9 @@ def deduce_isotopic_pattern_inner(
     # use this to detect the isotopic peaks
     isotopic_absolute_tolerance = np.max(np.array([precursor_mz, MASS_ACCURACY_PPM_TO_DA_THRESHOLD])) * isotopic_mass_tolerance_ppm * 1e-6
     precursor_idx = np.where(np.atleast_1d(np.isclose(ms1_mzs, precursor_mz, atol=MS1_absolute_tolerance, rtol=0.0)))[0]
+
     if len(precursor_idx) == 0:
-        return None
+        raise ValueError(f"Precursor m/z not found in MS1 spectrum within the specified tolerance. \nPrecursor m/z: {precursor_mz}, Tolerance: {MS1_absolute_tolerance}, MS1 m/zs: {ms1_mzs}")
     
     #the real mass measured for the precursor in the ms1
     precursor_ms1_mz = ms1_mzs[precursor_idx[ms1_intensities[precursor_idx].argmax()]] 
@@ -416,6 +416,6 @@ def deduce_isotopic_pattern_inner(
         Br_upper = ((Br_peak_total_intensities * (1 + intensity_relative_tolerance) + intensity_absolute_tolerance) * iso_zero_probs[3]) / (iso_first_probs[3] * precursor_ms1_intensity)
     # TODO: Add support for second isotope for Br (M+4)
 
-    return [C_lower, S_lower, Cl_lower, Br_lower, C_upper, S_upper, Cl_upper, Br_upper]
+    return np.array([C_lower, S_lower, Cl_lower, Br_lower, C_upper, S_upper, Cl_upper, Br_upper], dtype=np.float64)
 
 

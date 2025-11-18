@@ -86,14 +86,14 @@ def _smiles_to_inchi_batch(smiles_list: List[str]) -> List[str]:
     """Convert a list of SMILES strings to InChI."""
     RDLogger.DisableLog('rdApp.*') # type: ignore
 
-    inchi_list = []
+    inchi_list: List[str] = []
     for smiles in smiles_list:
         try:
             mol = Chem.MolFromSmiles(smiles)
             if mol is None:
                 inchi = ''
             else:
-                inchi = Chem.MolToInchi(mol)
+                inchi = Chem.MolToInchi(mol)[0]
         except Exception as e:
             print(f"Error converting SMILES {smiles}: {e}")
             inchi = ''
