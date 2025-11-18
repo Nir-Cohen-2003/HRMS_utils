@@ -34,7 +34,12 @@ def create_nist_dataframe(named_file_list: list[tuple[str|Path, str]]) -> pl.Dat
     combined_df = pl.concat(dataframes, how='vertical')
     return combined_df
 
-def read_MSPEC_file(path: Path | str, raw_fragment_tolerance_ppm: float = 10.0, normalized_fragment_tolerance_ppm: float = 5.0, molecular_ion_tolerance_ppm: float = 5.0) -> pl.DataFrame:
+def read_MSPEC_file(
+    path: Path | str, 
+    raw_fragment_tolerance_ppm: float = 10.0, 
+    normalized_fragment_tolerance_ppm: float = 5.0, 
+    molecular_ion_tolerance_ppm: float = 5.0,
+    lazy: bool = False) -> pl.DataFrame | pl.LazyFrame:
     with open(path, 'r') as file:
         file_contents = file.read()
     
@@ -89,8 +94,10 @@ def read_MSPEC_file(path: Path | str, raw_fragment_tolerance_ppm: float = 10.0, 
         ]
     )
 
-    return data.collect(engine='streaming')
-
+    if not lazy:
+        return data.collect(engine='streaming')
+    else:
+        return data
 
 
 def _read_file(file_contents: str):

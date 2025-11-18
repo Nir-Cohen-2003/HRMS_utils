@@ -5,7 +5,7 @@ import traceback
 import polars as pl
 from hrms_utils.formats.nist_mspec import read_MSPEC_file
 import os
-
+import numpy as np
 def run_mspec_reader_profile(msp_file_path: Path):
     """
     Reads a MSPEC file, profiles the execution time,
@@ -106,26 +106,51 @@ def run_mspec_reader_profile(msp_file_path: Path):
     print(f"  - ESI TOF: {esi_tof_count}")
     print(f"  - ESI Other: {esi_other_count}")
 
-    # print the distribution of "explained_intensity" column if it exists
-    if "explained_intensity" in spectra_df.columns:
-        print("\n'explained_intensity' column statistics, for clean precursors only:")
-        entropy_stats = spectra_df.filter(pl.col("clean_precursor")).select([
-            pl.col("explained_intensity").mean().alias("mean"),
-            pl.col("explained_intensity").median().alias("median"),
-            pl.col("explained_intensity").min().alias("min"),
-            pl.col("explained_intensity").max().alias("max"),
-            pl.col("explained_intensity").std().alias("std_dev"),
-        ]).to_dict(as_series=False)
-        for stat, value in entropy_stats.items():
-            print(f"  - {stat}: {value[0]}")
+
     
+    # print a histogram (in numpy) of explained_intensity for clean precursors
+    # Why: numeric histograms help CI and debugging without introducing plot artifacts.
+    for hist_col in ["explained_intensity", "spectral_information_score"]:
+        if hist_col not in spectra_df.columns:
+            print(f"\nColumn '{hist_col}' not found; skipping histogram.")
+            continue
+
+        # Filter to clean precursors and drop nulls to ensure meaningful histogram bins.
+        filtered = spectra_df.filter(pl.col("clean_precursor") & pl.col(hist_col).is_not_null()).select(pl.col(hist_col))
+        if filtered.height == 0:
+            print(f"\nNo rows for clean precursors with non-null '{hist_col}'; skipping histogram.")
+            continue
+
+        # Convert to 1D numpy array for numeric histogram computation.
+        # shape: (n_rows,)
+        values: np.ndarray = filtered.to_numpy().ravel()
+
+        # Choose adaptive bins; 'auto' is a reasonable default that adjusts to the distribution
+        # to provide informative buckets without needing visualization.
+        counts, edges = np.histogram(values, bins=20)
+        percentages = (counts / counts.sum()) * 100.0
+
+        print(f"\nNumeric histogram for '{hist_col}' (clean_precursor):")
+        print(f"  - bins: {len(counts)}")
+        print(f"  - counts: {counts.tolist()}")
+        print(f"  - percentages: {[round(p, 2) for p in percentages.tolist()]}")
+        print(f"  - bin_edges (len {len(edges)}): {edges.tolist()}")
+        # Also print the basic distribution summary for this column
+        summary = filtered.select([
+            pl.col(hist_col).mean().alias("mean"),
+            pl.col(hist_col).median().alias("median"),
+            pl.col(hist_col).min().alias("min"),
+            pl.col(hist_col).max().alias("max"),
+            pl.col(hist_col).std().alias("std_dev"),
+        ]).to_dict(as_series=False)
+        print(f"  - summary: { {k:v[0] for k,v in summary.items()} }")
+
     print(spectra_df.filter(
         pl.col("clean_precursor"),
         pl.col("precursor_type").eq("[M+H]+")
     ).sort(by="explained_intensity").head(1).select([
         "precursor_formula_array",
         "explained_intensity",
-        # "simple_explained_intensity",
         "nist_id",
         "raw_spectrum_mz",
         "raw_spectrum_intensity",
