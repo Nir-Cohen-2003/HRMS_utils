@@ -45,6 +45,7 @@ def read_MSPEC_file(
     
     data = _read_file(file_contents)
     data = _annotate_and_filter_metadata(data)
+    data = _extract_collision_energy_values(data)
     data = _annotate_spectra(
         data, 
         raw_fragment_tolerance_ppm=raw_fragment_tolerance_ppm, 
@@ -74,14 +75,18 @@ def read_MSPEC_file(
             "cas",
             "inchikey",
             "base_inchikey",
+            "smiles",
+            "inchi",    
             "is_orbitrap",
             "is_TOF",
             "is_ESI",
             "precursor_type",
             "precursor_mz",
-            "formula",
+            "molecular_formula",
+            "molecular_formula_array",
             "precursor_formula_array",
             "clean_precursor",
+            "exact_mass",
             "raw_spectrum_mz",
             "raw_spectrum_intensity",
             "cleaned_normalized_mz",
@@ -120,12 +125,12 @@ def _read_file(file_contents: str):
         pl.col('raw').str.extract(pattern=r'(?i)Precursor_?type: (.+)',group_index=1).alias('precursor_type'),
         pl.col('raw').str.extract(pattern=r'(?i)PrecursorMZ: (\d+\.?\d*)',group_index=1).alias('precursor_mz'),
         pl.col('raw').str.extract(pattern=r'(?i)MW: (\d+)',group_index=1).alias('mw'),
-        pl.col('raw').str.extract(pattern=r'(?i)Formula: (.+)',group_index=1).alias('formula'),
+        pl.col('raw').str.extract(pattern=r'(?i)Formula: (.+)',group_index=1).alias('molecular_formula'),
         pl.col('raw').str.extract(pattern=r'(?i)Num Peaks: (\d+)',group_index=1).alias('num_peaks'),
         pl.col('raw').str.extract(pattern=r'(?i)\nCAS#: ([0-9,-]+)',group_index=1).alias('cas'),
         pl.col('raw').str.extract(pattern=r'(?i)\nRelated_CAS#: ([0-9,-]+)',group_index=1).alias('related_cas'),
         pl.col('raw').str.extract(pattern=r'(?i)\nInChIKey: (.+)',group_index=1).alias('inchikey'),
-        pl.col('raw').str.extract(pattern=r'(?i)\nExactMass: (\d+\.\d+)',group_index=1).alias('exactmass'),
+        pl.col('raw').str.extract(pattern=r'(?i)\nExactMass: (\d+\.\d+)',group_index=1).alias('exact_mass'),
         pl.col('raw').str.extract(pattern=r'(?i)[Mm]z_diff=(-?\d+\.\d+)',group_index=1).alias('mz_diff'),
         pl.col('raw').str.extract_all(pattern=r'(?i)Synon: (.+)')
         .list.eval(pl.element().str.extract(pattern=r'(?i)Synon: (.+)',group_index=1))
@@ -145,28 +150,126 @@ def _read_file(file_contents: str):
         pl.col("ion_mode").str.to_uppercase(),
         pl.col("num_peaks").str.to_integer(),
         pl.col("precursor_mz").cast(pl.Float64),
-        pl.col('mz_diff').cast(pl.Float64),
-        # extract numeric collision energies allowing integers or floats
-        pl.col('collision_energy_raw').str.extract(r'(?i)NCE=([0-9]+(?:\.[0-9]+)?)', group_index=1).cast(pl.Float64).alias('collision_energy_NCE'),
-        pl.col('collision_energy_raw').str.extract(r'([0-9]+(?:\.[0-9]+)?)e*V*v*$', group_index=1).cast(pl.Float64).alias('collision_energy_ev'),
-        pl.col('collision_energy_raw').str.strip_chars("[]").str.split(by=",").list.eval(
-            pl.element().str.extract(pattern=r'([0-9]+(?:\.[0-9]+)?)')
-        ).cast(
-            pl.List(pl.Float64)
-        ).alias("collision_energy_list"),
-        pl.col('formula').map_elements(format_formula_string_to_array,return_dtype=pl.List(pl.Int32)).list.to_array(width=num_elements).alias('formula_array'),
+        pl.col('exact_mass').cast(pl.Float64,strict=False),
+        pl.col('mz_diff').cast(pl.Float64),    
+        pl.col('molecular_formula').map_elements(format_formula_string_to_array,return_dtype=pl.List(pl.Int32)).list.to_array(width=num_elements).alias('molecular_formula_array'),
         pl.col('mz_intensity').list.eval(pl.element().str.split(by=' ').list.get(index=0).cast(pl.Float64)).alias('raw_spectrum_mz'),
         pl.col('mz_intensity').list.eval(pl.element().str.split(by=' ').list.get(index=1).cast(pl.Float64)).alias('raw_spectrum_intensity'),
-        pl.col('precursor_type').str.replace(r'\[(M.*)\][+\\-]?\\d*', r'$1').str.replace('M', pl.col('formula')).alias('precursor_formula')
+        pl.col('precursor_type').str.replace(r'\[(M.*)\][+\\-]?\\d*', r'$1').str.replace('M', pl.col('molecular_formula')).alias('precursor_formula')
     ).with_columns(
         pl.col('precursor_formula').map_elements(format_formula_string_to_array,return_dtype=pl.List(pl.Int32)).list.to_array(width=num_elements).alias('precursor_formula_array'),
-        pl.col("collision_energy_list").list.len().ge(1).alias("multiple_collision_energies"), # boolean indicating if multiple collision energies are present
-        pl.col("collision_energy_list").list.mean().alias("collision_energy_mean") 
+       
     )
     return data
 
+def _extract_collision_energy_values(data:T)-> T:
+    '''
+    cases we need to account for:
+    
+    NCE=70% 16eV
+    20 (NCE)
+    20 NCE
+    20 eV
+    20 V
+    20 
+    20 % (nominal)
+    20.0 eV
+    [20.0, 30.0, 60.0, 40.0]
+    
+    logic:
+    if there is only NCE, or only V or ev, we take that value and put it in the needed column: collision_energy_NCE or collision_energy_ev
+    if there are bot hNCE and ev or V, each "number" is assigned to the column of the closest description- the order can be thus:
+        desc1 num1 desc2 num2
+        desc1 num1 num2 desc2
+        num1 desc1 desc2 num2
+        num1 desc1 num2 desc2
+        desc1 desc2 num1 num2
+        num1 num2 desc1 desc2
+    % is considered to indicate NCE.
+    if a number does not contain any such description, if it is orbitra, we consider it NCE, otherwise ev.
+    If a list of numbers is present (e.g. [20, 30, 40]), calculate the mean and assign to NCE (if Orbitrap) or eV (otherwise).
+    '''
+    # Regex patterns
+    # NCE: Matches "NCE=20", "NCE 20", "20%", "20 NCE", "20 (NCE)"
+    # Group 1: Prefix match number (NCE=20)
+    # Group 2: Suffix match number (20 NCE, 20%)
+    pat_nce = r'(?i)(?:NCE\s*[:=]?\s*([0-9]+(?:\.[0-9]+)?)|([0-9]+(?:\.[0-9]+)?)\s*(?:%|(?:\(?NCE\)?)))'
+    
+    # eV: Matches "20eV", "20 eV", "20V", "20 V"
+    # Group 1: Number
+    pat_ev = r'(?i)([0-9]+(?:\.[0-9]+)?)\s*e?V'
+    
+    # Bare number: Matches any number. Used as fallback.
+    pat_num = r'([0-9]+(?:\.[0-9]+)?)'
+
+    # List pattern: Matches content inside square brackets
+    pat_list_content = r'\[(.*?)\]'
+
+    return data.with_columns(
+        # Extract NCE candidates
+        pl.col('collision_energy_raw').str.extract(pat_nce, group_index=1)
+        .fill_null(pl.col('collision_energy_raw').str.extract(pat_nce, group_index=2))
+        .cast(pl.Float64, strict=False)
+        .alias('collision_energy_NCE'),
+
+        # Extract eV candidates
+        pl.col('collision_energy_raw').str.extract(pat_ev, group_index=1)
+        .cast(pl.Float64, strict=False)
+        .alias('collision_energy_ev'),
+
+        # Extract List candidates
+        pl.col('collision_energy_raw').str.extract(pat_list_content, group_index=1)
+        .str.extract_all(r'\d+(?:\.\d+)?')
+        .list.eval(pl.element().cast(pl.Float64, strict=False))
+        .alias('collision_energy_list')
+    ).with_columns(
+        # Fallback logic: if NCE, eV and List are null, try to use the bare number
+        pl.when(
+            pl.col('collision_energy_NCE').is_null() & 
+            pl.col('collision_energy_ev').is_null() & 
+            pl.col('collision_energy_list').is_null()
+        )
+        .then(
+            pl.col('collision_energy_raw').str.extract(pat_num, group_index=1).cast(pl.Float64, strict=False)
+        )
+        .otherwise(None)
+        .alias('_bare_energy'),
+
+        # Calculate mean of list if present
+        pl.col('collision_energy_list').list.mean().alias('_list_mean')
+    ).with_columns(
+        # Apply Orbitrap logic to fallback for NCE (using list mean or bare energy)
+        pl.when(pl.col('collision_energy_NCE').is_null())
+        .then(
+            pl.when(pl.col('is_orbitrap'))
+            .then(pl.coalesce([pl.col('_list_mean'), pl.col('_bare_energy')]))
+            .otherwise(None)
+        )
+        .otherwise(pl.col('collision_energy_NCE'))
+        .alias('collision_energy_NCE'),
+
+        # Apply Orbitrap logic to fallback for eV (using list mean or bare energy)
+        pl.when(pl.col('collision_energy_ev').is_null())
+        .then(
+            pl.when(pl.col('is_orbitrap').not_())
+            .then(pl.coalesce([pl.col('_list_mean'), pl.col('_bare_energy')]))
+            .otherwise(None)
+        )
+        .otherwise(pl.col('collision_energy_ev'))
+        .alias('collision_energy_ev')
+    ).with_columns(
+        pl.col("collision_energy_list").list.len().ge(2).fill_null(False).alias("multiple_collision_energies"),
+        # Mean is either the list mean, or the single value present
+        pl.coalesce([
+            pl.col('_list_mean'), 
+            pl.col('collision_energy_NCE'), 
+            pl.col('collision_energy_ev')
+        ]).alias("collision_energy_mean")
+    ).drop('_bare_energy', '_list_mean')
+
+
 def _annotate_and_filter_metadata(data:T)-> T:
-    '''filters out entries with missing or invalid metadata, low resolution spectra etc'''
+    '''filters out entries with missing or invalid metadata or low resolution spectra'''
     instrument_data_columns= plcs.by_name(['instrument', 'instrument_type',  'ionization'])
 
     data = cast(T,data.filter(
@@ -311,34 +414,6 @@ def _split_entries(file_contents: str) -> list:
     if entries[len(entries)-1] == '':
         entries.pop()
     return entries
-
-
-def _add_inchi_SMILES_from_pubchem(NIST: T, pubchem_path: str | Path) -> T:
-    if 'InChI' in NIST.columns:
-        raise Warning("InChI column already exists in NIST schema")
-
-    NIST_lf = NIST.select(['NIST_ID','InChIKey']).lazy()
-    
-    pubchem = pl.scan_parquet(pubchem_path,low_memory=True).rename(
-        {'CID':'pubchem_CID',
-         'SMILES:':'CanonicalSMILES',}
-         ,strict=False)
-    combined = NIST_lf.join(pubchem, left_on='InChIKey', right_on='InChIKey', how='left')
-    combined = combined.unique(subset=['NIST_ID'],keep='any')
-    
-    # combined_df = combined.collect(streaming=True)
-    
-    # if 'InChI' not in combined_df.columns:
-    #     raise ValueError("InChI column was not written for some reason")
-        
-    result = combined.drop('InChIKey').join(NIST_lf, on='NIST_ID', how='right', coalesce=True)
-
-    if isinstance(NIST, pl.DataFrame):
-        return cast(T, result.collect(engine="streaming"))
-    elif isinstance(NIST, pl.LazyFrame):
-        return cast(T, result)
-    else:
-        raise TypeError(f"In function '_add_inchi_SMILES_from_pubchem', NIST must be a Polars DataFrame or LazyFrame, got {type(NIST)}")
 
 if __name__ == "__main__":
     # Example usage
