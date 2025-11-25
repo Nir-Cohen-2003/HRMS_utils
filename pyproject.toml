@@ -1,6 +1,6 @@
 [project]
 name = "hrms_utils"
-version = "0.8.0"
+# version = "0.8.0"
 license = "Apache-2.0"
 license-files = ["LICENSE"]
 requires-python = ">=3.12"
@@ -23,9 +23,19 @@ dependencies = [
     "connectorx",
     "sqlalchemy",
 ]
+dynamic = ["version"]
 
 [build-system]
-build-backend = "hatchling.build"
-requires = ["hatchling>=1.13.2", "wheel"]
+requires = ["maturin>=1.09,<2.0"]
+build-backend = "maturin"
+
+[tool.maturin]
+features = ["pyo3/extension-module"]
+# Point to the existing Rust project
+manifest-path = "Cargo.toml"
+# Compile the extension as hrms_utils._internal
+module-name = "hrms_utils._internal"
+# Tell maturin where the main python source is (so it bundles hrms_utils)
+python-source = "src"
 
 

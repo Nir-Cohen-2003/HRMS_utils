@@ -7,8 +7,7 @@ from typing import List, Tuple, Dict, TypeVar, cast, Iterable
 from numba import  jit
 from ..formula_annotation.isotopic_pattern import deduce_isotopic_pattern
 from ..formula_annotation.element_table import ELEMENT_INDEX, ELEMENT_MASSES
-import hrms_core
-from hrms_core import NUM_ELEMENTS
+from ..hrms_core import *
 
 T = TypeVar('T', pl.DataFrame, pl.LazyFrame)
 

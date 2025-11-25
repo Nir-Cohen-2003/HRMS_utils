@@ -634,14 +634,12 @@ environments:
       - conda: https://prefix.dev/conda-forge/linux-64/zstandard-0.25.0-py313h54dd161_0.conda
       - conda: https://prefix.dev/conda-forge/linux-64/zstd-1.5.7-hb8e6e7a_2.conda
       - conda: .
-      - conda: packages/hrms_core
       - pypi: https://files.pythonhosted.org/packages/54/b9/c3693aa56c0da6acd66b553837b16a770b4feaf0df9bafc203ab2e42eeb9/choreographer-1.2.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/5a/bf/10b009e3b96a803f25af126951bc167402354d765006a94d11ba46a2f667/kaleido-1.1.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/a5/90/50013940afa674abeacccab37f7ee43b798eaec2606cf6a27af113974c9a/logistro-2.0.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/d0/b4/f98355eff0bd1a38454209bbc73372ce351ba29933cb3e2eba16c04b9448/orjson-3.11.3-cp313-cp313-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/fa/b6/3127540ecdf1464a00e5a01ee60a1b09175f6913f0644ac748494d9c4b21/pytest_timeout-2.4.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/43/f1/b392952200f3393bb06fbc4dd975fc63a6843261705839355560b7264eb2/simplejson-3.20.2-cp313-cp313-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl
-      - pypi: https://files.pythonhosted.org/packages/37/21/d376393ecaf26cb84aa475f46137a59ae6d50508acbf1a044d414d8f6d47/ty-0.0.1a23-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
       win-64:
       - conda: https://prefix.dev/conda-forge/win-64/_openmp_mutex-4.5-2_gnu.conda
       - conda: https://prefix.dev/conda-forge/noarch/_python_abi3_support-1.0-hd8ed1ab_2.conda
@@ -909,14 +907,12 @@ environments:
       - conda: https://prefix.dev/conda-forge/win-64/zstandard-0.25.0-py313h5fd188c_0.conda
       - conda: https://prefix.dev/conda-forge/win-64/zstd-1.5.7-hbeecb71_2.conda
       - conda: .
-      - conda: packages/hrms_core
       - pypi: https://files.pythonhosted.org/packages/54/b9/c3693aa56c0da6acd66b553837b16a770b4feaf0df9bafc203ab2e42eeb9/choreographer-1.2.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/5a/bf/10b009e3b96a803f25af126951bc167402354d765006a94d11ba46a2f667/kaleido-1.1.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/a5/90/50013940afa674abeacccab37f7ee43b798eaec2606cf6a27af113974c9a/logistro-2.0.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/88/76/224985d9f127e121c8cad882cea55f0ebe39f97925de040b75ccd4b33999/orjson-3.11.3-cp313-cp313-win_amd64.whl
       - pypi: https://files.pythonhosted.org/packages/fa/b6/3127540ecdf1464a00e5a01ee60a1b09175f6913f0644ac748494d9c4b21/pytest_timeout-2.4.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/87/10/d42ad61230436735c68af1120622b28a782877146a83d714da7b6a2a1c4e/simplejson-3.20.2-cp313-cp313-win_amd64.whl
-      - pypi: https://files.pythonhosted.org/packages/c6/3d/cb99e90adba6296f260ceaf3d02cc20563ec623b23a92ab94d17791cb537/ty-0.0.1a23-py3-none-win_amd64.whl
 packages:
 - conda: https://prefix.dev/conda-forge/linux-64/_libgcc_mutex-0.1-conda_forge.tar.bz2
   sha256: fe51de6107f9edc7aa4f786a70f4a883943bc9d39b3bb7307c04c41410990726
@@ -2830,20 +2826,6 @@ packages:
   - pkg:pypi/hpack?source=hash-mapping
   size: 30731
   timestamp: 1737618390337
-- conda: packages/hrms_core
-  name: hrms_core
-  version: 0.1.0
-  build: pyh4616a5c_0
-  subdir: noarch
-  depends:
-  - polars >=1.34.0
-  - python >=3.9
-  - python *
-  license: Apache-2.0
-  input:
-    hash: 9f14bfcb8f30adba996a4ee2f07d5278387fd2b2a0b4ea355b09a1ab31a2740d
-    globs:
-    - pyproject.toml
 - conda: .
   name: hrms_utils
   version: 0.8.0
@@ -2854,7 +2836,6 @@ packages:
   - rdkit >=2024.0.0
   - numpy >=1.20.0
   - numba >=0.61.0
-  - hrms_core
   - scipy
   - requests
   - aiohttp
@@ -2870,12 +2851,9 @@ packages:
   - python *
   license: Apache-2.0
   input:
-    hash: 9f54a5faed03ee21bf88d64a666e866885cb40b866a5f1a518571218c0533e5b
+    hash: 84b26275a313c0f5b9037b02020fee8387e7517c366c2e8d4ea8b1a0dcf083ea
     globs:
     - pyproject.toml
-  sources:
-    hrms_core:
-      path: ./packages/hrms_core
 - conda: https://prefix.dev/conda-forge/noarch/humanize-4.14.0-pyhd8ed1ab_0.conda
   sha256: 9fba1b73a90998847afe39cc77b4e0d51c8e51dfaf9241fb1b2cc1fd5b6abef9
   md5: 8b8884a6375830fe0cfb806ccbbd755c
@@ -8058,16 +8036,6 @@ packages:
   - pkg:pypi/twine?source=hash-mapping
   size: 42488
   timestamp: 1757013705407
-- pypi: https://files.pythonhosted.org/packages/37/21/d376393ecaf26cb84aa475f46137a59ae6d50508acbf1a044d414d8f6d47/ty-0.0.1a23-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
-  name: ty
-  version: 0.0.1a23
-  sha256: e7516ee783ba3eba373fb82db8b989a14ed8620a45a9bb6e3a90571bc83b3e2a
-  requires_python: '>=3.8'
-- pypi: https://files.pythonhosted.org/packages/c6/3d/cb99e90adba6296f260ceaf3d02cc20563ec623b23a92ab94d17791cb537/ty-0.0.1a23-py3-none-win_amd64.whl
-  name: ty
-  version: 0.0.1a23
-  sha256: c89564e90dcc2f9564564d4a02cd703ed71cd9ccbb5a6a38ee49c44d86375f24
-  requires_python: '>=3.8'
 - conda: https://prefix.dev/conda-forge/noarch/typing-extensions-4.15.0-h396c80c_0.conda
   sha256: 7c2df5721c742c2a47b2c8f960e718c930031663ac1174da67c1ed5999f7938c
   md5: edd329d7d3a4ab45dcf905899a7a6115

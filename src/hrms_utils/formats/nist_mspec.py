@@ -5,7 +5,7 @@ import polars.selectors as plcs
 from typing import TypeVar, cast, Dict,Iterable
 from ..formula_annotation.utils import formula_fits_mass, format_formula_string_to_array,  get_precursor_ion_formula_array, num_elements
 from ..formula_annotation.element_table import ADDUCT_MASSES
-import hrms_core
+from ..hrms_core import *
 from pathlib import Path 
 
 T = TypeVar('T', pl.DataFrame, pl.LazyFrame)
