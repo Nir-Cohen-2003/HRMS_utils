@@ -298,7 +298,7 @@ def _annotate_and_filter_metadata(data:T)-> T:
 
 
 def _annotate_spectra(data: T, raw_fragment_tolerance_ppm: float, normalized_fragment_tolerance_ppm: float) -> T:
-    '''cleans and normalizes the masses and intensities in the spectra, and adds explained intensity column'''
+    '''cleans and normalizes the masses and intensities in the spectra, and adds explained intensity column. also, it filters entries where the precursor mass does not match the precursor formula.'''
     # Determine adduct_mass based on precursor_type
     adduct_mapping = pl.Series(name="precursor_type", values=list(ADDUCT_MASSES.keys()), dtype=pl.String)
     adduct_masses = pl.Series(name="adduct_mass", values=list(ADDUCT_MASSES.values()), dtype=pl.Float64)
