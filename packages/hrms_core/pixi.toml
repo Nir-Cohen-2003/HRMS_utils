@@ -11,13 +11,32 @@ description = "A rust package for hrms core functionalities"
 authors = []
 
 [package.build]
-backend = { name = "pixi-build-python", version = "*" }
+backend = { name = "pixi-build-python", version = "*" ,channels = [
+  "https://prefix.dev/pixi-build-backends",
+  "https://prefix.dev/conda-forge",
+]}
+[package.build.config]
+noarch = false
+[workspace.build-variants]
+python = ["3.10", "3.11", "3.12", "3.13","3.14"]
 
 [tasks]
+cibw-wheels = { cmd = "python -m cibuildwheel --output-dir dist", env = {CIBW_BUILD = " cp310-* cp311-* cp312-* cp313-* cp314-*", CIBW_SKIP = "*musllinux* *-win32", CIBW_ARCHS_WINDOWS = "AMD64", CIBW_PACKAGE = "."}, depends-on=["clean_dist"]}
+clean_dist = "rm -rf dist || true"
+
+
+publish-testpypi = {cmd="twine upload --repository testpypi --skip-existing dist/*", depends-on = ["cibw-wheels"]}
+publish-pypi = {cmd="twine upload --repository pypi --skip-existing dist/*", depends-on = ["cibw-wheels"]}
+
 publish-prefix = {cmd="rattler-build upload prefix --channel nir-cohen"}
 publish-anaconda = {cmd="rattler-build upload anaconda --owner Nir_Cohen --channel main"}
 
+
+
 [dependencies]
+python = ">=3.9.0"
+pip = "*"
+cibuildwheel = "*"
 rattler-build = ">=0.48.0"
 
 [package.build-dependencies]

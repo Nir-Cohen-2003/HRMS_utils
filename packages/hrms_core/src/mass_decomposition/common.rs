@@ -1,13 +1,9 @@
 use serde::Deserialize;
 // Re-export NUM_ELEMENTS and ELEMENT_SYMBOLS so other modules can access them via this module.
-pub use crate::common::{NUM_ELEMENTS, ELEMENT_SYMBOLS};
+pub use crate::common::{NUM_ELEMENTS, ELEMENT_SYMBOLS, ATOMIC_MASSES};
 
 
-pub const ATOMIC_MASSES: [f64; NUM_ELEMENTS] = [
-    1.007825,12.000000, 14.003074, 15.994915, 18.998403, 
-    22.989770, 30.973762, 31.972071, 34.96885271, 
-    38.963707,78.918338, 126.904468
-];
+
 
 pub fn check_dbe(formula: &Formula, min_dbe: f64, max_dbe: f64, allow_half_integer: bool) -> bool {
     

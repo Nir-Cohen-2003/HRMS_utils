@@ -5,11 +5,8 @@ import polars.selectors as plcs
 from typing import TypeVar, cast, Dict,Iterable
 from ..formula_annotation.utils import formula_fits_mass, format_formula_string_to_array,  get_precursor_ion_formula_array, num_elements
 from ..formula_annotation.element_table import ADDUCT_MASSES
-import mass_decomposition
-import spectral_similarity 
-import spectral_information
+import hrms_core
 from pathlib import Path 
-from scipy.stats import linregress
 
 T = TypeVar('T', pl.DataFrame, pl.LazyFrame)
 

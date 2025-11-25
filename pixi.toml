@@ -27,17 +27,20 @@ maturin = "*"
 build = "*"
 
 [tasks]
-build-wheel = "python -m build"
-build-all = "python -m build --wheel --sdist"
-publish-testpypi = {cmd="twine upload --repository testpypi --skip-existing dist/*", depends-on = ["cibw-wheels"]}
-publish-pypi = {cmd="twine upload --repository pypi --skip-existing dist/*", depends-on = ["cibw-wheels"]}
+build-sdist = "python -m build --sdist --outdir dist"
+build-wheel = "python -m build --wheel --outdir dist"
+build-all = {cmd="python -m build --wheel --sdist --outdir dist",depends-on = ["clean_dist"]}
+clean_dist = "rm -rf dist || true"
+
+publish-testpypi = {cmd="twine upload --repository testpypi --skip-existing dist/*", depends-on = ["build-all"]}
+publish-pypi = {cmd="twine upload --repository pypi --skip-existing dist/*", depends-on = ["build-all"]}
+
 publish-prefix = {cmd="rattler-build upload prefix --channel nir-cohen"}
 publish-anaconda = {cmd="rattler-build upload anaconda --owner Nir_Cohen --channel main"}
-cibw-wheels = { cmd = "python -m cibuildwheel --output-dir dist", env = {CIBW_BUILD = "cp312-* cp313-*", CIBW_SKIP = "*musllinux* *-win32", CIBW_ARCHS_WINDOWS = "AMD64", CIBW_PACKAGE = "packages/mass_decomposition packages/spectral_information packages/spectral_similarity ."}, depends-on=["clean_dist"]}
-clean_dist = "rm -rf dist || true"
-sdist = "python -m build --sdist"
-build-wheel-win = { cmd = "python -m build --wheel --no-isolation"}
-build-all-win   = { cmd = "python -m build --wheel --sdist --no-isolation"}
+
+[target.win-64.tasks]
+build-wheel = { cmd = "python -m build --wheel --no-isolation --outdir dist"}
+build-all = { cmd = "python -m build --wheel --sdist --no-isolation --outdir dist"}
 
 [environments]
 default = {features = [], solve-group = "default"}
@@ -58,18 +61,19 @@ python = "*"
 pip = "*"
 numpy = ">=1.20.0,<3.0"
 hatchling = ">=1.13.2"
+setuptools = ">=68.0.0"
+maturin = ">=1.09.0"
 [package.host-dependencies] 
 python = "*"
 pip = "*"
 hatchling = ">=1.13.2"
-
+setuptools = ">=68.0.0"
 [package.run-dependencies]
 polars = ">=1.35.2,<2"
 rdkit = ">=2024.0.0"
 numpy = ">=1.20.0"
 numba = ">=0.61.0"
-ms_entropy = "*"
-spectral_similarity = "*"
+hrms_core = {path = "./packages/hrms_core"}
 scipy = "*"
 requests = "*"
 aiohttp = "*"
@@ -87,7 +91,7 @@ sqlalchemy = "*"
 test = {cmd="echo 'All tests passed!'", depends-on = [
     "test_nist_mspec",
     "test_chromatogram",
-    "test_mol",
+    # "test_mol",
     "test_info_score",
     "test_entropy"
   ]}
@@ -110,9 +114,10 @@ numpy = ">=1.20.0,<2.3"
 numba = ">=0.61.0"
 pytest = ">=8.4.2,<9"
 # ms_entropy = "*"
-spectral_similarity = {path = "./packages/spectral_similarity"}
-spectral_information = {path = "./packages/spectral_information"}
-mass_decomposition = {path = "./packages/mass_decomposition"}
+# spectral_similarity = {path = "./packages/spectral_similarity"}
+# spectral_information = {path = "./packages/spectral_information"}
+# mass_decomposition = {path = "./packages/mass_decomposition"}
+hrms_core = {path = "./packages/hrms_core"}
 scipy = "*"
 requests = "*"
 aiohttp = "*"

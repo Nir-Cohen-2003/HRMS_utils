@@ -1,5 +1,4 @@
-from hrms_utils.formats import get_chromatogram, annotate_chromatogram_with_formulas
-from mass_decomposition import NUM_ELEMENTS
+from hrms_utils.formats import get_chromatogram, annotate_chromatogram_with_formulas, NUM_ELEMENTS
 import polars as pl
 from pathlib import Path
 import timeit
