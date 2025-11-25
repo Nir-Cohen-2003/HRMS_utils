@@ -38,7 +38,7 @@ default = {features = [], solve-group = "default"}
 testing = {features = ["testing"], solve-group = "testing"}
 
 [feature.testing.tasks]
-
+test_all = {depends-on = ["test_mass_decomposition", "test_spectral_information", "test_spectral_similarity"]}
 test_mass_decomposition = {cmd = ["pytest", "-vv", "tests/test_mass_decomposition.py"] ,env = { POLARS_VERBOSE= "1" }}
 test_spectral_information = {cmd = ["pytest", "tests/test_spectral_information.py"] ,env = { POLARS_VERBOSE= "1" }}
 test_spectral_similarity = {cmd = ["pytest", "tests/test_spectral_similarity.py"] ,env = { POLARS_VERBOSE= "1" }}

@@ -2,7 +2,7 @@ import polars as pl
 import numpy as np
 
 # This is the correct way to import the namespace
-import spectral_similarity
+import hrms_core
 
 
 def test_entropy_similarity():
