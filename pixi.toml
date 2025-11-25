@@ -27,7 +27,9 @@ maturin = "*"
 build = "*"
 
 [tasks]
-build-sdist = "python -m build --sdist --outdir dist"
+
+cibw-wheels = { cmd = "python -m cibuildwheel --output-dir dist dist/*.tar.gz", env = {CIBW_BUILD = " cp310-* cp311-* cp312-* cp313-* cp314-*", CIBW_SKIP = "*musllinux* *-win32", CIBW_ARCHS_WINDOWS = "AMD64", CIBW_PACKAGE = "."}, depends-on=["build-sdist"]}
+build-sdist = {cmd="python -m build --sdist --outdir dist", depends-on = ["clean_dist"]}
 build-wheel = "python -m build --wheel --outdir dist"
 build-all = {cmd="python -m build --wheel --sdist --outdir dist",depends-on = ["clean_dist"]}
 clean_dist = "rm -rf dist || true"
