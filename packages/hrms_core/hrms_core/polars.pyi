@@ -1,9 +1,0 @@
-from .__init__ import MassDecomposerUtils, SpectralInfoNamespace, SpectralUtils
-
-class Expr:
-    @property
-    def mass_decomposition(self) -> MassDecomposerUtils: ...
-    @property
-    def spectral_info(self) -> SpectralInfoNamespace: ...
-    @property
-    def spectral_similarity(self) -> SpectralUtils: ...
