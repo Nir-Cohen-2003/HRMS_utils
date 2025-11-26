@@ -8,7 +8,7 @@ import numpy as np
 
 if __name__ == "__main__":
     # get chromatogram data
-    chromatogram_path = Path(__file__).parent.parent / "data" / "250515_006.txt"
+    chromatogram_path = Path(__file__).parent.parent / "data" / "MSDIAL_output.txt"
     assert chromatogram_path.exists(), f"Required chromatogram file not found: {chromatogram_path}"
 
     chromatogram_df = get_chromatogram(str(chromatogram_path)).filter(

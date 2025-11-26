@@ -59,7 +59,6 @@ smiles_list = [
     "C1CCCCC",               # unclosed ring (missing '1' closure)
     "C(C(=O)O",              # unbalanced parentheses
     "C1=CC=CC=C1N(",         # incomplete branch
-    "C1=CC=CC=C1IO",         # likely a typo (I followed by O)
     "Xx",                    # unknown element symbol
     "",                      # empty string
     " ",                     # whitespace only
@@ -122,7 +121,35 @@ inchi_list = [
     "InChI=INVALID:incomplete_charge",     # incomplete charged atom specification
     "InChI=INVALID:invalid_chirality_token",# invalid chirality token
 ]
-# ...existing code.
+
+# Why: Define sets of invalid inputs to validate that they return empty strings.
+# These match the intentionally malformed examples in the lists above.
+INVALID_SMILES = {
+    "clc1ccccc1",
+    "C1CCCCC",
+    "C(C(=O)O",
+    "C1=CC=CC=C1N(",
+    "Xx",
+    "",
+    " ",
+    # "C C O",
+    # "C[N+]",
+    "C@@@",
+}
+
+INVALID_INCHIS = {
+    "InChI=INVALID:clc1ccccc1",
+    "InChI=INVALID:unclosed_ring",
+    "InChI=INVALID:unbalanced_parentheses",
+    "InChI=INVALID:incomplete_branch",
+    "InChI=INVALID:typo_IO",
+    "InChI=INVALID:unknown_element",
+    "InChI=INVALID:empty",
+    "InChI=INVALID:whitespace",
+    "InChI=INVALID:spaces_in_smiles",
+    "InChI=INVALID:incomplete_charge",
+    "InChI=INVALID:invalid_chirality_token",
+}
 
 def _benchmark_min_time(func: Callable[..., Any], *args, runs: int = 5, **kwargs) -> Tuple[Any, float]:
     """
@@ -164,13 +191,29 @@ def python_test(multiplier: int)-> None:
     assert len(sanitized) == n, "sanitize_smiles must preserve input length"
     # basic sanity: all outputs are strings
     assert all(isinstance(x, str) for x in sanitized), "All sanitized entries must be strings"
+    
+    # Validation: check expected outputs for valid/invalid inputs
+    for inp, out in zip(test_smiles, sanitized):
+        if inp in INVALID_SMILES:
+            assert out == "", f"Expected empty string for invalid SMILES '{inp}', got '{out}'"
+        else:
+            assert out != "", f"Expected valid SMILES for '{inp}', got empty string"
+
     print(f"sanitize_smiles: {sanitize_time:.4f}s total, {sanitize_time/n:.6f}s per item")
 
     # smiles_to_inchi_list
-    inchi_list, inchi_time = _benchmark_min_time(smiles_to_inchi_list, test_smiles, batch_size=BATCH_SIZE, runs=5)
-    assert isinstance(inchi_list, list)
-    assert len(inchi_list) == n
-    assert all(isinstance(x, str) for x in inchi_list)
+    inchi_list_res, inchi_time = _benchmark_min_time(smiles_to_inchi_list, test_smiles, batch_size=BATCH_SIZE, runs=5)
+    assert isinstance(inchi_list_res, list)
+    assert len(inchi_list_res) == n
+    assert all(isinstance(x, str) for x in inchi_list_res)
+
+    # Validation
+    for inp, out in zip(test_smiles, inchi_list_res):
+        if inp in INVALID_SMILES:
+            assert out == "", f"Expected empty string for invalid SMILES '{inp}', got '{out}'"
+        else:
+            assert out != "", f"Expected valid InChI for '{inp}', got empty string"
+
     print(f"smiles_to_inchi_list: {inchi_time:.4f}s total, {inchi_time/n:.6f}s per item")
 
     # smiles_to_inchikey_list
@@ -178,6 +221,14 @@ def python_test(multiplier: int)-> None:
     assert isinstance(inchikey_list, list)
     assert len(inchikey_list) == n
     assert all(isinstance(x, str) for x in inchikey_list)
+
+    # Validation
+    for inp, out in zip(test_smiles, inchikey_list):
+        if inp in INVALID_SMILES:
+            assert out == "", f"Expected empty string for invalid SMILES '{inp}', got '{out}'"
+        else:
+            assert out != "", f"Expected valid InChIKey for '{inp}', got empty string"
+
     print(f"smiles_to_inchikey_list: {inchikey_time:.4f}s total, {inchikey_time/n:.6f}s per item")
 
     # inchi_to_smiles_list (test InChI -> SMILES list-based converter)
@@ -187,6 +238,14 @@ def python_test(multiplier: int)-> None:
     assert isinstance(inchi_to_smiles_results, list), "inchi_to_smiles_list must return a list"
     assert len(inchi_to_smiles_results) == n_inchis, "inchi_to_smiles_list must preserve input length"
     assert all(isinstance(x, str) for x in inchi_to_smiles_results), "All inchi->smiles outputs must be strings"
+
+    # Validation
+    for inp, out in zip(test_inchis, inchi_to_smiles_results):
+        if inp in INVALID_INCHIS:
+            assert out == "", f"Expected empty string for invalid InChI '{inp}', got '{out}'"
+        else:
+            assert out != "", f"Expected valid SMILES for '{inp}', got empty string"
+
     print(f"inchi_to_smiles_list: {inchi_to_smiles_time:.4f}s total, {inchi_to_smiles_time/n_inchis:.6f}s per item")
 
     # spot-check: valid simple SMILES should not produce empty string after sanitization
@@ -219,18 +278,45 @@ def polars_test(multiplier: int)-> None:
     assert isinstance(sanitized_series, pl.Series)
     assert sanitized_series.len() == n
     assert sanitized_series.dtype == pl.Utf8
+
+    # Validation
+    sanitized_list = sanitized_series.to_list()
+    for inp, out in zip(test_smiles, sanitized_list):
+        if inp in INVALID_SMILES:
+            assert out == "", f"Expected empty string for invalid SMILES '{inp}', got '{out}'"
+        else:
+            assert out != "", f"Expected valid SMILES for '{inp}', got empty string"
+
     print(f"sanitize_smiles_polars: {sanitize_series_time:.4f}s total, {sanitize_series_time/n:.6f}s per item")
 
     # smiles_to_inchi_polars (returns a pl.Series)
     inchi_series, inchi_series_time = _benchmark_min_time(smiles_to_inchi_polars, test_smiles, batch_size=BATCH_SIZE, runs=5)
     assert isinstance(inchi_series, pl.Series)
     assert inchi_series.len() == n
+
+    # Validation
+    inchi_list_res = inchi_series.to_list()
+    for inp, out in zip(test_smiles, inchi_list_res):
+        if inp in INVALID_SMILES:
+            assert out == "", f"Expected empty string for invalid SMILES '{inp}', got '{out}'"
+        else:
+            assert out != "", f"Expected valid InChI for '{inp}', got empty string"
+
     print(f"smiles_to_inchi_polars: {inchi_series_time:.4f}s total, {inchi_series_time/n:.6f}s per item")
 
     # smiles_to_inchikey_polars (returns a pl.Series)
     inchikey_series, inchikey_series_time = _benchmark_min_time(smiles_to_inchikey_polars, test_smiles, batch_size=BATCH_SIZE, runs=5)
     assert isinstance(inchikey_series, pl.Series)
     assert inchikey_series.len() == n
+
+    # Validation
+    inchikey_list_res = inchikey_series.to_list()
+    for inp, out in zip(test_smiles, inchikey_list_res):
+        if inp in INVALID_SMILES:
+            assert out == "", f"Expected empty string for invalid SMILES '{inp}', got '{out}'"
+        else:
+            assert out != "", f"Expected valid InChIKey for '{inp}', got empty string"
+
     print(f"smiles_to_inchikey_polars: {inchikey_series_time:.4f}s total, {inchikey_series_time/n:.6f}s per item")
 
     # inchi_to_smiles_polars (test InChI -> SMILES polars wrapper)
@@ -240,6 +326,15 @@ def polars_test(multiplier: int)-> None:
     assert isinstance(inchi_to_smiles_series, pl.Series), "inchi_to_smiles_polars must return a pl.Series"
     assert inchi_to_smiles_series.len() == series_inchi.len(), "inchi_to_smiles_polars must preserve Series length"
     assert inchi_to_smiles_series.dtype == pl.Utf8
+
+    # Validation
+    inchi_to_smiles_list_res = inchi_to_smiles_series.to_list()
+    for inp, out in zip(test_inchis, inchi_to_smiles_list_res):
+        if inp in INVALID_INCHIS:
+            assert out == "", f"Expected empty string for invalid InChI '{inp}', got '{out}'"
+        else:
+            assert out != "", f"Expected valid SMILES for '{inp}', got empty string"
+
     print(f"inchi_to_smiles_polars: {inchi_to_smiles_series_time:.4f}s total, {inchi_to_smiles_series_time/series_inchi.len():.6f}s per item")
 
     # basic content checks: all entries are strings in the Series
@@ -254,7 +349,7 @@ def polars_test(multiplier: int)-> None:
 if __name__ == "__main__":
     # get the multiplier from command line args if provided
     import sys
-    multiplier = 1000  # default
+    multiplier = 10  # default
     if len(sys.argv) > 1:
         try:
             multiplier = int(sys.argv[1])

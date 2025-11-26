@@ -6,18 +6,22 @@ import timeit
 if __name__ == "__main__":
         
     # Resolve the chromatogram file relative to this script to fail fast if missing.
-    chromatogram_path = Path(__file__).parent.parent/ "data" / "250515_006.txt"
+ 
+    chromatogram_path = Path(__file__).parent.parent / "data" / "MSDIAL_output.txt"
     if not chromatogram_path.exists():
-        chromatogram_path = Path(__file__).parent.parent / "data" / "250120_04amph.txt"
-        if not chromatogram_path.exists():
-            raise FileNotFoundError(f"Required chromatogram file not found: {chromatogram_path}")
+        raise FileNotFoundError(f"Required chromatogram file not found: {chromatogram_path}")
 
     chromatogram_df = get_chromatogram(str(chromatogram_path)).filter(
-        pl.col("Height") > 1e6,
         pl.col("ms1_isotopes_m/z").is_not_null(),
         pl.col("msms_m/z").is_not_null(),
     )
+    num_total_peaks: int = chromatogram_df.height
+    chromatogram_df = chromatogram_df.filter(
+        pl.col("Height") > 1e6,
 
+        pl.col("Isotope").eq(0),  # only monoisotopic peaks
+    )
+    num_monoisotopic_peaks = chromatogram_df.height
     # Benchmark annotation: run the annotation 10 times and keep the fastest result.
     # Why: clone the input before each run to avoid in-place mutations changing subsequent timings.
     n_runs = 10
@@ -91,6 +95,8 @@ if __name__ == "__main__":
             f"formulas={n_forms}, errors={n_errs}"
         )
 
+    print(f"Initial number of peaks (with MS2): {num_total_peaks}")
+    print(f"Number of monoisotopic peaks (Isotope==0) with height over the threshold: {num_monoisotopic_peaks}")
     print(f"Number of annotated formulas: {annotated_chromatogram.filter(
         pl.col('precursor_formula').is_not_null()
     ).height}")

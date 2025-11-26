@@ -21,7 +21,7 @@ MSDIAL_columns_to_read = {
     'Precursor m/z': pl.Float64,
     'Height': pl.Float64, 
     'Adduct': pl.String,
-    'Isotope': pl.String, 
+    'Isotope': pl.Int32, 
     'MSMS spectrum': pl.String, # will be converted to 2 lists, m/z and intensity
     'MS1 isotopes': pl.String, # will be converted to 2 lists, m/z and intensity
 }
@@ -38,6 +38,7 @@ MSDIAL_columns_to_output= [
     'Precursor_mz_MSDIAL',
     'Height', 
     'Precursor_type_MSDIAL', 
+    "Isotope",
     'msms_m/z', 'msms_intensity', 
     'isobars',
     'msms_m/z_cleaned', 'msms_intensity_cleaned',
@@ -335,13 +336,15 @@ def annotate_chromatogram_with_formulas(
                 intensity_relative_tolerance=isotopic_intensity_relative_tolerance,
                 max_bounds=max_bounds,
             ),
-            return_dtype=pl.Array(inner=pl.Int32, shape=(2 * NUM_ELEMENTS,))
+            return_dtype=pl.Array(inner=pl.Int32, shape=(2 * NUM_ELEMENTS,)),
+            is_elementwise=True
         ).alias("bounds")
+    ).filter(
+        pl.col("bounds").arr.min().ge(0)  # Filter out rows where pattern deduction failed, which is signaled by negative bounds
     ).with_columns(
         pl.col("bounds").arr.slice(0, length=NUM_ELEMENTS).list.to_array(width=NUM_ELEMENTS).alias("min_bounds"),
         pl.col("bounds").arr.slice(NUM_ELEMENTS, length=NUM_ELEMENTS).list.to_array(width=NUM_ELEMENTS).alias("max_bounds")
     )
-    print(chromatogram.schema)
     # Mass decomposition
     chromatogram = chromatogram.with_columns(
         pl.struct(
@@ -358,7 +361,6 @@ def annotate_chromatogram_with_formulas(
         pl.col("decomposed_formulas_struct").struct.field("errors_ppm").alias("precursor_errors_ppm"),
     ).drop(["bounds", "decomposed_formulas_struct"])
     chromatogram = chromatogram.explode(["precursor_formula", "precursor_formula_str", "precursor_errors_ppm"])
-    print(chromatogram.schema)
 
     # Cleaning + normalization
     chromatogram = chromatogram.rechunk().with_columns(

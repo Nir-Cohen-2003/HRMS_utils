@@ -350,7 +350,8 @@ def deduce_isotopic_pattern_inner(
     precursor_idx = np.where(np.atleast_1d(np.isclose(ms1_mzs, precursor_mz, atol=MS1_absolute_tolerance, rtol=0.0)))[0]
 
     if len(precursor_idx) == 0:
-        raise ValueError(f"Precursor m/z not found in MS1 spectrum within the specified tolerance. \nPrecursor m/z: {precursor_mz}, Tolerance: {MS1_absolute_tolerance}, MS1 m/zs: {ms1_mzs}")
+        # then this is a major problem, we cannot find the precursor in the MS1 spectrum. we will reutnr all -1 to indicate failure
+        return np.array([-1, -1, -1, -1, -1, -1, -1, -1], dtype=np.float64)
     
     #the real mass measured for the precursor in the ms1
     precursor_ms1_mz = ms1_mzs[precursor_idx[ms1_intensities[precursor_idx].argmax()]] 
