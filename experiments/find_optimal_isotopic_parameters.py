@@ -31,11 +31,10 @@ def _(get_chromatogram, pl):
             pl.col("ms1_isotopes_m/z").is_not_null(),
             pl.col("msms_m/z").is_not_null(),
             pl.col("Isotope").eq(0),  # only monoisotopic peaks
-            pl.col("Height") > 1e6,
+            # pl.col("Height") > 1e6,
         ).lazy().with_columns(
             nominal_mass = pl.col("Precursor_mz_MSDIAL").round(0).cast(pl.Int64)
             )
-
     return (chromatogram_lf,)
 
 
@@ -99,7 +98,7 @@ def _(suspects_df):
 def _(ELEMENT_INDEX, pl, suspects_df):
     # Calculate spectral information score for high-quality hits
     # Why: We need to filter for spectra that are informative enough to trust their formula assignment
-    INFO_THRESHOLD = 0.5
+    INFO_THRESHOLD = 1.0
 
     # Get carbon index from element table
     CARBON_INDEX = ELEMENT_INDEX["C"]
@@ -117,7 +116,7 @@ def _(ELEMENT_INDEX, pl, suspects_df):
             max_dbe = 30.0,
             dbe_mode="half_integer",
             water_absorption=True,
-        ).alias("cleaned_spectrum").struct.unpack() 
+        ).alias("cleaned_spectrum").struct.unnest() 
     ).with_columns(
         pl.struct(
             pl.col("precursor_formula_array").alias("precursor_formula"),
@@ -142,6 +141,7 @@ def _(CARBON_INDEX, pl, suspects_with_info):
     optimization_data = suspects_with_info.select(
         "Peak ID",
         "Precursor_mz_MSDIAL",
+        "Height",  # Why: Include height for validation output
         "ms1_isotopes_m/z",
         "ms1_isotopes_intensity",
         "molecular_formula_array",  # Ground truth formula from library match
@@ -160,8 +160,61 @@ def _(CARBON_INDEX, pl, suspects_with_info):
 
 
 @app.cell
-def _():
-    return
+def _(CARBON_INDEX, NUM_ELEMENTS, deduce_isotopic_pattern, pl):
+    def evaluate_isotopic_parameters(
+        data: pl.DataFrame,
+        isotopic_intensity_absolute_tolerance: float,
+        isotopic_intensity_relative_tolerance: float,
+        isotopic_mass_tolerance_ppm: float = 3.0,
+        minimum_intensity: float = 5e4,
+    ) -> float:
+        """
+        Evaluate isotopic pattern parameters by checking if the true carbon count
+        falls within the deduced min/max bounds.
+    
+        Returns the fraction of compounds where the true carbon count is within bounds.
+        """
+        # Apply isotopic pattern deduction with the given parameters
+        result = data.with_columns(
+            pl.struct(
+                ["Precursor_mz_MSDIAL", "ms1_isotopes_m/z", "ms1_isotopes_intensity"]
+            ).map_batches(
+                lambda batch: deduce_isotopic_pattern(
+                    batch.struct.field("Precursor_mz_MSDIAL"),
+                    batch.struct.field("ms1_isotopes_m/z"),
+                    batch.struct.field("ms1_isotopes_intensity"),
+                    ms1_mass_tolerance_ppm=5.0,
+                    isotopic_mass_tolerance_ppm=isotopic_mass_tolerance_ppm,
+                    minimum_intensity=minimum_intensity,
+                    intensity_absolute_tolerance=isotopic_intensity_absolute_tolerance,
+                    intensity_relative_tolerance=isotopic_intensity_relative_tolerance,
+                    max_bounds=None,
+                ),
+                return_dtype=pl.Array(inner=pl.Int32, shape=(2 * NUM_ELEMENTS,)),
+                is_elementwise=True
+            ).alias("bounds")
+        ).filter(
+            # Keep only valid bounds (no -1 indicating failure)
+            pl.col("bounds").arr.min().ge(0)
+        ).with_columns(
+            # Extract carbon bounds (min and max)
+            pl.col("bounds").arr.get(CARBON_INDEX).alias("min_carbon"),
+            pl.col("bounds").arr.get(NUM_ELEMENTS + CARBON_INDEX).alias("max_carbon"),
+        ).with_columns(
+            # Check if true carbon is within bounds
+            (
+                (pl.col("true_carbon_count") >= pl.col("min_carbon")) &
+                (pl.col("true_carbon_count") <= pl.col("max_carbon"))
+            ).alias("carbon_in_bounds")
+        )
+    
+        if result.height == 0:
+            return 0.0
+    
+        # Return fraction of compounds where carbon is correctly bounded
+        success_rate = result.select(pl.col("carbon_in_bounds").mean()).item()
+        return success_rate if success_rate is not None else 0.0
+    return (evaluate_isotopic_parameters,)
 
 
 @app.cell
@@ -169,7 +222,7 @@ def _(evaluate_isotopic_parameters, optimization_data, optuna):
     def objective(trial: optuna.Trial) -> float:
         """
         Optuna objective function to find minimal parameters that still give correct carbon bounds.
-    
+
         Why minimize parameters: Lower tolerance values mean tighter constraints on the isotopic
         pattern, which leads to more specific formula predictions. We want the lowest values
         that still correctly bound the true carbon count.
@@ -182,30 +235,30 @@ def _(evaluate_isotopic_parameters, optimization_data, optuna):
         )
         relative_tolerance = trial.suggest_float(
             "isotopic_intensity_relative_tolerance", 
-            0.01, 0.5
+            0.001, 0.1
         )
-    
+
         # Evaluate with these parameters
         success_rate = evaluate_isotopic_parameters(
             optimization_data,
             isotopic_intensity_absolute_tolerance=absolute_tolerance,
             isotopic_intensity_relative_tolerance=relative_tolerance,
         )
-    
+
         # We need at least 95% success rate
-        MIN_SUCCESS_RATE = 0.95
-    
+        MIN_SUCCESS_RATE = 0.99
+
         if success_rate < MIN_SUCCESS_RATE:
             # Penalize configurations that don't achieve minimum success rate
             # Return a high value to discourage this configuration
             return float("inf")
-    
+
         # Objective: minimize the sum of normalized parameters while maintaining success
         # Why: We want the tightest constraints that still work
         # Normalize to make them comparable
-        normalized_absolute = absolute_tolerance / 1e6
+        normalized_absolute = absolute_tolerance / 1e7
         normalized_relative = relative_tolerance
-    
+
         return normalized_absolute + normalized_relative
     return (objective,)
 
@@ -223,7 +276,7 @@ def _(objective, optuna):
 
     study.optimize(
         objective, 
-        n_trials=100,
+        n_trials=200,
         show_progress_bar=True,
     )
 
@@ -259,7 +312,7 @@ def _(
                 batch.struct.field("ms1_isotopes_m/z"),
                 batch.struct.field("ms1_isotopes_intensity"),
                 ms1_mass_tolerance_ppm=5.0,
-                isotopic_mass_tolerance_ppm=2.0,
+                isotopic_mass_tolerance_ppm=3.0,
                 minimum_intensity=5e4,
                 intensity_absolute_tolerance=best_absolute,
                 intensity_relative_tolerance=best_relative,
@@ -289,9 +342,21 @@ def _(
         "min_carbon",
         "max_carbon",
         "carbon_range",
-        "carbon_in_bounds"
+        "carbon_in_bounds",
+        "Height"
     ))
-
+    print(validation_result.select(
+        "Peak ID",
+        "Precursor_mz_MSDIAL",
+        "true_carbon_count",
+        "min_carbon",
+        "max_carbon",
+        "carbon_range",
+        "carbon_in_bounds",
+        "Height"
+    ).filter(
+        ~pl.col("carbon_in_bounds")
+    ))
     success_rate = validation_result.select(pl.col("carbon_in_bounds").mean()).item()
     avg_carbon_range = validation_result.select(pl.col("carbon_range").mean()).item()
 
