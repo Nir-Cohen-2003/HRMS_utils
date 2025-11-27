@@ -93,15 +93,18 @@ connectorx = "*"
 sqlalchemy = "*"
 
 [feature.testing.tasks]
+check_all = "pyrefly check ./src/hrms_utils"
+check_nist_mspec = "pyrefly check ./src/hrms_utils/formats/nist_mspec.py"
+
 test = {cmd="echo 'All tests passed!'", depends-on = [
+    "test_core_utils",
     "test_nist_mspec",
     "test_chromatogram",
     # "test_mol",
     "test_info_score",
-  ]}
-check_all = "pyrefly check ./src/hrms_utils"
-check_nist_mspec = "pyrefly check ./src/hrms_utils/formats/nist_mspec.py"
 
+  ]}
+test_core_utils = "pytest tests/hrms_core"
 test_nist_mspec = {cmd="python tests/formats/test_nist_mspec.py",env={ POLARS_VERBOSE= "1" }}
 test_chromatogram = {cmd="python tests/formats/chromatogram.py",env ={ POLARS_VERBOSE= "0" }}
 test_mol = "python tests/rdkit/mol.py"

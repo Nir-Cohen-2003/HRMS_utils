@@ -202,7 +202,7 @@ def _extract_collision_energy_values(data:T)-> T:
     # List pattern: Matches content inside square brackets
     pat_list_content = r'\[(.*?)\]'
 
-    return data.with_columns(
+    return cast(T,data.with_columns(
         # Extract NCE candidates
         pl.col('collision_energy_raw').str.extract(pat_nce, group_index=1)
         .fill_null(pl.col('collision_energy_raw').str.extract(pat_nce, group_index=2))
@@ -262,7 +262,7 @@ def _extract_collision_energy_values(data:T)-> T:
             pl.col('collision_energy_NCE'), 
             pl.col('collision_energy_ev')
         ]).alias("collision_energy_mean")
-    ).drop('_bare_energy', '_list_mean')
+    ).drop('_bare_energy', '_list_mean'))
 
 
 def _annotate_and_filter_metadata(data:T)-> T:

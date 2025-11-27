@@ -8,8 +8,8 @@ from typing import TYPE_CHECKING
 import polars as pl
 from polars.plugins import register_plugin_function
 
-from .._internal import __version__ as __version__
-from .._internal import NUM_ELEMENTS
+from .._internal import __version__ as __version__ #type: ignore
+from .._internal import NUM_ELEMENTS #type: ignore
 
 if TYPE_CHECKING:
     from .typing import IntoExprColumn
