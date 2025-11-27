@@ -20,7 +20,7 @@ src/hrms_utils/formula_annotation/mass_decomposition_impl/**.pyd
 **.nbi
 **.nbc
 **.parquet
-tests/data/
+# tests/data/
 **.png
 target/
 Cargo.lock
