@@ -1,6 +1,6 @@
 import marimo
 
-__generated_with = "0.18.0"
+__generated_with = "0.18.1"
 app = marimo.App()
 
 
@@ -9,7 +9,7 @@ def _():
     import polars as pl
     import numpy as np
     import matplotlib.pyplot as plt
-    import spectral_similarity
+    import hrms_utils
     from pathlib import Path
     return Path, np, pl, plt
 
@@ -52,7 +52,9 @@ def _(MIN_ISOMERS, PARQUET_PATHS, pl):
         "spectral_information_score",
         "cleaned_normalized_mz", 
         "cleaned_normalized_intensity"
-    ]).with_row_index("idx")
+    ]).with_row_index("idx").with_columns(
+        nominal_mass=pl.col("precursor_mz").round(0)
+    )
     return (lf,)
 
 
@@ -60,17 +62,13 @@ def _(MIN_ISOMERS, PARQUET_PATHS, pl):
 def _(lf, pl):
 
     pairs_filtered = lf.join(
-        other=lf,on=["precursor_formula_array","ion_mode"],suffix="_right"
+        other=lf,on=["nominal_mass","ion_mode"],suffix="_right"
     ).filter(
+        pl.col("precursor_mz").is_close(
+            pl.col("precursor_mz_right"),rel_tol=5e-6
+        ),
         pl.col("base_inchikey") != pl.col("base_inchikey_right")
-    )
-    return (pairs_filtered,)
-
-
-@app.cell
-def _(pairs_filtered, pl):
-
-    pairs_filtered.with_columns(
+    ).with_columns(
         spectra=pl.struct(
             mz1=pl.col("cleaned_normalized_mz").alias("mz1"),
             intensities1=pl.col("cleaned_normalized_intensity").alias("intensities1"),
@@ -94,6 +92,11 @@ def _(pairs_filtered, pl):
             clean_spectra_first=False,
             ignore_precursor=True,
         ),
+        dotprod_similarity_with_precursor=pl.col("spectra").spectral_similarity.dotprod_similarity(
+            ms2_tolerance_in_ppm=10.0,
+            clean_spectra_first=False,
+            ignore_precursor=False,
+        ),
         entropy_similarity=pl.col("spectra").spectral_similarity.entropy_similarity(
             ms2_tolerance_in_ppm=10.0,
             clean_spectra_first=False,
@@ -113,75 +116,64 @@ def _(pairs_filtered, pl):
 @app.cell
 def _(np, pl, plt):
     # Analysis and Plotting
-    # Why: Bin spectral info score and calculate FPR for different similarity metrics.
-    # We aggregate by the left spectrum ('idx') to determine if it had ANY false positive match above the specific threshold.
-    MAX_INFO = 2.0
+    # Why: Bin spectral info score and calculate average number of false matches for different similarity metrics.
+    # We aggregate by the left spectrum ('idx') to count how many false positive matches exist above the threshold.
+    MAX_INFO = 3.0
     pairs_sim = pl.scan_parquet("/home/analytit_admin/Data/spectral_libs/all_pairs_with_similarities.parquet")
+    # pairs_sim = pairs_filtered
     print(f"number of pairs:{pairs_sim.select(pl.len()).collect().item()}")
     print("number of unique spectra:", pairs_sim.select(pl.col("idx")).unique().select(pl.len()).collect().item())
     print("number of unique molecules:", pairs_sim.select(pl.col("base_inchikey")).unique().select(pl.len()).collect().item())
-    # Why: Calculate max similarity per query spectrum for EACH metric
-    unique_spectra_stats = pairs_sim.group_by("idx").agg(
-        max_dotprod=pl.col("dotprod_similarity").max(),
-        max_entropy=pl.col("entropy_similarity").max(),
-        max_mass_sqrt=pl.col("mass_sqrt_cosine_similarity").max(),
-        spectral_information_score=pl.col("spectral_information_score").first()
-    )
 
     bin_width = 0.1
-    analysis_df = unique_spectra_stats.with_columns(
-        info_bin_val=(pl.col("spectral_information_score") / bin_width).floor() * bin_width
-    )
 
-    # Filter to range 
-    analysis_df = analysis_df.filter(
-        (pl.col("info_bin_val") >= 0) & (pl.col("info_bin_val") <= MAX_INFO)
-    )
-
-    grouped = analysis_df.group_by("info_bin_val")
-
-    stats = []
-    # Configuration: (Aggregated Column, Threshold, Display Label)
     # Why: Define specific thresholds for each similarity metric here.
-    # Allows comparing different metrics at their optimal or standard thresholds.
     METRICS_CONFIG = [
-        ("max_dotprod", 0.85, "Dot Product"),
-        # ("max_dotprod", 0.9, "Dot Product"),
-        ("max_dotprod", 0.95, "Dot Product"),
-        # ("max_entropy", 0.75, "Entropy"),
-        ("max_entropy", 0.81, "Entropy"),
-        ("max_entropy", 0.93, "Entropy"),
-        # ("max_mass_sqrt", 0.9, "Mass Sqrt Cosine"),
+        # metric_key, threshold, human_label, color, marker
+        ("dotprod_similarity", 0.8, "Dot Product (ignoring precursor)", "C0", "o"),
+        ("dotprod_similarity_with_precursor", 0.8, "Dot Product (including precursor)", "C1", "s"),
+        ("entropy_similarity", 0.75, "Entropy", "C2", "^"),
     ]
 
-    for agg_col, thresh, label in METRICS_CONFIG:
-        # Why: FPR = (Count of spectra with max_metric >= thresh) / (Total count of spectra)
-        res = grouped.agg(
-            total_count=pl.len(),
-            fp_count=(pl.col(agg_col) >= thresh).sum()
+    stats = []
+    for sim_col, thresh, label, color, marker in METRICS_CONFIG:
+        unique_spectra_stats = pairs_sim.with_columns(
+            is_false_match=(pl.col(sim_col) >= thresh).cast(pl.Int64)
+        ).group_by("idx").agg(
+            false_match_count=pl.col("is_false_match").sum(),
+            spectral_information_score=pl.col("spectral_information_score").first()
         ).with_columns(
-            fpr=pl.col("fp_count") / pl.col("total_count"),
-            metric_label=pl.lit(label),
-            threshold_used=pl.lit(thresh)
+            info_bin_val=(pl.col("spectral_information_score") / bin_width).floor() * bin_width
+        ).filter(
+            (pl.col("info_bin_val") >= 0) & (pl.col("info_bin_val") <= MAX_INFO)
+        )
+
+        res = unique_spectra_stats.group_by("info_bin_val").agg(
+            total_count=pl.len(),
+            avg_false_matches=pl.col("false_match_count").mean()
+        ).with_columns(
+            metric_label=pl.lit(label),              # human readable
+            metric_name=pl.lit(sim_col),             # unambiguous metric key
+            threshold_used=pl.lit(thresh),
+            plot_color=pl.lit(color),
+            plot_marker=pl.lit(marker)
         ).sort("info_bin_val")
         stats.append(res)
 
     # Why: Collect results into memory for plotting
-    all_stats = pl.concat(stats).collect()
+    all_stats = pl.concat(stats).collect(engine="streaming")
+    pl.Comfig.set_tbl_rows(100)
     print(all_stats)
 
     # ---------------------------------------------------------
-    # NEW: Calculate Molecule Max Info CDF
+    # Molecule Max Info CDF
     # ---------------------------------------------------------
     # Why: Determine the distribution of maximal information content per molecule.
-    # We want to see what percentage of molecules have at least one spectrum with info score >= X.
     molecule_max_info = pairs_sim.group_by("base_inchikey").agg(
         max_info=pl.col("spectral_information_score").max()
     ).collect()
 
-    # Define X axis for CDF (using the same range/bins as the main plot for alignment)
-    # We generate a regular range to ensure the line is smooth and covers the whole plot area
-    cdf_x = np.arange(0, MAX_INFO+0.1, bin_width)
+    cdf_x = np.arange(0, MAX_INFO + 0.1, bin_width)
     total_molecules = molecule_max_info.height
     cdf_y = []
 
@@ -196,27 +188,26 @@ def _(np, pl, plt):
     fig, ax = plt.subplots(figsize=(10, 6))
     MIN_COUNT_THRESHOLD = 5
 
-    # Why: Iterate through the config again to plot each series separately.
-    # We filter by both label and threshold to distinguish cases where the same metric 
-    # is used with different thresholds (e.g., Entropy 0.9 vs 0.85).
-    for _, thresh, label in METRICS_CONFIG:
+    for metric_key, thresh, label, color, marker in METRICS_CONFIG:
         subset = all_stats.filter(
-            (pl.col("metric_label") == label) & 
-            (pl.col("threshold_used") == thresh) & 
+            (pl.col("metric_name") == metric_key) &
+            (pl.col("threshold_used") == thresh) &
             (pl.col("total_count") > MIN_COUNT_THRESHOLD)
         )
-    
+
         if subset.height > 0:
+            # Use explicit color/marker so the two dotprod lines are visually distinct
             ax.plot(
-                subset["info_bin_val"], 
-                subset["fpr"], 
-                marker='o', 
-                label=f"{label} (Thresh: {thresh})"
+                subset["info_bin_val"],
+                subset["avg_false_matches"],
+                marker=marker,
+                label=f"{label} (Thresh: {thresh})",
+                color=color
             )
         else:
             print(f"Warning: No data for {label} at threshold {thresh}")
 
-    # NEW: Add secondary axis for Molecule Coverage CDF
+    # Secondary axis for Molecule Coverage CDF
     ax2 = ax.twinx()
     ax2.plot(
         cdf_x, 
@@ -228,11 +219,11 @@ def _(np, pl, plt):
         label='Molecule Coverage (Max Info ≥ X)'
     )
     ax2.set_ylabel("Fraction of Molecules")
-    ax2.set_ylim(0, 1.05)  # Ensure range starts at 0 and allows seeing the top at 1
+    ax2.set_ylim(0, 1.05)
 
     ax.set_xlabel("Spectral Information Score")
-    ax.set_ylabel("False Positive Rate")
-    ax.set_title("FPR vs Spectral Information Score by Similarity Metric")
+    ax.set_ylabel("Average Number of False Matches")
+    ax.set_title("Average Number of False Matches vs Spectral Information Score")
 
     # Combine legends from both axes
     lines_1, labels_1 = ax.get_legend_handles_labels()
@@ -241,9 +232,8 @@ def _(np, pl, plt):
 
     ax.grid(True, alpha=0.3)
 
-    # Why: Save using the figure object in the same cell to prevent blank output
+    # plt.show()
     fig.savefig("fpr_vs_info_metrics.png")
-    plt.show()
     return
 
 
