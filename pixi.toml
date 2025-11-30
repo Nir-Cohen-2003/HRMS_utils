@@ -149,6 +149,9 @@ numpy = "*"
 optuna = "*"
 nvmolkit = "*"
 
-# pytorch-gpu = ">=2.7.0"
+pytorch-gpu = "*"
 # cuda-version = "12.6.*"
 marimo ="*"
+
+[feature.experiments.system-requirements]
+cuda = "12.0"
