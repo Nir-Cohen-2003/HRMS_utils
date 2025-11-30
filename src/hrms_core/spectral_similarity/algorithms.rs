@@ -1,4 +1,8 @@
 use super::common::*;
+use crate::common::NUM_ELEMENTS;
+use crate::spectral_information::algorithms::calculate_score_for_spectrum;
+use std::collections::HashSet;
+use std::hash::{Hash, Hasher};
 
 /// Calculates the spectral entropy of a spectrum. (Identical)
 pub fn calculate_spectral_entropy(spectrum: &Spectrum) -> f64 {
@@ -223,4 +227,110 @@ pub fn calculate_explained_intensity(
     }
 
     (sum_a / sum_b).max(0.0).min(1.0)
+}
+
+#[derive(Clone, Copy)]
+struct FormulaWrapper<'a>(&'a [f64]);
+
+impl<'a> Hash for FormulaWrapper<'a> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        for &x in self.0 {
+            x.to_bits().hash(state);
+        }
+    }
+}
+
+impl<'a> PartialEq for FormulaWrapper<'a> {
+    fn eq(&self, other: &Self) -> bool {
+        self.0
+            .iter()
+            .zip(other.0.iter())
+            .all(|(a, b)| a.to_bits() == b.to_bits())
+    }
+}
+
+impl<'a> Eq for FormulaWrapper<'a> {}
+
+pub fn calculate_info_similarity(
+    precursor1: &[f64],
+    fragments1: &[f64],
+    precursor2: &[f64],
+    fragments2: &[f64],
+    distance_metric: &str,
+    ignore_hydrogens: bool,
+) -> InfoSimilarity {
+    if precursor1 != precursor2 {
+        return InfoSimilarity::default();
+    }
+
+    let frags1_set: HashSet<FormulaWrapper> = fragments1
+        .chunks_exact(NUM_ELEMENTS)
+        .map(FormulaWrapper)
+        .collect();
+    let frags2_set: HashSet<FormulaWrapper> = fragments2
+        .chunks_exact(NUM_ELEMENTS)
+        .map(FormulaWrapper)
+        .collect();
+
+    let spec1_info = calculate_score_for_spectrum(
+        precursor1.to_vec(),
+        fragments1.to_vec(),
+        distance_metric,
+        ignore_hydrogens,
+    )
+    .unwrap_or(0.0);
+    let spec2_info = calculate_score_for_spectrum(
+        precursor2.to_vec(),
+        fragments2.to_vec(),
+        distance_metric,
+        ignore_hydrogens,
+    )
+    .unwrap_or(0.0);
+
+    let union_frags: Vec<f64> = frags1_set
+        .union(&frags2_set)
+        .flat_map(|f| f.0)
+        .copied()
+        .collect();
+    let union_info = calculate_score_for_spectrum(
+        precursor1.to_vec(),
+        union_frags,
+        distance_metric,
+        ignore_hydrogens,
+    )
+    .unwrap_or(0.0);
+
+    let diff1_frags: Vec<f64> = frags1_set
+        .difference(&frags2_set)
+        .flat_map(|f| f.0)
+        .copied()
+        .collect();
+    let diff1_info = calculate_score_for_spectrum(
+        precursor1.to_vec(),
+        diff1_frags,
+        distance_metric,
+        ignore_hydrogens,
+    )
+    .unwrap_or(0.0);
+
+    let diff2_frags: Vec<f64> = frags2_set
+        .difference(&frags1_set)
+        .flat_map(|f| f.0)
+        .copied()
+        .collect();
+    let diff2_info = calculate_score_for_spectrum(
+        precursor1.to_vec(),
+        diff2_frags,
+        distance_metric,
+        ignore_hydrogens,
+    )
+    .unwrap_or(0.0);
+
+    InfoSimilarity {
+        spec1_info,
+        spec2_info,
+        union_info,
+        diff1_info,
+        diff2_info,
+    }
 }

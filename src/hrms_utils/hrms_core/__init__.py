@@ -381,3 +381,39 @@ class SpectralUtils:
             is_elementwise=True,
             kwargs=kwargs,
         )
+
+    def info_similarity(
+        self,
+        distance_metric: str = "l2",
+        ignore_hydrogens: bool = True,
+    ) -> pl.Expr:
+        """
+        Calculate spectral similarity between two spectra using spectral information theory.
+
+        Input expression requirements:
+        - The expression must evaluate to a Struct column with the following fields:
+            - precursor_formula1: Array[float64, NUM_ELEMENTS]
+            - fragment_formulas1: List[Array[float64, NUM_ELEMENTS]]
+            - precursor_formula2: Array[float64, NUM_ELEMENTS]
+            - fragment_formulas2: List[Array[float64, NUM_ELEMENTS]]
+
+        Return:
+        - A pl.Expr that evaluates elementwise to a Struct with the following fields:
+            - spec1_info: Float64
+            - spec2_info: Float64
+            - union_info: Float64
+            - diff1_info: Float64
+            - diff2_info: Float64
+        """
+        kwargs = {
+            "distance_metric": distance_metric,
+            "ignore_hydrogens": ignore_hydrogens,
+        }
+
+        return register_plugin_function(
+            args=[self._expr],
+            plugin_path=LIB,
+            function_name="info_similarity_struct",
+            is_elementwise=True,
+            kwargs=kwargs,
+        )

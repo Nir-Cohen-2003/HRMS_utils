@@ -1,9 +1,26 @@
 use polars::prelude::*;
+use pyo3::prelude::*;
+use serde::Serialize;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Peak {
     pub mz: f64,
     pub intensity: f64,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Default)]
+#[pyclass]
+pub struct InfoSimilarity {
+    #[pyo3(get, set)]
+    pub spec1_info: f64,
+    #[pyo3(get, set)]
+    pub spec2_info: f64,
+    #[pyo3(get, set)]
+    pub union_info: f64,
+    #[pyo3(get, set)]
+    pub diff1_info: f64,
+    #[pyo3(get, set)]
+    pub diff2_info: f64,
 }
 
 #[derive(Debug, Clone, PartialEq)]

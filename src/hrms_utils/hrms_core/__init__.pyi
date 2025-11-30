@@ -96,3 +96,9 @@ class SpectralUtils:
         ignore_precursor: bool = False,
         permissive: bool = False,
     ) -> pl.Expr: ...
+
+    def info_similarity(
+        self,
+        distance_metric: str = "l2",
+        ignore_hydrogens: bool = True,
+    ) -> pl.Expr: ...
