@@ -1,7 +1,7 @@
 import marimo
 
 __generated_with = "0.18.1"
-app = marimo.App()
+app = marimo.App(width="full")
 
 
 @app.cell
@@ -81,6 +81,8 @@ def _(List, Path, Union, pl):
                 "cleaned_normalized_intensity",
                 "smiles",
             ]
+        ).filter(
+            pl.col("smiles").is_not_null()
         ).with_row_index("idx").with_columns(
             nominal_mass=pl.col("precursor_mz").round(0)
         )
@@ -135,8 +137,6 @@ def _(List, Path, Union, pl):
 
         # Sink to parquet for downstream analysis and return the lazyframe
         pairs_filtered.sink_parquet(str(output_path), engine=sink_engine)
-
-
     return (build_and_write_pairs_parquet,)
 
 
@@ -236,7 +236,7 @@ def _(List, Optional, Path, Tuple, Union, dataclass, field, np, pl, plt):
         # Compute molecule-level max info distribution (CDF / survival function)
         molecule_max_info = pairs_sim.group_by("base_inchikey").agg(
             max_info=pl.col("spectral_information_score").max()
-        ).collect()
+        ).collect(engine="streaming")
 
         cdf_x = np.arange(0, config.max_info + config.bin_width, config.bin_width)
         total_molecules = molecule_max_info.height
@@ -355,7 +355,6 @@ def _(List, Optional, Path, Tuple, Union, dataclass, field, np, pl, plt):
         if show_plot:
             plt.show()
         plt.close(fig_matched)
-
     return (
         FprVsInfoConfig,
         compute_fpr_vs_info_stats,
@@ -372,21 +371,29 @@ def _(
     MorganFingerprintGenerator,
     Optional,
     Path,
+    Tuple,
     Union,
     crossTanimotoSimilarityMemoryConstrained,
     pl,
+    plt,
 ):
+    # ...existing code...
     def compute_avg_tanimoto_between_matched_pairs(
         pairs_input: Optional[Union[str, Path, pl.DataFrame, pl.LazyFrame]] = None,
         left_smiles_col: str = "smiles",
         right_smiles_col: str = "smiles_right",
+        metrics_config: Optional[List[Tuple[str, float, str, str, str]]] = None,
         group_by_cols: Optional[List[str]] = None,
         fp_radius: int = 2,
         fp_size: int = 1024,
         fp_num_threads: int = 0,
+        bin_width: float = 0.1,
+        max_info: float = 3.0,
+        plot_output_path: Optional[Union[str, Path]] = None,
+        min_count_threshold: int = 5,
     ) -> pl.DataFrame:
         """
-        Compute average Tanimoto similarity for matched pairs.
+        Compute average Tanimoto similarity for matched pairs, optionally binned by spectral information.
 
         This function:
           - Loads a pairs dataset (lazy or scanned parquet).
@@ -399,14 +406,21 @@ def _(
         Args:
           - pairs_input: Path/lazyframe/dataframe for the pairwise dataset
           - left_smiles_col/right_smiles_col: column names for SMILES in left and right sides
-          - group_by_cols: columns to aggregate by (e.g., ["metric_name","threshold_used"]). If None, global average returned.
+          - metrics_config: List of (metric_key, threshold, label, color, marker). If provided,
+            stats are computed per metric/threshold configuration and binned by spectral info.
+          - group_by_cols: columns to aggregate by (e.g., ["ion_mode"]). Used only if metrics_config is None.
           - fp_radius/fp_size/fp_num_threads: parameters for fingerprint generation.
+          - bin_width: width of spectral information bins (used if metrics_config is provided).
+          - max_info: maximum spectral information score to consider (used if metrics_config is provided).
+          - plot_output_path: if provided, saves a plot of Avg Tanimoto vs Spectral Info.
+          - min_count_threshold: minimum number of pairs in a bin to include in the plot.
 
         Returns:
-          - pl.DataFrame aggregated by `group_by_cols` (or global) with columns:
+          - pl.DataFrame with columns:
             * avg_tanimoto: mean Tanimoto similarity for paired matches
             * median_tanimoto: median
             * count: number of pairs used in the aggregate
+            * (plus metric metadata and info_bin_val if metrics_config is used)
         """
         # Accept either an explicit pairs_input or default to the default pairs file
         # We use the FprVsInfoConfig default parquet if none is passed to be consistent.
@@ -427,16 +441,17 @@ def _(
         else:
             raise AssertionError("pairs_input must be str/Path/pl.DataFrame/pl.LazyFrame")
 
-        # Fast check for required columns - collect small subset
-        sample = pairs_sim.select([left_smiles_col, right_smiles_col]).limit(1).collect()
+        # Why: Collect small sample to verify columns exist before expensive ops
+        sample = pairs_sim.select([left_smiles_col, right_smiles_col]).limit(1).collect(engine="streaming")
         assert left_smiles_col in sample.columns and right_smiles_col in sample.columns, (
             f"Expected columns '{left_smiles_col}' and '{right_smiles_col}' in pairs dataset"
         )
 
         # Compute unique SMILES lists for left and right
         # Why: Add row index to map back to the similarity matrix coordinates
-        left_unique = pairs_sim.select(left_smiles_col).unique().with_row_index("l_idx").collect()
-        right_unique = pairs_sim.select(right_smiles_col).unique().with_row_index("r_idx").collect()
+        # Use streaming to handle large datasets without OOM
+        left_unique = pairs_sim.select(left_smiles_col).unique().with_row_index("l_idx").collect(engine="streaming")
+        right_unique = pairs_sim.select(right_smiles_col).unique().with_row_index("r_idx").collect(engine="streaming")
 
         left_smiles_list = left_unique.get_column(left_smiles_col).to_list()
         right_smiles_list = right_unique.get_column(right_smiles_col).to_list()
@@ -462,12 +477,15 @@ def _(
 
         # Compute pairwise Tanimoto only between the unique left/right groups
         # Why: crossTanimotoSimilarityMemoryConstrained returns a numpy array directly
+        # Note: This matrix can be large (N_left * N_right * 4 bytes).
         sims_matrix = crossTanimotoSimilarityMemoryConstrained(fps_left, fps_right)  # shape [len(left), len(right)]
 
         # Build mapping of unique pairs -> tanimoto
-        unique_pairs = pairs_sim.select([left_smiles_col, right_smiles_col]).unique().collect()
+        # Why: Use streaming to avoid OOM on large pair sets
+        unique_pairs = pairs_sim.select([left_smiles_col, right_smiles_col]).unique().collect(engine="streaming")
         if unique_pairs.height == 0:
             # No pairs to compute.
+            print("No unique pairs found for Tanimoto computation; returning empty DataFrame.")
             return pl.DataFrame(
                 {"avg_tanimoto": [], "median_tanimoto": [], "count": []}
             )
@@ -492,16 +510,74 @@ def _(
         )
 
         # Join mapping back to the pairs lazyframe to assign similarity to each pair
-        pairs_with_sim = pairs_sim.join(mapping_df, left_on=[left_smiles_col, right_smiles_col], right_on=[left_smiles_col, right_smiles_col])
+        pairs_with_sim = pairs_sim.join(mapping_df.lazy(), left_on=[left_smiles_col, right_smiles_col], right_on=[left_smiles_col, right_smiles_col])
 
-        # Aggregate by requested group columns (if provided) or global
-        if group_by_cols:
+        # Case 1: Metrics Config provided (Iterate, Filter, Aggregate, Plot)
+        if metrics_config is not None:
+            stats = []
+            for metric_key, thresh, label, color, marker in metrics_config:
+                # Filter pairs that meet the threshold for this specific metric
+                # And bin by spectral information score
+                res = pairs_with_sim.filter(
+                    pl.col(metric_key).ge(thresh)
+                ).with_columns(
+                    info_bin_val=(pl.col("spectral_information_score") / bin_width).floor() * bin_width
+                ).filter(
+                    pl.col("info_bin_val").ge(0.0),
+                    pl.col("info_bin_val").le(max_info),
+                ).group_by("info_bin_val").agg(
+                    avg_tanimoto=pl.col("tanimoto_similarity").mean(),
+                    median_tanimoto=pl.col("tanimoto_similarity").median(),
+                    count=pl.len(),
+                ).with_columns(
+                    metric_name=pl.lit(metric_key),
+                    threshold_used=pl.lit(thresh),
+                    metric_label=pl.lit(label),
+                    plot_color=pl.lit(color),
+                    plot_marker=pl.lit(marker),
+                ).sort("info_bin_val")
+                stats.append(res)
+
+            all_stats = pl.concat(stats).collect(engine="streaming")
+
+            if plot_output_path:
+                fig, ax = plt.subplots(figsize=(10, 6))
+                for metric_key, thresh, label, color, marker in metrics_config:
+                    subset = all_stats.filter(
+                        (pl.col("metric_name") == metric_key) &
+                        (pl.col("threshold_used") == thresh) &
+                        (pl.col("count") > min_count_threshold)
+                    )
+                    if subset.height > 0:
+                        ax.plot(
+                            subset.get_column("info_bin_val").to_numpy(),
+                            subset.get_column("avg_tanimoto").to_numpy(),
+                            marker=marker,
+                            label=f"{label} (Thresh: {thresh})",
+                            color=color,
+                        )
+            
+                ax.set_xlabel("Spectral Information Score")
+                ax.set_ylabel("Average Tanimoto Similarity of Matches")
+                ax.set_title("Average Tanimoto Similarity of Matches vs Spectral Information Score")
+                ax.legend(loc="lower right")
+                ax.grid(True, alpha=0.3)
+                fig.savefig(str(plot_output_path))
+                plt.close(fig)
+
+            return all_stats
+
+        # Case 2: Standard Group By (if columns exist in dataframe)
+        elif group_by_cols:
             assert isinstance(group_by_cols, list) and len(group_by_cols) > 0, "group_by_cols must be a non-empty list"
             agg = pairs_with_sim.group_by(*group_by_cols).agg(
                 avg_tanimoto=pl.col("tanimoto_similarity").mean(),
                 median_tanimoto=pl.col("tanimoto_similarity").median(),
                 count=pl.col("tanimoto_similarity").count(),
-            ).collect()
+            ).collect(engine="streaming")
+            return agg
+
+        # Case 3: Global Aggregate
         else:
             agg = pairs_with_sim.select(
                 [
@@ -509,15 +585,14 @@ def _(
                     pl.col("tanimoto_similarity").median().alias("median_tanimoto"),
                     pl.col("tanimoto_similarity").count().alias("count"),
                 ]
-            ).collect()
-
-        return agg
-
+            ).collect(engine="streaming")
+            return agg
+    # ...existing code...
     return (compute_avg_tanimoto_between_matched_pairs,)
 
 
 @app.cell
-def _(Path, build_and_write_pairs_parquet):
+def _(Path):
     # Configuration
     # Why: Define constants for reproducibility and easy adjustment.
     # Update PARQUET_PATH to point to your actual data file.
@@ -527,12 +602,22 @@ def _(Path, build_and_write_pairs_parquet):
     ]
     MIN_ISOMERS = 10
     OUTPUT_PAIRS_PATH = Path("/home/analytit_admin/Data/spectral_libs/all_pairs_with_similarities.parquet")
+    return MIN_ISOMERS, OUTPUT_PAIRS_PATH, PARQUET_PATHS
+
+
+@app.cell
+def _(
+    MIN_ISOMERS,
+    OUTPUT_PAIRS_PATH,
+    PARQUET_PATHS,
+    build_and_write_pairs_parquet,
+):
     build_and_write_pairs_parquet(
         parquet_paths=PARQUET_PATHS,
         output_path=OUTPUT_PAIRS_PATH,
         min_isomers=MIN_ISOMERS,
     )
-    return (OUTPUT_PAIRS_PATH,)
+    return
 
 
 @app.cell
@@ -574,7 +659,7 @@ def _(compute_avg_tanimoto_between_matched_pairs, config):
         pairs_input=config.pairs_parquet_path,
         left_smiles_col="smiles",
         right_smiles_col="smiles_right",
-        group_by_cols=["metric_name", "threshold_used"],
+        metrics_config=config.metrics_config,
         fp_radius=2,
         fp_size=2048,
         fp_num_threads=0,
