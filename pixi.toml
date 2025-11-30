@@ -2,7 +2,8 @@
 channels = [
   "https://prefix.dev/pixi-build-backends",
   "https://prefix.dev/conda-forge",
-  "https://prefix.dev/nir-cohen"
+  "https://prefix.dev/nir-cohen",
+  "conda-forge"
 ]
 platforms = ["linux-64","win-64"]
 preview = ["pixi-build"]
@@ -47,7 +48,7 @@ build-all = { cmd = "python -m build --wheel --sdist --no-isolation --outdir dis
 [environments]
 default = {features = [], solve-group = "default"}
 testing = {features = ["testing"], solve-group = "testing"}
-
+experiments = {features = ["experiments"], solve-group = "experiments",no-default-feature = true}
 
 [package.build]
 backend = { name = "pixi-build-python", version = "*",channels = [
@@ -120,7 +121,6 @@ numpy = ">=1.20.0,<2.3"
 numba = ">=0.61.0"
 pytest = ">=8.4.2,<9"
 optuna = "*"
-# hrms_core = {path = "./packages/hrms_core"}
 scipy = "*"
 requests = "*"
 aiohttp = "*"
@@ -140,3 +140,15 @@ ruff = "*"
 [feature.testing.pypi-dependencies]
 kaleido = ">=1.1.0, <2"
 
+# [feature.experiments.target.linux-64.system-requirements]
+[feature.experiments.target.linux-64.dependencies]
+hrms_utils = {path = "."}
+polars = ">=1.35.2,<2"
+rdkit = ">=2024.0.0"
+numpy = "*"
+optuna = "*"
+nvmolkit = "*"
+
+# pytorch-gpu = ">=2.7.0"
+# cuda-version = "12.6.*"
+marimo ="*"
