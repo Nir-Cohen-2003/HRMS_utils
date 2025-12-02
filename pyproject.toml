@@ -9,7 +9,6 @@ dependencies = [
     "rdkit>=2024.0.0",
     "numpy>=1.20.0",
     "numba>=0.61.0",
-    "ms_entropy",
     "requests",
     "aiohttp",
     "scipy",

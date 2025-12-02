@@ -425,8 +425,11 @@ fn deduce_isotopic_pattern(inputs: &[Series], kwargs: DeduceIsotopicPatternKwarg
         .zip(ms1_intensities_vec.into_par_iter())
         .map(|((precursor_opt, ms1_mzs_opt), ms1_int_opt)| {
              if let (Some(precursor_mz), Some(ms1_mzs_s), Some(ms1_int_s)) = (precursor_opt, ms1_mzs_opt, ms1_int_opt) {
-                let ms1_mzs = ms1_mzs_s.f64().unwrap();
-                let ms1_int = ms1_int_s.f64().unwrap();
+                let ms1_mzs_tmp = ms1_mzs_s.cast(&DataType::Float64).expect("Failed to cast ms1_mzs to Float64");
+                let ms1_mzs = ms1_mzs_tmp.f64().expect("Failed to get ms1_mzs as Float64 ChunkedArray");
+                
+                let ms1_int_tmp = ms1_int_s.cast(&DataType::Float64).expect("Failed to cast ms1_intensities to Float64");
+                let ms1_int = ms1_int_tmp.f64().expect("Failed to get ms1_intensities as Float64 ChunkedArray");
                 
                 // Convert to Vec or slice
                 let ms1_mzs_slice: Vec<f64> = ms1_mzs.into_no_null_iter().collect();

@@ -1,4 +1,3 @@
-#![feature(stdarch_x86_avx512)]
 use pyo3::prelude::*;
 use pyo3_polars::PolarsAllocator;
 use crate::common::{NUM_ELEMENTS, ATOMIC_MASSES, ELEMENT_SYMBOLS};

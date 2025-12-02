@@ -68,7 +68,7 @@ setuptools = ">=68.0.0"
 maturin = ">=1.09.0"
 rattler-build = ">=0.48.0"
 rust = ">=1.91.0"
-rust-src = "*"
+rust-src = ">=1.91.0"
 compilers = "*"
 cargo-bundle-licenses = "*"
 [package.host-dependencies] 
@@ -103,6 +103,7 @@ test = {cmd="echo 'All tests passed!'", depends-on = [
     "test_chromatogram",
     # "test_mol",
     "test_info_score",
+    "test_isotopic_pattern",
 
   ]}
 test_core_utils = "pytest tests/hrms_core"
@@ -110,6 +111,7 @@ test_nist_mspec = {cmd="python tests/formats/test_nist_mspec.py",env={ POLARS_VE
 test_chromatogram = {cmd="python tests/formats/chromatogram.py",env ={ POLARS_VERBOSE= "0" }}
 test_mol = "python tests/rdkit/mol.py"
 test_info_score = "python tests/spectral/test_spectral_information.py"
+test_isotopic_pattern = "pytest tests/hrms_core/test_isotopic_pattern.py"
 
 convert_msp = "python scripts/convert_msp.py"
 
