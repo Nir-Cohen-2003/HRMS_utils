@@ -1,6 +1,7 @@
 use serde::Deserialize;
 // Re-export NUM_ELEMENTS and ELEMENT_SYMBOLS so other modules can access them via this module.
-pub use crate::common::{NUM_ELEMENTS, ELEMENT_SYMBOLS, ATOMIC_MASSES};
+pub use crate::common::{NUM_ELEMENTS, ELEMENT_SYMBOLS, ATOMIC_MASSES, ELEMENT_ISOTOPES, IsotopeProps};
+use std::collections::HashMap;
 
 
 
@@ -109,4 +110,47 @@ pub struct DecomposedFragment {
     pub formula: Formula,
     pub mass: f64,
     pub error_ppm: f64,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct IsotopicPatternParams {
+    pub ms1_mass_tolerance_ppm: f64,
+    pub isotopic_mass_tolerance_ppm: f64,
+    pub minimum_intensity: f64,
+    pub intensity_absolute_tolerance: f64,
+    pub intensity_relative_tolerance: f64,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct DeduceIsotopicPatternKwargs {
+    pub ms1_mass_tolerance_ppm: f64,
+    pub isotopic_mass_tolerance_ppm: f64,
+    pub minimum_intensity: f64,
+    pub intensity_absolute_tolerance: f64,
+    pub intensity_relative_tolerance: f64,
+    pub min_bounds: Option<HashMap<String, i32>>,
+    pub max_bounds: Option<HashMap<String, i32>>,
+}
+
+pub fn default_min_bounds() -> Formula {
+    [0; NUM_ELEMENTS]
+}
+
+pub fn default_max_bounds() -> Formula {
+    let mut bounds = [0; NUM_ELEMENTS];
+    // H=0, C=1, N=2, O=3, F=4, Na=5, P=6, S=7, Cl=8, K=9, Br=10, I=11
+    // Based on python DEFAULT_MAX_BOUND
+    bounds[0] = 100; // H
+    bounds[1] = 50;  // C
+    bounds[2] = 20;  // N
+    bounds[3] = 20;  // O
+    bounds[4] = 40;  // F
+    bounds[5] = 0;   // Na
+    bounds[6] = 5;   // P
+    bounds[7] = 5;   // S
+    bounds[8] = 10;  // Cl
+    bounds[9] = 0;   // K
+    bounds[10] = 10; // Br
+    bounds[11] = 5;  // I
+    bounds
 }

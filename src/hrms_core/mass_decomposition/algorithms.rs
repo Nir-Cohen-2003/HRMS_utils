@@ -1,6 +1,130 @@
-use super::common::{Formula, DecompositionParams, NUM_ELEMENTS, ATOMIC_MASSES, check_dbe, MIN_MASS_FOR_TOLERANCE, SpectrumDecompositionParams, CleanedAndNormalizedSpectrumResult, CorrectedFragment};
+use super::common::{Formula, DecompositionParams, NUM_ELEMENTS, ATOMIC_MASSES, check_dbe, MIN_MASS_FOR_TOLERANCE, SpectrumDecompositionParams, CleanedAndNormalizedSpectrumResult, CorrectedFragment, IsotopicPatternParams, ELEMENT_ISOTOPES};
 use super::precomputed::{find_best_precomputed, PrecomputedDecomposer};
 use std::sync::Arc;
+
+const MASS_ACCURACY_PPM_TO_DA_THRESHOLD: f64 = 200.0;
+
+pub fn deduce_isotopic_pattern_inner(
+    precursor_mz: f64,
+    ms1_mzs: &[f64],
+    ms1_intensities: &[f64],
+    params: &IsotopicPatternParams,
+) -> [f64; 8] {
+    let ms1_absolute_tolerance = precursor_mz.max(MASS_ACCURACY_PPM_TO_DA_THRESHOLD) * params.ms1_mass_tolerance_ppm * 1e-6;
+    let isotopic_absolute_tolerance = precursor_mz.max(MASS_ACCURACY_PPM_TO_DA_THRESHOLD) * params.isotopic_mass_tolerance_ppm * 1e-6;
+
+    // Find precursor
+    let precursor_indices: Vec<usize> = ms1_mzs.iter().enumerate()
+        .filter(|&(_, &mz)| (mz - precursor_mz).abs() <= ms1_absolute_tolerance)
+        .map(|(i, _)| i)
+        .collect();
+
+    if precursor_indices.is_empty() {
+        return [-1.0; 8];
+    }
+
+    // Find precursor intensity (max intensity among matches)
+    let mut precursor_ms1_intensity = 0.0;
+    let mut best_precursor_idx = 0;
+    for &idx in &precursor_indices {
+        if ms1_intensities[idx] > precursor_ms1_intensity {
+            precursor_ms1_intensity = ms1_intensities[idx];
+            best_precursor_idx = idx;
+        }
+    }
+    let precursor_ms1_mz = ms1_mzs[best_precursor_idx];
+
+    let mut result = [0.0; 8];
+
+    // Element indices in ELEMENT_SYMBOLS
+    // C: 1, S: 7, Cl: 8, Br: 10
+    // Output indices: 0: C_low, 1: S_low, 2: Cl_low, 3: Br_low, 4: C_high, 5: S_high, 6: Cl_high, 7: Br_high
+    
+    let target_elements = [
+        (1, 0), // (Element Index, Result Index) -> C
+        (7, 1), // S
+        (8, 2), // Cl
+        (10, 3) // Br
+    ];
+
+    for &(elem_idx, res_idx) in &target_elements {
+        let iso_props = ELEMENT_ISOTOPES[elem_idx].expect("Element should have isotopic props");
+        
+        let peak_mz = precursor_ms1_mz + iso_props.mass_diff;
+        let peak_indices: Vec<usize> = ms1_mzs.iter().enumerate()
+            .filter(|&(_, &mz)| (mz - peak_mz).abs() <= isotopic_absolute_tolerance)
+            .map(|(i, _)| i)
+            .collect();
+        
+        let peak_total_intensity = if peak_indices.is_empty() {
+            0.0
+        } else {
+            peak_indices.iter().map(|&i| ms1_intensities[i]).fold(0.0, f64::max)
+        };
+
+        let lower;
+        let upper;
+
+        if peak_total_intensity < params.minimum_intensity {
+            lower = 0.0;
+            upper = (params.minimum_intensity * iso_props.prob_0) / (iso_props.prob_1 * precursor_ms1_intensity);
+        } else {
+            lower = ((peak_total_intensity * (1.0 - params.intensity_relative_tolerance) - params.intensity_absolute_tolerance) * iso_props.prob_0) 
+                    / (iso_props.prob_1 * precursor_ms1_intensity);
+            upper = ((peak_total_intensity * (1.0 + params.intensity_relative_tolerance) + params.intensity_absolute_tolerance) * iso_props.prob_0) 
+                    / (iso_props.prob_1 * precursor_ms1_intensity);
+        }
+
+        result[res_idx] = lower;
+        result[res_idx + 4] = upper;
+    }
+
+    // Special logic for Cl second peak (M+4)
+    // Cl_lower index is 2, Cl_upper is 6
+    let cl_lower = result[2];
+    let cl_upper = result[6];
+
+    if cl_lower > 0.0 && cl_upper >= 2.0 {
+        let cl_props = ELEMENT_ISOTOPES[8].unwrap();
+        let second_cl_peak_mz = precursor_ms1_mz + cl_props.mass_diff * 2.0;
+        
+        let peak_indices: Vec<usize> = ms1_mzs.iter().enumerate()
+            .filter(|&(_, &mz)| (mz - second_cl_peak_mz).abs() <= isotopic_absolute_tolerance)
+            .map(|(i, _)| i)
+            .collect();
+
+        let second_cl_peak_total_intensity = if peak_indices.is_empty() {
+            0.0
+        } else {
+            peak_indices.iter().map(|&i| ms1_intensities[i]).fold(0.0, f64::max)
+        };
+
+        // We need the intensity of the first Cl peak again
+        // Ideally we should have stored it, but we can recompute or just grab it. 
+        // Wait, we need it for the ratio.
+        // Let's just recompute the first peak intensity to be safe and local.
+        let first_cl_peak_mz = precursor_ms1_mz + cl_props.mass_diff;
+         let first_peak_indices: Vec<usize> = ms1_mzs.iter().enumerate()
+            .filter(|&(_, &mz)| (mz - first_cl_peak_mz).abs() <= isotopic_absolute_tolerance)
+            .map(|(i, _)| i)
+            .collect();
+        let first_cl_peak_total_intensity = if first_peak_indices.is_empty() { 0.0 } else { first_peak_indices.iter().map(|&i| ms1_intensities[i]).fold(0.0, f64::max) };
+
+
+        let expected_cl_ratio = cl_props.prob_1 / (2.0 * cl_props.prob_0);
+        let actual_cl_ratio = second_cl_peak_total_intensity / first_cl_peak_total_intensity;
+
+        if expected_cl_ratio * first_cl_peak_total_intensity > params.minimum_intensity * (1.0 + params.intensity_relative_tolerance) {
+             let cl_deviation = ((actual_cl_ratio - expected_cl_ratio) / expected_cl_ratio).abs();
+             if cl_deviation > params.intensity_relative_tolerance {
+                 result[2] = 0.0; // Cl_lower
+                 result[6] = 1.0; // Cl_upper
+             }
+        }
+    }
+
+    result
+}
 
 #[derive(Debug, Clone)]
 struct Weight {

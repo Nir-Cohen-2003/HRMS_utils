@@ -2,8 +2,8 @@ use polars::prelude::*;
 use polars::datatypes::{DataType};
 use pyo3_polars::derive::polars_expr;
 use rayon::prelude::*;
-use crate::mass_decomposition::algorithms::{MassDecomposer, SpectrumDecomposer};
-use crate::mass_decomposition::common::{DecompositionParams, SpectrumDecompositionParams, formula_to_string, NUM_ELEMENTS, CleanAndNormalizeSpectrumKwargs,CleanedAndNormalizedSpectrumResult, DecompositionKwargs};
+use crate::mass_decomposition::algorithms::{MassDecomposer, SpectrumDecomposer, deduce_isotopic_pattern_inner};
+use crate::mass_decomposition::common::{DecompositionParams, SpectrumDecompositionParams, formula_to_string, NUM_ELEMENTS, ELEMENT_SYMBOLS, CleanAndNormalizeSpectrumKwargs,CleanedAndNormalizedSpectrumResult, DecompositionKwargs, DeduceIsotopicPatternKwargs, IsotopicPatternParams, default_min_bounds, default_max_bounds};
 use polars::series::Series;
 use polars_arrow::array::{Int32Array};
 use std::collections::HashMap;
@@ -366,4 +366,127 @@ fn spectrum_decomposition_normalized(inputs: &[Series], kwargs: CleanAndNormaliz
     ].iter().copied())?;
     
     Ok(out.into_series())
+}
+
+fn isotopic_pattern_output(_fields: &[Field]) -> PolarsResult<Field> {
+    Ok(Field::new("isotopic_bounds".into(), DataType::Array(Box::new(DataType::Int32), NUM_ELEMENTS * 2)))
+}
+
+fn parse_bounds(bounds_map: Option<HashMap<String, i32>>, defaults: [i32; NUM_ELEMENTS]) -> [i32; NUM_ELEMENTS] {
+    let mut bounds = defaults;
+    if let Some(map) = bounds_map {
+        for (k, v) in map {
+             if let Some(idx) = ELEMENT_SYMBOLS.iter().position(|&s| s == k) {
+                 bounds[idx] = v;
+             }
+        }
+    }
+    bounds
+}
+
+#[polars_expr(output_type_func=isotopic_pattern_output)]
+fn deduce_isotopic_pattern(inputs: &[Series], kwargs: DeduceIsotopicPatternKwargs) -> PolarsResult<Series> {
+    let precursor_mzs = inputs[0].f64()?;
+    let ms1_mzs_series = &inputs[1];
+    let ms1_intensities_series = &inputs[2];
+    
+    let ms1_mzs_ca = ms1_mzs_series.list()?;
+    let ms1_intensities_ca = ms1_intensities_series.list()?;
+
+    let len = precursor_mzs.len();
+
+    // Parse bounds
+    let min_bounds_base = parse_bounds(kwargs.min_bounds, default_min_bounds());
+    let max_bounds_base = parse_bounds(kwargs.max_bounds, default_max_bounds());
+
+    let params = IsotopicPatternParams {
+        ms1_mass_tolerance_ppm: kwargs.ms1_mass_tolerance_ppm,
+        isotopic_mass_tolerance_ppm: kwargs.isotopic_mass_tolerance_ppm,
+        minimum_intensity: kwargs.minimum_intensity,
+        intensity_absolute_tolerance: kwargs.intensity_absolute_tolerance,
+        intensity_relative_tolerance: kwargs.intensity_relative_tolerance,
+    };
+
+    // Prepare base result array (min..max)
+    let mut base_result = [0i32; NUM_ELEMENTS * 2];
+    for i in 0..NUM_ELEMENTS {
+        base_result[i] = min_bounds_base[i];
+        base_result[i + NUM_ELEMENTS] = max_bounds_base[i];
+    }
+
+    // Collect into Vecs for parallel iteration
+    let precursor_vec: Vec<Option<f64>> = precursor_mzs.into_iter().collect();
+    let ms1_mzs_vec: Vec<Option<Series>> = ms1_mzs_ca.into_iter().collect();
+    let ms1_intensities_vec: Vec<Option<Series>> = ms1_intensities_ca.into_iter().collect();
+
+    // Parallel processing
+    let results: Vec<Option<[i32; NUM_ELEMENTS * 2]>> = precursor_vec.into_par_iter()
+        .zip(ms1_mzs_vec.into_par_iter())
+        .zip(ms1_intensities_vec.into_par_iter())
+        .map(|((precursor_opt, ms1_mzs_opt), ms1_int_opt)| {
+             if let (Some(precursor_mz), Some(ms1_mzs_s), Some(ms1_int_s)) = (precursor_opt, ms1_mzs_opt, ms1_int_opt) {
+                let ms1_mzs = ms1_mzs_s.f64().unwrap();
+                let ms1_int = ms1_int_s.f64().unwrap();
+                
+                // Convert to Vec or slice
+                let ms1_mzs_slice: Vec<f64> = ms1_mzs.into_no_null_iter().collect();
+                let ms1_int_slice: Vec<f64> = ms1_int.into_no_null_iter().collect();
+
+                let deduced = deduce_isotopic_pattern_inner(
+                    precursor_mz,
+                    &ms1_mzs_slice,
+                    &ms1_int_slice,
+                    &params
+                );
+
+                // deduced is [C_l, S_l, Cl_l, Br_l, C_u, S_u, Cl_u, Br_u]
+                // Indices: C=1, S=7, Cl=8, Br=10
+                
+                let mut row_result = base_result;
+                
+                // Helper to update
+                let update_elem = |idx_elem: usize, val_l: f64, val_u: f64, res: &mut [i32; NUM_ELEMENTS * 2]| {
+                     res[idx_elem] = val_l.ceil() as i32;
+                     res[idx_elem + NUM_ELEMENTS] = val_u.floor() as i32;
+                };
+
+                update_elem(1, deduced[0], deduced[4], &mut row_result); // C
+                update_elem(7, deduced[1], deduced[5], &mut row_result); // S
+                update_elem(8, deduced[2], deduced[6], &mut row_result); // Cl
+                update_elem(10, deduced[3], deduced[7], &mut row_result); // Br
+
+                Some(row_result)
+             } else {
+                 None
+             }
+        })
+        .collect();
+
+    // Convert to Series
+    // For Array type, we need to construct it carefully. 
+    // Since polars 0.37+, Series::new with Array type might be tricky from Vec<[i32]>.
+    // Best way is to flatten and create Array from it? Or use List then cast?
+    // But output type is fixed size Array.
+    
+    // Let's try creating a list of series and casting? Or Int32Array directly if we can.
+    // FixedSizeListArray in arrow.
+    
+    // Simplest: Create a flattened Vec<i32>, then create Series, then reshape/cast?
+    // But Array support in Series construction is evolving.
+    
+    // Let's use the List approach then cast to Array.
+    let mut flattened: Vec<Option<Series>> = Vec::with_capacity(len);
+    for res in results {
+        if let Some(arr) = res {
+             let s = Series::new(PlSmallStr::EMPTY, arr.as_ref());
+             flattened.push(Some(s));
+        } else {
+             flattened.push(None);
+        }
+    }
+    
+    let list_series = Series::new(PlSmallStr::from_static("isotopic_bounds"), flattened);
+    let array_series = list_series.cast(&DataType::Array(Box::new(DataType::Int32), NUM_ELEMENTS * 2))?;
+
+    Ok(array_series)
 }

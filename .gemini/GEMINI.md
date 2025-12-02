@@ -1,4 +1,4 @@
-# Guidelines
+# Copilot / Assistant Guidelines
 
 Concise, actionable rules for editing this repository. Keep changes explicit, fail fast on missing resources, and prefer clarity over cleverness.
 
@@ -18,11 +18,9 @@ Concise, actionable rules for editing this repository. Keep changes explicit, fa
 - Use clear, descriptive names (no abbreviations). Prefer longer names that convey purpose.
 - Avoid nested functions. Define helpers as private methods on a class or as standalone functions in a module.
 - Use type hints everywhere. Avoid `Any` unless absolutely necessary, and document why if you do.
-- When needing to accelerate function execution, use numba jit compilation and vectorization unless there's a compelling reason to use multiprocessing or threading, in which case document the reason and use processpoolexecutor/threadpoolexecutor with clear comments.
-- when needing even more performance, use c++ with cython as compatibility layer, and edit the top level setup.py to include the new compiled extension. When working with code that is already in cython/c++, prefer keeping core logic in c++ and only use cython as a thin compatibility layer.
-- when using cython, put all cdef declaration at the top of the function, and use cdef types for all variables that can be typed.
-- when usign c++, avoid using the auto keyword, write the explicit type.
 - when using assertions, include a message that explains what went wrong and how.
+- When needing to accelerate function execution, use numba jit compilation and vectorization unless there's a compelling reason to use multiprocessing or threading, in which case document the reason and use processpoolexecutor/threadpoolexecutor with clear comments.
+- when needing even more performance, since its probably an operation on a large number of rows in a dataframe, we create a polars plugin/extend an existign plugin. all plugins reside in the packages directory, and their structres closely match.
 ---
 
 ## Practical patterns and examples

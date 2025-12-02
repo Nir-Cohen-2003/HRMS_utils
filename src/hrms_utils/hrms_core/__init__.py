@@ -172,6 +172,55 @@ class MassDecomposerUtils:
             kwargs=kwargs,
         )
 
+    def deduce_isotopic_pattern(
+        self,
+        ms1_mzs: IntoExprColumn,
+        ms1_intensities: IntoExprColumn,
+        ms1_mass_tolerance_ppm: float = 5.0,
+        isotopic_mass_tolerance_ppm: float = 3.0,
+        minimum_intensity: float = 5e4,
+        intensity_absolute_tolerance: float = 5e4,
+        intensity_relative_tolerance: float = 0.05,
+        min_bounds: dict[str, int] | None = None,
+        max_bounds: dict[str, int] | None = None,
+    ) -> pl.Expr:
+        """
+        Deduce the isotopic pattern from the given precursor and MS1 data.
+        
+        Input expression (self): Precursor m/z (Float64)
+        
+        Args:
+            ms1_mzs: Expression/column for MS1 m/z values (List[Float64])
+            ms1_intensities: Expression/column for MS1 intensities (List[Float64])
+            ms1_mass_tolerance_ppm: Tolerance for matching precursor in MS1
+            isotopic_mass_tolerance_ppm: Tolerance for matching isotopic peaks
+            minimum_intensity: Minimum intensity threshold
+            intensity_absolute_tolerance: Absolute tolerance for intensity matching
+            intensity_relative_tolerance: Relative tolerance for intensity matching
+            min_bounds: Optional dictionary of minimum element counts
+            max_bounds: Optional dictionary of maximum element counts
+
+        Returns:
+            pl.Expr: Series of Array(Int32, 24) containing [min_counts..., max_counts...]
+        """
+        kwargs = {
+            "ms1_mass_tolerance_ppm": ms1_mass_tolerance_ppm,
+            "isotopic_mass_tolerance_ppm": isotopic_mass_tolerance_ppm,
+            "minimum_intensity": minimum_intensity,
+            "intensity_absolute_tolerance": intensity_absolute_tolerance,
+            "intensity_relative_tolerance": intensity_relative_tolerance,
+            "min_bounds": min_bounds,
+            "max_bounds": max_bounds,
+        }
+        
+        return register_plugin_function(
+            args=[self._expr, ms1_mzs, ms1_intensities],
+            plugin_path=LIB,
+            function_name="deduce_isotopic_pattern",
+            is_elementwise=True,
+            kwargs=kwargs,
+        )
+
 
 @pl.api.register_expr_namespace("spectral_info")
 class SpectralInfoNamespace:
