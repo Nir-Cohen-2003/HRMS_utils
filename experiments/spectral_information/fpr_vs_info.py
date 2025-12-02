@@ -9,6 +9,7 @@ def _():
     import polars as pl
     import numpy as np
     import matplotlib.pyplot as plt
+    plt.style.use('default')
     import hrms_utils
     from pathlib import Path
     from dataclasses import dataclass, field
@@ -41,7 +42,6 @@ def _(List, Path, Union, pl):
         output_path: Union[str, Path] = "/home/analytit_admin/Data/spectral_libs/all_pairs_with_similarities.parquet",
         min_isomers: int = 10,
         ms2_tolerance_ppm: float = 10.0,
-        sink_engine: str = "streaming",
     ) -> None:
         """
         Build unioned library LF, compute pairwise spectral similarities, and write pairs parquet.
@@ -83,8 +83,12 @@ def _(List, Path, Union, pl):
             ]
         ).filter(
             pl.col("smiles").is_not_null()
-        ).with_row_index("idx").with_columns(
-            nominal_mass=pl.col("precursor_mz").round(0)
+        ).with_row_index(
+            "idx"
+        ).with_columns(
+            nominal_mass=pl.col("precursor_mz").round(0),
+            weighted_spectral_information_score=pl.lit(100.0).mul(pl.col("spectral_information_score")).truediv(
+                pl.col("precursor_formula_array").arr.sum()-pl.col("precursor_formula_array").arr.get(0)),
         )
 
         pairs_filtered = lf.join(
@@ -136,7 +140,7 @@ def _(List, Path, Union, pl):
         )
 
         # Sink to parquet for downstream analysis and return the lazyframe
-        pairs_filtered.sink_parquet(str(output_path), engine=sink_engine)
+        pairs_filtered.sink_parquet(str(output_path), engine="streaming")
     return (build_and_write_pairs_parquet,)
 
 
@@ -160,6 +164,15 @@ def _(List, Optional, Path, Tuple, Union, dataclass, field, np, pl, plt):
         # Why: Allow overriding names/targets for output files from callers/tests.
         metrics_output_path: Union[str, Path] = "fpr_vs_info_metrics.png"
         matched_info_output_path: Union[str, Path] = "fpr_vs_info_avg_matched_info_diff.png"
+        use_weighted_information_score: bool = False
+
+        # Tanimoto similarity function arguments
+        left_smiles_col: str = "smiles"
+        right_smiles_col: str = "smiles_right"
+        fp_radius: int = 2
+        fp_size: int = 1024
+        fp_num_threads: int = 0
+        plot_avg_tanimoto_output_path: Optional[Union[str, Path]] = "avg_tanimoto_vs_info.png"
 
     def compute_fpr_vs_info_stats(
         config: FprVsInfoConfig,
@@ -191,6 +204,9 @@ def _(List, Optional, Path, Tuple, Union, dataclass, field, np, pl, plt):
             raise AssertionError("pairs_input must be str/Path/pl.DataFrame/pl.LazyFrame")
 
         stats = []
+        info_col = "weighted_spectral_information_score" if config.use_weighted_information_score else "spectral_information_score"
+        info_col_right = f"{info_col}_right"
+
         # Why: Compute metric-specific statistics per left-spectrum (idx), grouped into info bins.
         for sim_col, thresh, label, color, marker in config.metrics_config:
             print(f"Processing metric: {label} with threshold {thresh}")
@@ -202,12 +218,12 @@ def _(List, Optional, Path, Tuple, Union, dataclass, field, np, pl, plt):
                 false_compound_count=pl.col("is_false_match").sum().over("base_inchikey_right", "idx"),
                 false_spectra_count=pl.col("is_false_match").sum().over("idx"),
                 # Compute average spectral info difference across matches above threshold (per idx)
-                avg_matched_info_diff=(pl.col("spectral_information_score_right") - pl.col("spectral_information_score"))
+                avg_matched_info_diff=(pl.col(info_col_right) - pl.col(info_col))
                 .filter(pl.col("is_false_match").eq(1))
                 .mean()
                 .over("idx"),
             ).unique(subset="idx", keep="any").with_columns(
-                info_bin_val=(pl.col("spectral_information_score") / config.bin_width).floor() * config.bin_width
+                info_bin_val=(pl.col(info_col) / config.bin_width).floor() * config.bin_width
             ).filter(
                 pl.col("info_bin_val").ge(0.0),
                 pl.col("info_bin_val").le(config.max_info),
@@ -235,7 +251,7 @@ def _(List, Optional, Path, Tuple, Union, dataclass, field, np, pl, plt):
 
         # Compute molecule-level max info distribution (CDF / survival function)
         molecule_max_info = pairs_sim.group_by("base_inchikey").agg(
-            max_info=pl.col("spectral_information_score").max()
+            max_info=pl.col(info_col).max()
         ).collect(engine="streaming")
 
         cdf_x = np.arange(0, config.max_info + config.bin_width, config.bin_width)
@@ -251,13 +267,13 @@ def _(List, Optional, Path, Tuple, Union, dataclass, field, np, pl, plt):
         cdf_x: np.ndarray,
         cdf_y: np.ndarray,
         config: FprVsInfoConfig,
-        show_plot: bool = False
     ) -> None:
         """
         Plot average false matches vs Spectral Information score and optionally save as config.metrics_output_path.
         """
         assert "metric_name" in all_stats.columns, "all_stats missing 'metric_name' column; compute stats first."
-        fig, ax = plt.subplots(figsize=(10, 6))
+
+        fig, ax = plt.subplots(figsize=(10, 6), facecolor="white")
 
         for metric_key, thresh, label, color, marker in config.metrics_config:
             subset = all_stats.filter(
@@ -274,7 +290,7 @@ def _(List, Optional, Path, Tuple, Union, dataclass, field, np, pl, plt):
                     info_x,
                     avg_false_y,
                     marker=marker,
-                    label=f"{label} (Thresh: {thresh})",
+                    label=f"{label} (Threshold: {thresh})",
                     color=color,
                 )
             else:
@@ -294,18 +310,17 @@ def _(List, Optional, Path, Tuple, Union, dataclass, field, np, pl, plt):
         ax2.set_ylabel("Fraction of Molecules")
         ax2.set_ylim(0, 1.05)
 
-        ax.set_xlabel("Spectral Information Score")
+        xlabel = "Weighted Spectral Information Score" if config.use_weighted_information_score else "Spectral Information Score"
+        ax.set_xlabel(xlabel)
         ax.set_ylabel("Average Number of False Matches")
-        ax.set_title("Average Number of False Matches vs Spectral Information Score")
+        ax.set_title(f"Average Number of False Matches vs {xlabel}")
 
         lines_1, labels_1 = ax.get_legend_handles_labels()
         lines_2, labels_2 = ax2.get_legend_handles_labels()
         ax.legend(lines_1 + lines_2, labels_1 + labels_2, loc="upper right")
 
         ax.grid(True, alpha=0.3)
-        fig.savefig(str(config.metrics_output_path))
-        if show_plot:
-            plt.show()
+        fig.savefig(str(config.metrics_output_path), facecolor="white", transparent=False)
         plt.close(fig)
 
     def plot_matched_avg_info_diff(
@@ -320,7 +335,7 @@ def _(List, Optional, Path, Tuple, Union, dataclass, field, np, pl, plt):
             "avg_matched_info_diff missing from aggregated results; ensure compute pipeline computed this column"
         )
 
-        fig_matched, ax_matched = plt.subplots(figsize=(10, 6))
+        fig_matched, ax_matched = plt.subplots(figsize=(10, 6), facecolor="white")
 
         for metric_key, thresh, label, color, marker in config.metrics_config:
             subset = all_stats.filter(
@@ -338,20 +353,23 @@ def _(List, Optional, Path, Tuple, Union, dataclass, field, np, pl, plt):
                     avg_matched_y,
                     linestyle="--",
                     marker="x",
-                    label=f"{label} (Thresh: {thresh})",
+                    label=f"{label} (Threshold: {thresh})",
                     color=color,
                     alpha=0.9,
                 )
             else:
                 print(f"Warning: No matched-info data for {label} at threshold {thresh}")
 
-        ax_matched.set_xlabel("Spectral Information Score")
-        ax_matched.set_ylabel("Average Matched Information Difference")
-        ax_matched.set_title("Average Matched Information Difference vs Spectral Information Score")
+        xlabel = "Weighted Spectral Information Score" if config.use_weighted_information_score else "Spectral Information Score"
+        ylabel = "Average Matched Weighted Information Difference" if config.use_weighted_information_score else "Average Matched Information Difference"
+
+        ax_matched.set_xlabel(xlabel)
+        ax_matched.set_ylabel(ylabel)
+        ax_matched.set_title(f"{ylabel} vs {xlabel}")
         ax_matched.legend(loc="upper right")
         ax_matched.grid(True, alpha=0.3)
 
-        fig_matched.savefig(str(config.matched_info_output_path))
+        fig_matched.savefig(str(config.matched_info_output_path), facecolor="white", transparent=False)
         if show_plot:
             plt.show()
         plt.close(fig_matched)
@@ -371,26 +389,15 @@ def _(
     MorganFingerprintGenerator,
     Optional,
     Path,
-    Tuple,
     Union,
     crossTanimotoSimilarityMemoryConstrained,
     pl,
     plt,
 ):
-    # ...existing code...
     def compute_avg_tanimoto_between_matched_pairs(
+        config: FprVsInfoConfig,
         pairs_input: Optional[Union[str, Path, pl.DataFrame, pl.LazyFrame]] = None,
-        left_smiles_col: str = "smiles",
-        right_smiles_col: str = "smiles_right",
-        metrics_config: Optional[List[Tuple[str, float, str, str, str]]] = None,
         group_by_cols: Optional[List[str]] = None,
-        fp_radius: int = 2,
-        fp_size: int = 1024,
-        fp_num_threads: int = 0,
-        bin_width: float = 0.1,
-        max_info: float = 3.0,
-        plot_output_path: Optional[Union[str, Path]] = None,
-        min_count_threshold: int = 5,
     ) -> pl.DataFrame:
         """
         Compute average Tanimoto similarity for matched pairs, optionally binned by spectral information.
@@ -404,16 +411,9 @@ def _(
           - Joins back similarity values and aggregates.
 
         Args:
-          - pairs_input: Path/lazyframe/dataframe for the pairwise dataset
-          - left_smiles_col/right_smiles_col: column names for SMILES in left and right sides
-          - metrics_config: List of (metric_key, threshold, label, color, marker). If provided,
-            stats are computed per metric/threshold configuration and binned by spectral info.
+          - config: FprVsInfoConfig object containing various parameters for the computation and plotting.
+          - pairs_input: Path/lazyframe/dataframe for the pairwise dataset. If None, uses config.pairs_parquet_path.
           - group_by_cols: columns to aggregate by (e.g., ["ion_mode"]). Used only if metrics_config is None.
-          - fp_radius/fp_size/fp_num_threads: parameters for fingerprint generation.
-          - bin_width: width of spectral information bins (used if metrics_config is provided).
-          - max_info: maximum spectral information score to consider (used if metrics_config is provided).
-          - plot_output_path: if provided, saves a plot of Avg Tanimoto vs Spectral Info.
-          - min_count_threshold: minimum number of pairs in a bin to include in the plot.
 
         Returns:
           - pl.DataFrame with columns:
@@ -442,19 +442,19 @@ def _(
             raise AssertionError("pairs_input must be str/Path/pl.DataFrame/pl.LazyFrame")
 
         # Why: Collect small sample to verify columns exist before expensive ops
-        sample = pairs_sim.select([left_smiles_col, right_smiles_col]).limit(1).collect(engine="streaming")
-        assert left_smiles_col in sample.columns and right_smiles_col in sample.columns, (
-            f"Expected columns '{left_smiles_col}' and '{right_smiles_col}' in pairs dataset"
+        sample = pairs_sim.select([config.left_smiles_col, config.right_smiles_col]).limit(1).collect(engine="streaming")
+        assert config.left_smiles_col in sample.columns and config.right_smiles_col in sample.columns, (
+            f"Expected columns '{config.left_smiles_col}' and '{config.right_smiles_col}' in pairs dataset"
         )
 
         # Compute unique SMILES lists for left and right
         # Why: Add row index to map back to the similarity matrix coordinates
         # Use streaming to handle large datasets without OOM
-        left_unique = pairs_sim.select(left_smiles_col).unique().with_row_index("l_idx").collect(engine="streaming")
-        right_unique = pairs_sim.select(right_smiles_col).unique().with_row_index("r_idx").collect(engine="streaming")
+        left_unique = pairs_sim.select(config.left_smiles_col).unique().with_row_index("l_idx").collect(engine="streaming")
+        right_unique = pairs_sim.select(config.right_smiles_col).unique().with_row_index("r_idx").collect(engine="streaming")
 
-        left_smiles_list = left_unique.get_column(left_smiles_col).to_list()
-        right_smiles_list = right_unique.get_column(right_smiles_col).to_list()
+        left_smiles_list = left_unique.get_column(config.left_smiles_col).to_list()
+        right_smiles_list = right_unique.get_column(config.right_smiles_col).to_list()
 
         assert len(left_smiles_list) > 0 and len(right_smiles_list) > 0, (
             "No smiles found on left or right side. Please verify SMILES columns."
@@ -471,9 +471,9 @@ def _(
         )
 
         # Generate fingerprints once per unique SMILES using nvmolkit
-        fpgen = MorganFingerprintGenerator(radius=fp_radius, fpSize=fp_size)
-        fps_left = fpgen.GetFingerprints(left_mols, num_threads=fp_num_threads)
-        fps_right = fpgen.GetFingerprints(right_mols, num_threads=fp_num_threads)
+        fpgen = MorganFingerprintGenerator(radius=config.fp_radius, fpSize=config.fp_size)
+        fps_left = fpgen.GetFingerprints(left_mols, num_threads=config.fp_num_threads)
+        fps_right = fpgen.GetFingerprints(right_mols, num_threads=config.fp_num_threads)
 
         # Compute pairwise Tanimoto only between the unique left/right groups
         # Why: crossTanimotoSimilarityMemoryConstrained returns a numpy array directly
@@ -482,7 +482,7 @@ def _(
 
         # Build mapping of unique pairs -> tanimoto
         # Why: Use streaming to avoid OOM on large pair sets
-        unique_pairs = pairs_sim.select([left_smiles_col, right_smiles_col]).unique().collect(engine="streaming")
+        unique_pairs = pairs_sim.select([config.left_smiles_col, config.right_smiles_col]).unique().collect(engine="streaming")
         if unique_pairs.height == 0:
             # No pairs to compute.
             print("No unique pairs found for Tanimoto computation; returning empty DataFrame.")
@@ -493,9 +493,9 @@ def _(
         # Join unique pairs with the indexed unique lists to get matrix coordinates
         # Why: Use Polars join for efficiency instead of Python dictionary lookups
         pairs_indices = unique_pairs.join(
-            left_unique, on=left_smiles_col
+            left_unique, on=config.left_smiles_col
         ).join(
-            right_unique, on=right_smiles_col
+            right_unique, on=config.right_smiles_col
         )
 
         l_idxs = pairs_indices.get_column("l_idx").to_numpy()
@@ -505,26 +505,28 @@ def _(
         # Why: Vectorized lookup is much faster than iterating in Python
         tanimoto_values = sims_matrix[l_idxs, r_idxs]
 
-        mapping_df = pairs_indices.select([left_smiles_col, right_smiles_col]).with_columns(
+        mapping_df = pairs_indices.select([config.left_smiles_col, config.right_smiles_col]).with_columns(
             tanimoto_similarity=pl.Series(tanimoto_values)
         )
 
         # Join mapping back to the pairs lazyframe to assign similarity to each pair
-        pairs_with_sim = pairs_sim.join(mapping_df.lazy(), left_on=[left_smiles_col, right_smiles_col], right_on=[left_smiles_col, right_smiles_col])
+        pairs_with_sim = pairs_sim.join(mapping_df.lazy(), left_on=[config.left_smiles_col, config.right_smiles_col], right_on=[config.left_smiles_col, config.right_smiles_col])
+
+        info_col = "weighted_spectral_information_score" if config.use_weighted_information_score else "spectral_information_score"
 
         # Case 1: Metrics Config provided (Iterate, Filter, Aggregate, Plot)
-        if metrics_config is not None:
+        if config.metrics_config is not None:
             stats = []
-            for metric_key, thresh, label, color, marker in metrics_config:
+            for metric_key, thresh, label, color, marker in config.metrics_config:
                 # Filter pairs that meet the threshold for this specific metric
                 # And bin by spectral information score
                 res = pairs_with_sim.filter(
                     pl.col(metric_key).ge(thresh)
                 ).with_columns(
-                    info_bin_val=(pl.col("spectral_information_score") / bin_width).floor() * bin_width
+                    info_bin_val=(pl.col(info_col) / config.bin_width).floor() * config.bin_width
                 ).filter(
                     pl.col("info_bin_val").ge(0.0),
-                    pl.col("info_bin_val").le(max_info),
+                    pl.col("info_bin_val").le(config.max_info),
                 ).group_by("info_bin_val").agg(
                     avg_tanimoto=pl.col("tanimoto_similarity").mean(),
                     median_tanimoto=pl.col("tanimoto_similarity").median(),
@@ -540,29 +542,30 @@ def _(
 
             all_stats = pl.concat(stats).collect(engine="streaming")
 
-            if plot_output_path:
-                fig, ax = plt.subplots(figsize=(10, 6))
-                for metric_key, thresh, label, color, marker in metrics_config:
+            if config.plot_avg_tanimoto_output_path is not None:
+                fig, ax = plt.subplots(figsize=(10, 6), facecolor="white")
+                for metric_key, thresh, label, color, marker in config.metrics_config:
                     subset = all_stats.filter(
                         (pl.col("metric_name") == metric_key) &
                         (pl.col("threshold_used") == thresh) &
-                        (pl.col("count") > min_count_threshold)
+                        (pl.col("count") > config.min_count_threshold)
                     )
                     if subset.height > 0:
                         ax.plot(
                             subset.get_column("info_bin_val").to_numpy(),
                             subset.get_column("avg_tanimoto").to_numpy(),
                             marker=marker,
-                            label=f"{label} (Thresh: {thresh})",
+                            label=f"{label} (Threshold: {thresh})",
                             color=color,
                         )
-            
-                ax.set_xlabel("Spectral Information Score")
+
+                xlabel = "Weighted Spectral Information Score" if config.use_weighted_information_score else "Spectral Information Score"
+                ax.set_xlabel(xlabel)
                 ax.set_ylabel("Average Tanimoto Similarity of Matches")
-                ax.set_title("Average Tanimoto Similarity of Matches vs Spectral Information Score")
+                ax.set_title(f"Average Tanimoto Similarity of Matches vs {xlabel}")
                 ax.legend(loc="lower right")
                 ax.grid(True, alpha=0.3)
-                fig.savefig(str(plot_output_path))
+                fig.savefig(str(config.plot_avg_tanimoto_output_path), facecolor="white", transparent=False)
                 plt.close(fig)
 
             return all_stats
@@ -587,7 +590,6 @@ def _(
                 ]
             ).collect(engine="streaming")
             return agg
-    # ...existing code...
     return (compute_avg_tanimoto_between_matched_pairs,)
 
 
@@ -621,13 +623,7 @@ def _(
 
 
 @app.cell
-def _(
-    FprVsInfoConfig,
-    OUTPUT_PAIRS_PATH,
-    compute_fpr_vs_info_stats,
-    plot_fpr_vs_info_metrics,
-    plot_matched_avg_info_diff,
-):
+def _(FprVsInfoConfig, OUTPUT_PAIRS_PATH):
     # Analysis and Plotting
     # Why: Bin spectral info score and calculate average number of false matches for different similarity metrics.
     # We aggregate by the left spectrum ('idx') to count how many false positive matches exist above the threshold.
@@ -635,34 +631,47 @@ def _(
     # Use the new dataclass/config-driven analysis and plotting
     config = FprVsInfoConfig(
         pairs_parquet_path=OUTPUT_PAIRS_PATH,
-        max_info=3.0,
-        bin_width=0.1,
+        max_info=15.0,
+        bin_width=1.0,
         metrics_config=[
             ("dotprod_similarity", 0.8, "Dot Product", "C0", "o"),
             ("dotprod_similarity", 0.95, "Dot Product", "C1", "o"),
             ("entropy_similarity", 0.75, "Entropy", "C2", "^"),
         ],
-        metrics_output_path="fpr_vs_info_metrics.png",
-        matched_info_output_path="fpr_vs_info_avg_matched_info_diff.png",
+        metrics_output_path="fpr_vs_info_metrics_weighted.png",
+        matched_info_output_path="fpr_vs_info_avg_matched_info_diff_weighted.png",
+        left_smiles_col="smiles",
+        right_smiles_col="smiles_right",
+        fp_radius=2,
+        fp_size=2048,
+        fp_num_threads=0,
+        plot_avg_tanimoto_output_path="avg_tanimoto_vs_info_weighted.png",
+        use_weighted_information_score=True,
     )
+    return (config,)
+
+
+@app.cell
+def _(
+    compute_fpr_vs_info_stats,
+    config,
+    plot_fpr_vs_info_metrics,
+    plot_matched_avg_info_diff,
+):
+
     all_stats, cdf_x, cdf_y = compute_fpr_vs_info_stats(config)
 
     plot_fpr_vs_info_metrics(all_stats, cdf_x, cdf_y, config)
     plot_matched_avg_info_diff(all_stats, config)
-    return (config,)
+    return
 
 
 @app.cell
 def _(compute_avg_tanimoto_between_matched_pairs, config):
 
     avg_tanimoto_df = compute_avg_tanimoto_between_matched_pairs(
+        config=config,
         pairs_input=config.pairs_parquet_path,
-        left_smiles_col="smiles",
-        right_smiles_col="smiles_right",
-        metrics_config=config.metrics_config,
-        fp_radius=2,
-        fp_size=2048,
-        fp_num_threads=0,
     )
     print(avg_tanimoto_df)
     return
