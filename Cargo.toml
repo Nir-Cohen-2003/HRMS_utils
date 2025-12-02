@@ -2,7 +2,7 @@
 name = "hrms_utils"
 version = "0.8.0"
 edition = "2024"
-
+rust-version = "1.90"
 [lib]
 name = "hrms_core"
 crate-type = ["rlib","cdylib"]

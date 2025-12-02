@@ -5,7 +5,6 @@ from time import time
 from dataclasses import dataclass
 from typing import List, Tuple, Dict, TypeVar, cast, Iterable
 from numba import  jit
-from ..formula_annotation.isotopic_pattern import deduce_isotopic_pattern
 from ..formula_annotation.element_table import ELEMENT_INDEX, ELEMENT_MASSES
 from ..hrms_core import *
 
@@ -322,22 +321,15 @@ def annotate_chromatogram_with_formulas(
     """
     # Isotopic pattern deduction
     chromatogram = chromatogram.with_columns(
-        pl.struct(
-            ["Precursor_mz_MSDIAL", "ms1_isotopes_m/z", "ms1_isotopes_intensity"]
-        ).map_batches(
-            lambda batch: deduce_isotopic_pattern(
-                batch.struct.field("Precursor_mz_MSDIAL"),
-                batch.struct.field("ms1_isotopes_m/z"),
-                batch.struct.field("ms1_isotopes_intensity"),
-                ms1_mass_tolerance_ppm=precursor_mass_accuracy_ppm,
-                isotopic_mass_tolerance_ppm=isotopic_mass_accuracy_ppm,
-                minimum_intensity=isotopic_minimum_intensity,
-                intensity_absolute_tolerance=isotopic_intensity_absolute_tolerance,
-                intensity_relative_tolerance=isotopic_intensity_relative_tolerance,
-                max_bounds=max_bounds,
-            ),
-            return_dtype=pl.Array(inner=pl.Int32, shape=(2 * NUM_ELEMENTS,)),
-            is_elementwise=True
+        pl.col("Precursor_mz_MSDIAL").mass_decomposition.deduce_isotopic_pattern(
+            ms1_mzs=pl.col("ms1_isotopes_m/z"),
+            ms1_intensities=pl.col("ms1_isotopes_intensity"),
+            ms1_mass_tolerance_ppm=precursor_mass_accuracy_ppm,
+            isotopic_mass_tolerance_ppm=isotopic_mass_accuracy_ppm,
+            minimum_intensity=isotopic_minimum_intensity,
+            intensity_absolute_tolerance=isotopic_intensity_absolute_tolerance,
+            intensity_relative_tolerance=isotopic_intensity_relative_tolerance,
+            max_bounds=max_bounds,
         ).alias("bounds")
     ).filter(
         pl.col("bounds").arr.min().ge(0)  # Filter out rows where pattern deduction failed, which is signaled by negative bounds

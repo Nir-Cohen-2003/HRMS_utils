@@ -10,7 +10,6 @@ def _():
     from pathlib import Path
     import optuna
     from hrms_utils.formats import get_chromatogram, annotate_chromatogram_with_formulas
-    from hrms_utils.formula_annotation.isotopic_pattern import deduce_isotopic_pattern
     from hrms_utils.formula_annotation.element_table import ELEMENT_INDEX
     from hrms_utils.hrms_core import NUM_ELEMENTS
     import numpy as np
