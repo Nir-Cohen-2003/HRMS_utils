@@ -3401,7 +3401,7 @@ packages:
   - python *
   license: Apache-2.0
   input:
-    hash: ad20b3f40ce89dcd40c34d829f2feb31bc6cbba7ba24afc31cbad769c453a039
+    hash: 7a1964346594441e05be2eba3d82ee0d9da30b26cfe05dad812443e274e5a40c
     globs:
     - pyproject.toml
 - conda: https://prefix.dev/conda-forge/noarch/humanize-4.14.0-pyhd8ed1ab_0.conda
