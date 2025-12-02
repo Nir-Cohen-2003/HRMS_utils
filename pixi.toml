@@ -148,7 +148,7 @@ rdkit = ">=2024.0.0"
 numpy = "*"
 optuna = "*"
 nvmolkit = "*"
-
+pyzmq = "*"
 pytorch-gpu = "*"
 # cuda-version = "12.6.*"
 marimo ="*"
