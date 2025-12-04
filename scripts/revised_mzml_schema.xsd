@@ -1,0 +1,530 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Revised mzML Schema with Extensions for HRMS_utils
+  ==================================================
+  
+  This schema extends the standard mzML 1.1.0 schema to accommodate additional 
+  CV parameters commonly found in mass spectrometry data, particularly from 
+  Thermo and Waters instruments.
+  
+  Key extensions from the standard schema:
+  - Explicit documentation of isolation window offset CV parameters
+  - Extended precursor information
+  - User parameter support for vendor-specific data
+  - Extensible design for future CV parameter additions
+  
+  See schema_extensions.md for instructions on adding new fields.
+-->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:dx="http://psi.hupo.org/ms/mzml"
+           targetNamespace="http://psi.hupo.org/ms/mzml"
+           attributeFormDefault="unqualified"
+           elementFormDefault="qualified"
+           version="1.1.0-extended">
+
+  <!-- =========================================================================
+       CV Parameter Type (Extended)
+       
+       This is the core type for controlled vocabulary parameters.
+       CVParams use accession numbers from PSI-MS ontology to identify data types.
+       
+       Common accessions used in mzML files:
+       - MS:1000511 - ms level
+       - MS:1000514 - m/z array
+       - MS:1000515 - intensity array
+       - MS:1000521 - 32-bit float
+       - MS:1000523 - 64-bit float
+       - MS:1000574 - zlib compression
+       - MS:1000576 - no compression
+       - MS:1000016 - scan start time
+       - MS:1000045 - collision energy
+       - MS:1000127 - centroid spectrum
+       - MS:1000128 - profile spectrum
+       - MS:1000129 - negative scan
+       - MS:1000130 - positive scan
+       - MS:1000579 - MS1 spectrum
+       - MS:1000580 - MSn spectrum
+       
+       Isolation Window CVParams:
+       - MS:1000827 - isolation window target m/z
+       - MS:1000828 - isolation window lower offset
+       - MS:1000829 - isolation window upper offset
+       - MS:1000794 - isolation window lower limit (absolute)
+       - MS:1000795 - isolation window upper limit (absolute)
+       
+       Selected Ion CVParams:
+       - MS:1000744 - selected ion m/z
+       - MS:1000041 - charge state
+       - MS:1000042 - peak intensity
+       ========================================================================= -->
+  <xs:complexType name="CVParamType">
+    <xs:annotation>
+      <xs:documentation>
+        A controlled vocabulary parameter. CVParams reference the PSI-MS ontology
+        via accession numbers to provide standardized, machine-readable metadata.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:attribute name="cvRef" type="xs:IDREF" use="required">
+      <xs:annotation>
+        <xs:documentation>Reference to the CV element defining this term (e.g., "MS" for PSI-MS)</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="accession" type="xs:string" use="required">
+      <xs:annotation>
+        <xs:documentation>The accession number identifying the CV term (e.g., "MS:1000511")</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="name" type="xs:string" use="required">
+      <xs:annotation>
+        <xs:documentation>Human-readable name of the CV term</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="value" type="xs:string" use="optional">
+      <xs:annotation>
+        <xs:documentation>The value associated with this parameter</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="unitCvRef" type="xs:IDREF" use="optional">
+      <xs:annotation>
+        <xs:documentation>Reference to the CV element defining the unit</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="unitAccession" type="xs:string" use="optional">
+      <xs:annotation>
+        <xs:documentation>Accession of the unit CV term</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="unitName" type="xs:string" use="optional">
+      <xs:annotation>
+        <xs:documentation>Human-readable name of the unit</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+  </xs:complexType>
+
+  <!-- =========================================================================
+       User Parameter Type
+       
+       User parameters allow vendor-specific or non-standardized data.
+       Common examples:
+       - [Thermo Trailer Extra]Monoisotopic M/Z: - Thermo monoisotopic precursor m/z
+       - Thermo/Xcalibur peak picking - Processing information
+       ========================================================================= -->
+  <xs:complexType name="UserParamType">
+    <xs:annotation>
+      <xs:documentation>
+        A user-defined parameter not from a controlled vocabulary.
+        Used for vendor-specific or experimental metadata.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:attribute name="name" type="xs:string" use="required">
+      <xs:annotation>
+        <xs:documentation>Name of the user parameter</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="type" type="xs:string" use="optional">
+      <xs:annotation>
+        <xs:documentation>XSD type of the value (e.g., "xsd:float", "xsd:int")</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="value" type="xs:string" use="optional">
+      <xs:annotation>
+        <xs:documentation>The value of this parameter</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="unitCvRef" type="xs:IDREF" use="optional"/>
+    <xs:attribute name="unitAccession" type="xs:string" use="optional"/>
+    <xs:attribute name="unitName" type="xs:string" use="optional"/>
+  </xs:complexType>
+
+  <!-- =========================================================================
+       Parameter Group Type (Extended)
+       
+       Container for cvParam and userParam elements. This is the base type
+       used by many mzML elements including isolationWindow, selectedIon, 
+       activation, scan, etc.
+       ========================================================================= -->
+  <xs:complexType name="ParamGroupType">
+    <xs:annotation>
+      <xs:documentation>
+        A group of CV and user parameters. Used as base type for elements
+        that can contain arbitrary parameter collections.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="referenceableParamGroupRef" type="dx:ReferenceableParamGroupRefType" 
+                  minOccurs="0" maxOccurs="unbounded"/>
+      <xs:element name="cvParam" type="dx:CVParamType" 
+                  minOccurs="0" maxOccurs="unbounded">
+        <xs:annotation>
+          <xs:documentation>
+            CV parameters can include any PSI-MS ontology term.
+            This allows extensibility without schema changes.
+          </xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="userParam" type="dx:UserParamType" 
+                  minOccurs="0" maxOccurs="unbounded">
+        <xs:annotation>
+          <xs:documentation>
+            User parameters for vendor-specific or custom data.
+          </xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+
+  <!-- =========================================================================
+       Isolation Window Type
+       
+       Contains parameters describing the precursor isolation window.
+       Can contain either offset-based or absolute limit specifications.
+       
+       Offset-based (most common):
+       - MS:1000827 (target m/z) + MS:1000828 (lower offset) + MS:1000829 (upper offset)
+       - Bounds computed as: [target - lower_offset, target + upper_offset]
+       
+       Absolute limits (less common):
+       - MS:1000794 (lower limit) + MS:1000795 (upper limit)
+       ========================================================================= -->
+  <xs:complexType name="IsolationWindowType">
+    <xs:annotation>
+      <xs:documentation>
+        Describes the isolation window for precursor selection.
+        Can contain cvParams for target m/z, offsets, or absolute limits.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:complexContent>
+      <xs:extension base="dx:ParamGroupType">
+        <xs:annotation>
+          <xs:documentation>
+            Expected cvParams:
+            - MS:1000827: isolation window target m/z (required for MS2+)
+            - MS:1000828: isolation window lower offset (optional)
+            - MS:1000829: isolation window upper offset (optional)
+            - MS:1000794: isolation window lower limit (optional, alternative to offset)
+            - MS:1000795: isolation window upper limit (optional, alternative to offset)
+          </xs:documentation>
+        </xs:annotation>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+  <!-- =========================================================================
+       Selected Ion Type
+       
+       Contains parameters about the selected precursor ion.
+       ========================================================================= -->
+  <xs:complexType name="SelectedIonType">
+    <xs:annotation>
+      <xs:documentation>
+        Information about a selected precursor ion.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:complexContent>
+      <xs:extension base="dx:ParamGroupType">
+        <xs:annotation>
+          <xs:documentation>
+            Expected cvParams:
+            - MS:1000744: selected ion m/z
+            - MS:1000041: charge state
+            - MS:1000042: peak intensity
+          </xs:documentation>
+        </xs:annotation>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+  <xs:complexType name="SelectedIonListType">
+    <xs:sequence>
+      <xs:element name="selectedIon" type="dx:SelectedIonType" 
+                  minOccurs="1" maxOccurs="unbounded"/>
+    </xs:sequence>
+    <xs:attribute name="count" type="xs:nonNegativeInteger" use="required"/>
+  </xs:complexType>
+
+  <!-- =========================================================================
+       Activation Type
+       
+       Describes the activation/fragmentation method.
+       ========================================================================= -->
+  <xs:complexType name="ActivationType">
+    <xs:annotation>
+      <xs:documentation>
+        The type and energy level used for precursor activation/fragmentation.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:complexContent>
+      <xs:extension base="dx:ParamGroupType">
+        <xs:annotation>
+          <xs:documentation>
+            Expected cvParams:
+            - MS:1000045: collision energy
+            - MS:1000422: beam-type collision-induced dissociation (HCD)
+            - MS:1000133: collision-induced dissociation (CID)
+            - MS:1000598: electron transfer dissociation (ETD)
+          </xs:documentation>
+        </xs:annotation>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+  <!-- =========================================================================
+       Precursor Type (Extended)
+       
+       Contains complete precursor information including isolation window,
+       selected ions, and activation parameters.
+       ========================================================================= -->
+  <xs:complexType name="PrecursorType">
+    <xs:annotation>
+      <xs:documentation>
+        Complete precursor information for MSn spectra.
+        Contains isolation window, selected ions, and activation method.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="isolationWindow" type="dx:IsolationWindowType" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>
+            The isolation window configuration. Contains target m/z and 
+            either offsets (MS:1000828, MS:1000829) or absolute limits.
+          </xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="selectedIonList" type="dx:SelectedIonListType" minOccurs="0"/>
+      <xs:element name="activation" type="dx:ActivationType">
+        <xs:annotation>
+          <xs:documentation>
+            Fragmentation/activation method and parameters.
+            Contains collision energy (MS:1000045) and dissociation type.
+          </xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+    <xs:attribute name="spectrumRef" type="xs:string" use="optional">
+      <xs:annotation>
+        <xs:documentation>Reference to the precursor spectrum ID</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="sourceFileRef" type="xs:IDREF" use="optional"/>
+    <xs:attribute name="externalSpectrumID" type="xs:string" use="optional"/>
+  </xs:complexType>
+
+  <xs:complexType name="PrecursorListType">
+    <xs:sequence>
+      <xs:element name="precursor" type="dx:PrecursorType" 
+                  minOccurs="1" maxOccurs="unbounded"/>
+    </xs:sequence>
+    <xs:attribute name="count" type="xs:nonNegativeInteger" use="required"/>
+  </xs:complexType>
+
+  <!-- =========================================================================
+       Binary Data Array Type
+       
+       Contains encoded spectral data (m/z or intensity arrays).
+       ========================================================================= -->
+  <xs:complexType name="BinaryDataArrayType">
+    <xs:annotation>
+      <xs:documentation>
+        Contains base64-encoded binary data for m/z or intensity arrays.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:complexContent>
+      <xs:extension base="dx:ParamGroupType">
+        <xs:sequence>
+          <xs:element name="binary" type="xs:base64Binary"/>
+        </xs:sequence>
+        <xs:attribute name="arrayLength" type="xs:nonNegativeInteger" use="optional"/>
+        <xs:attribute name="dataProcessingRef" type="xs:IDREF" use="optional"/>
+        <xs:attribute name="encodedLength" type="xs:nonNegativeInteger" use="required"/>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+  <xs:complexType name="BinaryDataArrayListType">
+    <xs:sequence>
+      <xs:element name="binaryDataArray" type="dx:BinaryDataArrayType" 
+                  minOccurs="2" maxOccurs="unbounded"/>
+    </xs:sequence>
+    <xs:attribute name="count" type="xs:nonNegativeInteger" use="required"/>
+  </xs:complexType>
+
+  <!-- =========================================================================
+       Scan Window Type
+       ========================================================================= -->
+  <xs:complexType name="ScanWindowType">
+    <xs:complexContent>
+      <xs:extension base="dx:ParamGroupType">
+        <xs:annotation>
+          <xs:documentation>
+            Expected cvParams:
+            - MS:1000501: scan window lower limit
+            - MS:1000500: scan window upper limit
+          </xs:documentation>
+        </xs:annotation>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+  <xs:complexType name="ScanWindowListType">
+    <xs:sequence>
+      <xs:element name="scanWindow" type="dx:ScanWindowType" 
+                  minOccurs="1" maxOccurs="unbounded"/>
+    </xs:sequence>
+    <xs:attribute name="count" type="xs:nonNegativeInteger" use="required"/>
+  </xs:complexType>
+
+  <!-- =========================================================================
+       Scan Type
+       ========================================================================= -->
+  <xs:complexType name="ScanType">
+    <xs:annotation>
+      <xs:documentation>
+        Scan acquisition parameters including retention time and scan window.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:complexContent>
+      <xs:extension base="dx:ParamGroupType">
+        <xs:sequence>
+          <xs:element name="scanWindowList" type="dx:ScanWindowListType" minOccurs="0"/>
+        </xs:sequence>
+        <xs:attribute name="spectrumRef" type="xs:string" use="optional"/>
+        <xs:attribute name="externalSpectrumID" type="xs:string" use="optional"/>
+        <xs:attribute name="instrumentConfigurationRef" type="xs:IDREF" use="optional"/>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+  <xs:complexType name="ScanListType">
+    <xs:complexContent>
+      <xs:extension base="dx:ParamGroupType">
+        <xs:sequence>
+          <xs:element name="scan" type="dx:ScanType" 
+                      minOccurs="1" maxOccurs="unbounded"/>
+        </xs:sequence>
+        <xs:attribute name="count" type="xs:nonNegativeInteger" use="required"/>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+  <!-- =========================================================================
+       Spectrum Type (Extended)
+       
+       The main spectrum element containing all scan data.
+       ========================================================================= -->
+  <xs:complexType name="SpectrumType">
+    <xs:annotation>
+      <xs:documentation>
+        A single spectrum with all associated metadata and data arrays.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:complexContent>
+      <xs:extension base="dx:ParamGroupType">
+        <xs:sequence>
+          <xs:element name="scanList" type="dx:ScanListType" minOccurs="0"/>
+          <xs:element name="precursorList" type="dx:PrecursorListType" minOccurs="0"/>
+          <xs:element name="productList" type="dx:ProductListType" minOccurs="0"/>
+          <xs:element name="binaryDataArrayList" type="dx:BinaryDataArrayListType" minOccurs="0"/>
+        </xs:sequence>
+        <xs:attribute name="id" type="xs:string" use="required"/>
+        <xs:attribute name="index" type="xs:nonNegativeInteger" use="required"/>
+        <xs:attribute name="defaultArrayLength" type="xs:nonNegativeInteger" use="required"/>
+        <xs:attribute name="dataProcessingRef" type="xs:IDREF" use="optional"/>
+        <xs:attribute name="sourceFileRef" type="xs:IDREF" use="optional"/>
+        <xs:attribute name="spotID" type="xs:string" use="optional"/>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+  <!-- =========================================================================
+       Product Type (for SRM/MRM data)
+       ========================================================================= -->
+  <xs:complexType name="ProductType">
+    <xs:sequence>
+      <xs:element name="isolationWindow" type="dx:IsolationWindowType" minOccurs="0"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="ProductListType">
+    <xs:sequence>
+      <xs:element name="product" type="dx:ProductType" 
+                  minOccurs="1" maxOccurs="unbounded"/>
+    </xs:sequence>
+    <xs:attribute name="count" type="xs:nonNegativeInteger" use="required"/>
+  </xs:complexType>
+
+  <!-- =========================================================================
+       Reference Types
+       ========================================================================= -->
+  <xs:complexType name="ReferenceableParamGroupRefType">
+    <xs:attribute name="ref" type="xs:IDREF" use="required"/>
+  </xs:complexType>
+
+  <xs:complexType name="ReferenceableParamGroupType">
+    <xs:sequence>
+      <xs:element name="cvParam" type="dx:CVParamType" 
+                  minOccurs="0" maxOccurs="unbounded"/>
+      <xs:element name="userParam" type="dx:UserParamType" 
+                  minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+    <xs:attribute name="id" type="xs:ID" use="required"/>
+  </xs:complexType>
+
+  <!-- =========================================================================
+       CV Accession Reference (Documentation Only)
+       
+       This section documents commonly used CV accessions for reference.
+       Parsers should use these accession numbers to extract specific data.
+       
+       Spectrum-level CVParams:
+         MS:1000579 - MS1 spectrum
+         MS:1000580 - MSn spectrum
+         MS:1000511 - ms level (value: integer)
+         MS:1000127 - centroid spectrum
+         MS:1000128 - profile spectrum
+         MS:1000129 - negative scan
+         MS:1000130 - positive scan
+         MS:1000504 - base peak m/z
+         MS:1000505 - base peak intensity
+         MS:1000285 - total ion current
+         MS:1000527 - highest observed m/z
+         MS:1000528 - lowest observed m/z
+         MS:1000796 - spectrum title
+       
+       Scan CVParams:
+         MS:1000016 - scan start time (retention time)
+         MS:1000512 - filter string
+         MS:1000616 - preset scan configuration
+         MS:1000927 - ion injection time
+       
+       Isolation Window CVParams:
+         MS:1000827 - isolation window target m/z
+         MS:1000828 - isolation window lower offset
+         MS:1000829 - isolation window upper offset
+         MS:1000794 - isolation window lower limit
+         MS:1000795 - isolation window upper limit
+       
+       Selected Ion CVParams:
+         MS:1000744 - selected ion m/z
+         MS:1000041 - charge state
+         MS:1000042 - peak intensity
+       
+       Activation CVParams:
+         MS:1000045 - collision energy
+         MS:1000133 - collision-induced dissociation (CID)
+         MS:1000422 - beam-type collision-induced dissociation (HCD)
+         MS:1000598 - electron transfer dissociation (ETD)
+       
+       Binary Array CVParams:
+         MS:1000514 - m/z array
+         MS:1000515 - intensity array
+         MS:1000521 - 32-bit float
+         MS:1000523 - 64-bit float
+         MS:1000574 - zlib compression
+         MS:1000576 - no compression
+       
+       User Parameters (vendor-specific):
+         [Thermo Trailer Extra]Monoisotopic M/Z: - Thermo monoisotopic precursor m/z
+         ms level - Sometimes used in userParam for isolation window source
+       ========================================================================= -->
+
+</xs:schema>

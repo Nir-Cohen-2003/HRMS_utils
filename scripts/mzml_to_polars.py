@@ -89,77 +89,165 @@ def _(os, pl, pymzml):
 
 @app.cell
 def _(base64, etree, os, pl, struct, zlib):
-    def mzml_to_polars_lxml(mzml_path):
+    def mzml_to_polars_lxml(mzml_path: str) -> pl.DataFrame:
         """
-        Parses an mzML file using lxml and returns a Polars DataFrame.
-        Extracts: scan id, ms level, mz/intensity arrays, and precursor info.
-        Also extracts userParams, specifically '[Thermo Trailer Extra]Monoisotopic M/Z:'.
+        Parse an mzML file using lxml and return a Polars DataFrame.
+
+        Extracts spectrum metadata, precursor information, and binary data arrays.
+        Uses CV accessions from PSI-MS ontology for standardized field extraction.
+
+        The function handles both offset-based isolation windows (MS:1000828, MS:1000829)
+        and absolute limit windows (MS:1000794, MS:1000795), computing bounds from
+        offsets when absolute limits are not provided.
+
+        See revised_mzml_schema.xsd for CV accession documentation.
+
+        Parameters
+        ----------
+        mzml_path : str
+            Path to the mzML file to parse.
+
+        Returns
+        -------
+        pl.DataFrame
+            DataFrame with columns:
+            - id: Spectrum identifier string
+            - ms_level: MS level (1 for MS1, 2 for MS2, etc.)
+            - scan_time: Retention time in minutes
+            - polarity: 'positive' or 'negative'
+            - mz: List of m/z values
+            - intensity: List of intensity values
+            - precursor_mz: Isolation window target m/z (MS2+ only)
+            - selected_ion_mz: Selected ion m/z from selectedIonList
+            - charge_state: Precursor charge state
+            - isolation_window_lower_offset: Lower offset from target m/z
+            - isolation_window_upper_offset: Upper offset from target m/z
+            - isolation_window_lower_bound: Computed/absolute lower bound
+            - isolation_window_upper_bound: Computed/absolute upper bound
+            - collision_energy: Fragmentation energy
+            - collision_energy_unit: Unit of collision energy
+            - thermo_monoisotopic_mz: Thermo-specific monoisotopic m/z
+            - user_params: List of vendor-specific parameters
+
+        Raises
+        ------
+        FileNotFoundError
+            If the mzML file does not exist.
         """
         if not os.path.exists(mzml_path):
-            raise FileNotFoundError(f"File not found: {mzml_path}")
+            raise FileNotFoundError(f"mzML file not found: {mzml_path}")
 
         print(f"Reading {mzml_path} with lxml...")
 
-        # Namespaces
-        ns = "{http://psi.hupo.org/ms/mzml}"
-
-        # CV Param Accessions
-        ACC_MS_LEVEL = "MS:1000511"
-        ACC_MZ_ARRAY = "MS:1000514"
-        ACC_INT_ARRAY = "MS:1000515"
-        ACC_FLOAT64 = "MS:1000523"
-        ACC_FLOAT32 = "MS:1000521"
-        ACC_ZLIB = "MS:1000574"
-        ACC_NO_COMPRESSION = "MS:1000576"
-        ACC_ISO_TARGET = "MS:1000827"
-        ACC_ISO_LOWER_OFFSET = "MS:1000828"
-        ACC_ISO_UPPER_OFFSET = "MS:1000829"
-        ACC_ISO_LOWER_LIMIT = "MS:1000794"
-        ACC_ISO_UPPER_LIMIT = "MS:1000795"
-        ACC_SCAN_START_TIME = "MS:1000016"
-        ACC_COLLISION_ENERGY = "MS:1000045"
+        # CV Param Accessions from PSI-MS ontology
+        # See revised_mzml_schema.xsd for full documentation
+        CV_ACCESSIONS = {
+            # Spectrum level
+            "ms_level": "MS:1000511",
+            "positive_scan": "MS:1000130",
+            "negative_scan": "MS:1000129",
+            # Scan level
+            "scan_start_time": "MS:1000016",
+            # Binary arrays
+            "mz_array": "MS:1000514",
+            "intensity_array": "MS:1000515",
+            "float64": "MS:1000523",
+            "float32": "MS:1000521",
+            "zlib_compression": "MS:1000574",
+            # Isolation window
+            "isolation_target_mz": "MS:1000827",
+            "isolation_lower_offset": "MS:1000828",
+            "isolation_upper_offset": "MS:1000829",
+            "isolation_lower_limit": "MS:1000794",
+            "isolation_upper_limit": "MS:1000795",
+            # Selected ion
+            "selected_ion_mz": "MS:1000744",
+            "charge_state": "MS:1000041",
+            # Activation
+            "collision_energy": "MS:1000045",
+        }
 
         data = []
 
-        context = etree.iterparse(mzml_path, events=("end",), tag=f"{ns}spectrum")
+        # Use iterparse for memory-efficient parsing of large files
+        context = etree.iterparse(
+            mzml_path,
+            events=("end",),
+            tag="{http://psi.hupo.org/ms/mzml}spectrum"
+        )
 
-        for event, spectrum in context:
+        for _event, spectrum in context:
             spec_id = spectrum.get("id")
 
-            # Get MS Level
-            ms_level = None
-            scan_time = None
-            thermo_monoisotopic_mz = None
+            def get_cv_value(element, accession: str, dtype=str):
+                """Extract value from cvParam by accession number."""
+                # Why: Use local-name() to handle namespace variations across mzML files
+                matches = element.xpath(
+                    f".//*[local-name()='cvParam' and @accession='{accession}']"
+                )
+                if matches:
+                    val = matches[0].get("value")
+                    if val is None:
+                        return None
+                    try:
+                        return dtype(val)
+                    except (ValueError, TypeError):
+                        return None
+                return None
+
+            def has_cv_param(element, accession: str) -> bool:
+                """Check if a cvParam with the given accession exists."""
+                matches = element.xpath(
+                    f".//*[local-name()='cvParam' and @accession='{accession}']"
+                )
+                return len(matches) > 0
+
+            def get_user_param_value(element, name: str, dtype=str):
+                """Extract value from userParam by name."""
+                matches = element.xpath(
+                    f".//*[local-name()='userParam' and @name='{name}']"
+                )
+                if matches:
+                    val = matches[0].get("value")
+                    if val is None:
+                        return None
+                    try:
+                        return dtype(val)
+                    except (ValueError, TypeError):
+                        return None
+                return None
+
+            # Extract spectrum-level metadata
+            ms_level = get_cv_value(spectrum, CV_ACCESSIONS["ms_level"], int)
+            scan_time = get_cv_value(spectrum, CV_ACCESSIONS["scan_start_time"], float)
+
+            # Determine polarity
+            polarity = None
+            if has_cv_param(spectrum, CV_ACCESSIONS["positive_scan"]):
+                polarity = "positive"
+            elif has_cv_param(spectrum, CV_ACCESSIONS["negative_scan"]):
+                polarity = "negative"
+
+            # Thermo-specific monoisotopic m/z from userParam
+            thermo_monoisotopic_mz = get_user_param_value(
+                spectrum,
+                "[Thermo Trailer Extra]Monoisotopic M/Z:",
+                float
+            )
+
+            # Collect all userParams for extensibility
             user_params = []
+            for up in spectrum.xpath(".//*[local-name()='userParam']"):
+                user_params.append({
+                    "name": up.get("name"),
+                    "value": up.get("value"),
+                    "type": up.get("type")
+                })
 
-            for cv in spectrum.findall(f"{ns}cvParam"):
-                acc = cv.get("accession")
-                if acc == ACC_MS_LEVEL:
-                    ms_level = int(cv.get("value"))
-
-            # Get Scan Time and User Params (usually in scanList/scan)
-            scan_list = spectrum.find(f"{ns}scanList")
-            if scan_list is not None:
-                scan = scan_list.find(f"{ns}scan")
-                if scan is not None:
-                    for cv in scan.findall(f"{ns}cvParam"):
-                        if cv.get("accession") == ACC_SCAN_START_TIME:
-                            scan_time = float(cv.get("value"))
-
-                    for up in scan.findall(f"{ns}userParam"):
-                        name = up.get("name")
-                        value = up.get("value")
-                        type_ = up.get("type")
-                        user_params.append({"name": name, "value": value, "type": type_})
-
-                        if name == "[Thermo Trailer Extra]Monoisotopic M/Z:":
-                            try:
-                                thermo_monoisotopic_mz = float(value)
-                            except (ValueError, TypeError):
-                                pass
-
-            # Precursor Info
+            # Initialize precursor fields (only populated for MS2+)
             precursor_mz = None
+            selected_ion_mz = None
+            charge_state = None
             iso_lower_offset = None
             iso_upper_offset = None
             iso_lower_bound = None
@@ -167,92 +255,130 @@ def _(base64, etree, os, pl, struct, zlib):
             collision_energy = None
             collision_energy_unit = None
 
-            if ms_level and ms_level > 1:
-                precursor_list = spectrum.find(f"{ns}precursorList")
-                if precursor_list is not None:
-                    precursor = precursor_list.find(
-                        f"{ns}precursor"
-                    )  # Taking the first one for simplicity
-                    if precursor is not None:
-                        # Isolation Window
-                        iso_window = precursor.find(f"{ns}isolationWindow")
-                        if iso_window is not None:
-                            for cv in iso_window.findall(f"{ns}cvParam"):
-                                acc = cv.get("accession")
-                                if acc == ACC_ISO_TARGET:
-                                    precursor_mz = float(cv.get("value"))
-                                elif acc == ACC_ISO_LOWER_OFFSET:
-                                    iso_lower_offset = float(cv.get("value"))
-                                elif acc == ACC_ISO_UPPER_OFFSET:
-                                    iso_upper_offset = float(cv.get("value"))
-                                elif acc == ACC_ISO_LOWER_LIMIT:
-                                    iso_lower_bound = float(cv.get("value"))
-                                elif acc == ACC_ISO_UPPER_LIMIT:
-                                    iso_upper_bound = float(cv.get("value"))
+            # Extract precursor information for MS2+ spectra
+            if ms_level is not None and ms_level > 1:
+                precursors = spectrum.xpath(".//*[local-name()='precursor']")
+                if precursors:
+                    precursor = precursors[0]
 
-                        # Activation
-                        activation = precursor.find(f"{ns}activation")
-                        if activation is not None:
-                            for cv in activation.findall(f"{ns}cvParam"):
-                                if cv.get("accession") == ACC_COLLISION_ENERGY:
-                                    collision_energy = float(cv.get("value"))
-                                    collision_energy_unit = cv.get("unitName")
+                    # Isolation window information
+                    # Why: Search within isolationWindow element specifically for accurate extraction
+                    isolation_windows = precursor.xpath(
+                        "./*[local-name()='isolationWindow']"
+                    )
+                    if isolation_windows:
+                        iso_window = isolation_windows[0]
+                        precursor_mz = get_cv_value(
+                            iso_window,
+                            CV_ACCESSIONS["isolation_target_mz"],
+                            float
+                        )
+                        iso_lower_offset = get_cv_value(
+                            iso_window,
+                            CV_ACCESSIONS["isolation_lower_offset"],
+                            float
+                        )
+                        iso_upper_offset = get_cv_value(
+                            iso_window,
+                            CV_ACCESSIONS["isolation_upper_offset"],
+                            float
+                        )
+                        iso_lower_bound = get_cv_value(
+                            iso_window,
+                            CV_ACCESSIONS["isolation_lower_limit"],
+                            float
+                        )
+                        iso_upper_bound = get_cv_value(
+                            iso_window,
+                            CV_ACCESSIONS["isolation_upper_limit"],
+                            float
+                        )
 
-            # Binary Data
+                    # Selected ion information
+                    selected_ions = precursor.xpath(
+                        ".//*[local-name()='selectedIon']"
+                    )
+                    if selected_ions:
+                        selected_ion = selected_ions[0]
+                        selected_ion_mz = get_cv_value(
+                            selected_ion,
+                            CV_ACCESSIONS["selected_ion_mz"],
+                            float
+                        )
+                        charge_state = get_cv_value(
+                            selected_ion,
+                            CV_ACCESSIONS["charge_state"],
+                            int
+                        )
+
+                    # Activation/fragmentation information
+                    activations = precursor.xpath(
+                        "./*[local-name()='activation']"
+                    )
+                    if activations:
+                        activation = activations[0]
+                        ce_matches = activation.xpath(
+                            f".//*[local-name()='cvParam' and @accession='{CV_ACCESSIONS['collision_energy']}']"
+                        )
+                        if ce_matches:
+                            try:
+                                collision_energy = float(ce_matches[0].get("value"))
+                                collision_energy_unit = ce_matches[0].get("unitName")
+                            except (ValueError, TypeError):
+                                pass
+
+            # Extract binary data arrays (m/z and intensity)
             mz_array = []
             intensity_array = []
 
-            binary_list = spectrum.find(f"{ns}binaryDataArrayList")
-            if binary_list is not None:
-                for binary_array in binary_list.findall(f"{ns}binaryDataArray"):
-                    # Check type
-                    is_mz = False
-                    is_int = False
-                    is_float64 = False
-                    is_zlib = False
+            binary_arrays = spectrum.xpath(
+                ".//*[local-name()='binaryDataArrayList']/*[local-name()='binaryDataArray']"
+            )
 
-                    for cv in binary_array.findall(f"{ns}cvParam"):
-                        acc = cv.get("accession")
-                        if acc == ACC_MZ_ARRAY:
-                            is_mz = True
-                        elif acc == ACC_INT_ARRAY:
-                            is_int = True
-                        elif acc == ACC_FLOAT64:
-                            is_float64 = True
-                        elif acc == ACC_ZLIB:
-                            is_zlib = True
+            for binary_array in binary_arrays:
+                # Determine array type and encoding from cvParams
+                cv_accessions = [
+                    cv.get("accession")
+                    for cv in binary_array.xpath("./*[local-name()='cvParam']")
+                ]
 
-                    if is_mz or is_int:
-                        binary_content = binary_array.find(f"{ns}binary")
-                        if binary_content is not None and binary_content.text:
-                            decoded = base64.b64decode(binary_content.text)
+                is_mz = CV_ACCESSIONS["mz_array"] in cv_accessions
+                is_int = CV_ACCESSIONS["intensity_array"] in cv_accessions
+                is_float64 = CV_ACCESSIONS["float64"] in cv_accessions
+                is_zlib = CV_ACCESSIONS["zlib_compression"] in cv_accessions
+
+                if is_mz or is_int:
+                    binary_content = binary_array.xpath("./*[local-name()='binary']")
+                    if binary_content and binary_content[0].text:
+                        try:
+                            decoded = base64.b64decode(binary_content[0].text)
 
                             if is_zlib:
-                                try:
-                                    decoded = zlib.decompress(decoded)
-                                except zlib.error:
-                                    pass  # Handle or log error
+                                decoded = zlib.decompress(decoded)
 
+                            # Why: Use little-endian format as per mzML specification
                             fmt = "d" if is_float64 else "f"
                             item_size = 8 if is_float64 else 4
                             count = len(decoded) // item_size
 
-                            try:
-                                array_data = struct.unpack(f"<{count}{fmt}", decoded)
-                                if is_mz:
-                                    mz_array = list(array_data)
-                                elif is_int:
-                                    intensity_array = list(array_data)
-                            except struct.error:
-                                print(f"Struct unpack error for spectrum {spec_id}")
+                            array_data = struct.unpack(f"<{count}{fmt}", decoded)
+                            if is_mz:
+                                mz_array = list(array_data)
+                            elif is_int:
+                                intensity_array = list(array_data)
+                        except (struct.error, zlib.error, ValueError) as e:
+                            print(f"Error decoding binary data for spectrum {spec_id}: {e}")
 
             spec_data = {
                 "id": spec_id,
                 "ms_level": ms_level,
                 "scan_time": scan_time,
+                "polarity": polarity,
                 "mz": mz_array,
                 "intensity": intensity_array,
                 "precursor_mz": precursor_mz,
+                "selected_ion_mz": selected_ion_mz,
+                "charge_state": charge_state,
                 "isolation_window_lower_offset": iso_lower_offset,
                 "isolation_window_upper_offset": iso_upper_offset,
                 "isolation_window_lower_bound": iso_lower_bound,
@@ -265,7 +391,7 @@ def _(base64, etree, os, pl, struct, zlib):
 
             data.append(spec_data)
 
-            # Memory management for lxml
+            # Why: Clear processed elements to prevent memory buildup with large files
             spectrum.clear()
             while spectrum.getprevious() is not None:
                 del spectrum.getparent()[0]
@@ -274,9 +400,12 @@ def _(base64, etree, os, pl, struct, zlib):
             "id": pl.String,
             "ms_level": pl.Int64,
             "scan_time": pl.Float64,
+            "polarity": pl.String,
             "mz": pl.List(pl.Float64),
             "intensity": pl.List(pl.Float64),
             "precursor_mz": pl.Float64,
+            "selected_ion_mz": pl.Float64,
+            "charge_state": pl.Int64,
             "isolation_window_lower_offset": pl.Float64,
             "isolation_window_upper_offset": pl.Float64,
             "isolation_window_lower_bound": pl.Float64,
@@ -284,29 +413,33 @@ def _(base64, etree, os, pl, struct, zlib):
             "collision_energy": pl.Float64,
             "collision_energy_unit": pl.String,
             "thermo_monoisotopic_mz": pl.Float64,
-            "user_params": pl.List(pl.Struct({"name": pl.String, "value": pl.String, "type": pl.String})),
+            "user_params": pl.List(
+                pl.Struct({"name": pl.String, "value": pl.String, "type": pl.String})
+            ),
         }
 
         df = pl.DataFrame(data, schema=schema, orient="row")
 
-        # Compute bounds from offsets if bounds are missing
+        # Compute isolation window bounds from offsets when absolute limits not provided
+        # Why: Some instruments provide offsets (MS:1000828/MS:1000829) instead of
+        # absolute limits (MS:1000794/MS:1000795). This computes bounds for consistency.
         df = df.with_columns(
-            [
-                pl.when(
-                    pl.col("isolation_window_lower_bound").is_null()
-                    & pl.col("isolation_window_lower_offset").is_not_null()
-                )
-                .then(pl.col("precursor_mz") - pl.col("isolation_window_lower_offset"))
-                .otherwise(pl.col("isolation_window_lower_bound"))
-                .alias("isolation_window_lower_bound"),
-                pl.when(
-                    pl.col("isolation_window_upper_bound").is_null()
-                    & pl.col("isolation_window_upper_offset").is_not_null()
-                )
-                .then(pl.col("precursor_mz") + pl.col("isolation_window_upper_offset"))
-                .otherwise(pl.col("isolation_window_upper_bound"))
-                .alias("isolation_window_upper_bound"),
-            ]
+            pl.when(
+                pl.col("isolation_window_lower_bound").is_null()
+                & pl.col("isolation_window_lower_offset").is_not_null()
+                & pl.col("precursor_mz").is_not_null()
+            )
+            .then(pl.col("precursor_mz") - pl.col("isolation_window_lower_offset"))
+            .otherwise(pl.col("isolation_window_lower_bound"))
+            .alias("isolation_window_lower_bound"),
+            pl.when(
+                pl.col("isolation_window_upper_bound").is_null()
+                & pl.col("isolation_window_upper_offset").is_not_null()
+                & pl.col("precursor_mz").is_not_null()
+            )
+            .then(pl.col("precursor_mz") + pl.col("isolation_window_upper_offset"))
+            .otherwise(pl.col("isolation_window_upper_bound"))
+            .alias("isolation_window_upper_bound"),
         )
 
         return df
@@ -314,9 +447,10 @@ def _(base64, etree, os, pl, struct, zlib):
 
 
 @app.cell
-def _(mzml_to_polars_lxml, time):
-    file_path = "/home/analytit_admin/Data/raw_data/Actinomycetes/P610004-11A-001.mzML"
-
+def _(mzml_to_polars_lxml, pl, time):
+    # file_path = "/home/analytit_admin/Data/raw_data/Actinomycetes/P610004-11A-001.mzML"
+    # file_path = "/home/analytit_admin/Data/raw_data/iibr_data/250515_018.mzML"
+    file_path = "/home/analytit_admin/Data/raw_data/ms2deepscore/Nist_LPOS_ToF18_DDA_09.mzML"
     # print("--- pymzml ---")
     # start_time = time.time() # Start timing
     # df = mzml_to_polars(file_path)
@@ -331,6 +465,7 @@ def _(mzml_to_polars_lxml, time):
 
     print("\n--- lxml ---")
     start_time = time.time()
+
     df_lxml = mzml_to_polars_lxml(file_path)
     end_time = time.time()
     print("Successfully converted mzML to Polars DataFrame (lxml):")
@@ -339,7 +474,7 @@ def _(mzml_to_polars_lxml, time):
     print(df_lxml.schema)
     print(df_lxml.null_count().to_init_repr())
     print(f"\nTime taken: {end_time - start_time:.2f} seconds")
-    df_lxml
+    df_lxml.filter(pl.col("ms_level").eq(2))
     return
 
 
