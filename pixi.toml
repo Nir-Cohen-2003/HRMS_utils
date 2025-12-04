@@ -106,6 +106,7 @@ test_chromatogram = {cmd="python tests/formats/chromatogram.py",env ={ POLARS_VE
 test_mol = "python tests/rdkit/mol.py"
 test_info_score = "python tests/spectral/test_spectral_information.py"
 test_isotopic_pattern = "pytest tests/hrms_core/test_isotopic_pattern.py"
+test_mzml = "pytest tests/hrms_core/test_mzml_io.py"
 
 convert_msp = "python scripts/convert_msp.py"
 
