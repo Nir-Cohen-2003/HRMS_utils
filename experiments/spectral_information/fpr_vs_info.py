@@ -1,6 +1,6 @@
 import marimo
 
-__generated_with = "0.18.1"
+__generated_with = "0.18.2"
 app = marimo.App(width="full")
 
 
@@ -174,16 +174,19 @@ def _(List, Optional, Path, Tuple, Union, dataclass, field, np, pl, plt):
         fp_num_threads: int = 0
         plot_avg_tanimoto_output_path: Optional[Union[str, Path]] = "avg_tanimoto_vs_info.png"
 
+        show_molecule_cdf: bool = False
+
     def compute_fpr_vs_info_stats(
         config: FprVsInfoConfig,
         pairs_input: Optional[Union[str, Path, pl.DataFrame, pl.LazyFrame]] = None,
     ) -> tuple[pl.DataFrame, np.ndarray, np.ndarray]:
         """
         Compute aggregated statistics for FPR vs spectral information and compute molecule-level CDF.
+
         Returns:
           - all_stats: pl.DataFrame (collected) with aggregated bin stats for each metric and threshold
-          - cdf_x: np.ndarray (cdf bin edges for max_info)
-          - cdf_y: np.ndarray (reverse CDF / survival function for max_info)
+          - cdf_x: np.ndarray (cdf bin edges for max_info) - empty array if config.show_molecule_cdf == False
+          - cdf_y: np.ndarray (reverse CDF / survival function for max_info) - empty array if config.show_molecule_cdf == False
         """
         # Accept either an explicit pairs_input or default to config.pairs_parquet_path.
         if pairs_input is None:
@@ -249,19 +252,23 @@ def _(List, Optional, Path, Tuple, Union, dataclass, field, np, pl, plt):
         pl.Config.set_tbl_rows(100)
         print(all_stats)
 
-        # Compute molecule-level max info distribution (CDF / survival function)
-        molecule_max_info = pairs_sim.group_by("base_inchikey").agg(
-            max_info=pl.col(info_col).max()
-        ).collect(engine="streaming")
+        # Compute molecule-level max info distribution (CDF / survival function) only if requested
+        if config.show_molecule_cdf:
+            molecule_max_info = pairs_sim.group_by("base_inchikey").agg(
+                max_info=pl.col(info_col).max()
+            ).collect(engine="streaming")
 
-        cdf_x = np.arange(0, config.max_info + config.bin_width, config.bin_width)
-        total_molecules = molecule_max_info.height
-        cdf_y = np.array(
-            [molecule_max_info.filter(pl.col("max_info") >= float(x)).height / total_molecules for x in cdf_x]
-        )
+            cdf_x = np.arange(0, config.max_info + config.bin_width, config.bin_width)
+            total_molecules = molecule_max_info.height
+            cdf_y = np.array(
+                [molecule_max_info.filter(pl.col("max_info") >= float(x)).height / total_molecules for x in cdf_x]
+            )
+        else:
+            # Keep type consistent: return empty arrays if caller doesn't want the CDF computed/used.
+            cdf_x = np.array([], dtype=float)
+            cdf_y = np.array([], dtype=float)
 
         return all_stats, cdf_x, cdf_y
-
     def plot_fpr_vs_info_metrics(
         all_stats: pl.DataFrame,
         cdf_x: np.ndarray,
@@ -270,6 +277,7 @@ def _(List, Optional, Path, Tuple, Union, dataclass, field, np, pl, plt):
     ) -> None:
         """
         Plot average false matches vs Spectral Information score and optionally save as config.metrics_output_path.
+        If config.show_molecule_cdf == False, the Molecule Coverage CDF isn't plotted.
         """
         assert "metric_name" in all_stats.columns, "all_stats missing 'metric_name' column; compute stats first."
 
@@ -296,33 +304,38 @@ def _(List, Optional, Path, Tuple, Union, dataclass, field, np, pl, plt):
             else:
                 print(f"Warning: No data for {label} at threshold {thresh}")
 
-        # Secondary axis for Molecule Coverage CDF
-        ax2 = ax.twinx()
-        ax2.plot(
-            cdf_x,
-            cdf_y,
-            color="black",
-            linestyle="--",
-            linewidth=2,
-            alpha=0.6,
-            label="Molecule Coverage (Max Info ≥ X)",
-        )
-        ax2.set_ylabel("Fraction of Molecules")
-        ax2.set_ylim(0, 1.05)
+        # Secondary axis for Molecule Coverage CDF if requested
+        if config.show_molecule_cdf and cdf_x.size and cdf_y.size:
+            ax2 = ax.twinx()
+            ax2.plot(
+                cdf_x,
+                cdf_y,
+                color="black",
+                linestyle="--",
+                linewidth=2,
+                alpha=0.6,
+                label="Molecule Coverage (Max Info ≥ X)",
+            )
+            ax2.set_ylabel("Fraction of Molecules")
+            ax2.set_ylim(0, 1.05)
+
+            lines_1, labels_1 = ax.get_legend_handles_labels()
+            lines_2, labels_2 = ax2.get_legend_handles_labels()
+            ax.legend(lines_1 + lines_2, labels_1 + labels_2, loc="upper right")
+        else:
+            # If we didn't plot the CDF, just show the main legend
+            ax.legend(loc="upper right")
 
         xlabel = "Weighted Spectral Information Score" if config.use_weighted_information_score else "Spectral Information Score"
         ax.set_xlabel(xlabel)
         ax.set_ylabel("Average Number of False Matches")
-        ax.set_title(f"Average Number of False Matches vs {xlabel}")
-
-        lines_1, labels_1 = ax.get_legend_handles_labels()
-        lines_2, labels_2 = ax2.get_legend_handles_labels()
-        ax.legend(lines_1 + lines_2, labels_1 + labels_2, loc="upper right")
+        # ax.set_title(f"Average Number of False Matches vs {xlabel}")
 
         ax.grid(True, alpha=0.3)
+        fig.tight_layout()
         fig.savefig(str(config.metrics_output_path), facecolor="white", transparent=False)
         plt.close(fig)
-
+    # ...existing code...
     def plot_matched_avg_info_diff(
         all_stats: pl.DataFrame,
         config: FprVsInfoConfig,
@@ -365,10 +378,10 @@ def _(List, Optional, Path, Tuple, Union, dataclass, field, np, pl, plt):
 
         ax_matched.set_xlabel(xlabel)
         ax_matched.set_ylabel(ylabel)
-        ax_matched.set_title(f"{ylabel} vs {xlabel}")
+        # ax_matched.set_title(f"{ylabel} vs {xlabel}")
         ax_matched.legend(loc="upper right")
         ax_matched.grid(True, alpha=0.3)
-
+        fig_matched.tight_layout()
         fig_matched.savefig(str(config.matched_info_output_path), facecolor="white", transparent=False)
         if show_plot:
             plt.show()
@@ -565,6 +578,7 @@ def _(
                 ax.set_title(f"Average Tanimoto Similarity of Matches vs {xlabel}")
                 ax.legend(loc="lower right")
                 ax.grid(True, alpha=0.3)
+                fig.tight_layout()
                 fig.savefig(str(config.plot_avg_tanimoto_output_path), facecolor="white", transparent=False)
                 plt.close(fig)
 
@@ -631,22 +645,23 @@ def _(FprVsInfoConfig, OUTPUT_PAIRS_PATH):
     # Use the new dataclass/config-driven analysis and plotting
     config = FprVsInfoConfig(
         pairs_parquet_path=OUTPUT_PAIRS_PATH,
-        max_info=15.0,
-        bin_width=1.0,
+        max_info=3,
+        bin_width=0.2,
         metrics_config=[
-            ("dotprod_similarity", 0.8, "Dot Product", "C0", "o"),
-            ("dotprod_similarity", 0.95, "Dot Product", "C1", "o"),
-            ("entropy_similarity", 0.75, "Entropy", "C2", "^"),
+            ("dotprod_similarity", 0.80, "Dot Product", "C0", "o"),
+            ("dotprod_similarity", 0.90, "Dot Product", "C1", "o"),
+            # ("entropy_similarity", 0.75, "Entropy", "C2", "^"),
         ],
-        metrics_output_path="fpr_vs_info_metrics_weighted.png",
-        matched_info_output_path="fpr_vs_info_avg_matched_info_diff_weighted.png",
+        metrics_output_path="fpr_vs_info_metrics.png",
+        matched_info_output_path="avg_matched_info_diff.png",
         left_smiles_col="smiles",
         right_smiles_col="smiles_right",
         fp_radius=2,
         fp_size=2048,
         fp_num_threads=0,
-        plot_avg_tanimoto_output_path="avg_tanimoto_vs_info_weighted.png",
-        use_weighted_information_score=True,
+        plot_avg_tanimoto_output_path="avg_tanimoto_vs_info.png",
+        use_weighted_information_score=False,
+        show_molecule_cdf=False,
     )
     return (config,)
 
@@ -667,13 +682,36 @@ def _(
 
 
 @app.cell
-def _(compute_avg_tanimoto_between_matched_pairs, config):
-
-    avg_tanimoto_df = compute_avg_tanimoto_between_matched_pairs(
-        config=config,
-        pairs_input=config.pairs_parquet_path,
+def _(
+    FprVsInfoConfig,
+    OUTPUT_PAIRS_PATH,
+    compute_avg_tanimoto_between_matched_pairs,
+):
+    tanimoto_config = FprVsInfoConfig(
+        pairs_parquet_path=OUTPUT_PAIRS_PATH,
+        max_info=3,
+        bin_width=0.5,
+        metrics_config=[
+            # ("dotprod_similarity", 0.80, "Dot Product", "C0", "o"),
+            ("dotprod_similarity", 0.90, "Dot Product", "C1", "o"),
+            # ("entropy_similarity", 0.75, "Entropy", "C2", "^"),
+        ],
+        metrics_output_path="fpr_vs_info_metrics.png",
+        matched_info_output_path="avg_matched_info_diff.png",
+        left_smiles_col="smiles",
+        right_smiles_col="smiles_right",
+        fp_radius=2,
+        fp_size=2048,
+        fp_num_threads=0,
+        plot_avg_tanimoto_output_path="avg_tanimoto_vs_info.png",
+        use_weighted_information_score=False,
+        show_molecule_cdf=False,
     )
-    print(avg_tanimoto_df)
+    avg_tanimoto_df = compute_avg_tanimoto_between_matched_pairs(
+        config=tanimoto_config,
+        pairs_input=tanimoto_config.pairs_parquet_path,
+    )
+    avg_tanimoto_df
     return
 
 

@@ -9,7 +9,6 @@ def _():
     import polars as pl
     import matplotlib.pyplot as plt
     plt.style.use('default')
-
     return pl, plt
 
 
@@ -42,12 +41,12 @@ def _(pl):
     def compute_error_rate_by_bin(df: pl.DataFrame, bin_width: float, upper_bound: float) -> pl.DataFrame:
         """
         Computes the likelihood of false prediction binned by spectral information score.
-    
+
         Args:
             df: Input dataframe containing 'target', 'prediction', and 'spectral_information_score'.
             bin_width: Width of the spectral information bins.
             upper_bound: Maximum spectral information score to include.
-        
+
         Returns:
             pl.DataFrame: Aggregated stats with 'bin_start' and 'error_rate'.
         """
@@ -65,7 +64,6 @@ def _(pl):
             .sort("bin_start")
             .collect()
         )
-
     return (compute_error_rate_by_bin,)
 
 
@@ -108,9 +106,9 @@ def _(ampthetamines, compute_error_rate_by_bin, non_amhetamines, plt):
     )
 
     plt.xlabel("Spectral Information Score")
-    plt.ylabel("Likelihood of False Prediction")
-    plt.title(f"Error Rate vs Spectral Information (Bin Width: {BIN_WIDTH})")
-    plt.legend()
+    plt.ylabel("Likelihood of False Positive Prediction")
+    # plt.title(f"Error Rate vs Spectral Information (Bin Width: {BIN_WIDTH})")
+    # plt.legend()
     plt.grid(True, alpha=0.3)
     plt.tight_layout()
     # Why: Ensure white background on saved file
