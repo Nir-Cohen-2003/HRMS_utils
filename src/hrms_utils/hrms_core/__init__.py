@@ -430,3 +430,18 @@ class SpectralUtils:
             is_elementwise=True,
             kwargs=kwargs,
         )
+
+from .._internal import read_mzml_files as _read_mzml_files
+
+def read_mzml(paths: list[str]) -> list[pl.DataFrame]:
+    """
+    Read multiple mzML files into Polars DataFrames using the Rust backend.
+    
+    Args:
+        paths: List of file paths to read.
+        
+    Returns:
+        List of Polars DataFrames, one for each file.
+    """
+    return _read_mzml_files(paths)
+
