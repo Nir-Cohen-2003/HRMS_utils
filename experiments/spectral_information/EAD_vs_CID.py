@@ -134,39 +134,27 @@ def _(ExperimentConfig, hrms_utils, pl):
 
         # Columns containing the annotated formulas (list of strings/structs)
         # Assuming column name is 'fragment_formula_array' based on hrms_utils conventions
-        formula_col = "fragment_formula_array"
+        formula_col = "cleaned_fragment_formulas"
         
         assert formula_col in joined.columns, f"Column {formula_col} missing from dataframe"
 
         # Combine the lists of formulas
         # Why: We want the union of unique formulas found in either method to represent the "combined" spectrum
         joined = joined.with_columns(
-            combined_formulas=pl.concat_list(
-                [pl.col(formula_col), pl.col(f"{formula_col}_ead")]
-            ).list.unique()
-        )
-
-        # Calculate score for the combined set
-        # We temporarily rename the combined column to what the function expects
-        # assuming the function defaults to 'fragment_formula_array'
-        temp_df = joined.select(
-            pl.exclude(formula_col)
-        ).rename(
+            combined_formulas=pl.col(formula_col).list.set_union(pl.col(f"{formula_col}_ead"))
+        ).drop(formula_col).rename(
             {"combined_formulas": formula_col}
-        )
-        
-        # Recalculate information score on the combined formulas
-        temp_df = hrms_utils.information.calculate_spectral_information(temp_df)
-
-        # Merge the new score back
-        final_df = joined.with_columns(
-            combined_score=temp_df.get_column("spectral_information_score")
+        ).with_columns(
+            pl.struct(
+            pl.col("precursor_formula_array").alias("precursor_formula"), 
+            pl.col(formula_col).alias("fragment_formulas")
+        ).spectral_info.spectral_info_score(ignore_hydrogens=True).alias("combined_score")
         ).rename({
             "spectral_information_score": "cid_score",
             "spectral_information_score_ead": "ead_score"
         })
 
-        return final_df
+        return joined
 
     return compute_combined_scores
 
