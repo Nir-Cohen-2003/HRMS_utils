@@ -30,8 +30,12 @@ def _(Path, dataclass):
     class ExperimentConfig:
         """
         Configuration for EAD vs CID comparison.
+        
+        Why: Separate MSP files for each fragmentation method allows for cleaner separation
+        of data sources and better reflects typical experimental data organization.
         """
-        msp_path: Path
+        cid_msp_path: Path
+        ead_msp_path: Path
         output_plot_path: Path
         
         # Column names in the MSP dataframe
@@ -39,7 +43,7 @@ def _(Path, dataclass):
         ion_mode_col: str = "ion_mode"
         compound_col: str = "base_inchikey"
         
-        # Labels to search for in fragmentation_col
+        # Labels to assign for fragmentation methods
         cid_label: str = "CID"
         ead_label: str = "EAD"
 
@@ -50,36 +54,46 @@ def _(Path, dataclass):
 def _(ExperimentConfig, hrms_utils, pl):
     def load_and_annotate_data(config: ExperimentConfig) -> pl.DataFrame:
         """
-        Reads MSP, cleans spectra, annotates formulas, and calculates base scores.
+        Reads both MSP files, cleans spectra, and annotates with fragmentation method.
+        
+        Why: Reading separate files allows for independent validation and clearer
+        error messages if one file is missing or malformed.
         """
-        # Why: Fail fast if resource is missing
-        assert config.msp_path.exists(), f"MSP file not found at {config.msp_path}"
+        # Why: Fail fast if resources are missing
+        assert config.cid_msp_path.exists(), f"CID MSP file not found at {config.cid_msp_path}"
+        assert config.ead_msp_path.exists(), f"EAD MSP file not found at {config.ead_msp_path}"
 
-        # 1. Read MSP
-        # Why: Use hrms_utils for standardized parsing
-        df = hrms_utils.formats.read_MSPEC_file(config.msp_path)
+        # Read CID MSP
+        df_cid = hrms_utils.formats.read_MSPEC_file(config.cid_msp_path)
+        df_cid = df_cid.with_columns(
+            pl.lit(config.cid_label).alias(config.fragmentation_col)
+        )
+        
+        # Detect ion mode from CID filename
+        if "POS" in config.cid_msp_path.name.upper():
+            df_cid = df_cid.with_columns(pl.lit("POS").alias(config.ion_mode_col))
+        elif "NEG" in config.cid_msp_path.name.upper():
+            df_cid = df_cid.with_columns(pl.lit("NEG").alias(config.ion_mode_col))
+        else:
+            raise ValueError(f"Ion mode (POS/NEG) not found in CID MSP file name: {config.cid_msp_path.name}")
 
-        # add info about fragmentation method and polarity based on file name
-        if "CID" in config.msp_path.name.upper():
-            df = df.with_columns(
-                pl.lit("CID").alias(config.fragmentation_col)
-            )
-        elif "EAD" in config.msp_path.name.upper():
-            df = df.with_columns(
-                pl.lit("EAD").alias(config.fragmentation_col)
-            )
+        # Read EAD MSP
+        df_ead = hrms_utils.formats.read_MSPEC_file(config.ead_msp_path)
+        df_ead = df_ead.with_columns(
+            pl.lit(config.ead_label).alias(config.fragmentation_col)
+        )
+        
+        # Detect ion mode from EAD filename
+        if "POS" in config.ead_msp_path.name.upper():
+            df_ead = df_ead.with_columns(pl.lit("POS").alias(config.ion_mode_col))
+        elif "NEG" in config.ead_msp_path.name.upper():
+            df_ead = df_ead.with_columns(pl.lit("NEG").alias(config.ion_mode_col))
         else:
-            raise ValueError("Fragmentation method (CID/EAD) not found in MSP file name.")
-        if "POS" in config.msp_path.name.upper():
-            df = df.with_columns(
-                pl.lit("POS").alias(config.ion_mode_col)
-            )
-        elif "NEG" in config.msp_path.name.upper():
-            df = df.with_columns(
-                pl.lit("NEG").alias(config.ion_mode_col)
-            )
-        else:
-            raise ValueError("Ion mode (POS/NEG) not found in MSP file name.")
+            raise ValueError(f"Ion mode (POS/NEG) not found in EAD MSP file name: {config.ead_msp_path.name}")
+
+        # Why: Concatenate both dataframes to create unified dataset for downstream processing
+        df = pl.concat([df_cid, df_ead], how="vertical")
+        
         return df
 
     def get_best_spectra_per_method(
@@ -91,17 +105,16 @@ def _(ExperimentConfig, hrms_utils, pl):
         spectrum per compound and ion mode.
         """
         # Filter for CID and EAD
-        # Why: Use case-insensitive matching for robustness
         df_cid = df.filter(
-            pl.col(config.fragmentation_col).eq("CID")
+            pl.col(config.fragmentation_col).eq(config.cid_label)
         )
         df_ead = df.filter(
-            pl.col(config.fragmentation_col).eq("EAD")
+            pl.col(config.fragmentation_col).eq(config.ead_label)
         )
 
         # Helper to pick best
         def pick_best(d: pl.DataFrame) -> pl.DataFrame:
-            # Sort by score descending, then take first for each group
+            # Why: Sort by score descending to get most informative spectrum first
             return d.sort(by="spectral_information_score", descending=True).group_by(
                 [config.compound_col, config.ion_mode_col]
             ).first()
@@ -115,7 +128,7 @@ def _(ExperimentConfig, hrms_utils, pl):
 
 
 @app.cell
-def _(ExperimentConfig, hrms_utils, pl):
+def _(ExperimentConfig, pl):
     def compute_combined_scores(
         best_cid: pl.DataFrame, 
         best_ead: pl.DataFrame, 
@@ -124,7 +137,6 @@ def _(ExperimentConfig, hrms_utils, pl):
         """
         Joins CID and EAD data, combines fragment formulas, and computes combined score.
         """
-        # Join on compound and ion mode
         # Why: Inner join ensures we only compare compounds that have BOTH methods available
         joined = best_cid.join(
             best_ead,
@@ -132,14 +144,12 @@ def _(ExperimentConfig, hrms_utils, pl):
             suffix="_ead"
         )
 
-        # Columns containing the annotated formulas (list of strings/structs)
-        # Assuming column name is 'fragment_formula_array' based on hrms_utils conventions
+        # Columns containing the annotated formulas
         formula_col = "cleaned_fragment_formulas"
         
-        assert formula_col in joined.columns, f"Column {formula_col} missing from dataframe"
+        assert formula_col in joined.columns, f"Column {formula_col} missing from dataframe. Available columns: {joined.columns}"
 
-        # Combine the lists of formulas
-        # Why: We want the union of unique formulas found in either method to represent the "combined" spectrum
+        # Why: Union of unique formulas from both methods represents combined information
         joined = joined.with_columns(
             combined_formulas=pl.col(formula_col).list.set_union(pl.col(f"{formula_col}_ead"))
         ).drop(formula_col).rename(
@@ -169,21 +179,26 @@ def _(
 ):
     # Execution
     
-    # Update path to your actual MSP file
-    MSP_PATH = Path("/home/analytit_admin/Data/spectral_libs/msp_for_Yonathan/EAD_CID_comparison.msp")
+    # Why: Update paths to point to separate CID and EAD MSP files
+    CID_MSP_PATH = Path("/home/analytit_admin/Data/spectral_libs/msp_for_Yonathan/CID_spectra.msp")
+    EAD_MSP_PATH = Path("/home/analytit_admin/Data/spectral_libs/msp_for_Yonathan/EAD_spectra.msp")
     OUTPUT_PLOT = Path("/home/ser/dev/HRMS_utils/experiments/spectral_information/ead_vs_cid_plot.png")
 
     config = ExperimentConfig(
-        msp_path=MSP_PATH,
+        cid_msp_path=CID_MSP_PATH,
+        ead_msp_path=EAD_MSP_PATH,
         output_plot_path=OUTPUT_PLOT
     )
 
-    # Placeholder check for development if file doesn't exist yet
-    if not config.msp_path.exists():
-        print(f"Skipping execution: {config.msp_path} does not exist.")
+    # Why: Check both files exist before attempting to process
+    if not config.cid_msp_path.exists():
+        print(f"Skipping execution: {config.cid_msp_path} does not exist.")
+        df_final = None
+    elif not config.ead_msp_path.exists():
+        print(f"Skipping execution: {config.ead_msp_path} does not exist.")
         df_final = None
     else:
-        # 1. Load
+        # 1. Load both files
         df_all = load_and_annotate_data(config)
         
         # 2. Select Best
@@ -195,7 +210,7 @@ def _(
         print(f"Processed {df_final.height} compounds with both CID and EAD.")
         print(df_final.select(["base_inchikey", "cid_score", "ead_score", "combined_score"]).head())
 
-    return MSP_PATH, OUTPUT_PLOT, config, df_all, df_final, best_cid, best_ead
+    return CID_MSP_PATH, EAD_MSP_PATH, OUTPUT_PLOT, config, df_all, df_final, best_cid, best_ead
 
 
 @app.cell
