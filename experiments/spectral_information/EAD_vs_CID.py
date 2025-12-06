@@ -13,11 +13,7 @@ def _():
     from pathlib import Path
     
     # Domain imports from hrms_utils
-    import hrms_utils.io
-    import hrms_utils.spectrum
-    import hrms_utils.formula
-    import hrms_utils.information
-
+    import hrms_utils
     return (
         Path,
         dataclass,
@@ -61,20 +57,29 @@ def _(ExperimentConfig, hrms_utils, pl):
 
         # 1. Read MSP
         # Why: Use hrms_utils for standardized parsing
-        df = hrms_utils.io.read_msp(config.msp_path)
+        df = hrms_utils.formats.read_MSPEC_file(config.msp_path)
 
-        # 2. Clean Spectra (noise removal, normalization)
-        df = hrms_utils.spectrum.clean_spectra(df)
-
-        # 3. Annotate Formulas
-        # Why: Information score relies on annotated fragment formulas
-        # Fail fast if precursor formula is missing
-        assert "precursor_formula" in df.columns, "MSP data missing 'precursor_formula' column"
-        df = hrms_utils.formula.annotate_fragments(df)
-
-        # 4. Calculate Spectral Information Score (for individual spectra)
-        df = hrms_utils.information.calculate_spectral_information(df)
-
+        # add info about fragmentation method and polarity based on file name
+        if "CID" in config.msp_path.name.upper():
+            df = df.with_columns(
+                pl.lit("CID").alias(config.fragmentation_col)
+            )
+        elif "EAD" in config.msp_path.name.upper():
+            df = df.with_columns(
+                pl.lit("EAD").alias(config.fragmentation_col)
+            )
+        else:
+            raise ValueError("Fragmentation method (CID/EAD) not found in MSP file name.")
+        if "POS" in config.msp_path.name.upper():
+            df = df.with_columns(
+                pl.lit("POS").alias(config.ion_mode_col)
+            )
+        elif "NEG" in config.msp_path.name.upper():
+            df = df.with_columns(
+                pl.lit("NEG").alias(config.ion_mode_col)
+            )
+        else:
+            raise ValueError("Ion mode (POS/NEG) not found in MSP file name.")
         return df
 
     def get_best_spectra_per_method(
@@ -88,16 +93,16 @@ def _(ExperimentConfig, hrms_utils, pl):
         # Filter for CID and EAD
         # Why: Use case-insensitive matching for robustness
         df_cid = df.filter(
-            pl.col(config.fragmentation_col).str.to_uppercase().str.contains(config.cid_label.upper())
+            pl.col(config.fragmentation_col).eq("CID")
         )
         df_ead = df.filter(
-            pl.col(config.fragmentation_col).str.to_uppercase().str.contains(config.ead_label.upper())
+            pl.col(config.fragmentation_col).eq("EAD")
         )
 
         # Helper to pick best
         def pick_best(d: pl.DataFrame) -> pl.DataFrame:
             # Sort by score descending, then take first for each group
-            return d.sort("spectral_information_score", descending=True).group_by(
+            return d.sort(by="spectral_information_score", descending=True).group_by(
                 [config.compound_col, config.ion_mode_col]
             ).first()
 
