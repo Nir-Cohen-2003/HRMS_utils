@@ -98,6 +98,7 @@ test = {cmd="echo 'All tests passed!'", depends-on = [
     # "test_mol",
     "test_info_score",
     "test_isotopic_pattern",
+    "test_fragmentation_graph",
 
   ]}
 test_core_utils = "pytest tests/hrms_core"
@@ -107,6 +108,7 @@ test_mol = "python tests/rdkit/mol.py"
 test_info_score = "python tests/spectral/test_spectral_information.py"
 test_isotopic_pattern = "pytest tests/hrms_core/test_isotopic_pattern.py"
 test_mzml = "pytest tests/hrms_core/test_mzml_io.py"
+test_fragmentation_graph = {cmd="python tests/formats/test_fragmentation_graph.py",env={ POLARS_VERBOSE= "0" }}
 
 convert_msp = "python scripts/convert_msp.py"
 
