@@ -11,7 +11,6 @@ from polars.plugins import register_plugin_function
 from .._internal import __version__ as __version__ #type: ignore
 from .._internal import NUM_ELEMENTS #type: ignore
 from .._internal import read_mzml_files #type: ignore
-
 if TYPE_CHECKING:
     from .typing import IntoExprColumn
 
@@ -432,7 +431,7 @@ class SpectralUtils:
             kwargs=kwargs,
         )
 
-from .._internal import read_mzml_files as _read_mzml_files
+
 
 def read_mzml(paths: list[str]) -> list[pl.DataFrame]:
     """
@@ -444,5 +443,5 @@ def read_mzml(paths: list[str]) -> list[pl.DataFrame]:
     Returns:
         List of Polars DataFrames, one for each file.
     """
-    return _read_mzml_files(paths)
+    return read_mzml_files(paths)
 

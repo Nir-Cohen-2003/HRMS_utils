@@ -1,6 +1,6 @@
 import marimo
 
-__generated_with = "0.18.2"
+__generated_with = "0.18.3"
 app = marimo.App()
 
 
@@ -14,8 +14,8 @@ def _():
 
     from dataclasses import dataclass
     from pathlib import Path
-    from typing import List, Tuple
-    return List, Path, Tuple, dataclass, np, npt, pl, plt
+    from typing import List, Tuple, Dict
+    return Dict, List, Path, Tuple, dataclass, np, npt, pl, plt
 
 
 @app.cell
@@ -236,6 +236,157 @@ def _(Path, PlotConfig, plot_distributions):
     )
 
     plot_distributions(config)
+    return
+
+
+@app.cell
+def _(Dict, List, Path, Tuple, dataclass, np, npt, pl, plt):
+    @dataclass
+    class MoleculeSpec:
+        """
+        Specification for a single molecule to plot.
+
+        Attributes:
+          name: str - human readable label shown in the legend.
+          base_inchikey: str - base inchikey used to filter spectra.
+          color: str - color code used to draw the line (e.g. '#FF0000').
+        """
+        name: str
+        base_inchikey: str
+        color: str
+
+
+    @dataclass
+    class MoleculePlotConfig:
+        """
+        Configuration for plotting informativity vs collision energy for a set of molecules.
+
+        Attributes:
+          parquet_path: Path - parquet file with at least columns base_inchikey, collision_energy column, and info column.
+          molecules: List[MoleculeSpec] - list of molecules to include.
+          output_path: Path - path to write resulting PNG.
+          collision_energy_column: str - column name containing collision energy (default 'collision_energy_ev').
+          info_column: str - column containing informativity (default 'spectral_information_score').
+          add_title: bool - whether to set per-plot title.
+          marker: str - default marker used at points.
+        """
+        parquet_path: Path
+        molecules: List[MoleculeSpec]
+        output_path: Path
+        collision_energy_column: str = "collision_energy_ev"
+        info_column: str = "spectral_information_score"
+        add_title: bool = True
+        marker: str = "o"
+
+
+    def plot_informativity_vs_collision_energy(
+        config: MoleculePlotConfig,
+    ) -> Dict[str, Tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]]:
+        """
+        Plot informativity (y axis, typically 'spectral_information_score') vs collision energy (x axis in eV)
+        for a list of molecules specified by their base_inchikey. Each molecule's line uses the color
+        defined in its MoleculeSpec. The function preserves the row order from the parquet file while
+        connecting points (so points are not sorted by energy and lines remain contiguous).
+
+        Returns:
+          A dict keyed by molecule name, with tuples (x_array, y_array) of plotted values. This makes the
+          function testable and allows callers to verify the arrays used for plotting.
+
+        Fails fast if:
+          - parquet_path does not exist
+          - required columns are missing
+          - a defined molecule has no matching rows in the file
+        """
+        # Why: fail early on missing resources to avoid silent downstream errors
+        assert config.parquet_path.exists(), f"Expected parquet file at {config.parquet_path} but it does not exist."
+
+        # Only read the necessary columns to keep memory usage low
+        required_cols = {"base_inchikey", config.collision_energy_column, config.info_column,"precursor_type"}
+        # Read as polars DataFrame and fail if columns missing
+        df = pl.read_parquet(config.parquet_path, columns=list(required_cols))
+        missing = required_cols.difference(set(df.columns))
+        assert not missing, (
+            f"File {config.parquet_path} is missing the required columns: {sorted(list(missing))}. "
+            "Required columns are: 'base_inchikey', collision_energy_column, and info_column."
+        )
+
+        # Prepare plot
+        fig, ax = plt.subplots(1, 1, figsize=(8, 5), facecolor="white")
+
+        plotted_data: Dict[str, Tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]] = {}
+
+        for mol in config.molecules:
+            # Why: keep original row order; pl.filter doesn't reorder rows
+            sub = df.filter(pl.col("base_inchikey") == mol.base_inchikey)
+            # Drop rows with missing values; plotting None values leads to broken lines
+            sub = sub.filter(
+                pl.col(config.collision_energy_column).is_not_null() &
+                pl.col(config.info_column).is_not_null(),
+                pl.col("precursor_type").eq("[M+H]+"),
+            ).sort(pl.col(config.collision_energy_column))
+
+            # Fail fast if user selected a molecule that doesn't exist in dataset
+            assert sub.height > 0, (
+                f"No rows found for molecule {mol.name} (base_inchikey {mol.base_inchikey}) in {config.parquet_path}. "
+                f"Check the base_inchikey and confirm column '{config.collision_energy_column}' and '{config.info_column}' exist."
+            )
+
+            x = sub.select(pl.col(config.collision_energy_column).cast(pl.Float64)).to_numpy().ravel()
+            y = sub.select(pl.col(config.info_column).cast(pl.Float64)).to_numpy().ravel()
+
+            # Keep the contiguous line order as in the parquet rows
+            ax.plot(
+                x,
+                y,
+                color=mol.color,
+                marker=config.marker,
+                linewidth=1.5,
+                label=mol.name,
+                linestyle='-',
+            )
+
+            # Save for tests/inspection - we cast explicitly to numpy arrays of floats
+            plotted_data[mol.name] = (x, y)
+
+        ax.set_xlabel("Collision energy (eV)")
+        ax.set_ylabel("Informativity (spectral information score)")
+        ax.grid(alpha=0.25)
+        if config.add_title:
+            ax.set_title("Informativity vs Collision Energy")
+        ax.legend(frameon=False)
+        config.output_path.parent.mkdir(parents=True, exist_ok=True)
+        fig.tight_layout()
+        fig.savefig(str(config.output_path), dpi=400, facecolor="white", transparent=False)
+        plt.close(fig)
+
+        return plotted_data
+
+    molecules = [
+            # MoleculeSpec(name="Amphetamine", base_inchikey="KWTSXDURSIMDCE", color="#FF0000"),   # red
+            MoleculeSpec(name="MDMA", base_inchikey="SHXWCVYOXRDMCX", color="#FF0000"),   # red
+            MoleculeSpec(name="Cocaine", base_inchikey="ZPUCINDJVBIVPJ", color="#0000FF"),       # blue
+            # MoleculeSpec(name="Clonazepam", base_inchikey="DGBIGWXXNGSACT", color="#0000FF"),       # blue
+            MoleculeSpec(name="Fentanyl", base_inchikey="PJMPHNIQZUBGLI", color="#D55E00"),      # orange
+            MoleculeSpec(name="Lidocaine", base_inchikey="NNJVILVZKWQKPM", color="#009E73"),     # green
+
+        ]
+
+
+    cfg = MoleculePlotConfig(
+        parquet_path=Path("/home/analytit_admin/Data/spectral_libs/msp_for_Yonathan/NIST.parquet"),
+        molecules=molecules,
+        output_path=Path("informativity_vs_collision_energy_nist.png"),
+        collision_energy_column="collision_energy_ev",
+        info_column="spectral_information_score",
+        add_title=False,
+        marker='x',
+    )
+
+    plotted = plot_informativity_vs_collision_energy(cfg)
+
+
+
+
     return
 
 

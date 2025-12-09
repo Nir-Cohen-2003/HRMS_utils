@@ -4,7 +4,6 @@ from pathlib import Path
 from time import time
 from dataclasses import dataclass
 from typing import List, Tuple, Dict, TypeVar, cast, Iterable
-from numba import  jit
 from ..formula_annotation.element_table import ELEMENT_INDEX, ELEMENT_MASSES
 from ..hrms_core import *
 
@@ -321,7 +320,7 @@ def annotate_chromatogram_with_formulas(
     """
     # Isotopic pattern deduction
     chromatogram = chromatogram.with_columns(
-        pl.col("Precursor_mz_MSDIAL").mass_decomposition.deduce_isotopic_pattern(
+        pl.col("Precursor_mz_MSDIAL").mass_decomposition.deduce_isotopic_pattern( # type: ignore[missing-attribute]
             ms1_mzs=pl.col("ms1_isotopes_m/z"),
             ms1_intensities=pl.col("ms1_isotopes_intensity"),
             ms1_mass_tolerance_ppm=precursor_mass_accuracy_ppm,

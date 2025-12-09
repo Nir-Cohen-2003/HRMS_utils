@@ -37,4 +37,5 @@ module-name = "hrms_utils._internal"
 # Tell maturin where the main python source is (so it bundles hrms_utils)
 python-source = "src"
 
-
+[tool.ty.src] #thsi project uses pyrefly, but mrimo introduces the ty type checker, which we disable
+exclude = ["src", "scripts", "tests","experiments"]
