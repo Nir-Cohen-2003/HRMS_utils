@@ -49,6 +49,15 @@ def main():
     parser = argparse.ArgumentParser(description="Convert MSP/MSPEC files to Parquet, optionally enrich with PubChem data")
     parser.add_argument("input_path", type=Path, help="File or directory with .msp/.mspec files")
     parser.add_argument("--pubchem", "-p", type=Path, default=None, help="Parquet (or directory partition) with PubChem data (schema includes InChIKey, SMILES, InChI, Formula, monoisotopic_mass, exact_mass)")
+    # New CLI arguments for tolerances and explained intensity thresholds
+    parser.add_argument("--raw-fragment-tolerance-ppm", "-r", type=float, default=10.0,
+                        help="Raw fragment tolerance in ppm used when parsing fragments (default: 10.0)")
+    parser.add_argument("--normalized-fragment-tolerance-ppm", "-n", type=float, default=5.0,
+                        help="Normalized fragment tolerance in ppm used for normalized fragments (default: 5.0)")
+    parser.add_argument("--molecular-ion-tolerance-ppm", "-m", type=float, default=5.0,
+                        help="Molecular ion tolerance in ppm used for precursor matching (default: 5.0)")
+    parser.add_argument("--min-explained-intensity", "-e", type=float, default=0.95,
+                        help="Minimal explained intensity to keep a spectrum (0.0-1.0, default: 0.95)")
     args = parser.parse_args()
 
     input_path = args.input_path.resolve()
@@ -56,6 +65,21 @@ def main():
     pubchem_path = args.pubchem.resolve() if args.pubchem is not None else None
     if pubchem_path is not None:
         assert pubchem_path.exists(), f"Pubchem path does not exist: {pubchem_path}"
+
+    # Validate numeric thresholds
+    raw_fragment_tolerance_ppm = args.raw_fragment_tolerance_ppm
+    normalized_fragment_tolerance_ppm = args.normalized_fragment_tolerance_ppm
+    molecular_ion_tolerance_ppm = args.molecular_ion_tolerance_ppm
+    min_explained_intensity = args.min_explained_intensity
+
+    assert raw_fragment_tolerance_ppm >= 0.0, "raw_fragment_tolerance_ppm must be >= 0.0"
+    assert normalized_fragment_tolerance_ppm >= 0.0, "normalized_fragment_tolerance_ppm must be >= 0.0"
+    assert molecular_ion_tolerance_ppm >= 0.0, "molecular_ion_tolerance_ppm must be >= 0.0"
+    assert 0.0 <= min_explained_intensity <= 1.0, "min_explained_intensity must be between 0.0 and 1.0"
+
+    # Report thresholds being used
+    print(f"Using tolerances (ppm): raw={raw_fragment_tolerance_ppm}, normalized={normalized_fragment_tolerance_ppm}, molecular_ion={molecular_ion_tolerance_ppm}")
+    print(f"Using minimal explained intensity threshold: {min_explained_intensity}")
 
     # Collect all matching files
     mspec_files = collect_mspec_files(input_path)
@@ -68,18 +92,18 @@ def main():
         print(f"Reading {file_path.name}...")
         df = read_MSPEC_file(
             file_path,
-            raw_fragment_tolerance_ppm=10.0,
-            normalized_fragment_tolerance_ppm=5.0,
-            molecular_ion_tolerance_ppm=5.0,
+            raw_fragment_tolerance_ppm=raw_fragment_tolerance_ppm,
+            normalized_fragment_tolerance_ppm=normalized_fragment_tolerance_ppm,
+            molecular_ion_tolerance_ppm=molecular_ion_tolerance_ppm,
             lazy=True
         )
         lazyframes.append(df)
 
     print(f"Concatenating {len(lazyframes)} lazyframes")
-    combined_lf = cast(pl.LazyFrame, pl.concat(lazyframes, how="vertical")) # still LazyFrame
+    combined_lf = cast(pl.LazyFrame, pl.union(lazyframes, how="vertical")) # still LazyFrame
     combined_df = combined_lf.filter(
         pl.col("clean_precursor"),
-        pl.col("explained_intensity") > 0.95,
+        pl.col("explained_intensity") > min_explained_intensity,
         pl.col("is_ESI"),
         pl.col("is_orbitrap")
     ).collect(engine='streaming')  # Collect after filtering in streaming mode

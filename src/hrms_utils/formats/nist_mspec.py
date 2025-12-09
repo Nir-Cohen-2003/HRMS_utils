@@ -88,6 +88,7 @@ def read_MSPEC_file(
             "raw_spectrum_intensity",
             "cleaned_normalized_mz",
             "cleaned_normalized_intensity",
+            "cleaned_fragment_formulas",
             "cleaned_fragment_formulas_str",
             "cleaned_fragment_errors_ppm",
             "explained_intensity",
@@ -152,7 +153,21 @@ def _read_file(file_contents: str):
         pl.col('molecular_formula').map_elements(format_formula_string_to_array,return_dtype=pl.List(pl.Int32)).list.to_array(width=num_elements).alias('molecular_formula_array'),
         pl.col('mz_intensity').list.eval(pl.element().str.split(by=' ').list.get(index=0).cast(pl.Float64)).alias('raw_spectrum_mz'),
         pl.col('mz_intensity').list.eval(pl.element().str.split(by=' ').list.get(index=1).cast(pl.Float64)).alias('raw_spectrum_intensity'),
-        pl.col('precursor_type').str.replace(r'\[(M.*)\][+\\-]?\\d*', r'$1').str.replace('M', pl.col('molecular_formula')).alias('precursor_formula')
+        pl.when( # when we know the precursor type, we can get the precursor formula directly
+            pl.col('precursor_type').is_not_null()
+        ).then(
+            pl.col('precursor_type').str.replace(r'\[(M.*)\][+\\-]?\\d*', r'$1')
+        )
+        .otherwise( # we assume [M+H]+ or [M-H]- based on ionization mode
+            pl.when(
+                pl.col('ion_mode').str.to_uppercase().eq('P')
+                ).then(
+                    pl.lit('M+H')
+                ).otherwise(
+                    pl.lit('M-H')
+                )
+        ).str.replace('M', pl.col('molecular_formula'))
+        .alias('precursor_formula'),
     ).with_columns(
         pl.col('precursor_formula').map_elements(format_formula_string_to_array,return_dtype=pl.List(pl.Int32)).list.to_array(width=num_elements).alias('precursor_formula_array'),
        

@@ -49,7 +49,7 @@ backend = { name = "pixi-build-python", version = "*",channels = [
   "https://prefix.dev/conda-forge",
 ]}
 [package.build.config]
-noarch = true
+noarch = false
 [workspace.build-variants]
 python = ["3.12", "3.13","3.14"]
 [package.build-dependencies]

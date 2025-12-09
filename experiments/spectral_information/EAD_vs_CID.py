@@ -15,7 +15,8 @@ def _():
 
     # Domain imports from hrms_utils
     import hrms_utils
-    return List, Path, Tuple, dataclass, hrms_utils, np, pl, plt
+    from hrms_utils.formats.nist_mspec import read_MSPEC_file
+    return List, Path, Tuple, dataclass, np, pl, plt, read_MSPEC_file
 
 
 @app.cell
@@ -44,7 +45,7 @@ def _(List, Path, dataclass):
 
 
 @app.cell
-def _(ExperimentConfig, List, Tuple, hrms_utils, pl):
+def _(ExperimentConfig, List, Tuple, pl, read_MSPEC_file):
     def load_and_annotate_data(config: ExperimentConfig) -> pl.DataFrame:
         """
         Reads multiple MSP files and annotates each with fragmentation and polarity
@@ -59,7 +60,8 @@ def _(ExperimentConfig, List, Tuple, hrms_utils, pl):
         frames: List[pl.DataFrame] = []
         for p in config.msp_paths:
             assert p.exists(), f"MSP file not found at {p}"
-            df_local = hrms_utils.formats.read_MSPEC_file(p)
+            df_local = read_MSPEC_file(p)
+            print(f"Loaded {df_local.height} spectra from {p.name}")
             fname = p.name.upper()
 
             # Fragmentation detection
@@ -164,15 +166,16 @@ def _(
     # Execution
 
     # Why: Provide explicit MSP paths for each (method, polarity). Update these as needed
-    CID_POS_MSP = Path("/home/analytit_admin/Data/spectral_libs/msp_for_Yonathan/CID_spectra_POS.msp")
-    CID_NEG_MSP = Path("/home/analytit_admin/Data/spectral_libs/msp_for_Yonathan/CID_spectra_NEG.msp")
-    EAD_POS_MSP = Path("/home/analytit_admin/Data/spectral_libs/msp_for_Yonathan/EAD_spectra_POS.msp")
-    EAD_NEG_MSP = Path("/home/analytit_admin/Data/spectral_libs/msp_for_Yonathan/EAD_spectra_NEG.msp")
+    CID_POS_MSP = Path("/home/analytit_admin/Data/spectral_libs/CIeaD_library/Pos CID MSP.msp")
+    CID_NEG_MSP = Path("/home/analytit_admin/Data/spectral_libs/CIeaD_library/Neg CID MSP.msp")
+    EAD_POS_MSP = Path("/home/analytit_admin/Data/spectral_libs/CIeaD_library/Pos EAD MSP.msp")
+    EAD_NEG_MSP = Path("/home/analytit_admin/Data/spectral_libs/CIeaD_library/Neg EAD MSP.msp")
     OUTPUT_PLOT = Path("/home/ser/dev/HRMS_utils/experiments/spectral_information/ead_vs_cid_plot.png")
 
     config = ExperimentConfig(
         msp_paths=[CID_POS_MSP, CID_NEG_MSP, EAD_POS_MSP, EAD_NEG_MSP],
-        output_plot_path=OUTPUT_PLOT
+        output_plot_path=OUTPUT_PLOT,
+        compound_col = "name",
     )
 
     # Validate all files exist before running
@@ -183,15 +186,15 @@ def _(
     else:
         # 1. Load and annotate all MSPs (frag method & polarity)
         df_all = load_and_annotate_data(config)
-
+        print(f"Loaded {df_all.height} total spectra from MSP files.")
         # 2. Select Best per method/polarity/compound (one row each)
         best_cid, best_ead = get_best_spectra_per_method(df_all, config)
-
+        print(f"Selected {best_cid.height} best CID spectra and {best_ead.height} best EAD spectra.")
         # 3. Combine and compute combined scores
         df_final = compute_combined_scores(best_cid, best_ead, config)
-
+    
         print(f"Processed {df_final.height} compounds with both CID and EAD.")
-        print(df_final.select(["base_inchikey", "cid_score", "ead_score", "combined_score"]).head())
+        print(df_final.select(["name", "cid_score", "ead_score", "combined_score"]).head())
     return (df_final,)
 
 

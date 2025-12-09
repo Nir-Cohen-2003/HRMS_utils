@@ -362,18 +362,20 @@ def _(Dict, List, Path, Tuple, dataclass, np, npt, pl, plt):
         return plotted_data
 
     molecules = [
-            # MoleculeSpec(name="Amphetamine", base_inchikey="KWTSXDURSIMDCE", color="#FF0000"),   # red
-            MoleculeSpec(name="MDMA", base_inchikey="SHXWCVYOXRDMCX", color="#FF0000"),   # red
-            MoleculeSpec(name="Cocaine", base_inchikey="ZPUCINDJVBIVPJ", color="#0000FF"),       # blue
-            # MoleculeSpec(name="Clonazepam", base_inchikey="DGBIGWXXNGSACT", color="#0000FF"),       # blue
-            MoleculeSpec(name="Fentanyl", base_inchikey="PJMPHNIQZUBGLI", color="#D55E00"),      # orange
-            MoleculeSpec(name="Lidocaine", base_inchikey="NNJVILVZKWQKPM", color="#009E73"),     # green
+            # MoleculeSpec(name="Amphetamine", base_inchikey="KWTSXDURSIMDCE", color="#FF0000"),  
+            MoleculeSpec(name="Methmphetamine", base_inchikey="MYWUZJCMWCOHBA", color="#FF0000"), 
+            # MoleculeSpec(name="MDMA", base_inchikey="SHXWCVYOXRDMCX", color="#FF0000"), 
+            MoleculeSpec(name="Cocaine", base_inchikey="ZPUCINDJVBIVPJ", color="#0000FF"),
+            # MoleculeSpec(name="Clonazepam", base_inchikey="DGBIGWXXNGSACT", color="#0000FF"),
+            MoleculeSpec(name="Fentanyl", base_inchikey="PJMPHNIQZUBGLI", color="#D55E00"),
+            MoleculeSpec(name="Lidocaine", base_inchikey="NNJVILVZKWQKPM", color="#009E73"),
+            # MoleculeSpec(name="Testosterone", base_inchikey="MUMGGOZAMZWBJJ", color="#009E73"), 
 
         ]
 
 
     cfg = MoleculePlotConfig(
-        parquet_path=Path("/home/analytit_admin/Data/spectral_libs/msp_for_Yonathan/NIST.parquet"),
+        parquet_path=Path("/home/analytit_admin/Data/spectral_libs/NIST_hr_msms/NIST_hr_msms.parquet"),
         molecules=molecules,
         output_path=Path("informativity_vs_collision_energy_nist.png"),
         collision_energy_column="collision_energy_ev",
