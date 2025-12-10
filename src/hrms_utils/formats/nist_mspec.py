@@ -284,28 +284,29 @@ def _annotate_and_filter_metadata(data:T)-> T:
     '''filters out entries with missing or invalid metadata or low resolution spectra'''
     instrument_data_columns= plcs.by_name(['instrument', 'instrument_type',  'ionization'])
 
-    data = cast(T,data.filter(
-       pl.all_horizontal(instrument_data_columns.str.contains(r'(?i)QQ').not_()), # ioniuzation migth incldue instrument type info, and we don't want triple quads since they are low res. sometimes triple quad is also written with only 2 Qs, but nothign else should be havign 2 Qs next to each other
-        
+    # Build mask that only excludes rows explicitly tagged with 'QQ' in any instrument column.
+    # Treat NULL as not matching 'QQ' so missing instrument metadata does not drop the row.
+    qq_mask = pl.any_horizontal(instrument_data_columns.str.contains(r'(?i)QQ').fill_null(False))
+
+    data = cast(T, data.filter(
+       qq_mask.not_()  # keep rows unless one of the instrument columns explicitly includes QQ
     ).with_columns(
-        pl.any_horizontal(instrument_data_columns.str.contains(r'(?i)LC')).alias("is_LC"), # 
+        # Use fill_null(False) so missing values won't produce NULL booleans and won't exclude rows
+        pl.any_horizontal(instrument_data_columns.str.contains(r'(?i)LC').fill_null(False)).alias("is_LC"),
         pl.any_horizontal(
-        instrument_data_columns.str.contains(r'(?i)orbi(?:trap)?|HCD') |
-        instrument_data_columns.str.contains(r'(?i)thermo') |
+            instrument_data_columns.str.contains(r'(?i)orbi(?:trap)?|HCD').fill_null(False) |
+            instrument_data_columns.str.contains(r'(?i)thermo').fill_null(False) |
             (
-                instrument_data_columns.str.contains(r'(?i)FT') &
-                instrument_data_columns.str.contains(r'(?i)ICR').not_() & 
-                instrument_data_columns.str.contains(r'(?i)TOF').not_()
+                instrument_data_columns.str.contains(r'(?i)FT').fill_null(False) &
+                instrument_data_columns.str.contains(r'(?i)ICR').not_().fill_null(True) &
+                instrument_data_columns.str.contains(r'(?i)TOF').not_().fill_null(True)
             )
-
         ).alias("is_orbitrap"),
-        pl.any_horizontal(instrument_data_columns.str.contains(r'(?i)TOF')).alias("is_TOF"),
-        pl.any_horizontal(instrument_data_columns.str.contains(r'(?i)ESI|LC')).alias("is_ESI"), # LC is usually coupled with ESI
+        pl.any_horizontal(instrument_data_columns.str.contains(r'(?i)TOF').fill_null(False)).alias("is_TOF"),
+        pl.any_horizontal(instrument_data_columns.str.contains(r'(?i)ESI|LC').fill_null(False)).alias("is_ESI"), # LC is usually coupled with ESI
     )
     )
     
-    
-
     return data
 
 

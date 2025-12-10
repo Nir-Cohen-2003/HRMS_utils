@@ -1,6 +1,6 @@
 import marimo
 
-__generated_with = "0.18.2"
+__generated_with = "0.18.4"
 app = marimo.App(width="full")
 
 
@@ -269,6 +269,7 @@ def _(List, Optional, Path, Tuple, Union, dataclass, field, np, pl, plt):
             cdf_y = np.array([], dtype=float)
 
         return all_stats, cdf_x, cdf_y
+
     def plot_fpr_vs_info_metrics(
         all_stats: pl.DataFrame,
         cdf_x: np.ndarray,
@@ -335,11 +336,12 @@ def _(List, Optional, Path, Tuple, Union, dataclass, field, np, pl, plt):
         fig.tight_layout()
         fig.savefig(str(config.metrics_output_path), facecolor="white", transparent=False)
         plt.close(fig)
-    # ...existing code...
+
     def plot_matched_avg_info_diff(
         all_stats: pl.DataFrame,
         config: FprVsInfoConfig,
-        show_plot: bool = False
+        show_plot: bool = False,
+        relative: bool = False,
     ) -> None:
         """
         Plot average matched information difference vs Spectral Information score (filtered) and save to file.
@@ -363,7 +365,7 @@ def _(List, Optional, Path, Tuple, Union, dataclass, field, np, pl, plt):
                 avg_matched_y = matched_subset.select("avg_matched_info_diff").to_series().to_numpy()
                 ax_matched.plot(
                     info_x_matched,
-                    avg_matched_y,
+                    avg_matched_y if not relative else avg_matched_y / info_x_matched,
                     linestyle="--",
                     marker="x",
                     label=f"{label} (Threshold: {thresh})",
@@ -677,7 +679,7 @@ def _(
     all_stats, cdf_x, cdf_y = compute_fpr_vs_info_stats(config)
 
     plot_fpr_vs_info_metrics(all_stats, cdf_x, cdf_y, config)
-    plot_matched_avg_info_diff(all_stats, config)
+    plot_matched_avg_info_diff(all_stats, config,relative=True)
     return
 
 

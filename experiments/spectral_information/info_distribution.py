@@ -1,6 +1,6 @@
 import marimo
 
-__generated_with = "0.18.3"
+__generated_with = "0.18.4"
 app = marimo.App()
 
 
@@ -363,13 +363,14 @@ def _(Dict, List, Path, Tuple, dataclass, np, npt, pl, plt):
 
     molecules = [
             # MoleculeSpec(name="Amphetamine", base_inchikey="KWTSXDURSIMDCE", color="#FF0000"),  
-            MoleculeSpec(name="Methmphetamine", base_inchikey="MYWUZJCMWCOHBA", color="#FF0000"), 
+            # MoleculeSpec(name="Methmphetamine", base_inchikey="MYWUZJCMWCOHBA", color="#FF0000"), 
             # MoleculeSpec(name="MDMA", base_inchikey="SHXWCVYOXRDMCX", color="#FF0000"), 
             MoleculeSpec(name="Cocaine", base_inchikey="ZPUCINDJVBIVPJ", color="#0000FF"),
             # MoleculeSpec(name="Clonazepam", base_inchikey="DGBIGWXXNGSACT", color="#0000FF"),
-            MoleculeSpec(name="Fentanyl", base_inchikey="PJMPHNIQZUBGLI", color="#D55E00"),
-            MoleculeSpec(name="Lidocaine", base_inchikey="NNJVILVZKWQKPM", color="#009E73"),
-            # MoleculeSpec(name="Testosterone", base_inchikey="MUMGGOZAMZWBJJ", color="#009E73"), 
+            # MoleculeSpec(name="Fentanyl", base_inchikey="PJMPHNIQZUBGLI", color="#D55E00"),
+            MoleculeSpec(name="Lidocaine", base_inchikey="NNJVILVZKWQKPM", color="#000000ff"),
+            MoleculeSpec(name="Warfarin", base_inchikey="PJVWKTKQMONHTI", color="#FF0000"), 
+
 
         ]
 
@@ -385,7 +386,6 @@ def _(Dict, List, Path, Tuple, dataclass, np, npt, pl, plt):
     )
 
     plotted = plot_informativity_vs_collision_energy(cfg)
-
 
 
 

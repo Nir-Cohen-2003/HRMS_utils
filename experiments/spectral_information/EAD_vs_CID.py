@@ -1,6 +1,6 @@
 import marimo
 
-__generated_with = "0.18.3"
+__generated_with = "0.18.4"
 app = marimo.App()
 
 
@@ -45,7 +45,7 @@ def _(List, Path, dataclass):
 
 
 @app.cell
-def _(ExperimentConfig, List, Tuple, pl, read_MSPEC_file):
+def _(ExperimentConfig, List, pl, read_MSPEC_file):
     def load_and_annotate_data(config: ExperimentConfig) -> pl.DataFrame:
         """
         Reads multiple MSP files and annotates each with fragmentation and polarity
@@ -88,6 +88,12 @@ def _(ExperimentConfig, List, Tuple, pl, read_MSPEC_file):
         df = pl.concat(frames, how="vertical")
         return df
 
+    return (load_and_annotate_data,)
+
+
+@app.cell
+def _(ExperimentConfig, Tuple, pl):
+
     def get_best_spectra_per_method(
         df: pl.DataFrame,
         config: ExperimentConfig
@@ -96,73 +102,23 @@ def _(ExperimentConfig, List, Tuple, pl, read_MSPEC_file):
         Splits data into CID and EAD, then selects the single most informative
         spectrum per compound and ion mode.
         """
+
         df_cid = df.filter(pl.col(config.fragmentation_col).eq(config.cid_label))
         df_ead = df.filter(pl.col(config.fragmentation_col).eq(config.ead_label))
 
-        def pick_best(d: pl.DataFrame) -> pl.DataFrame:
-            # Why: Sort descending to put highest score first then take the first per group
-            return d.sort(by="spectral_information_score", descending=True).group_by(
-                [config.compound_col, config.ion_mode_col]
-            ).first()
 
-        best_cid = pick_best(df_cid)
-        best_ead = pick_best(df_ead)
+        best_cid = df_cid.sort(by="spectral_information_score", descending=True).unique(
+            subset=[config.compound_col, config.ion_mode_col],keep="first"
+        )
+        best_ead = df_ead.sort(by="spectral_information_score", descending=True).unique(
+            subset=[config.compound_col, config.ion_mode_col],keep="first"
+        )
         return best_cid, best_ead
-    return get_best_spectra_per_method, load_and_annotate_data
+    return (get_best_spectra_per_method,)
 
 
 @app.cell
-def _(ExperimentConfig, pl):
-    def compute_combined_scores(
-        best_cid: pl.DataFrame,
-        best_ead: pl.DataFrame,
-        config: ExperimentConfig
-    ) -> pl.DataFrame:
-        """
-        Joins CID and EAD data, combines fragment formulas, and computes combined score.
-        """
-        # Inner join: only keep compounds present in both methods for the same polarity
-        joined = best_cid.join(
-            best_ead,
-            on=[config.compound_col, config.ion_mode_col],
-            suffix="_ead"
-        )
-
-        formula_col = "cleaned_fragment_formulas"
-        # Assert presence of both formula columns prior to union operation
-        assert formula_col in joined.columns and f"{formula_col}_ead" in joined.columns, (
-            f"Both {formula_col} and {formula_col}_ead are required for union. "
-            f"Available: {joined.columns}"
-        )
-
-        # Why: Combine union of unique formulas from both methods
-        joined = joined.with_columns(
-            pl.col(formula_col).list.set_union(pl.col(f"{formula_col}_ead")).alias(formula_col)
-        ).drop(f"{formula_col}_ead")
-
-        # Compute combined spectral score using the combined fragment formulas and a chosen precursor
-        joined = joined.with_columns(
-            pl.struct([
-                pl.col("precursor_formula_array").alias("precursor_formula"),
-                pl.col(formula_col).alias("fragment_formulas"),
-            ]).spectral_info.spectral_info_score(ignore_hydrogens=True).alias("combined_score")
-        ).rename({
-            "spectral_information_score": "cid_score",
-            "spectral_information_score_ead": "ead_score"
-        })
-
-        return joined
-    return (compute_combined_scores,)
-
-
-@app.cell
-def _(
-    ExperimentConfig,
-    Path,
-    compute_combined_scores,
-    get_best_spectra_per_method,
-    load_and_annotate_data,
-):
+def _(ExperimentConfig, Path, load_and_annotate_data):
     # Execution
 
     # Why: Provide explicit MSP paths for each (method, polarity). Update these as needed
@@ -178,24 +134,72 @@ def _(
         compound_col = "name",
     )
 
-    # Validate all files exist before running
-    missing = [str(p) for p in config.msp_paths if not p.exists()]
-    if missing:
-        print("Skipping execution. Missing MSP files:\n" + "\n".join(missing))
-        df_final = None
-    else:
-        # 1. Load and annotate all MSPs (frag method & polarity)
-        df_all = load_and_annotate_data(config)
-        print(f"Loaded {df_all.height} total spectra from MSP files.")
-        # 2. Select Best per method/polarity/compound (one row each)
-        best_cid, best_ead = get_best_spectra_per_method(df_all, config)
-        print(f"Selected {best_cid.height} best CID spectra and {best_ead.height} best EAD spectra.")
-        # 3. Combine and compute combined scores
-        df_final = compute_combined_scores(best_cid, best_ead, config)
-    
-        print(f"Processed {df_final.height} compounds with both CID and EAD.")
-        print(df_final.select(["name", "cid_score", "ead_score", "combined_score"]).head())
-    return (df_final,)
+
+    # 1. Load and annotate all MSPs (frag method & polarity)
+    df_all = load_and_annotate_data(config)
+    print(f"Loaded {df_all.height} total spectra from MSP files.")
+    # 2. Select Best per method/polarity/compound (one row each)
+    return config, df_all
+
+
+@app.cell
+def _(config, df_all, get_best_spectra_per_method):
+    best_cid, best_ead = get_best_spectra_per_method(df_all, config)
+    print(best_cid.schema)
+    print(f"Selected {best_cid.height} best CID spectra and {best_ead.height} best EAD spectra.")
+    return
+
+
+app._unparsable_cell(
+    r"""
+
+    import os
+    os.environ[\"RUST_BACKTRACE\"] = \"full\"
+
+    def compute_combined_scores(
+        best_cid: pl.DataFrame,
+        best_ead: pl.DataFrame,
+        config: ExperimentConfig
+    ) -> pl.DataFrame:
+
+        joined = best_cid.join(
+            best_ead,
+            on=[config.compound_col, config.ion_mode_col],
+            suffix=\"_ead\"
+        )
+
+        formula_col = \"cleaned_fragment_formulas\"
+        # Assert presence of both formula columns prior to union operation
+        assert formula_col in joined.columns and f\"{formula_col}_ead\" in joined.columns, (
+            f\"Both {formula_col} and {formula_col}_ead are required for union. \"
+            f\"Available: {joined.columns}\"
+        )
+
+        # Why: Combine union of unique formulas from both methods
+        joined = joined.with_columns(
+            pl.col(formula_col).list.set_union(pl.col(f\"{formula_col}_ead\")).alias(formula_col)
+        ).drop(f\"{formula_col}_ead\")
+
+        Compute combined spectral score using the combined fragment formulas and a chosen precursor
+        joined = joined.with_columns(
+            pl.struct([
+                pl.col(\"precursor_formula_array\").alias(\"precursor_formula\"),
+                pl.col(formula_col).alias(\"fragment_formulas\"),
+            ]).spectral_info.spectral_info_score(ignore_hydrogens=True).alias(\"combined_score\")
+        ).rename({
+            \"spectral_information_score\": \"cid_score\",
+            \"spectral_information_score_ead\": \"ead_score\"
+        })
+
+        return joined
+    # 3. Combine and compute combined scores
+    df_final = compute_combined_scores(best_cid, best_ead, config)
+
+    print(f\"Processed {df_final.height} compounds with both CID and EAD.\")
+    print(df_final.select([\"name\", \"cid_score\", \"ead_score\", \"combined_score\"]).head())
+    """,
+    name="_"
+)
 
 
 @app.cell
