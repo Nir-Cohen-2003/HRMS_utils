@@ -90,7 +90,7 @@ sqlalchemy = "*"
 [feature.testing.tasks]
 check_all = "pyrefly check ./src/hrms_utils"
 check_nist_mspec = "pyrefly check ./src/hrms_utils/formats/nist_mspec.py"
-
+check_fragmentation_graph = "pyrefly check ./experiments/fragmentation_graph.py"
 test = {cmd="echo 'All tests passed!'", depends-on = [
     "test_core_utils",
     "test_nist_mspec",
