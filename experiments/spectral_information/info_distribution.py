@@ -14,8 +14,8 @@ def _():
 
     from dataclasses import dataclass
     from pathlib import Path
-    from typing import List, Tuple, Dict
-    return Dict, List, Path, Tuple, dataclass, np, npt, pl, plt
+    from typing import List, Tuple, Dict, Optional
+    return Dict, List, Optional, Path, Tuple, dataclass, np, npt, pl, plt
 
 
 @app.cell
@@ -93,6 +93,7 @@ def _(List, Path, Tuple, dataclass, np, npt, pl, plt):
             max_info=pl.col("spectral_information_score").max()
         )
         # Why: Ensure only valid maxima are considered and return as numpy array for plotting via matplotlib.
+
         return grouped.select(pl.col("max_info").cast(pl.Float64)).to_numpy().ravel()
 
     def plot_distributions(config: PlotConfig) -> None:
@@ -386,9 +387,156 @@ def _(Dict, List, Path, Tuple, dataclass, np, npt, pl, plt):
     )
 
     plotted = plot_informativity_vs_collision_energy(cfg)
+    return
 
 
+@app.cell
+def _(Optional, Path, Tuple, dataclass, pl, plt):
+    @dataclass
+    class InformativityVsMassConfig:
+        """
+        Configuration for plotting informativity vs mass for maximum per-molecule spectra.
 
+        Attributes:
+            parquet_path: Path to parquet file containing spectral_information_score, base_inchikey, and mass_column.
+            output_path: Path where the figure will be saved.
+            mass_column: Name of the column containing precursor mass (m/z or exact_mass).
+            mass_bin_width: Width in Dalton used to round masses before aggregation.
+            color: Color for the line and shading (default colorblind-friendly orange).
+            figsize: Figure size as (width, height) tuple.
+        """
+        parquet_path: Path
+        output_path: Path
+        mass_column: str = "precursor_mz"
+        mass_bin_width: float = 1.0
+        max_mass: Optional[float] = None
+        color: str = "#D55E00"  # Colorblind-friendly orange
+        figsize: Tuple[float, float] = (8, 5)
+
+    def compute_molecule_max_info_with_mass(df: pl.DataFrame, mass_column: str) -> pl.DataFrame:
+        """
+        Computes the maximum 'spectral_information_score' and the corresponding mass 
+        for each unique molecule ('base_inchikey').
+
+        Args:
+            df: Input Polars DataFrame containing spectral data.
+            mass_column: Name of the mass column (e.g., 'precursor_mz').
+
+        Returns:
+            A Polars DataFrame with columns 'max_info' (max score) and the mass column.
+        """
+        # Use polars groupby for performance on potentially large dataframes.
+        grouped = df.group_by("base_inchikey").agg(
+            pl.col(mass_column).first().alias("mass"), 
+            max_info=pl.col("spectral_information_score").max(),
+            # Get the mass corresponding to the molecule. Use first() as mass is constant per molecule.
+        )
+        # Ensure only valid maxima are considered and return selected columns.
+        return grouped.select(pl.col("max_info").cast(pl.Float64), pl.col("mass").cast(pl.Float64))
+
+    def plot_informativity_vs_mass(config: InformativityVsMassConfig) -> None:
+        """
+        Plot mean maximum informativity vs binned mass (with ±1 std shading).
+
+        For each unique molecule (base_inchikey), computes the spectrum with maximum informativity,
+        bins these by mass, and plots the mean informativity per mass bin with standard deviation shading.
+
+        Fails fast if:
+            - parquet_path does not exist
+            - required columns are missing
+            - no data remains after aggregation
+        """
+        # Fail early on missing resources
+        assert config.parquet_path.exists(), f"Expected parquet file at {config.parquet_path} but it does not exist."
+        assert config.mass_bin_width > 0, f"mass_bin_width must be > 0, got {config.mass_bin_width}."
+
+        # Read required columns
+        required_cols = ["spectral_information_score", "base_inchikey", config.mass_column]
+        lf = pl.scan_parquet(config.parquet_path).select(required_cols)
+        if config.max_mass is not None:
+            lf = lf.filter(pl.col(config.mass_column) <= config.max_mass)
+
+        df = lf.collect()
+        print(f"Read {df.height} rows from {config.parquet_path}.")
+
+        for col in required_cols:
+            assert col in df.columns, f"File {config.parquet_path} is missing required column '{col}'."
+
+        # Drop null values to ensure accurate aggregation
+        df = df.filter(pl.col("spectral_information_score").is_not_null())
+        assert df.height > 0, f"No non-null 'spectral_information_score' values found in {config.parquet_path}."
+
+        # Compute one row per molecule with the maximum informativity and its corresponding mass
+        max_rows_df = compute_molecule_max_info_with_mass(df, config.mass_column)
+
+        # Create binned mass column: round to nearest multiple of bin_width
+        bin_width = config.mass_bin_width
+        max_binned = max_rows_df.with_columns(
+            ((pl.col("mass") / bin_width).round() * bin_width).alias("mass_bin")
+        )
+
+        # Group by mass_bin and compute mean and std of max_info
+        agg = (
+            max_binned
+            .group_by("mass_bin")
+            .agg(
+                mean_info=pl.col("max_info").mean(),
+                std_info=pl.col("max_info").std(),
+                count=pl.len(),
+            )
+            .sort("mass_bin")
+        )
+
+        # Convert to numpy arrays for plotting
+        mass_bins = agg.get_column("mass_bin").to_numpy()
+        mean_info = agg.get_column("mean_info").to_numpy()
+        std_info = agg.get_column("std_info").to_numpy()
+
+        # Fail fast if no data
+        assert mass_bins.size > 0, "No mass binned data found after aggregation; check input dataframe."
+
+        # Create plot 
+        fig, ax = plt.subplots(1, 1, figsize=config.figsize, facecolor="white")
+
+        # Plot mean line
+        ax.plot(
+            mass_bins,
+            mean_info,
+            color=config.color,
+            marker="o",
+            markersize=3,
+            linewidth=1.5,
+            label="Mean informativity (per-molecule maxima)",
+        )
+
+        # Shading ±1 std around the mean
+        fill_lower = mean_info - std_info
+        fill_upper = mean_info + std_info
+        ax.fill_between(mass_bins, fill_lower, fill_upper, color=config.color, alpha=0.2, label="±1 Standard Deviation")
+
+        ax.set_xlabel(f"Precursor mass [Da]")
+        ax.set_ylabel("Maximal Spectral Informativiness per molecule")
+        # ax.set_title("Maximum Spectral Informativity vs. Precursor Mass")
+        ax.grid(alpha=0.25)
+        ax.legend(frameon=False)
+
+        # Ensure output dir exists and save
+        config.output_path.parent.mkdir(parents=True, exist_ok=True)
+        fig.tight_layout()
+        fig.savefig(str(config.output_path), dpi=400, facecolor="white", transparent=False)
+        plt.close(fig)
+        print(f"Plot successfully saved to {config.output_path}")
+
+    # Example configuration
+    mass_config = InformativityVsMassConfig(
+        parquet_path=Path("/home/analytit_admin/Data/spectral_libs/msp_for_Yonathan/combined_spectral_lib.parquet"),
+        output_path=Path("informativity_vs_mass.png"),
+        mass_column="precursor_mz",
+        mass_bin_width=20.0,
+        max_mass=900.0,
+    )
+
+    plot_informativity_vs_mass(mass_config)
     return
 
 

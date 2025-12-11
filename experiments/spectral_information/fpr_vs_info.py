@@ -13,11 +13,15 @@ def _():
     import hrms_utils
     from pathlib import Path
     from dataclasses import dataclass, field
-    from typing import List, Tuple, Union, Optional
+    from typing import List, Tuple, Union, Optional, Any
+    import numpy.typing as npt
     from rdkit import Chem
     from nvmolkit.fingerprints import MorganFingerprintGenerator
     from nvmolkit.similarity import crossTanimotoSimilarityMemoryConstrained, crossCosineSimilarityMemoryConstrained
     import torch
+    import math
+    import os
+    os.environ["RUST_BACKTRACE"] = "full"
     return (
         Chem,
         List,
@@ -29,6 +33,7 @@ def _():
         crossTanimotoSimilarityMemoryConstrained,
         dataclass,
         field,
+        math,
         np,
         pl,
         plt,
@@ -36,7 +41,7 @@ def _():
 
 
 @app.cell
-def _(List, Path, Union, pl):
+def _(List, Path, Union, math, pl):
     def build_and_write_pairs_parquet(
         parquet_paths: List[Path],
         output_path: Union[str, Path] = "/home/analytit_admin/Data/spectral_libs/all_pairs_with_similarities.parquet",
@@ -69,7 +74,7 @@ def _(List, Path, Union, pl):
         )
 
         # Keep only necessary columns; add idx and nominal_mass to join on
-        lf = lf.select(
+        lf = lf.collect().select(
             [
                 "precursor_type",
                 "precursor_mz",
@@ -88,8 +93,13 @@ def _(List, Path, Union, pl):
         ).with_columns(
             nominal_mass=pl.col("precursor_mz").round(0),
             weighted_spectral_information_score=pl.lit(100.0).mul(pl.col("spectral_information_score")).truediv(
-                pl.col("precursor_formula_array").arr.sum()-pl.col("precursor_formula_array").arr.get(0)),
-        )
+                pl.col("precursor_formula_array").arr.sum()-pl.col("precursor_formula_array").arr.get(0)
+                ),
+            spectral_entropy=(
+                pl.col("cleaned_normalized_intensity") / pl.col("cleaned_normalized_intensity").list.sum()
+                ).list.eval(pl.element().log(base=math.e).mul(pl.element())).list.sum().neg(),
+            num_clean_peaks=pl.col("cleaned_normalized_mz").list.len()
+        ).lazy()
 
         pairs_filtered = lf.join(
             other=lf, on=["nominal_mass", "ion_mode"], suffix="_right"
@@ -175,6 +185,18 @@ def _(List, Optional, Path, Tuple, Union, dataclass, field, np, pl, plt):
         plot_avg_tanimoto_output_path: Optional[Union[str, Path]] = "avg_tanimoto_vs_info.png"
 
         show_molecule_cdf: bool = False
+
+        # Additional bin widths for entropy & peak-count measures; defaults to bin_width if None.
+        entropy_bin_width: Optional[float] = None
+        peaks_bin_width: Optional[float] = None
+        # Optional maximum x-value for entropy or peak number plots (None = no clipping).
+        # Why: small/large tails often create noisy correlations; allow caller to bound the plot/CORR range.
+        max_spectral_entropy: Optional[float] = None
+        max_num_clean_peaks: Optional[float] = None
+
+        # Output paths for entropy/peak plots with Spearman annotations
+        plot_entropy_output_path: Optional[Union[str, Path]] = "fpr_vs_spectral_entropy.png"
+        plot_peaks_output_path: Optional[Union[str, Path]] = "fpr_vs_num_clean_peaks.png"
 
     def compute_fpr_vs_info_stats(
         config: FprVsInfoConfig,
@@ -388,10 +410,273 @@ def _(List, Optional, Path, Tuple, Union, dataclass, field, np, pl, plt):
         if show_plot:
             plt.show()
         plt.close(fig_matched)
+
+    def _rankdata(arr: np.ndarray) -> np.ndarray:
+        """
+        Compute average ranks for ties (equivalent to scipy.stats.rankdata(method='average')).
+        Why: We want a SciPy-free implementation for Spearman correlation.
+        """
+        assert arr.ndim == 1, "rankdata requires a 1D array"
+        n = arr.size
+        if n == 0:
+            return np.array([], dtype=float)
+        # Compute initial ranks (1..n)
+        order = np.argsort(arr, kind='mergesort')
+        ranks = np.empty(n, dtype=float)
+        ranks[order] = np.arange(1, n + 1)
+        # Handle ties: average the ranks of tied values
+        unique_vals, inverse_indices, counts = np.unique(arr, return_inverse=True, return_counts=True)
+        if unique_vals.size == n:
+            return ranks  # all unique
+        # For each unique value, set tied ranks to their mean rank
+        for val_idx, count in enumerate(counts):
+            if count == 1:
+                continue
+            mask = inverse_indices == val_idx
+            ranks[mask] = ranks[mask].mean()
+        return ranks
+
+    def _spearmanrho(x: np.ndarray, y: np.ndarray) -> float:
+        """
+        Compute Spearman rho between two vectors using rank-transformed Pearson correlation.
+        Why: Fast, dependency-free, returns NaN when undefined (e.g., insufficient variability).
+        """
+        assert x.ndim == 1 and y.ndim == 1 and x.size == y.size, "Inputs to spearman must be 1D arrays of equal length."
+        if x.size < 2:
+            return float("nan")
+        rx = _rankdata(x.astype(float))
+        ry = _rankdata(y.astype(float))
+        # Handle constant arrays: Pearson correlation undefined
+        if np.all(rx == rx[0]) or np.all(ry == ry[0]):
+            return float("nan")
+        rho = np.corrcoef(rx, ry)[0, 1]
+        return float(rho)
+    # ...existing code...
+    def compute_spearman_correlations(
+        config: FprVsInfoConfig,
+        pairs_input: Optional[Union[str, Path, pl.DataFrame, pl.LazyFrame]] = None,
+        compute_on_binned: bool = True,
+    ) -> pl.DataFrame:
+        """
+        Compute per-metric Spearman correlations between binned FPR (avg_false_matches) and measures:
+          * Spectral Information Score (config.bin_width)
+          * Spectral Entropy (config.entropy_bin_width or config.bin_width)
+          * Number of Clean Peaks (peaks_bin_width or 1)
+
+        Returns:
+            pl.DataFrame with columns:
+              - metric_name, threshold_used, measure_name, spearman_rho, n_bins_used
+        """
+        # Accept either an explicit pairs_input or default to config.pairs_parquet_path.
+        if pairs_input is None:
+            pairs_input = config.pairs_parquet_path
+
+        # Accept either Path/str (load lazy), or an existing polars DataFrame/LazyFrame
+        if isinstance(pairs_input, (str, Path)):
+            assert Path(pairs_input).exists(), (
+                f"Parquet path does not exist: {pairs_input}; "
+                "ensure compute pipeline or prior cells produced the pairs file."
+            )
+            pairs_sim = pl.scan_parquet(str(pairs_input))
+        elif isinstance(pairs_input, pl.DataFrame):
+            pairs_sim = pairs_input.lazy()
+        elif isinstance(pairs_input, pl.LazyFrame):
+            pairs_sim = pairs_input
+        else:
+            raise AssertionError("pairs_input must be str/Path/pl.DataFrame/pl.LazyFrame")
+
+        info_col = "weighted_spectral_information_score" if config.use_weighted_information_score else "spectral_information_score"
+
+        # Measures (col, label, bin_width)
+        ent_bw = config.entropy_bin_width if config.entropy_bin_width is not None else config.bin_width
+        peaks_bw = config.peaks_bin_width if config.peaks_bin_width is not None else 1.0
+
+        measures = [
+            (info_col, "Spectral Information Score", config.bin_width),
+            ("spectral_entropy", "Spectral Entropy", ent_bw),
+            ("num_clean_peaks", "Number of Clean Peaks", peaks_bw),
+        ]
+
+        results = []
+        for sim_col, thresh, label, color, marker in config.metrics_config:
+            print(f"Computing Spearman correlations for metric {label} (threshold {thresh})")
+            # Create a per-spectrum row with is_false_match flags and measure values
+            base = (
+                pairs_sim.with_columns(is_false_match=(pl.col(sim_col).ge(thresh)).cast(pl.Int64))
+                .with_columns(false_compound_count=pl.col("is_false_match").sum().over("base_inchikey_right", "idx"))
+                .with_columns(false_spectra_count=pl.col("is_false_match").sum().over("idx"))
+                .unique(subset="idx", keep="any")
+            )
+
+            for col_name, measure_label, bw in measures:
+                if compute_on_binned:
+                    # existing binned logic (unchanged)
+                    binned = base.with_columns(
+                        measure_val=pl.col(col_name),
+                        measure_bin_val=(pl.col(col_name) / bw).floor() * bw
+                    ).filter(
+                        pl.col("measure_bin_val").is_not_null()
+                    ).group_by("measure_bin_val").agg(
+                        total_count=pl.len(),
+                        avg_false_matches=pl.col("false_compound_count").mean()
+                    ).sort("measure_bin_val").collect(engine="streaming")
+
+                    # Filter bins with insufficient counts
+                    binned_filtered = binned.filter(pl.col("total_count") > config.min_count_threshold)
+                    if binned_filtered.height < 2:
+                        # not enough bins to compute Spearman
+                        results.append({
+                            "metric_name": sim_col,
+                            "threshold_used": thresh,
+                            "measure_name": measure_label,
+                            "spearman_rho": float("nan"),
+                            "n_bins_used": int(binned_filtered.height),
+                        })
+                        continue
+
+                    bins_x = binned_filtered.get_column("measure_bin_val").to_numpy().astype(float)
+                    avg_y = binned_filtered.get_column("avg_false_matches").to_numpy().astype(float)
+                    rho = _spearmanrho(bins_x, avg_y)
+                    results.append({
+                        "metric_name": sim_col,
+                        "threshold_used": thresh,
+                        "measure_name": measure_label,
+                        "spearman_rho": float(rho),
+                        "n_bins_used": int(binned_filtered.height),
+                    })
+                else:
+                    # Raw (per-spectrum) Spearman computation:
+                    # - Build per-spectrum measure_val and false_compound_count
+                    # - Optionally clip measure range (entropy/peaks)
+                    # - Collect the per-spectrum frame (reduced size), and compute spearman
+                    df_raw = base.with_columns(
+                        measure_val=pl.col(col_name)
+                    ).select(
+                        ["idx", "measure_val", "false_compound_count"]
+                    ).filter(
+                        pl.col("measure_val").is_not_null()
+                    )
+
+                    # Clip to optional max values (same semantics as plotting)
+                    if col_name == "spectral_entropy" and config.max_spectral_entropy is not None:
+                        df_raw = df_raw.filter(pl.col("measure_val") <= float(config.max_spectral_entropy))
+                    if col_name == "num_clean_peaks" and config.max_num_clean_peaks is not None:
+                        df_raw = df_raw.filter(pl.col("measure_val") <= float(config.max_num_clean_peaks))
+
+                    # Collect reduced per-spectrum table for rank calculation:
+                    df_collected = df_raw.collect(engine="streaming")
+                    n_rows = df_collected.height
+                    if n_rows < max(2, config.min_count_threshold):
+                        results.append({
+                            "metric_name": sim_col,
+                            "threshold_used": thresh,
+                            "measure_name": measure_label,
+                            "spearman_rho": float("nan"),
+                            "n_bins_used": int(n_rows),  # not bins; keep concisely named for compatibility
+                        })
+                        continue
+
+                    x = df_collected.get_column("measure_val").to_numpy().astype(float)
+                    y = df_collected.get_column("false_compound_count").to_numpy().astype(float)
+                    rho = _spearmanrho(x, y)
+                    results.append({
+                        "metric_name": sim_col,
+                        "threshold_used": thresh,
+                        "measure_name": measure_label,
+                        "spearman_rho": float(rho),
+                        "n_bins_used": int(n_rows),
+                    })
+
+        return pl.DataFrame(results)
+    # ...existing code...
+    def plot_fpr_vs_measure_with_spearman(
+        pairs_input: Optional[Union[str, Path, pl.DataFrame, pl.LazyFrame]],
+        config: FprVsInfoConfig,
+        measure_col: str,
+        measure_label: str,
+        measure_bin_width: float,
+        spearman_df: Optional[pl.DataFrame] = None,
+        output_path: Optional[Union[str, Path]] = None,
+    ) -> None:
+        """
+        Generic plotter for FPR (average false matches) vs a given per-spectrum measure.
+        Annotates Spearman rho for each metric/threshold if provided via spearman_df.
+
+        Args:
+          - pairs_input: dataset (str/path/DF/lazy)
+          - config: FprVsInfoConfig
+          - measure_col: column name in pairs dataset (e.g., 'spectral_entropy')
+          - measure_label: human-readable label for x axis
+          - measure_bin_width: bin width to group by for plotting
+          - spearman_df: optional precomputed spearman DataFrame (pl.DataFrame)
+          - output_path: optional output figure file path (falls back to config fields if None)
+        """
+        if pairs_input is None:
+            pairs_input = config.pairs_parquet_path
+
+        if isinstance(pairs_input, (str, Path)):
+            assert Path(pairs_input).exists(), f"Parquet path does not exist: {pairs_input}"
+            pairs_sim = pl.scan_parquet(str(pairs_input))
+        elif isinstance(pairs_input, pl.DataFrame):
+            pairs_sim = pairs_input.lazy()
+        elif isinstance(pairs_input, pl.LazyFrame):
+            pairs_sim = pairs_input
+        else:
+            raise AssertionError("pairs_input must be str/Path/pl.DataFrame/pl.LazyFrame")
+
+        # compute aggregated stats for plotting per metric like earlier but for a generic measure
+        fig, ax = plt.subplots(figsize=(10, 6), facecolor="white")
+        for metric_key, thresh, label, color, marker in config.metrics_config:
+            df = (pairs_sim.with_columns(is_false_match=(pl.col(metric_key).ge(thresh)).cast(pl.Int64))
+                  .with_columns(false_compound_count=pl.col("is_false_match").sum().over("base_inchikey_right", "idx"))
+                  .unique(subset="idx", keep="any")
+                  .with_columns(measure_bin_val=(pl.col(measure_col) / measure_bin_width).floor() * measure_bin_width)
+                  .filter(pl.col("measure_bin_val").is_not_null())
+                  .group_by("measure_bin_val").agg(
+                        avg_false_matches=pl.col("false_compound_count").mean(),
+                        total_count=pl.len()
+                    ).sort("measure_bin_val").collect(engine="streaming"))
+
+            # Clip to optional max values for visual consistency and consistent rho calculation.
+            if measure_col == "spectral_entropy" and config.max_spectral_entropy is not None:
+                df = df.filter(pl.col("measure_bin_val") <= float(config.max_spectral_entropy))
+            if measure_col == "num_clean_peaks" and config.max_num_clean_peaks is not None:
+                df = df.filter(pl.col("measure_bin_val") <= float(config.max_num_clean_peaks))
+
+            subset = df.filter(pl.col("total_count") > config.min_count_threshold)
+            if subset.height == 0:
+                print(f"Warning: No data (satisfies count threshold) for {measure_label} with {label} at threshold {thresh}")
+                continue
+
+            x = subset.get_column("measure_bin_val").to_numpy()
+            y = subset.get_column("avg_false_matches").to_numpy()
+            ax.plot(x, y, marker=marker, label=f"{label} (threshold {thresh})", color=color)
+
+        ax.set_xlabel(measure_label)
+        ax.set_ylabel("Average Number of False Matches")
+        ax.grid(True, alpha=0.3)
+        ax.legend(loc="upper right")
+        fig.tight_layout()
+
+        if output_path is None:
+            if measure_col == "spectral_entropy":
+                out = config.plot_entropy_output_path
+            elif measure_col == "num_clean_peaks":
+                out = config.plot_peaks_output_path
+            elif measure_col in ("spectral_information_score", "weighted_spectral_information_score"):
+                out = config.metrics_output_path
+            else:
+                out = f"fpr_vs_{measure_col}.png"
+        else:
+            out = output_path
+        fig.savefig(str(out), facecolor="white", transparent=False)
+        plt.close(fig)
     return (
         FprVsInfoConfig,
         compute_fpr_vs_info_stats,
+        compute_spearman_correlations,
         plot_fpr_vs_info_metrics,
+        plot_fpr_vs_measure_with_spearman,
         plot_matched_avg_info_diff,
     )
 
@@ -649,6 +934,10 @@ def _(FprVsInfoConfig, OUTPUT_PAIRS_PATH):
         pairs_parquet_path=OUTPUT_PAIRS_PATH,
         max_info=3,
         bin_width=0.2,
+        entropy_bin_width=0.5,
+        max_spectral_entropy=5.0,
+        peaks_bin_width=3,
+        max_num_clean_peaks=200,
         metrics_config=[
             ("dotprod_similarity", 0.80, "Dot Product", "C0", "o"),
             ("dotprod_similarity", 0.90, "Dot Product", "C1", "o"),
@@ -684,11 +973,7 @@ def _(
 
 
 @app.cell
-def _(
-    FprVsInfoConfig,
-    OUTPUT_PAIRS_PATH,
-    compute_avg_tanimoto_between_matched_pairs,
-):
+def _(FprVsInfoConfig, OUTPUT_PAIRS_PATH):
     tanimoto_config = FprVsInfoConfig(
         pairs_parquet_path=OUTPUT_PAIRS_PATH,
         max_info=3,
@@ -709,11 +994,82 @@ def _(
         use_weighted_information_score=False,
         show_molecule_cdf=False,
     )
+    return (tanimoto_config,)
+
+
+@app.cell
+def _(compute_avg_tanimoto_between_matched_pairs, tanimoto_config):
+
     avg_tanimoto_df = compute_avg_tanimoto_between_matched_pairs(
         config=tanimoto_config,
         pairs_input=tanimoto_config.pairs_parquet_path,
     )
     avg_tanimoto_df
+    return
+
+
+@app.cell
+def _(mo):
+    mo.md(r"""
+    Computing Spearman correlations for metric Dot Product (threshold 0.8)
+    Computing Spearman correlations for metric Dot Product (threshold 0.9)
+    Spearman correlations:
+    shape: (6, 5)
+    ┌────────────────────┬────────────────┬────────────────────────────┬──────────────┬─────────────┐
+    │ metric_name        ┆ threshold_used ┆ measure_name               ┆ spearman_rho ┆ n_bins_used │
+    │ ---                ┆ ---            ┆ ---                        ┆ ---          ┆ ---         │
+    │ str                ┆ f64            ┆ str                        ┆ f64          ┆ i64         │
+    ╞════════════════════╪════════════════╪════════════════════════════╪══════════════╪═════════════╡
+    │ dotprod_similarity ┆ 0.8            ┆ Spectral Information Score ┆ -0.151778    ┆ 1193386     │
+    │ dotprod_similarity ┆ 0.8            ┆ Spectral Entropy           ┆ -0.14195     ┆ 1192688     │
+    │ dotprod_similarity ┆ 0.8            ┆ Number of Clean Peaks      ┆ -0.133371    ┆ 1182361     │
+    │ dotprod_similarity ┆ 0.9            ┆ Spectral Information Score ┆ -0.149285    ┆ 1193386     │
+    │ dotprod_similarity ┆ 0.9            ┆ Spectral Entropy           ┆ -0.146958    ┆ 1192688     │
+    │ dotprod_similarity ┆ 0.9            ┆ Number of Clean Peaks      ┆ -0.137213    ┆ 1182361     │
+    └────────────────────┴────────────────┴────────────────────────────┴──────────────┴─────────────┘
+    those are the non binned results, which take 10 minuted to calculate
+    """)
+    return
+
+
+@app.cell
+def _(FprVsInfoConfig, OUTPUT_PAIRS_PATH, compute_spearman_correlations):
+    spearman_config = FprVsInfoConfig(
+        pairs_parquet_path=OUTPUT_PAIRS_PATH,
+        max_info=3,
+        bin_width=0.01,
+        entropy_bin_width=0.01,
+        max_spectral_entropy=5.0,
+        peaks_bin_width=1.0,
+        max_num_clean_peaks=200,
+        metrics_config=[
+            ("dotprod_similarity", 0.90, "Dot Product", "C1", "o"),
+        ],
+        metrics_output_path="fpr_vs_info_metrics.png",
+        matched_info_output_path="avg_matched_info_diff.png",
+  
+    )
+    print(compute_spearman_correlations(spearman_config, pairs_input=spearman_config.pairs_parquet_path,compute_on_binned=True))
+    return
+
+
+@app.cell
+def _(
+    compute_spearman_correlations,
+    config,
+    plot_fpr_vs_measure_with_spearman,
+):
+    spearman_df = compute_spearman_correlations(
+        config,
+        pairs_input=config.pairs_parquet_path,
+        compute_on_binned=True,
+    )
+    plot_fpr_vs_measure_with_spearman(config.pairs_parquet_path, config, "spectral_entropy", "Spectral Entropy", config.entropy_bin_width or config.bin_width, spearman_df)
+    # Plot for number of clean peaks
+    plot_fpr_vs_measure_with_spearman(config.pairs_parquet_path, config, "num_clean_peaks", "Number of Clean Peaks", config.peaks_bin_width or 1.0, spearman_df)
+    # Plot for spectral information score (existing behavior annotated with rho)
+    plot_fpr_vs_measure_with_spearman(config.pairs_parquet_path, config, ("weighted_spectral_information_score" if config.use_weighted_information_score else "spectral_information_score"), \
+        ("Weighted Spectral Information Score" if config.use_weighted_information_score else "Spectral Information Score"), config.bin_width, spearman_df, output_path=config.metrics_output_path)
     return
 
 
