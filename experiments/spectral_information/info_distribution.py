@@ -12,10 +12,23 @@ def _():
     import matplotlib.pyplot as plt
     plt.style.use('default')
 
-    from dataclasses import dataclass
+    from dataclasses import dataclass, replace
     from pathlib import Path
-    from typing import List, Tuple, Dict, Optional
-    return Dict, List, Optional, Path, Tuple, dataclass, np, npt, pl, plt
+    from typing import List, Tuple, Dict, Optional, Literal
+    return (
+        Dict,
+        List,
+        Literal,
+        Optional,
+        Path,
+        Tuple,
+        dataclass,
+        np,
+        npt,
+        pl,
+        plt,
+        replace,
+    )
 
 
 @app.cell
@@ -391,134 +404,242 @@ def _(Dict, List, Path, Tuple, dataclass, np, npt, pl, plt):
 
 
 @app.cell
-def _(Optional, Path, Tuple, dataclass, pl, plt):
+def _(
+    Literal,
+    Optional,
+    Path,
+    Tuple,
+    dataclass,
+    pl,
+    plt,
+    replace,
+    x_array,
+    y_array,
+):
     @dataclass
     class InformativityVsMassConfig:
         """
-        Configuration for plotting informativity vs mass for maximum per-molecule spectra.
+        Configuration for plotting informativity vs a chosen x-axis metric for maximum per-molecule spectra.
 
-        Attributes:
-            parquet_path: Path to parquet file containing spectral_information_score, base_inchikey, and mass_column.
-            output_path: Path where the figure will be saved.
-            mass_column: Name of the column containing precursor mass (m/z or exact_mass).
-            mass_bin_width: Width in Dalton used to round masses before aggregation.
-            color: Color for the line and shading (default colorblind-friendly orange).
-            figsize: Figure size as (width, height) tuple.
+        New unified fields:
+          x_bin_width: bin width for chosen x-axis metric (applies to mass or any other metric).
+          x_range: optional (min, max) bounds to apply to the x-axis (applies to the chosen metric).
+          bonds_column is no longer needed; 'bonds' metric uses the precursor_formula_array dot-product.
         """
         parquet_path: Path
         output_path: Path
         mass_column: str = "precursor_mz"
-        mass_bin_width: float = 1.0
-        max_mass: Optional[float] = None
+        x_bin_width: float = 1.0
+        x_range: Optional[Tuple[float, float]] = None
         color: str = "#D55E00"  # Colorblind-friendly orange
         figsize: Tuple[float, float] = (8, 5)
 
-    def compute_molecule_max_info_with_mass(df: pl.DataFrame, mass_column: str) -> pl.DataFrame:
-        """
-        Computes the maximum 'spectral_information_score' and the corresponding mass 
-        for each unique molecule ('base_inchikey').
+        # New plotting options
+        plot_kind: Literal["line", "scatter"] = "line"
+        scatter_marker: str = "o"
+        scatter_alpha: float = 0.8
+        scatter_size: float = 8.0
+        show_mean_line: bool = True
 
-        Args:
-            df: Input Polars DataFrame containing spectral data.
-            mass_column: Name of the mass column (e.g., 'precursor_mz').
+        # New: select x-axis metric
+        x_metric: Literal["mass", "heavy_atoms", "bonds"] = "mass"
+
+        # Why: convenience helper to create a modified copy of the config with fail-fast validation.
+        def copy(self, **changes) -> "InformativityVsMassConfig":
+            """
+            Return a new InformativityVsMassConfig with provided fields overwritten.
+            Fail fast if unknown field names are supplied.
+            """
+            valid_fields = set(self.__dataclass_fields__.keys())
+            unknown = set(changes) - valid_fields
+            assert not unknown, f"Unknown fields for InformativityVsMassConfig.copy(): {sorted(list(unknown))}"
+            return replace(self, **changes)
+
+
+    def compute_molecule_max_info_with_metric(
+        df: pl.DataFrame, metric_expr: pl.Expr, metric_name: str
+    ) -> pl.DataFrame:
+        """
+        Compute, per molecule (base_inchikey), the row with the maximal 'spectral_information_score'
+        and return a DataFrame with the maximal score and the corresponding metric value.
+
+        The metric is computed using a Polars expression (metric_expr) and aliased to metric_name.
+        This keeps all column derivation in Polars expressions and avoids materializing Python loops.
 
         Returns:
-            A Polars DataFrame with columns 'max_info' (max score) and the mass column.
+          pl.DataFrame with columns ['max_info', metric_name] cast to Float64.
+
+        Fail fast if required columns are missing (base_inchikey, spectral_information_score).
         """
-        # Use polars groupby for performance on potentially large dataframes.
-        grouped = df.group_by("base_inchikey").agg(
-            pl.col(mass_column).first().alias("mass"), 
-            max_info=pl.col("spectral_information_score").max(),
-            # Get the mass corresponding to the molecule. Use first() as mass is constant per molecule.
+        required = {"base_inchikey", "spectral_information_score"}
+        missing = required.difference(set(df.columns))
+        assert not missing, f"DataFrame is missing required columns: {sorted(list(missing))}"
+
+        # Compute metric using the provided Polars expression and keep only required columns.
+        df_with_metric = df.with_columns(metric_expr.alias(metric_name))
+
+        # Drop rows with missing score or missing metric value to avoid wrong maxima selection
+        df_sub = df_with_metric.select(["base_inchikey", "spectral_information_score", metric_name]).filter(
+            pl.col("spectral_information_score").is_not_null() & pl.col(metric_name).is_not_null()
         )
-        # Ensure only valid maxima are considered and return selected columns.
-        return grouped.select(pl.col("max_info").cast(pl.Float64), pl.col("mass").cast(pl.Float64))
 
-    def plot_informativity_vs_mass(config: InformativityVsMassConfig) -> None:
+        assert df_sub.height > 0, f"No valid rows found with non-null 'spectral_information_score' and '{metric_name}'."
+
+        # Sort descending by score and keep the first row per base_inchikey -> will be the row with max score
+        best_per_mol = df_sub.sort("spectral_information_score", descending=True).unique(
+            subset=["base_inchikey"], keep="first"
+        )
+
+        return best_per_mol.select(
+            pl.col("spectral_information_score").alias("max_info").cast(pl.Float64),
+            pl.col(metric_name).alias("x_val").cast(pl.Float64),
+        )
+
+    def plot_informativity_vs_metric(config: InformativityVsMassConfig) -> None:
         """
-        Plot mean maximum informativity vs binned mass (with ±1 std shading).
+        Plot either the binned mean ± std line (plot_kind == 'line') or a scatter of per-molecule maxima
+        (plot_kind == 'scatter') for a chosen x-axis metric.
 
-        For each unique molecule (base_inchikey), computes the spectrum with maximum informativity,
-        bins these by mass, and plots the mean informativity per mass bin with standard deviation shading.
-
-        Fails fast if:
-            - parquet_path does not exist
-            - required columns are missing
-            - no data remains after aggregation
+        The plotting bounds and bin width are defined by config.x_range and config.x_bin_width and are
+        applied irrespective of the selected metric.
         """
-        # Fail early on missing resources
+        # Fail early on missing resources and invalid params
         assert config.parquet_path.exists(), f"Expected parquet file at {config.parquet_path} but it does not exist."
-        assert config.mass_bin_width > 0, f"mass_bin_width must be > 0, got {config.mass_bin_width}."
+        assert config.x_bin_width > 0, f"x_bin_width must be > 0, got {config.x_bin_width}."
+        assert config.plot_kind in ("line", "scatter"), "plot_kind must be one of: 'line', 'scatter'"
+        assert config.x_metric in ("mass", "heavy_atoms", "bonds"), "x_metric must be 'mass', 'heavy_atoms' or 'bonds'"
 
-        # Read required columns
+        # Decide which base columns we need depending on metric (fail fast if missing)
         required_cols = ["spectral_information_score", "base_inchikey", config.mass_column]
-        lf = pl.scan_parquet(config.parquet_path).select(required_cols)
-        if config.max_mass is not None:
-            lf = lf.filter(pl.col(config.mass_column) <= config.max_mass)
+        if config.x_metric in ("heavy_atoms", "bonds"):
+            required_cols.append("precursor_formula_array")
 
+        lf = pl.scan_parquet(config.parquet_path).select(required_cols)
         df = lf.collect()
         print(f"Read {df.height} rows from {config.parquet_path}.")
 
         for col in required_cols:
             assert col in df.columns, f"File {config.parquet_path} is missing required column '{col}'."
 
-        # Drop null values to ensure accurate aggregation
+        # Drop null scores
         df = df.filter(pl.col("spectral_information_score").is_not_null())
         assert df.height > 0, f"No non-null 'spectral_information_score' values found in {config.parquet_path}."
 
-        # Compute one row per molecule with the maximum informativity and its corresponding mass
-        max_rows_df = compute_molecule_max_info_with_mass(df, config.mass_column)
+        # Choose metric using match statement; build a Polars expression for metric (metric_expr)
+        match config.x_metric:
+            case "mass":
+                metric_expr = pl.col(config.mass_column).cast(pl.Float64)
+                metric_label = "Precursor mass [Da]"
+            case "heavy_atoms":
+                # Compute (precursor_formula_array - precursor_formula_array.arr.get(0)).arr.sum()
+                assert "precursor_formula_array" in df.columns, (
+                    "Requested x_metric 'heavy_atoms' but 'precursor_formula_array' column is missing."
+                )
+                metric_expr = (
+                    (pl.col("precursor_formula_array").arr.sum() - pl.col("precursor_formula_array").arr.get(0))
+                    .cast(pl.Float64)
+                )
+                metric_label = "Number heavy atoms"
+            case "bonds":
+                # Bonds metric: dot-product against coefficients vector using Polars expressions
+                coeffs = [-0.5, 2.0, 1.5, 1.0, 0.5, 0.5, 1.5, 1.0, 0.5, 0.5, 0.5, 0.5]
+                assert "precursor_formula_array" in df.columns, (
+                    "Requested x_metric 'bonds' but 'precursor_formula_array' column is missing."
+                )
+                # Build expression: sum(arr.get(i) * coeffs[i] for i in range(len(coeffs)))
+                coeff_expr = sum((pl.col("precursor_formula_array").arr.get(i) * coeffs[i]) for i in range(len(coeffs)))
+                metric_expr = coeff_expr.cast(pl.Float64)
+                metric_label = "Bonds metric (dot product)"
 
-        # Create binned mass column: round to nearest multiple of bin_width
-        bin_width = config.mass_bin_width
-        max_binned = max_rows_df.with_columns(
-            ((pl.col("mass") / bin_width).round() * bin_width).alias("mass_bin")
-        )
+        # Compute one row per molecule (the row with max informativity and its x metric)
+        max_rows_df = compute_molecule_max_info_with_metric(df, metric_expr, "x_metric_temp")
 
-        # Group by mass_bin and compute mean and std of max_info
+        # Optionally apply x range bounds to the per-molecule maxima (metric-agnostic)
+        if config.x_range is not None:
+            x_min, x_max = config.x_range
+            max_rows_df = max_rows_df.filter(pl.col("x_val").is_between(x_min, x_max, closed="both"))
+            assert max_rows_df.height > 0, f"No per-molecule maxima remain after applying x_range {config.x_range}."
+
+        # spearman correlation using polars
+        spearman_corr = max_rows_df.select(
+            pl.corr("x_val", "max_info", method="spearman")
+            ).item()
+        print(f"Spearman correlation between {config.x_metric} and max informativity: {spearman_corr:.4f}")
+
+        # Use the unified bin width
+        bin_width = config.x_bin_width
+
+        # For line plots we compute binned means and stds on the per-molecule maxima
+        max_binned = max_rows_df.with_columns(((pl.col("x_val") / bin_width).round() * bin_width).alias("x_bin"))
+
         agg = (
             max_binned
-            .group_by("mass_bin")
+            .group_by("x_bin")
             .agg(
                 mean_info=pl.col("max_info").mean(),
                 std_info=pl.col("max_info").std(),
                 count=pl.len(),
             )
-            .sort("mass_bin")
+            .sort("x_bin")
         )
 
-        # Convert to numpy arrays for plotting
-        mass_bins = agg.get_column("mass_bin").to_numpy()
+        x_bins = agg.get_column("x_bin").to_numpy()
         mean_info = agg.get_column("mean_info").to_numpy()
         std_info = agg.get_column("std_info").to_numpy()
 
-        # Fail fast if no data
-        assert mass_bins.size > 0, "No mass binned data found after aggregation; check input dataframe."
+        # Fail fast if nothing to plot
+        if config.plot_kind == "line":
+            assert x_bins.size > 0, "No x-binned data found after aggregation; check input dataframe and bin width."
+        else:
+            assert x_array.size > 0, "No per-molecule maxima found to plot as scatter."
 
-        # Create plot 
+        # Create plot
         fig, ax = plt.subplots(1, 1, figsize=config.figsize, facecolor="white")
 
-        # Plot mean line
-        ax.plot(
-            mass_bins,
-            mean_info,
-            color=config.color,
-            marker="o",
-            markersize=3,
-            linewidth=1.5,
-            label="Mean informativity (per-molecule maxima)",
-        )
+        if config.plot_kind == "line":
+            ax.plot(
+                x_bins,
+                mean_info,
+                color=config.color,
+                marker="o",
+                markersize=3,
+                linewidth=1.5,
+                label="Mean informativity (per-molecule maxima)",
+            )
+            fill_lower = mean_info - std_info
+            fill_upper = mean_info + std_info
+            ax.fill_between(x_bins, fill_lower, fill_upper, color=config.color, alpha=0.2, label="±1 Standard Deviation")
+        else:
+            ax.scatter(
+                x_array,
+                y_array,
+                s=config.scatter_size,
+                marker=config.scatter_marker,
+                alpha=config.scatter_alpha,
+                color=config.color,
+                label="Per-molecule maxima",
+            )
+            # Optionally overlay mean ± std line computed on bins
+            if config.show_mean_line and x_bins.size > 0:
+                ax.plot(
+                    x_bins,
+                    mean_info,
+                    color=config.color,
+                    linewidth=1.25,
+                    linestyle='-',
+                    alpha=0.9,
+                    label="Binned mean (±1 std)"
+                )
+                ax.fill_between(x_bins, mean_info - std_info, mean_info + std_info, color=config.color, alpha=0.15)
 
-        # Shading ±1 std around the mean
-        fill_lower = mean_info - std_info
-        fill_upper = mean_info + std_info
-        ax.fill_between(mass_bins, fill_lower, fill_upper, color=config.color, alpha=0.2, label="±1 Standard Deviation")
-
-        ax.set_xlabel(f"Precursor mass [Da]")
+        ax.set_xlabel(metric_label)
         ax.set_ylabel("Maximal Spectral Informativiness per molecule")
-        # ax.set_title("Maximum Spectral Informativity vs. Precursor Mass")
         ax.grid(alpha=0.25)
         ax.legend(frameon=False)
+
+        # Apply x limits if provided
+        if config.x_range is not None:
+            ax.set_xlim(config.x_range)
 
         # Ensure output dir exists and save
         config.output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -527,16 +648,32 @@ def _(Optional, Path, Tuple, dataclass, pl, plt):
         plt.close(fig)
         print(f"Plot successfully saved to {config.output_path}")
 
-    # Example configuration
-    mass_config = InformativityVsMassConfig(
+    bonds_config = InformativityVsMassConfig(
         parquet_path=Path("/home/analytit_admin/Data/spectral_libs/msp_for_Yonathan/combined_spectral_lib.parquet"),
-        output_path=Path("informativity_vs_mass.png"),
+        output_path=Path("informativity_vs_bonds.png"),
         mass_column="precursor_mz",
-        mass_bin_width=20.0,
-        max_mass=900.0,
+        x_bin_width=2.0,
+        x_range=(0.0, 90.0),  # Set bounds here if desired, e.g. (0.0, 900.0)
+        plot_kind="line",  # Change to "scatter" to plot individual points
+        x_metric="bonds",  # Choose "mass", "heavy_atoms", or "bonds"
     )
 
-    plot_informativity_vs_mass(mass_config)
+    plot_informativity_vs_metric(bonds_config)
+    mass_config = bonds_config.copy(
+        output_path=Path("informativity_vs_mass.png"),
+        x_metric="mass",
+        x_bin_width=20.0,
+        x_range=(0.0, 850.0),
+    )
+    plot_informativity_vs_metric(mass_config)
+
+    heavy_atoms_config = bonds_config.copy(
+        output_path=Path("informativity_vs_heavy_atoms.png"),
+        x_metric="heavy_atoms",
+        x_bin_width=1.0,
+        x_range=(0.0, 60.0),
+    )
+    plot_informativity_vs_metric(heavy_atoms_config)
     return
 
 
