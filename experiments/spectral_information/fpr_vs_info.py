@@ -12,19 +12,21 @@ def _():
     plt.style.use('default')
     import hrms_utils
     from pathlib import Path
-    from dataclasses import dataclass, field
-    from typing import List, Tuple, Union, Optional, Any
+    from dataclasses import dataclass, field, replace
+    from typing import List, Tuple, Union, Optional, Literal
     import numpy.typing as npt
     from rdkit import Chem
     from nvmolkit.fingerprints import MorganFingerprintGenerator
-    from nvmolkit.similarity import crossTanimotoSimilarityMemoryConstrained, crossCosineSimilarityMemoryConstrained
-    import torch
+    from nvmolkit.similarity import crossTanimotoSimilarityMemoryConstrained
     import math
     import os
+    from scipy.stats import spearmanr
+
     os.environ["RUST_BACKTRACE"] = "full"
     return (
         Chem,
         List,
+        Literal,
         MorganFingerprintGenerator,
         Optional,
         Path,
@@ -37,6 +39,8 @@ def _():
         np,
         pl,
         plt,
+        replace,
+        spearmanr,
     )
 
 
@@ -102,11 +106,17 @@ def _(List, Path, Union, math, pl):
             normalized_spectral_information_score=( 
                 # here we normalize the SIS per molecule+Ion mode, so its a fraction of the max possible SIS for that molecule
                 pl.col("spectral_information_score").truediv(
-                    pl.col("spectral_information_score").max().over(["base_inchikey", "ion_mode"])
+                    pl.col("spectral_information_score").mean().over(["base_inchikey", "ion_mode"])
                     )
             )
         ).with_columns(
             most_informative=pl.col("normalized_spectral_information_score").eq(1.0),
+            normalized_spectral_entropy=pl.col("spectral_entropy").truediv(
+                pl.col("spectral_entropy").mean().over(["base_inchikey", "ion_mode"])
+            ),
+            normalized_num_clean_peaks=pl.col("num_clean_peaks").truediv(
+                pl.col("num_clean_peaks").mean().over(["base_inchikey", "ion_mode"])
+            ),
         ).collect().lazy()
 
         pairs_filtered = lf.join(
@@ -166,6 +176,7 @@ def _(List, Path, Union, math, pl):
 def _(
     Chem,
     List,
+    Literal,
     MorganFingerprintGenerator,
     Optional,
     Path,
@@ -177,16 +188,19 @@ def _(
     np,
     pl,
     plt,
+    replace,
+    spearmanr,
 ):
-    from dataclasses import replace
-    from typing import Literal, Dict
+
 
     MeasureName = Literal[
         "spectral_information_score",
         "weighted_spectral_information_score",
         "normalized_spectral_information_score",
         "spectral_entropy",
+        "normalized_spectral_entropy",
         "num_clean_peaks",
+        "normalized_num_clean_peaks",
     ]
 
     InfoMeasureName = Literal[
@@ -194,6 +208,99 @@ def _(
         "weighted_spectral_information_score",
         "normalized_spectral_information_score",
     ]
+
+    FprYAxisStat = Literal[
+        "avg_false_matches",
+        "fraction_any_false_match",
+    ]
+
+    @dataclass(frozen=True)
+    class SimilarityMetricThreshold:
+        metric_column: str
+        threshold: float
+        plot_label: str
+        plot_color: str = "C0"
+        plot_marker: str = "o"
+
+    @dataclass
+    class FprVsMeasureConfig:
+        pairs_parquet_path: Union[str, Path] = "/home/analytit_admin/Data/spectral_libs/all_pairs_with_similarities.parquet"
+
+        # Unified x-axis configuration used by the plots and raw Spearman computation.
+        x_measure: MeasureName = "spectral_information_score"
+        x_bin_width: float = 0.1
+        x_range: Optional[Tuple[float, float]] = None
+
+        # Why: Sometimes the mean count is dominated by heavy-tail spectra; this option plots a probability instead.
+        y_axis_stat: FprYAxisStat = "avg_false_matches"
+
+        # Matched-info difference configuration (info-only; defaults to x_measure if it is an info measure).
+        measure_difference_measure: Optional[InfoMeasureName] = None
+
+        metrics: List[SimilarityMetricThreshold] = field(
+            default_factory=lambda: [
+                SimilarityMetricThreshold("dotprod_similarity", 0.8, "Dot Product", "C0", "o"),
+                SimilarityMetricThreshold("entropy_similarity", 0.75, "Entropy", "C2", "^"),
+            ]
+        )
+        min_count_threshold: int = 5
+
+        # Output paths
+        fpr_output_path: Union[str, Path] = "fpr_vs_measure.png"
+        matched_info_output_path: Union[str, Path] = "avg_matched_measure_diff.png"
+
+        # Optional plot features
+        plot_show_percentile_band: bool = True  # 10th-90th band
+        plot_only_most_informative: bool = False
+        show_molecule_cdf: bool = False
+        matched_info_relative: bool = False
+
+        def copy(self, **changes) -> "FprVsMeasureConfig":
+            valid_fields = set(self.__dataclass_fields__.keys())
+            unknown = set(changes) - valid_fields
+            assert not unknown, f"Unknown fields for FprVsMeasureConfig.copy(): {sorted(list(unknown))}"
+            return replace(self, **changes)
+
+    @dataclass(frozen=True)
+    class TanimotoMetricThreshold:
+        metric_column: str
+        threshold: float
+        plot_label: str
+        plot_color: str = "C0"
+        plot_marker: str = "o"
+
+    @dataclass
+    class TanimotoVsMeasureConfig:
+        pairs_parquet_path: Union[str, Path]
+
+        x_measure: MeasureName = "spectral_information_score"
+        x_bin_width: float = 0.2
+        x_range: Optional[Tuple[float, float]] = None
+
+        metrics: List[TanimotoMetricThreshold] = field(default_factory=list)
+        min_count_threshold: int = 5
+
+        # Enable either running on all spectra or only the most informative ones.
+        only_most_informative: bool = False
+
+        # SMILES columns
+        left_smiles_col: str = "smiles"
+        right_smiles_col: str = "smiles_right"
+
+        # Fingerprint parameters
+        fp_radius: int = 2
+        fp_size: int = 2048
+        fp_num_threads: int = 0
+
+        # Output: one figure per metric entry; written into this directory.
+        output_dir: Union[str, Path] = "."
+        filename_template: str = "avg_tanimoto_vs_{metric_label}_thr_{threshold}.png"
+
+        def copy(self, **changes) -> "TanimotoVsMeasureConfig":
+            valid_fields = set(self.__dataclass_fields__.keys())
+            unknown = set(changes) - valid_fields
+            assert not unknown, f"Unknown fields for TanimotoVsMeasureConfig.copy(): {sorted(list(unknown))}"
+            return replace(self, **changes)
 
     def _measure_label(measure: MeasureName) -> str:
         # Why: Keep all axis naming in one place so config changes propagate everywhere.
@@ -206,8 +313,12 @@ def _(
                 return "Normalized Spectral Information Score"
             case "spectral_entropy":
                 return "Spectral Entropy"
+            case "normalized_spectral_entropy":
+                return "Normalized Spectral Entropy"
             case "num_clean_peaks":
                 return "Number of Clean Peaks"
+            case "normalized_num_clean_peaks":
+                return "Normalized Number of Clean Peaks"
             case _:
                 raise AssertionError(
                     f"Unknown measure '{measure}'. Supported measures are: "
@@ -227,419 +338,391 @@ def _(
             case _:
                 raise AssertionError(f"No default x_range for measure '{measure}'.")
 
-    def _resolve_x_range(config: "FprVsInfoConfig") -> tuple[float, float]:
-        if config.x_range is not None:
-            x_min, x_max = config.x_range
-            assert x_max >= x_min, f"x_range must satisfy max>=min, got {config.x_range}"
+    def _resolve_x_range(x_measure: MeasureName, x_range: Optional[Tuple[float, float]]) -> tuple[float, float]:
+        if x_range is not None:
+            x_min, x_max = x_range
+            assert x_max >= x_min, f"x_range must satisfy max>=min, got {x_range}"
             return (float(x_min), float(x_max))
-        return _default_x_range(config.x_measure)
+        return _default_x_range(x_measure)
 
-    def _resolve_info_difference_measure(config: "FprVsInfoConfig") -> InfoMeasureName:
+    def _resolve_x_range_for_measure(config: FprVsMeasureConfig, measure: MeasureName) -> tuple[float, float]:
+        # Why: config.x_range semantically applies to the current plotting x_measure; other measures use defaults.
+        if measure == config.x_measure:
+            return _resolve_x_range(config.x_measure, config.x_range)
+        return _resolve_x_range(measure, None)
+
+    def _resolve_measure_difference_measure(config: FprVsMeasureConfig) -> InfoMeasureName:
         # Why: Matched-info-diff is only meaningful for info-based measures; allow override but keep sane default.
-        if config.info_difference_measure is not None:
-            return config.info_difference_measure
+        if config.measure_difference_measure is not None:
+            return config.measure_difference_measure
         match config.x_measure:
             case "spectral_information_score" | "weighted_spectral_information_score" | "normalized_spectral_information_score":
                 return config.x_measure  # type: ignore[return-value]
             case _:
                 return "spectral_information_score"
 
-    @dataclass
-    class FprVsInfoConfig:
-        pairs_parquet_path: Union[str, Path] = "/home/analytit_admin/Data/spectral_libs/all_pairs_with_similarities.parquet"
-
-        # Unified x-axis configuration used by FPR, Tanimoto, and Spearman computations/plots.
-        x_measure: MeasureName = "spectral_information_score"
-        x_bin_width: float = 0.1
-        x_range: Optional[Tuple[float, float]] = None
-
-        # Matched-info difference configuration (info-only; defaults to x_measure if it is an info measure).
-        info_difference_measure: Optional[InfoMeasureName] = None
-
-        # metric_key, threshold, human_label, color, marker
-        metrics_config: List[Tuple[str, float, str, str, str]] = field(
-            default_factory=lambda: [
-                ("dotprod_similarity", 0.8, "Dot Product", "C0", "o"),
-                ("dotprod_similarity", 0.95, "Dot Product", "C1", "o"),
-                ("entropy_similarity", 0.75, "Entropy", "C2", "^"),
-            ]
+    def _scan_pairs_or_fail(parquet_path: Union[str, Path]) -> pl.LazyFrame:
+        parquet_path = Path(parquet_path)
+        assert parquet_path.exists(), (
+            f"Parquet path does not exist: {parquet_path}; "
+            "ensure compute pipeline or prior cells produced the pairs file."
         )
-        min_count_threshold: int = 5
+        return pl.scan_parquet(str(parquet_path))
 
-        # Unified output paths (used by all plots).
-        fpr_output_path: Union[str, Path] = "fpr_vs_measure.png"
-        matched_info_output_path: Union[str, Path] = "avg_matched_info_diff.png"
-        tanimoto_output_path: Optional[Union[str, Path]] = "avg_tanimoto_vs_measure.png"
-
-        # Optional plot features
-        plot_show_std: bool = True
-        plot_only_most_informative: bool = False
-        show_molecule_cdf: bool = False
-
-        # Tanimoto similarity function arguments
-        left_smiles_col: str = "smiles"
-        right_smiles_col: str = "smiles"
-        fp_radius: int = 2
-        fp_size: int = 1024
-        fp_num_threads: int = 0
-
-        # Why: convenience helper to create a modified copy of the config with fail-fast validation.
-        def copy(self, **changes) -> "FprVsInfoConfig":
-            valid_fields = set(self.__dataclass_fields__.keys())
-            unknown = set(changes) - valid_fields
-            assert not unknown, f"Unknown fields for FprVsInfoConfig.copy(): {sorted(list(unknown))}"
-            return replace(self, **changes)
-
-    def compute_fpr_vs_info_stats(
-        config: FprVsInfoConfig,
-        pairs_input: Optional[Union[str, Path, pl.DataFrame, pl.LazyFrame]] = None,
-    ) -> tuple[pl.DataFrame, np.ndarray, np.ndarray]:
-        if pairs_input is None:
-            pairs_input = config.pairs_parquet_path
-
-        if isinstance(pairs_input, (str, Path)):
-            assert Path(pairs_input).exists(), (
-                f"Parquet path does not exist: {pairs_input}; "
-                "ensure compute pipeline or prior cells produced the pairs file."
-            )
-            pairs_sim = pl.scan_parquet(str(pairs_input))
-        elif isinstance(pairs_input, pl.DataFrame):
-            pairs_sim = pairs_input.lazy()
-        elif isinstance(pairs_input, pl.LazyFrame):
-            pairs_sim = pairs_input
-        else:
-            raise AssertionError("pairs_input must be str/Path/pl.DataFrame/pl.LazyFrame")
-
+    def _compute_binned_fpr_stats_for_metric(
+        *,
+        pairs_sim: pl.LazyFrame,
+        config: FprVsMeasureConfig,
+        metric: SimilarityMetricThreshold,
+    ) -> pl.LazyFrame:
         assert config.x_bin_width > 0, f"x_bin_width must be > 0, got {config.x_bin_width}"
-        x_min, x_max = _resolve_x_range(config)
+        x_min, x_max = _resolve_x_range(config.x_measure, config.x_range)
 
-        # Fail fast on required columns before any heavy computation.
         required_cols = [
             "idx",
             "base_inchikey",
             "base_inchikey_right",
+            metric.metric_column,
             config.x_measure,
             "most_informative",
+            f"{config.x_measure}_right",
         ]
-        info_diff_col = _resolve_info_difference_measure(config)
-        required_cols.extend([info_diff_col, f"{info_diff_col}_right"])
-        required_cols = list(dict.fromkeys(required_cols))  # Deduplicate while preserving order
+
         pairs_sim.select(required_cols).limit(1).collect(engine="streaming")
 
         if config.plot_only_most_informative:
             pairs_sim = pairs_sim.filter(pl.col("most_informative"))
 
-        stats = []
-        for sim_col, thresh, label, color, marker in config.metrics_config:
-            print(f"Processing metric: {label} with threshold {thresh}")
+        base_per_spectrum = (
+            pairs_sim.select(["idx", "base_inchikey", config.x_measure])
+            .unique(subset="idx", keep="any")
+        )
 
-            unique_spectra_stats = (
-                pairs_sim.with_columns(is_false_match=(pl.col(sim_col).ge(thresh)).cast(pl.Int64))
-                .with_columns(
-                    false_compound_count=pl.col("is_false_match").sum().over("base_inchikey_right", "idx"),
-                    false_spectra_count=pl.col("is_false_match").sum().over("idx"),
-                    avg_matched_info_diff=(
-                        (pl.col(f"{info_diff_col}_right") - pl.col(f"{info_diff_col}"))
-                        .filter(pl.col("is_false_match").eq(1))
-                        .mean()
-                        .over("idx")
-                    ),
-                )
-                .unique(subset="idx", keep="any")
-                .with_columns(info_bin_val=(pl.col(config.x_measure) / config.x_bin_width).floor() * config.x_bin_width)
-                .filter(
-                    pl.col("info_bin_val").is_not_null(),
-                    pl.col("info_bin_val").ge(float(x_min)),
-                    pl.col("info_bin_val").le(float(x_max)),
-                )
+        matched_per_spectrum = (
+            pairs_sim.filter(pl.col(metric.metric_column).ge(metric.threshold))
+            .group_by("idx")
+            .agg(
+                false_compound_count=pl.col("base_inchikey_right").n_unique(),
+                avg_matched_measure_diff=(
+                    (pl.col(f"{config.x_measure}_right") - pl.col(config.x_measure)).mean()
+                ),
             )
+        )
 
-            res = (
-                unique_spectra_stats.group_by("info_bin_val")
-                .agg(
-                    total_count=pl.len(),
-                    avg_false_matches=pl.col("false_compound_count").mean(),
-                    # Replace std with 10th and 90th percentiles so plots can show distribution tails.
-                    lower_percentile=pl.col("false_compound_count").quantile(0.1).alias("lower_percentile"),
-                    upper_percentile=pl.col("false_compound_count").quantile(0.9).alias("upper_percentile"),
-                    avg_matched_info_diff=pl.col("avg_matched_info_diff").mean(),
-                )
-                .with_columns(
-                    metric_label=pl.lit(label),
-                    metric_name=pl.lit(sim_col),
-                    threshold_used=pl.lit(thresh),
-                    plot_color=pl.lit(color),
-                    plot_marker=pl.lit(marker),
-                )
-                .sort("info_bin_val")
+        per_spectrum = (
+            base_per_spectrum.join(matched_per_spectrum, on="idx", how="left")
+            .with_columns(false_compound_count=pl.col("false_compound_count").fill_null(0))
+            .with_columns(info_bin_val=(pl.col(config.x_measure) / config.x_bin_width).floor() * config.x_bin_width)
+            .filter(
+                pl.col("info_bin_val").is_not_null(),
+                pl.col("info_bin_val").ge(float(x_min)),
+                pl.col("info_bin_val").le(float(x_max)),
             )
-            stats.append(res)
+        )
 
-        all_stats = pl.concat(stats).collect(engine="streaming")
+        return (
+            per_spectrum.group_by("info_bin_val")
+            .agg(
+                total_count=pl.len(),
+                avg_false_matches=pl.col("false_compound_count").mean(),
+                fraction_any_false_match=pl.col("false_compound_count").gt(0).mean(),
+                lower_percentile=pl.col("false_compound_count").quantile(0.1),
+                upper_percentile=pl.col("false_compound_count").quantile(0.9),
+                avg_matched_measure_diff=pl.col("avg_matched_measure_diff").mean(),
+            )
+            .with_columns(
+                metric_label=pl.lit(metric.plot_label),
+                metric_name=pl.lit(metric.metric_column),
+                threshold_used=pl.lit(metric.threshold),
+                plot_color=pl.lit(metric.plot_color),
+                plot_marker=pl.lit(metric.plot_marker),
+            )
+            .sort("info_bin_val")
+        )
 
+    def _compute_molecule_cdf(
+        *,
+        pairs_sim: pl.LazyFrame,
+        config: FprVsMeasureConfig,
+    ) -> tuple[np.ndarray, np.ndarray]:
+        if not config.show_molecule_cdf:
+            return np.array([], dtype=float), np.array([], dtype=float)
+
+        assert config.x_measure in (
+            "spectral_information_score",
+            "weighted_spectral_information_score",
+            "normalized_spectral_information_score",
+        ), (
+            "show_molecule_cdf is only supported for info-based x_measure values; "
+            f"got x_measure={config.x_measure}."
+        )
+
+        x_min, x_max = _resolve_x_range(config.x_measure, config.x_range)
+        cdf_x = np.arange(float(x_min), float(x_max) + float(config.x_bin_width), float(config.x_bin_width))
+
+        if config.plot_only_most_informative:
+            pairs_sim = pairs_sim.filter(pl.col("most_informative"))
+
+        molecule_max_x = (
+            pairs_sim.select(["base_inchikey", config.x_measure])
+            .group_by("base_inchikey")
+            .agg(max_x=pl.col(config.x_measure).max())
+            .collect(engine="streaming")
+        )
+        total_molecules = molecule_max_x.height
+        assert total_molecules > 0, "No molecules available for CDF computation; check input data."
+        cdf_y = np.array([molecule_max_x.filter(pl.col("max_x") >= float(x)).height / total_molecules for x in cdf_x])
+        return cdf_x, cdf_y
+
+    def plot_fpr_vs_measure(config: FprVsMeasureConfig) -> None:
+        pairs_sim = _scan_pairs_or_fail(config.pairs_parquet_path)
+
+        assert config.y_axis_stat in ("avg_false_matches", "fraction_any_false_match"), (
+            "config.y_axis_stat must be one of: avg_false_matches, fraction_any_false_match; "
+            f"got {config.y_axis_stat}."
+        )
+
+        stats_lfs: list[pl.LazyFrame] = []
+        for metric in config.metrics:
+            stats_lfs.append(_compute_binned_fpr_stats_for_metric(pairs_sim=pairs_sim, config=config, metric=metric))
+
+        all_stats = pl.concat(stats_lfs).collect(engine="streaming")
         if config.show_molecule_cdf:
-            assert config.x_measure in (
-                "spectral_information_score",
-                "weighted_spectral_information_score",
-                "normalized_spectral_information_score",
-            ), (
-                "show_molecule_cdf is only supported for info-based x_measure values; "
-                f"got x_measure={config.x_measure}."
-            )
-            molecule_max_x = pairs_sim.group_by("base_inchikey").agg(max_x=pl.col(config.x_measure).max()).collect(engine="streaming")
-            cdf_x = np.arange(float(x_min), float(x_max) + float(config.x_bin_width), float(config.x_bin_width))
-            total_molecules = molecule_max_x.height
-            cdf_y = np.array([molecule_max_x.filter(pl.col("max_x") >= float(x)).height / total_molecules for x in cdf_x])
-        else:
-            cdf_x = np.array([], dtype=float)
-            cdf_y = np.array([], dtype=float)
-
-        return all_stats, cdf_x, cdf_y
-
-    def plot_fpr_vs_info_metrics(
-        all_stats: pl.DataFrame,
-        cdf_x: np.ndarray,
-        cdf_y: np.ndarray,
-        config: FprVsInfoConfig,
-    ) -> None:
-        assert "metric_name" in all_stats.columns, "all_stats missing 'metric_name' column; compute stats first."
+            cdf_x, cdf_y = _compute_molecule_cdf(pairs_sim=pairs_sim, config=config)
 
         fig, ax = plt.subplots(figsize=(10, 6), facecolor="white")
 
-        for metric_key, thresh, label, color, marker in config.metrics_config:
+        if config.y_axis_stat == "avg_false_matches":
+            y_column_name = "avg_false_matches"
+            y_axis_label = "Average Number of False-Matched Compounds"
+            y_is_fraction = False
+        else:
+            y_column_name = "fraction_any_false_match"
+            y_axis_label = "Fraction of Spectra With ≥1 False Match"
+            y_is_fraction = True
+
+        y_max_seen: float = float("nan")
+
+        for metric in config.metrics:
             subset = all_stats.filter(
-                (pl.col("metric_name") == metric_key) &
-                (pl.col("threshold_used") == thresh) &
+                (pl.col("metric_name") == metric.metric_column) &
+                (pl.col("threshold_used") == metric.threshold) &
                 (pl.col("total_count") > config.min_count_threshold)
             )
             if subset.height == 0:
-                print(f"Warning: No data for {label} at threshold {thresh}")
+                print(f"Warning: No data for {metric.plot_label} at threshold {metric.threshold}")
                 continue
 
             info_x = subset.get_column("info_bin_val").to_numpy()
-            avg_false_y = subset.get_column("avg_false_matches").to_numpy()
+            y_vals = subset.get_column(y_column_name).to_numpy()
 
-            # Spearman computed on binned x then binned y (Polars).
-            rho_val = subset.select(pl.corr("info_bin_val", "avg_false_matches", method="spearman")).item()
-            # Print the correlation for visibility in logs and keep it in the legend label.
-            print(f"Spearman rho for {label} (threshold {thresh}): {np.round(rho_val, 3)}")
-            series_label = f"{label} (threshold {thresh})"
+            if y_vals.size:
+                local_max = float(np.nanmax(y_vals))
+                if np.isfinite(local_max):
+                    # Why: auto-scale based on what we actually plotted (post min_count_threshold filtering).
+                    y_max_seen = local_max if not np.isfinite(y_max_seen) else max(y_max_seen, local_max)
 
-            ax.plot(info_x, avg_false_y, marker=marker, label=series_label, color=color)
+            ax.plot(
+                info_x,
+                y_vals,
+                marker=metric.plot_marker,
+                label=f"{metric.plot_label} (threshold = {metric.threshold})",
+                color=metric.plot_color,
+            )
 
-            # Show percentile boundaries and fill between them (replace earlier std shading).
-            if config.plot_show_std and "lower_percentile" in subset.columns and "upper_percentile" in subset.columns:
+            if (not y_is_fraction) and config.plot_show_percentile_band and "lower_percentile" in subset.columns and "upper_percentile" in subset.columns:
                 lower_y = subset.get_column("lower_percentile").to_numpy()
                 upper_y = subset.get_column("upper_percentile").to_numpy()
-                # Fill between 10th and 90th percentiles (similar visual cue to previous std fill).
-                ax.fill_between(info_x, lower_y, upper_y, color=color, alpha=0.15)
-                # Also draw dashed lines at the percentile boundaries for clarity.
-                ax.plot(info_x, lower_y, linestyle="--", color=color, alpha=0.7)
-                ax.plot(info_x, upper_y, linestyle="--", color=color, alpha=0.7)
+                ax.fill_between(info_x, lower_y, upper_y, color=metric.plot_color, alpha=0.15)
+                ax.plot(info_x, lower_y, linestyle="--", color=metric.plot_color, alpha=0.7)
+                ax.plot(info_x, upper_y, linestyle="--", color=metric.plot_color, alpha=0.7)
 
-        if config.show_molecule_cdf and cdf_x.size and cdf_y.size:
-            ax2 = ax.twinx()
-            ax2.plot(
-                cdf_x,
-                cdf_y,
-                color="black",
-                linestyle="--",
-                linewidth=2,
-                alpha=0.6,
-                label=f"Molecule Coverage (max {_measure_label(config.x_measure)} ≥ X)",
-            )
-            ax2.set_ylabel("Fraction of Molecules")
-            ax2.set_ylim(0, 1.05)
-            lines_1, labels_1 = ax.get_legend_handles_labels()
-            lines_2, labels_2 = ax2.get_legend_handles_labels()
-            ax.legend(lines_1 + lines_2, labels_1 + labels_2, loc="upper right")
+        if np.isfinite(y_max_seen):
+            # Auto-scale the top of the axis to the observed data (+5% headroom).
+            # For fraction mode, allow the top to be smaller than 1.05 (e.g., max=0.2 -> top≈0.21),
+            # but still don't exceed 1.05.
+            y_upper = max(0.05, float(y_max_seen) * 1.05)
+            if y_is_fraction:
+                y_upper = min(1.05, y_upper)
+            ax.set_ylim(0.0, y_upper)
+        else:
+            # No valid plotted y-values; keep sensible default for fraction mode.
+            if y_is_fraction:
+                ax.set_ylim(0.0, 1.05)
+
+        if config.show_molecule_cdf:
+            if cdf_x.size and cdf_y.size:
+                ax2 = ax.twinx()
+                ax2.plot(
+                    cdf_x,
+                    cdf_y,
+                    color="black",
+                    linestyle="--",
+                    linewidth=2,
+                    alpha=0.6,
+                    label=f"Molecule Coverage (max {_measure_label(config.x_measure)} ≥ X)",
+                )
+                ax2.set_ylabel("Fraction of Molecules")
+                ax2.set_ylim(0, 1.05)
+                lines_1, labels_1 = ax.get_legend_handles_labels()
+                lines_2, labels_2 = ax2.get_legend_handles_labels()
+                ax.legend(lines_1 + lines_2, labels_1 + labels_2, loc="upper right")
+            else:
+                print("Warning: CDF data is empty; skipping CDF plot.")
+                ax.legend(loc="upper right")
         else:
             ax.legend(loc="upper right")
 
         ax.set_xlabel(_measure_label(config.x_measure))
-        ax.set_ylabel("Average Number of False Matches")
+        ax.set_ylabel(y_axis_label)
         ax.grid(True, alpha=0.3)
         fig.tight_layout()
         fig.savefig(str(config.fpr_output_path), facecolor="white", transparent=False)
         plt.close(fig)
 
-    def plot_matched_avg_info_diff(
-        all_stats: pl.DataFrame,
-        config: FprVsInfoConfig,
-        show_plot: bool = False,
-        relative: bool = False,
-    ) -> None:
-        assert "avg_matched_info_diff" in all_stats.columns, (
-            "avg_matched_info_diff missing from aggregated results; ensure compute pipeline computed this column"
-        )
+    def plot_avg_matched_measure_diff(config: FprVsMeasureConfig) -> None:
+        pairs_sim = _scan_pairs_or_fail(config.pairs_parquet_path)
 
-        info_diff_col = _resolve_info_difference_measure(config)
-        fig_matched, ax_matched = plt.subplots(figsize=(10, 6), facecolor="white")
+        stats_lfs: list[pl.LazyFrame] = []
+        for metric in config.metrics:
+            stats_lfs.append(_compute_binned_fpr_stats_for_metric(pairs_sim=pairs_sim, config=config, metric=metric))
+        all_stats = pl.concat(stats_lfs).collect(engine="streaming")
 
-        for metric_key, thresh, label, color, marker in config.metrics_config:
+        measure_diff_col = _resolve_measure_difference_measure(config)
+        fig, ax = plt.subplots(figsize=(10, 6), facecolor="white")
+
+        for metric in config.metrics:
             subset = all_stats.filter(
-                (pl.col("metric_name") == metric_key) &
-                (pl.col("threshold_used") == thresh) &
+                (pl.col("metric_name") == metric.metric_column) &
+                (pl.col("threshold_used") == metric.threshold) &
                 (pl.col("total_count") > config.min_count_threshold)
             )
-            matched_subset = subset.filter(pl.col("avg_matched_info_diff").is_not_null())
+            matched_subset = subset.filter(pl.col("avg_matched_measure_diff").is_not_null())
             if matched_subset.height == 0:
-                print(f"Warning: No matched-info data for {label} at threshold {thresh}")
+                print(f"Warning: No matched-info data for {metric.plot_label} at threshold {metric.threshold}")
                 continue
 
             x_vals = matched_subset.get_column("info_bin_val").to_numpy()
-            y_vals = matched_subset.get_column("avg_matched_info_diff").to_numpy()
-            ax_matched.plot(
+            y_vals = matched_subset.get_column("avg_matched_measure_diff").to_numpy()
+            if config.matched_info_relative:
+                # Why: Caller opted into relative normalization; avoid silent divide-by-zero by relying on x-range defaults > 0.
+                y_plot = y_vals / x_vals
+            else:
+                y_plot = y_vals
+
+            ax.plot(
                 x_vals,
-                y_vals if not relative else (y_vals / x_vals),
+                y_plot,
                 linestyle="--",
                 marker="x",
-                label=f"{label} (threshold {thresh})",
-                color=color,
+                label=f"{metric.plot_label} (threshold = {metric.threshold})",
+                color=metric.plot_color,
                 alpha=0.9,
             )
 
-        ax_matched.set_xlabel(_measure_label(config.x_measure))
-        ylabel = f"Average Matched Δ ({_measure_label(info_diff_col)})"
-        ax_matched.set_ylabel(ylabel)
-        ax_matched.legend(loc="upper right")
-        ax_matched.grid(True, alpha=0.3)
-        fig_matched.tight_layout()
-        fig_matched.savefig(str(config.matched_info_output_path), facecolor="white", transparent=False)
-        if show_plot:
-            plt.show()
-        plt.close(fig_matched)
+        ax.set_xlabel(_measure_label(config.x_measure))
+        ax.set_ylabel(f"Average Matched Δ ({_measure_label(measure_diff_col)})")
+        ax.legend(loc="upper right")
+        ax.grid(True, alpha=0.3)
+        fig.tight_layout()
+        fig.savefig(str(config.matched_info_output_path), facecolor="white", transparent=False)
+        plt.close(fig)
 
-    def compute_spearman_correlations(
-        config: FprVsInfoConfig,
-        pairs_input: Optional[Union[str, Path, pl.DataFrame, pl.LazyFrame]] = None,
-        compute_on_binned: bool = True,
-    ) -> pl.DataFrame:
-        if pairs_input is None:
-            pairs_input = config.pairs_parquet_path
+    def compute_raw_spearman_false_matches_vs_measure(config: FprVsMeasureConfig, *, measures: Optional[List[MeasureName]] = None) -> pl.DataFrame:
+        """
+        Raw (non-binned) Spearman between each requested measure and per-spectrum false-compound counts.
 
-        if isinstance(pairs_input, (str, Path)):
-            assert Path(pairs_input).exists(), (
-                f"Parquet path does not exist: {pairs_input}; "
-                "ensure compute pipeline or prior cells produced the pairs file."
-            )
-            pairs_sim = pl.scan_parquet(str(pairs_input))
-        elif isinstance(pairs_input, pl.DataFrame):
-            pairs_sim = pairs_input.lazy()
-        elif isinstance(pairs_input, pl.LazyFrame):
-            pairs_sim = pairs_input
-        else:
-            raise AssertionError("pairs_input must be str/Path/pl.DataFrame/pl.LazyFrame")
+        Notes:
+          - Similarity metrics/thresholds define which pairs count as matches (and thus false positives).
+          - Measures (SIS/entropy/peaks) are the X variables for correlation.
+        """
+        pairs_sim = _scan_pairs_or_fail(config.pairs_parquet_path)
 
-        assert config.x_bin_width > 0, f"x_bin_width must be > 0, got {config.x_bin_width}"
-        x_min, x_max = _resolve_x_range(config)
+        measures_to_use: List[MeasureName] = (
+            measures
+            if measures is not None
+            else [
+                "spectral_information_score",
+                "weighted_spectral_information_score",
+                "normalized_spectral_information_score",
+                "spectral_entropy",
+                "num_clean_peaks",
+            ]
+        )
+        assert len(measures_to_use) > 0, "measures must be non-empty"
 
+        required_cols = ["idx", "base_inchikey_right", "most_informative", *measures_to_use]
+        pairs_sim.select(required_cols).limit(1).collect(engine="streaming")
+
+        # One row per spectrum with all measures attached (avoid scanning per measure).
+        per_spectrum_measures = (
+            pairs_sim.select(["idx", "most_informative", *measures_to_use])
+            .unique(subset="idx", keep="any")
+            .collect(engine="streaming")
+        )
         if config.plot_only_most_informative:
-            pairs_sim = pairs_sim.filter(pl.col("most_informative"))
-
-        measures: list[tuple[str, str, float]] = [
-            (config.x_measure, _measure_label(config.x_measure), config.x_bin_width),
-        ]
+            per_spectrum_measures = per_spectrum_measures.filter(pl.col("most_informative"))
 
         results: list[dict[str, object]] = []
-        for sim_col, thresh, label, color, marker in config.metrics_config:
-            base = (
-                pairs_sim.with_columns(is_false_match=(pl.col(sim_col).ge(thresh)).cast(pl.Int64))
-                .with_columns(false_compound_count=pl.col("is_false_match").sum().over("base_inchikey_right", "idx"))
-                .unique(subset="idx", keep="any")
+        for metric in config.metrics:
+            # Per-spectrum false-positive counts for this similarity metric threshold.
+            pairs_sim.select([metric.metric_column]).limit(1).collect(engine="streaming")
+            matched_counts = (
+                pairs_sim.filter(pl.col(metric.metric_column).ge(metric.threshold))
+                .group_by("idx")
+                .agg(false_compound_count=pl.col("base_inchikey_right").n_unique())
+                .collect(engine="streaming")
             )
 
-            for measure_col, measure_label, bw in measures:
-                if compute_on_binned:
-                    binned = (
-                        base.with_columns(measure_bin_val=(pl.col(measure_col) / bw).floor() * bw)
-                        .filter(pl.col("measure_bin_val").is_not_null())
-                        .filter(pl.col("measure_bin_val").ge(float(x_min)), pl.col("measure_bin_val").le(float(x_max)))
-                        .group_by("measure_bin_val")
-                        .agg(total_count=pl.len(), avg_false_matches=pl.col("false_compound_count").mean())
-                        .filter(pl.col("total_count") > config.min_count_threshold)
-                        .sort("measure_bin_val")
-                        .collect(engine="streaming")
-                    )
+            per_spectrum = (
+                per_spectrum_measures.join(matched_counts, on="idx", how="left")
+                .with_columns(false_compound_count=pl.col("false_compound_count").fill_null(0))
+            )
 
-                    if binned.height < 2:
-                        results.append({
-                            "metric_name": sim_col,
-                            "threshold_used": float(thresh),
-                            "measure_name": measure_label,
-                            "spearman_rho": float("nan"),
-                            "n_points_used": int(binned.height),
-                        })
-                        continue
+            for measure in measures_to_use:
+                x_min, x_max = _resolve_x_range_for_measure(config, measure)
+                xy = (
+                    per_spectrum.select([pl.col(measure).alias("x"), pl.col("false_compound_count").alias("y")])
+                    .filter(pl.col("x").is_not_null())
+                    .filter(pl.col("x").ge(float(x_min)), pl.col("x").le(float(x_max)))
+                )
 
-                    rho = binned.select(pl.corr("measure_bin_val", "avg_false_matches", method="spearman")).item()
-                    results.append({
-                        "metric_name": sim_col,
-                        "threshold_used": float(thresh),
-                        "measure_name": measure_label,
-                        "spearman_rho": float(rho),
-                        "n_points_used": int(binned.height),
-                    })
+                x = xy.get_column("x").to_numpy()
+                y = xy.get_column("y").to_numpy()
+                if x.size < 3:
+                    rho, p_val = float("nan"), float("nan")
                 else:
-                    df_raw = (
-                        base.select(
-                            pl.col(measure_col).alias("x_val"),
-                            pl.col("false_compound_count").alias("y_val"),
-                        )
-                        .filter(pl.col("x_val").is_not_null())
-                        .filter(pl.col("x_val").ge(float(x_min)), pl.col("x_val").le(float(x_max)))
-                        .collect(engine="streaming")
-                    )
+                    rho, p_val = spearmanr(x, y)
 
-                    if df_raw.height < 2:
-                        results.append({
-                            "metric_name": sim_col,
-                            "threshold_used": float(thresh),
-                            "measure_name": measure_label,
-                            "spearman_rho": float("nan"),
-                            "n_points_used": int(df_raw.height),
-                        })
-                        continue
+                print(
+                    "Raw Spearman (false matches vs measure) - "
+                    f"{metric.plot_label} [col={metric.metric_column}, thr={metric.threshold}] vs "
+                    f"{_measure_label(measure)}: rho={rho:.4g}, p={p_val:.4g}, n={int(x.size)}"
+                )
 
-                    rho = df_raw.select(pl.corr("x_val", "y_val", method="spearman")).item()
-                    results.append({
-                        "metric_name": sim_col,
-                        "threshold_used": float(thresh),
-                        "measure_name": measure_label,
-                        "spearman_rho": float(rho),
-                        "n_points_used": int(df_raw.height),
-                    })
+                results.append({
+                    "metric_column": metric.metric_column,
+                    "threshold": float(metric.threshold),
+                    "plot_label": metric.plot_label,
+                    "measure": measure,
+                    "measure_label": _measure_label(measure),
+                    "spearman_rho": float(rho),
+                    "p_value": float(p_val),
+                    "n_points": int(x.size),
+                })
 
         return pl.DataFrame(results)
 
-    def compute_avg_tanimoto_between_matched_pairs(
-        config: FprVsInfoConfig,
-        pairs_input: Optional[Union[str, Path, pl.DataFrame, pl.LazyFrame]] = None,
-        group_by_cols: Optional[List[str]] = None,
-    ) -> pl.DataFrame:
-        if pairs_input is None:
-            pairs_input = config.pairs_parquet_path
-
-        if isinstance(pairs_input, (str, Path)):
-            assert Path(pairs_input).exists(), (
-                f"Parquet path does not exist: {pairs_input}; "
-                "ensure compute pipeline or prior cells produced the pairs file."
-            )
-            pairs_sim = pl.scan_parquet(str(pairs_input))
-        elif isinstance(pairs_input, pl.DataFrame):
-            pairs_sim = pairs_input.lazy()
-        elif isinstance(pairs_input, pl.LazyFrame):
-            pairs_sim = pairs_input
-        else:
-            raise AssertionError("pairs_input must be str/Path/pl.DataFrame/pl.LazyFrame")
-
+    def plot_avg_tanimoto_vs_measure(config: TanimotoVsMeasureConfig) -> pl.DataFrame:
+        assert len(config.metrics) > 0, "TanimotoVsMeasureConfig.metrics must be non-empty."
+        pairs_sim = _scan_pairs_or_fail(config.pairs_parquet_path)
         assert config.x_bin_width > 0, f"x_bin_width must be > 0, got {config.x_bin_width}"
-        x_min, x_max = _resolve_x_range(config)
+        x_min, x_max = _resolve_x_range(config.x_measure, config.x_range)
 
         # Fail fast on required columns for tanimoto + measure binning.
         pairs_sim.select([config.left_smiles_col, config.right_smiles_col, config.x_measure, "most_informative"]).limit(1).collect(engine="streaming")
 
-        if config.plot_only_most_informative:
+        if config.only_most_informative:
             pairs_sim = pairs_sim.filter(pl.col("most_informative"))
 
         left_unique = pairs_sim.select(config.left_smiles_col).unique().with_row_index("l_idx").collect(engine="streaming")
@@ -678,88 +761,103 @@ def _(
         mapping_df = pairs_indices.select([config.left_smiles_col, config.right_smiles_col]).with_columns(
             tanimoto_similarity=pl.Series(tanimoto_values)
         )
+
         pairs_with_sim = pairs_sim.join(
             mapping_df.lazy(),
             left_on=[config.left_smiles_col, config.right_smiles_col],
             right_on=[config.left_smiles_col, config.right_smiles_col],
         )
 
-        if config.metrics_config is not None:
-            stats = []
-            for metric_key, thresh, label, color, marker in config.metrics_config:
-                res = (
-                    pairs_with_sim.filter(pl.col(metric_key).ge(thresh))
-                    .with_columns(info_bin_val=(pl.col(config.x_measure) / config.x_bin_width).floor() * config.x_bin_width)
-                    .filter(
-                        pl.col("info_bin_val").is_not_null(),
-                        pl.col("info_bin_val").ge(float(x_min)),
-                        pl.col("info_bin_val").le(float(x_max)),
-                    )
-                    .group_by("info_bin_val")
-                    .agg(
-                        avg_tanimoto=pl.col("tanimoto_similarity").mean(),
-                        median_tanimoto=pl.col("tanimoto_similarity").median(),
-                        count=pl.len(),
-                    )
-                    .with_columns(
-                        metric_name=pl.lit(metric_key),
-                        threshold_used=pl.lit(thresh),
-                        metric_label=pl.lit(label),
-                        plot_color=pl.lit(color),
-                        plot_marker=pl.lit(marker),
-                    )
-                    .sort("info_bin_val")
+        output_dir = Path(config.output_dir)
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+        all_stats: list[pl.DataFrame] = []
+        for metric in config.metrics:
+            # Why: Metric label is explicitly provided to avoid relying on column name semantics.
+            pairs_with_sim.select([metric.metric_column]).limit(1).collect(engine="streaming")
+
+            filtered = (
+                pairs_with_sim.filter(pl.col(metric.metric_column).ge(metric.threshold))
+                .with_columns(info_bin_val=(pl.col(config.x_measure) / config.x_bin_width).floor() * config.x_bin_width)
+                .filter(
+                    pl.col("info_bin_val").is_not_null(),
+                    pl.col("info_bin_val").ge(float(x_min)),
+                    pl.col("info_bin_val").le(float(x_max)),
                 )
-                stats.append(res)
+            )
 
-            all_stats = pl.concat(stats).collect(engine="streaming")
+            # Raw Spearman on non-binned values (SciPy)
+            raw_df = (
+                filtered.select([pl.col(config.x_measure).alias("x"), pl.col("tanimoto_similarity").alias("y")])
+                .filter(pl.col("x").is_not_null(), pl.col("y").is_not_null())
+                .collect(engine="streaming")
+            )
+            x = raw_df.get_column("x").to_numpy()
+            y = raw_df.get_column("y").to_numpy()
+            if x.size < 3:
+                rho, p_val = float("nan"), float("nan")
+            else:
+                rho, p_val = spearmanr(x, y)
+            print(
+                "Raw Spearman (tanimoto vs measure) - "
+                f"{metric.plot_label} [col={metric.metric_column}, thr={metric.threshold}]: "
+                f"rho={rho:.4g}, p={p_val:.4g}, n={int(x.size)}"
+            )
 
-            if config.tanimoto_output_path is not None:
-                fig, ax = plt.subplots(figsize=(10, 6), facecolor="white")
-                for metric_key, thresh, label, color, marker in config.metrics_config:
-                    subset = all_stats.filter(
-                        (pl.col("metric_name") == metric_key) &
-                        (pl.col("threshold_used") == thresh) &
-                        (pl.col("count") > config.min_count_threshold)
-                    )
-                    if subset.height > 0:
-                        ax.plot(
-                            subset.get_column("info_bin_val").to_numpy(),
-                            subset.get_column("avg_tanimoto").to_numpy(),
-                            marker=marker,
-                            label=f"{label} (threshold {thresh})",
-                            color=color,
-                        )
+            stats = (
+                filtered.group_by("info_bin_val")
+                .agg(
+                    avg_tanimoto=pl.col("tanimoto_similarity").mean(),
+                    median_tanimoto=pl.col("tanimoto_similarity").median(),
+                    count=pl.len(),
+                )
+                .with_columns(
+                    metric_label=pl.lit(metric.plot_label),
+                    metric_name=pl.lit(metric.metric_column),
+                    threshold_used=pl.lit(metric.threshold),
+                    plot_color=pl.lit(metric.plot_color),
+                    plot_marker=pl.lit(metric.plot_marker),
+                )
+                .sort("info_bin_val")
+                .collect(engine="streaming")
+            )
+            all_stats.append(stats)
 
-                ax.set_xlabel(_measure_label(config.x_measure))
-                ax.set_ylabel("Average Tanimoto Similarity of Matches")
-                ax.legend(loc="lower right")
-                ax.grid(True, alpha=0.3)
-                fig.tight_layout()
-                fig.savefig(str(config.tanimoto_output_path), facecolor="white", transparent=False)
-                plt.close(fig)
+            plot_subset = stats.filter(pl.col("count") > config.min_count_threshold)
+            fig, ax = plt.subplots(figsize=(10, 6), facecolor="white")
+            if plot_subset.height > 0:
+                ax.plot(
+                    plot_subset.get_column("info_bin_val").to_numpy(),
+                    plot_subset.get_column("avg_tanimoto").to_numpy(),
+                    marker=metric.plot_marker,
+                    label=f"{metric.plot_label} (threshold = {metric.threshold})",
+                    color=metric.plot_color,
+                )
+            else:
+                print(f"Warning: No binned tanimoto points above min_count_threshold for {metric.plot_label} (threshold = {metric.threshold})")
 
-            return all_stats
+            ax.set_xlabel(_measure_label(config.x_measure))
+            ax.set_ylabel("Average Tanimoto Similarity of Matches")
+            ax.legend(loc="lower right")
+            ax.grid(True, alpha=0.3)
+            fig.tight_layout()
+            out_name = config.filename_template.format(
+                metric_label=metric.plot_label.replace(" ", "_"),
+                threshold=str(metric.threshold).replace(".", "p"),
+            )
+            fig.savefig(str(output_dir / out_name), facecolor="white", transparent=False)
+            plt.close(fig)
 
-        if group_by_cols:
-            assert isinstance(group_by_cols, list) and len(group_by_cols) > 0, "group_by_cols must be a non-empty list"
-            return pairs_with_sim.group_by(*group_by_cols).agg(
-                avg_tanimoto=pl.col("tanimoto_similarity").mean(),
-                median_tanimoto=pl.col("tanimoto_similarity").median(),
-                count=pl.col("tanimoto_similarity").count(),
-            ).collect(engine="streaming")
-
-        return pairs_with_sim.select(
-            pl.col("tanimoto_similarity").mean().alias("avg_tanimoto"),
-            pl.col("tanimoto_similarity").median().alias("median_tanimoto"),
-            pl.col("tanimoto_similarity").count().alias("count"),
-        ).collect(engine="streaming")
+        return pl.concat(all_stats) if all_stats else pl.DataFrame()
     return (
-        FprVsInfoConfig,
-        compute_fpr_vs_info_stats,
-        compute_spearman_correlations,
-        plot_fpr_vs_info_metrics,
-        plot_matched_avg_info_diff,
+        FprVsMeasureConfig,
+        SimilarityMetricThreshold,
+        TanimotoMetricThreshold,
+        TanimotoVsMeasureConfig,
+        compute_raw_spearman_false_matches_vs_measure,
+        plot_avg_matched_measure_diff,
+        plot_avg_tanimoto_vs_measure,
+        plot_fpr_vs_measure,
     )
 
 
@@ -793,108 +891,159 @@ def _(
 
 
 @app.cell
-def _(FprVsInfoConfig, OUTPUT_PAIRS_PATH):
-
-    config = FprVsInfoConfig(
+def _(FprVsMeasureConfig, OUTPUT_PAIRS_PATH, SimilarityMetricThreshold):
+    fpr_config = FprVsMeasureConfig(
         pairs_parquet_path=OUTPUT_PAIRS_PATH,
         x_measure="spectral_information_score",
         x_bin_width=0.2,
         x_range=(0.0, 3.0),
-        metrics_config=[
-            ("dotprod_similarity", 0.80, "Dot Product", "C0", "o"),
-            ("dotprod_similarity", 0.90, "Dot Product", "C1", "o"),
+        # y_axis_stat="fraction_any_false_match",  # optional: plot fraction with >=1 false match
+        metrics=[
+            SimilarityMetricThreshold("dotprod_similarity", 0.80, "Dot Product", "C0", "o"),
+            SimilarityMetricThreshold("dotprod_similarity", 0.90, "Dot Product", "C1", "o"),
         ],
         fpr_output_path="fpr_vs_spectral_information_score.png",
-        matched_info_output_path="avg_matched_info_diff.png",
-        tanimoto_output_path="avg_tanimoto_vs_measure.png",
+        matched_info_output_path="avg_matched_measure_diff.png",
+        plot_show_percentile_band=False,
+        plot_only_most_informative=False,
+        show_molecule_cdf=False,
+        matched_info_relative=True,
+    )
+    return (fpr_config,)
+
+
+@app.cell
+def _(fpr_config, plot_fpr_vs_measure):
+    info_config = fpr_config.copy(
+        x_measure="spectral_information_score",
+        fpr_output_path="fpr_vs_spectral_information_score.png",
+    )
+    plot_fpr_vs_measure(info_config)
+    return
+
+
+@app.cell
+def _(SimilarityMetricThreshold, fpr_config, plot_fpr_vs_measure):
+    normalized_info_config = fpr_config.copy(
+        x_measure="normalized_spectral_information_score",
+        x_bin_width=0.3,
+        x_range=(0.0, 3.0),
+        y_axis_stat="avg_false_matches",
+        metrics=[
+            SimilarityMetricThreshold("dotprod_similarity", 0.80, "Dot Product", "C0", "o"),
+            SimilarityMetricThreshold("dotprod_similarity", 0.90, "Dot Product", "C1", "o"),
+        ],
+        fpr_output_path="avg_fpr_vs_normalized_spectral_information_score.png",
+    )
+    plot_fpr_vs_measure(normalized_info_config)
+    return
+
+
+@app.cell
+def _(fpr_config, plot_fpr_vs_measure):
+    entropy_config = fpr_config.copy(
+        x_measure="spectral_entropy",
+        x_bin_width=0.5,
+        x_range=(0.0, 5.0),
+        fpr_output_path="fpr_vs_spectral_entropy.png",
+    )
+    plot_fpr_vs_measure(entropy_config)
+    normalized_entropy_config = fpr_config.copy(
+        x_measure="normalized_spectral_entropy",
+        x_bin_width=0.5,
+        x_range=(0.0, 5.0),
+        fpr_output_path="fpr_vs_normalized_spectral_entropy.png",
+    )
+    plot_fpr_vs_measure(normalized_entropy_config)
+    peaks_config = fpr_config.copy(
+        x_measure="num_clean_peaks",
+        x_bin_width=3.0,
+        x_range=(0.0, 200.0),
+        fpr_output_path="fpr_vs_num_clean_peaks.png",
+    )
+    plot_fpr_vs_measure(peaks_config)
+    return
+
+
+@app.cell
+def _(OUTPUT_PAIRS_PATH, TanimotoMetricThreshold, TanimotoVsMeasureConfig):
+    tanimoto_config = TanimotoVsMeasureConfig(
+        pairs_parquet_path=OUTPUT_PAIRS_PATH,
+        x_measure="spectral_information_score",
+        x_bin_width=0.5,
+        x_range=(0.0, 3.0),
+        metrics=[
+            TanimotoMetricThreshold("dotprod_similarity", 0.90, "Dot Product", "C1", "o"),
+            TanimotoMetricThreshold("entropy_similarity", 0.75, "Entropy", "C2", "^"),
+        ],
+        only_most_informative=False,
         left_smiles_col="smiles",
         right_smiles_col="smiles_right",
         fp_radius=2,
         fp_size=2048,
         fp_num_threads=0,
-        plot_show_std=False,
-        plot_only_most_informative=False,
-        show_molecule_cdf=False,
+        output_dir=".",
     )
-    return (config,)
+    return (tanimoto_config,)
 
 
 @app.cell
-def _(compute_fpr_vs_info_stats, config, plot_fpr_vs_info_metrics):
-    # plto the fpr vs the spectral info and the normalized info (only fpr vs info, no avg or tanimoto)
-    info_config = config.copy(
+def _(
+    FprVsMeasureConfig,
+    OUTPUT_PAIRS_PATH,
+    SimilarityMetricThreshold,
+    compute_raw_spearman_false_matches_vs_measure,
+):
+
+    spearman_config = FprVsMeasureConfig(
+        pairs_parquet_path=OUTPUT_PAIRS_PATH,  # or Path("/path/to/all_pairs_with_similarities.parquet")
+        # x_measure/x_bin_width/x_range are not required for the raw Spearman call,
+        # but x_range will still be used for filtering when the measure == x_measure.
         x_measure="spectral_information_score",
-        fpr_output_path="fpr_vs_spectral_information_score.png",
-    )
-    plot_fpr_vs_info_metrics(*compute_fpr_vs_info_stats(info_config), info_config)   
-    return
-
-
-@app.cell
-def _(compute_fpr_vs_info_stats, config, plot_fpr_vs_info_metrics):
-    normalized_info_config = config.copy(
-        x_measure="normalized_spectral_information_score",
-        x_bin_width=0.1,
-        fpr_output_path="fpr_vs_normalized_spectral_information_score.png"
-    )
-    plot_fpr_vs_info_metrics(*compute_fpr_vs_info_stats(normalized_info_config), normalized_info_config)    
-    return
-
-
-@app.cell
-def _(compute_fpr_vs_info_stats, config, plot_fpr_vs_info_metrics):
-    entropy_config = config.copy(x_measure="spectral_entropy", x_bin_width=0.5, x_range=(0.0, 5.0), fpr_output_path="fpr_vs_spectral_entropy.png")
-
-    plot_fpr_vs_info_metrics(*compute_fpr_vs_info_stats(entropy_config), entropy_config)
-
-    peaks_config = config.copy(x_measure="num_clean_peaks", x_bin_width=3.0, x_range=(0.0, 200.0), fpr_output_path="fpr_vs_num_clean_peaks.png")
-    plot_fpr_vs_info_metrics(*compute_fpr_vs_info_stats(peaks_config), peaks_config)
-    return
-
-
-@app.cell
-def _(config):
-    # Why: Use config.copy to change only what matters for this specific plot.
-    tanimoto_config = config.copy(
-        x_bin_width=0.5,
-        metrics_config=[
-            ("dotprod_similarity", 0.90, "Dot Product", "C1", "o"),
+        x_range=(0.0, 3.0),
+        metrics=[
+            # SimilarityMetricThreshold("dotprod_similarity", 0.80, "Dot Product", "C0", "o"),
+            SimilarityMetricThreshold("dotprod_similarity", 0.90, "Dot Product", "C1", "o"),
         ],
-        tanimoto_output_path="avg_tanimoto_vs_measure.png",
+        plot_only_most_informative=False,  # optional: matches the logic in the function
     )
-    return
 
-
-@app.cell
-def _(compute_spearman_correlations, config):
-    spearman_config = config.copy(
-        metrics_config=[("dotprod_similarity", 0.90, "Dot Product", "C1", "o")],
-        x_bin_width=0.01,
+    spearman_df = compute_raw_spearman_false_matches_vs_measure(
+        spearman_config,
+        measures=[
+            "spectral_information_score",
+            "normalized_spectral_information_score",
+            "spectral_entropy",
+            "normalized_spectral_entropy",
+            "num_clean_peaks",
+            "normalized_num_clean_peaks",
+        ],
     )
-    print(compute_spearman_correlations(spearman_config, pairs_input=spearman_config.pairs_parquet_path, compute_on_binned=True))
+
+    print(spearman_df)
     return
 
 
 @app.cell
 def _(
-    compute_fpr_vs_info_stats,
-    compute_spearman_correlations,
-    config,
-    plot_fpr_vs_info_metrics,
-    plot_matched_avg_info_diff,
+    compute_raw_spearman_false_matches_vs_measure,
+    fpr_config,
+    plot_avg_matched_measure_diff,
+    plot_avg_tanimoto_vs_measure,
+    plot_fpr_vs_measure,
+    tanimoto_config,
 ):
-    spearman_df = compute_spearman_correlations(
-        config,
-        pairs_input=config.pairs_parquet_path,
-        compute_on_binned=True,
-    )
+    # Raw (non-binned) Spearman for false matches vs measure (SciPy)
+    spearman_df = compute_raw_spearman_false_matches_vs_measure(fpr_config)
+    print(spearman_df)
 
-    # If you want alternate x-axes, make a config copy and rerun stats/plots with that config.
+    # Plots compute their own stats now
+    plot_fpr_vs_measure(fpr_config)
+    plot_avg_matched_measure_diff(fpr_config)
 
-    all_stats, cdf_x, cdf_y = compute_fpr_vs_info_stats(config)
-    plot_fpr_vs_info_metrics(all_stats, cdf_x, cdf_y, config)
-    plot_matched_avg_info_diff(all_stats, config, relative=True)
-
+    # Tanimoto: computes once, writes one figure per metric entry, and prints raw Spearman (SciPy)
+    tanimoto_stats = plot_avg_tanimoto_vs_measure(tanimoto_config)
+    print(tanimoto_stats.head())
     return
 
 
