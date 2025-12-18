@@ -20,7 +20,7 @@ def _():
     from nvmolkit.similarity import crossTanimotoSimilarityMemoryConstrained
     import math
     import os
-    from scipy.stats import spearmanr
+    from scipy.stats import spearmanr, wilcoxon
 
     os.environ["RUST_BACKTRACE"] = "full"
     return (
@@ -41,6 +41,7 @@ def _():
         plt,
         replace,
         spearmanr,
+        wilcoxon,
     )
 
 
@@ -329,12 +330,18 @@ def _(
     def _default_x_range(measure: MeasureName) -> tuple[float, float]:
         # Why: Provide deterministic defaults while still letting callers override with x_range.
         match measure:
-            case "spectral_information_score" | "weighted_spectral_information_score" | "normalized_spectral_information_score":
+            case "spectral_information_score" | "weighted_spectral_information_score":
                 return (0.0, 3.0)
             case "spectral_entropy":
                 return (0.0, 5.0)
             case "num_clean_peaks":
                 return (0.0, 200.0)
+            case "normalized_spectral_information_score":
+                return (0.0, 5.0)
+            case "normalized_spectral_entropy":
+                return (0.0, 5.0)
+            case "normalized_num_clean_peaks":
+                return (0.0, 5.0)
             case _:
                 raise AssertionError(f"No default x_range for measure '{measure}'.")
 
@@ -361,13 +368,6 @@ def _(
             case _:
                 return "spectral_information_score"
 
-    def _scan_pairs_or_fail(parquet_path: Union[str, Path]) -> pl.LazyFrame:
-        parquet_path = Path(parquet_path)
-        assert parquet_path.exists(), (
-            f"Parquet path does not exist: {parquet_path}; "
-            "ensure compute pipeline or prior cells produced the pairs file."
-        )
-        return pl.scan_parquet(str(parquet_path))
 
     def _compute_binned_fpr_stats_for_metric(
         *,
@@ -475,7 +475,7 @@ def _(
         return cdf_x, cdf_y
 
     def plot_fpr_vs_measure(config: FprVsMeasureConfig) -> None:
-        pairs_sim = _scan_pairs_or_fail(config.pairs_parquet_path)
+        pairs_sim = pl.scan_parquet(config.pairs_parquet_path)
 
         assert config.y_axis_stat in ("avg_false_matches", "fraction_any_false_match"), (
             "config.y_axis_stat must be one of: avg_false_matches, fraction_any_false_match; "
@@ -581,7 +581,7 @@ def _(
         plt.close(fig)
 
     def plot_avg_matched_measure_diff(config: FprVsMeasureConfig) -> None:
-        pairs_sim = _scan_pairs_or_fail(config.pairs_parquet_path)
+        pairs_sim = pl.scan_parquet(config.pairs_parquet_path)
 
         stats_lfs: list[pl.LazyFrame] = []
         for metric in config.metrics:
@@ -636,7 +636,7 @@ def _(
           - Similarity metrics/thresholds define which pairs count as matches (and thus false positives).
           - Measures (SIS/entropy/peaks) are the X variables for correlation.
         """
-        pairs_sim = _scan_pairs_or_fail(config.pairs_parquet_path)
+        pairs_sim = pl.scan_parquet(config.pairs_parquet_path)
 
         measures_to_use: List[MeasureName] = (
             measures
@@ -680,11 +680,9 @@ def _(
             )
 
             for measure in measures_to_use:
-                x_min, x_max = _resolve_x_range_for_measure(config, measure)
                 xy = (
                     per_spectrum.select([pl.col(measure).alias("x"), pl.col("false_compound_count").alias("y")])
                     .filter(pl.col("x").is_not_null())
-                    .filter(pl.col("x").ge(float(x_min)), pl.col("x").le(float(x_max)))
                 )
 
                 x = xy.get_column("x").to_numpy()
@@ -715,7 +713,7 @@ def _(
 
     def plot_avg_tanimoto_vs_measure(config: TanimotoVsMeasureConfig) -> pl.DataFrame:
         assert len(config.metrics) > 0, "TanimotoVsMeasureConfig.metrics must be non-empty."
-        pairs_sim = _scan_pairs_or_fail(config.pairs_parquet_path)
+        pairs_sim = pl.scan_parquet(config.pairs_parquet_path)
         assert config.x_bin_width > 0, f"x_bin_width must be > 0, got {config.x_bin_width}"
         x_min, x_max = _resolve_x_range(config.x_measure, config.x_range)
 
@@ -778,7 +776,7 @@ def _(
 
             filtered = (
                 pairs_with_sim.filter(pl.col(metric.metric_column).ge(metric.threshold))
-                .with_columns(info_bin_val=(pl.col(config.x_measure) / config.x_bin_width).floor() * config.x_bin_width)
+                .with_columns(info_bin_val=(pl.col(config.x_measure) / pl.col(config.x_bin_width)).floor() * pl.col(config.x_bin_width))
                 .filter(
                     pl.col("info_bin_val").is_not_null(),
                     pl.col("info_bin_val").ge(float(x_min)),
@@ -962,6 +960,13 @@ def _(fpr_config, plot_fpr_vs_measure):
         fpr_output_path="fpr_vs_num_clean_peaks.png",
     )
     plot_fpr_vs_measure(peaks_config)
+    normalized_num_peaks_config = fpr_config.copy(
+        x_measure="normalized_num_clean_peaks",
+        x_bin_width=0.3,
+        x_range=(0.0, 3.0),
+        fpr_output_path="fpr_vs_normalized_num_clean_peaks.png",
+    )
+    plot_fpr_vs_measure(normalized_num_peaks_config)
     return
 
 
@@ -1067,6 +1072,474 @@ def _(mo):
     └────────────────────┴────────────────┴────────────────────────────┴──────────────┴─────────────┘
     those are the non binned results, which take 10 minuted to calculate
     """)
+    return
+
+
+@app.cell
+def _(Literal, Optional, Path, Union, dataclass, np, pl, replace, wilcoxon):
+
+    SelectionStrategy = Literal[
+        "best_by_measure",          # pick the per-molecule spectrum that maximizes/minimizes `selection_measure`
+        "random",                   # pick a uniformly-random spectrum per molecule (seeded)
+        "closest_to_target_energy", # pick spectrum with minimal abs(energy - target_energy)
+    ]
+
+    SelectionDirection = Literal["max", "min"]
+    WilcoxonAlternative = Literal["two-sided", "less", "greater"]
+
+    # Why: Keep selection limited to the three validated/expected per-spectrum columns used in this analysis.
+    SelectionMeasureName = Literal[
+        "spectral_information_score",
+        "spectral_entropy",
+        "num_clean_peaks",
+    ]
+
+
+    @dataclass(frozen=True)
+    class MoleculeSelectionEffectConfig:
+        """
+        Compare per-molecule selection strategies using paired tests.
+
+        Grouping:
+          - One comparison per (base_inchikey, ion_mode).
+
+        Outcome:
+          - false_compound_count per selected spectrum, based on similarity metric thresholding.
+
+        Notes:
+          - "Advantage" is defined as (baseline_fp - selected_fp), so positive means improvement.
+        """
+
+        pairs_parquet_path: Union[str, Path]
+        exclude_molecules_without_false_positives: bool = True
+        # Defines what counts as a "match" (and thus a potential false positive).
+        similarity_metric_column: str = "dotprod_similarity"
+        similarity_threshold: float = 0.9
+        similarity_metric_label: str = "Dot Product"
+
+        # How to select the "chosen" spectrum per molecule.
+        selected_strategy: SelectionStrategy = "best_by_measure"
+        selection_measure: SelectionMeasureName = "spectral_information_score"
+        selection_direction: SelectionDirection = "max"
+
+        # Baseline strategy to compare against.
+        baseline_strategy: SelectionStrategy = "random"
+
+        # Random selection control (reproducible).
+        random_seed: int = 0
+
+        # Energy-based baseline configuration.
+        energy_column: str = "collision_energy"
+        target_energy: Optional[float] = None  # required if any strategy uses closest_to_target_energy
+
+        # Grouping columns (do not change unless you also change upstream parquet schema).
+        molecule_id_column: str = "base_inchikey"
+        ion_mode_column: str = "ion_mode"
+
+        # Quality filters.
+        min_spectra_per_group: int = 2  # must be >=2 to allow "exclude selected from baseline"
+        drop_groups_with_null_measure: bool = True
+
+        # Wilcoxon signed-rank parameters.
+        wilcoxon_alternative: WilcoxonAlternative = "less"  # tests: selected_fp < baseline_fp
+        wilcoxon_zero_method: Literal["wilcox", "pratt", "zsplit"] = "pratt"
+
+        # Outputs
+        output_dir: Union[str, Path] = "."
+        file_prefix: str = "selection_effect"
+
+        def copy(self, **changes) -> "MoleculeSelectionEffectConfig":
+            valid_fields = set(self.__dataclass_fields__.keys())
+            unknown = set(changes) - valid_fields
+            assert not unknown, f"Unknown fields for MoleculeSelectionEffectConfig.copy(): {sorted(list(unknown))}"
+            return replace(self, **changes)
+
+
+    def _require_columns_or_fail(lf: pl.LazyFrame, required_columns: list[str]) -> None:
+        # Why: make missing parquet columns fail fast with a clear message before heavy computation.
+        lf.select(required_columns).limit(1).collect(engine="streaming")
+
+
+    def _compute_per_spectrum_false_compound_counts(
+        *,
+        pairs_sim: pl.LazyFrame,
+        similarity_metric_column: str,
+        similarity_threshold: float,
+        spectrum_columns: list[str],
+        molecule_id_column: str,
+        ion_mode_column: str,
+    ) -> pl.DataFrame:
+        required_cols = [
+            "idx",
+            molecule_id_column,
+            ion_mode_column,
+            "base_inchikey_right",  # required to count unique false compounds among matches
+            similarity_metric_column,
+            *spectrum_columns,
+        ]
+        _require_columns_or_fail(pairs_sim, required_cols)
+
+        per_spectrum_base = (
+            pairs_sim.select(["idx", molecule_id_column, ion_mode_column, *spectrum_columns])
+            .unique(subset="idx", keep="any")
+            .collect(engine="streaming")
+        )
+
+        matched_counts = (
+            pairs_sim.filter(pl.col(similarity_metric_column).ge(float(similarity_threshold)))
+            .group_by("idx")
+            .agg(false_compound_count=pl.col("base_inchikey_right").n_unique())
+            .collect(engine="streaming")
+        )
+
+        per_spectrum = (
+            per_spectrum_base.join(matched_counts, on="idx", how="left")
+            .with_columns(false_compound_count=pl.col("false_compound_count").fill_null(0).cast(pl.Int64))
+        )
+        return per_spectrum
+
+
+    def _select_one_spectrum_per_group_best_by_measure(
+        *,
+        per_spectrum: pl.DataFrame,
+        molecule_id_column: str,
+        ion_mode_column: str,
+        selection_measure: SelectionMeasureName,
+        selection_direction: SelectionDirection = "max",
+    ) -> pl.DataFrame:
+        group_cols = [molecule_id_column, ion_mode_column]
+        assert selection_direction in ("max", "min"), f"selection_direction must be max|min, got {selection_direction}"
+
+        descending = selection_direction == "max"
+        sorted_df = per_spectrum.sort(
+            by=[*group_cols, selection_measure, "idx"],
+            descending=[False, False, descending, False],
+        )
+
+        # Why: Polars includes group keys in the output; aggregating them again creates duplicate columns.
+        first_exprs = [pl.col(c).first().alias(c) for c in sorted_df.columns if c not in group_cols]
+        return sorted_df.group_by(group_cols, maintain_order=True).agg(first_exprs)
+
+
+    def _select_one_spectrum_per_group_random(
+        *,
+        per_spectrum: pl.DataFrame,
+        molecule_id_column: str,
+        ion_mode_column: str,
+        seed: int,
+    ) -> pl.DataFrame:
+        group_cols = [molecule_id_column, ion_mode_column]
+        # with_key = per_spectrum.with_columns(_rand_key=pl.rand(seed=seed))
+        # sorted_df = with_key.sort(by=[*group_cols, "_rand_key", "idx"], descending=[False, False, False, False])
+
+        # # Why: exclude group keys to avoid DuplicateError; exclude the temp random key as well.
+        # first_exprs = [pl.col(c).first().alias(c) for c in sorted_df.columns if c not in group_cols and c != "_rand_key"]
+        # return sorted_df.group_by(group_cols, maintain_order=True).agg(first_exprs)
+        return per_spectrum.filter(
+            pl.int_range(pl.len())
+            .shuffle()
+            .over(group_cols)
+            .eq(0)
+        )
+
+
+    def _select_one_spectrum_per_group_closest_to_target_energy(
+        *,
+        per_spectrum: pl.DataFrame,
+        molecule_id_column: str,
+        ion_mode_column: str,
+        energy_column: str,
+        target_energy: float,
+    ) -> pl.DataFrame:
+        group_cols = [molecule_id_column, ion_mode_column]
+        assert target_energy is not None, "target_energy is required for closest_to_target_energy selection."
+
+        with_dist = per_spectrum.with_columns(
+            energy_distance=(pl.col(energy_column).cast(pl.Float64) - float(target_energy)).abs()
+        )
+        sorted_df = with_dist.sort(
+            by=[*group_cols, "energy_distance", "idx"],
+            descending=[False, False, False, False],
+        )
+
+        # Why: exclude group keys to avoid DuplicateError; exclude the temp distance column as well.
+        first_exprs = [pl.col(c).first().alias(c) for c in sorted_df.columns if c not in group_cols and c != "energy_distance"]
+        return sorted_df.group_by(group_cols, maintain_order=True).agg(first_exprs)
+
+
+    def _select_one_spectrum_per_group(
+        *,
+        per_spectrum: pl.DataFrame,
+        strategy: SelectionStrategy,
+        molecule_id_column: str,
+        ion_mode_column: str,
+        selection_measure: SelectionMeasureName,
+        selection_direction: SelectionDirection,
+        seed: int,
+        energy_column: str,
+        target_energy: Optional[float],
+    ) -> pl.DataFrame:
+        if strategy == "best_by_measure":
+            assert selection_measure in per_spectrum.columns, (
+                f"selection_measure column '{selection_measure}' is missing from per_spectrum. "
+                "Ensure it exists in the pairs parquet and is included in spectrum_columns."
+            )
+            return _select_one_spectrum_per_group_best_by_measure(
+                per_spectrum=per_spectrum,
+                molecule_id_column=molecule_id_column,
+                ion_mode_column=ion_mode_column,
+                selection_measure=selection_measure,
+                selection_direction=selection_direction,
+            )
+
+        if strategy == "random":
+            return _select_one_spectrum_per_group_random(
+                per_spectrum=per_spectrum,
+                molecule_id_column=molecule_id_column,
+                ion_mode_column=ion_mode_column,
+                seed=seed,
+            )
+
+        if strategy == "closest_to_target_energy":
+            assert target_energy is not None, (
+                "target_energy must be provided when using closest_to_target_energy. "
+                "Example: target_energy=20.0"
+            )
+            assert energy_column in per_spectrum.columns, (
+                f"energy_column '{energy_column}' is missing from per_spectrum. "
+                "You likely need to include it in the parquet creation step."
+            )
+            return _select_one_spectrum_per_group_closest_to_target_energy(
+                per_spectrum=per_spectrum,
+                molecule_id_column=molecule_id_column,
+                ion_mode_column=ion_mode_column,
+                energy_column=energy_column,
+                target_energy=float(target_energy),
+            )
+
+        raise AssertionError(f"Unknown selection strategy: {strategy}")
+
+
+    def run_molecule_selection_effect_analysis(config: MoleculeSelectionEffectConfig) -> pl.DataFrame:
+        """
+        Per (molecule, ion_mode), compare chosen spectrum vs baseline spectrum.
+
+        Prints:
+          - n_groups
+          - win/tie/loss rates
+          - average/median advantage (baseline_fp - selected_fp)
+          - Wilcoxon signed-rank test on paired fp counts
+
+        Writes:
+          - violin plot
+          - CDF plot
+          - delta histogram
+        """
+        pairs_sim = pl.scan_parquet(config.pairs_parquet_path)
+        assert config.min_spectra_per_group >= 2, (
+            f"min_spectra_per_group must be >= 2 to compare selected vs baseline, got {config.min_spectra_per_group}"
+        )
+
+        spectrum_columns: list[str] = [config.selection_measure]
+        if config.selected_strategy == "closest_to_target_energy" or config.baseline_strategy == "closest_to_target_energy":
+            assert config.target_energy is not None, (
+                "target_energy must be set when any strategy is closest_to_target_energy."
+            )
+            spectrum_columns.append(config.energy_column)
+
+        per_spectrum = _compute_per_spectrum_false_compound_counts(
+            pairs_sim=pairs_sim,
+            similarity_metric_column=config.similarity_metric_column,
+            similarity_threshold=config.similarity_threshold,
+            spectrum_columns=spectrum_columns,
+            molecule_id_column=config.molecule_id_column,
+            ion_mode_column=config.ion_mode_column,
+        )
+
+        group_cols = [config.molecule_id_column, config.ion_mode_column]
+
+        if config.drop_groups_with_null_measure:
+            per_spectrum = per_spectrum.filter(pl.col(config.selection_measure).is_not_null())
+
+        # Filter to groups with enough spectra.
+        per_spectrum = per_spectrum.with_columns(_group_size=pl.len().over(group_cols))
+        per_spectrum = per_spectrum.filter(pl.col("_group_size").ge(config.min_spectra_per_group)).drop("_group_size")
+
+        if config.exclude_molecules_without_false_positives:
+            # Why: selection effects are undefined if a molecule never produces a false match under the chosen threshold.
+            per_spectrum = per_spectrum.with_columns(
+                _group_max_false_compound_count=pl.col("false_compound_count").max().over(group_cols)
+            )
+            per_spectrum = (
+                per_spectrum.filter(pl.col("_group_max_false_compound_count").gt(0))
+                .drop("_group_max_false_compound_count")
+            )
+
+        assert per_spectrum.height > 0, (
+            "No spectra remain after filtering by min_spectra_per_group, null-measure handling, "
+            "and (optionally) exclude_molecules_without_false_positives. "
+            "Check your parquet contents and config."
+        )
+
+        selected = _select_one_spectrum_per_group(
+            per_spectrum=per_spectrum,
+            strategy=config.selected_strategy,
+            molecule_id_column=config.molecule_id_column,
+            ion_mode_column=config.ion_mode_column,
+            selection_measure=config.selection_measure,
+            selection_direction=config.selection_direction,
+            seed=config.random_seed,
+            energy_column=config.energy_column,
+            target_energy=config.target_energy,
+        ).rename(
+            {"idx": "selected_idx", "false_compound_count": "selected_fp", config.selection_measure: "selected_measure"}
+        )
+
+        # Baseline is selected after excluding the selected spectrum to avoid trivial ties.
+        per_spectrum_for_baseline = per_spectrum.join(
+            selected.select([*group_cols, "selected_idx"]),
+            on=group_cols,
+            how="inner",
+        ).filter(pl.col("idx") != pl.col("selected_idx")).drop("selected_idx")
+
+        baseline = _select_one_spectrum_per_group(
+            per_spectrum=per_spectrum_for_baseline,
+            strategy=config.baseline_strategy,
+            molecule_id_column=config.molecule_id_column,
+            ion_mode_column=config.ion_mode_column,
+            selection_measure=config.selection_measure,
+            selection_direction=config.selection_direction,
+            seed=config.random_seed + 1,  # Why: ensure baseline random differs from selected random when both are random.
+            energy_column=config.energy_column,
+            target_energy=config.target_energy,
+        ).rename(
+            {"idx": "baseline_idx", "false_compound_count": "baseline_fp", config.selection_measure: "baseline_measure"}
+        )
+
+        paired = (
+            selected.join(baseline, on=group_cols, how="inner")
+            .with_columns(delta_fp=(pl.col("baseline_fp") - pl.col("selected_fp")).cast(pl.Int64))
+            .with_columns(
+                selected_strategy=pl.lit(config.selected_strategy),
+                baseline_strategy=pl.lit(config.baseline_strategy),
+                selection_measure=pl.lit(config.selection_measure),
+                similarity_metric_column=pl.lit(config.similarity_metric_column),
+                similarity_threshold=pl.lit(float(config.similarity_threshold)),
+            )
+        )
+
+        n_groups = paired.height
+        assert n_groups > 0, (
+            "No paired groups available after baseline exclusion/join. "
+            "Likely too many groups have only one spectrum."
+        )
+
+        selected_fp = paired.get_column("selected_fp").to_numpy()
+        baseline_fp = paired.get_column("baseline_fp").to_numpy()
+        delta_fp = paired.get_column("delta_fp").to_numpy()
+
+        win_rate = float((delta_fp > 0).mean())
+        tie_rate = float((delta_fp == 0).mean())
+        loss_rate = float((delta_fp < 0).mean())
+        avg_advantage = float(np.mean(delta_fp))
+        median_advantage = float(np.median(delta_fp))
+        median_advantage_exclusing_ties = float(np.median(delta_fp[delta_fp != 0])) if np.any(delta_fp != 0) else 0.0
+
+        # Wilcoxon signed-rank on paired samples: selected vs baseline.
+        # We test whether selected_fp is stochastically smaller than baseline_fp (default alternative="less").
+        w_stat, p_val = wilcoxon(
+            x=selected_fp,
+            y=baseline_fp,
+            alternative=config.wilcoxon_alternative,
+            zero_method=config.wilcoxon_zero_method,
+        )
+
+        print(
+            "\nMolecule selection effect analysis\n"
+            f"  groups (molecule, ion_mode): {n_groups}\n"
+            f"  selected_strategy: {config.selected_strategy}\n"
+            f"  baseline_strategy: {config.baseline_strategy}\n"
+            f"  selection_measure: {config.selection_measure} ({config.selection_direction})\n"
+            f"  match metric: {config.similarity_metric_label} [{config.similarity_metric_column} >= {config.similarity_threshold}]\n"
+            f"  win/tie/loss: {win_rate:.4f} / {tie_rate:.4f} / {loss_rate:.4f}\n"
+            f"  avg advantage (baseline_fp - selected_fp): {avg_advantage:.4g}\n"
+            f"  avg advantage excluding ties : {avg_advantage/(1 - tie_rate):.4g}\n"
+            f"  median advantage (baseline_fp - selected_fp): {median_advantage:.4g}\n"
+            f"  median advantage excluding ties : {median_advantage_exclusing_ties:.4g}\n"
+            f"  Wilcoxon signed-rank (alt='{config.wilcoxon_alternative}', zero_method='{config.wilcoxon_zero_method}'): "
+            f"stat={float(w_stat):.4g}, p={float(p_val):.4g}\n"
+        )
+
+        out_dir = Path(config.output_dir)
+        out_dir.mkdir(parents=True, exist_ok=True)
+
+        selected_label = f"Selected ({config.selected_strategy})"
+        baseline_label = f"Baseline ({config.baseline_strategy})"
+        title_base = (
+            f"{config.similarity_metric_label} FP comparison per molecule\n"
+            f"measure={config.selection_measure}, thr={config.similarity_threshold}"
+        )
+
+
+        return paired
+    return (
+        MoleculeSelectionEffectConfig,
+        run_molecule_selection_effect_analysis,
+    )
+
+
+@app.cell
+def _(
+    MoleculeSelectionEffectConfig,
+    OUTPUT_PAIRS_PATH,
+    run_molecule_selection_effect_analysis,
+):
+    # ...existing code...
+    effect_cfg = MoleculeSelectionEffectConfig(
+        pairs_parquet_path=OUTPUT_PAIRS_PATH,
+        similarity_metric_column="dotprod_similarity",
+        similarity_threshold=0.80,
+        similarity_metric_label="Dot Product",
+        selected_strategy="best_by_measure",
+        selection_measure="spectral_information_score",
+        selection_direction="max",
+        baseline_strategy="random",
+        random_seed=42,
+        output_dir=".",
+        file_prefix="sis_best_vs_random_dp0p90",
+    )
+
+    paired_df = run_molecule_selection_effect_analysis(effect_cfg)
+
+    effect_cfg_peaks = MoleculeSelectionEffectConfig(
+        pairs_parquet_path=OUTPUT_PAIRS_PATH,
+        similarity_metric_column="dotprod_similarity",
+        similarity_threshold=0.80,
+        similarity_metric_label="Dot Product",
+        selected_strategy="best_by_measure",
+        selection_measure="num_clean_peaks",
+        selection_direction="max",
+        baseline_strategy="random",
+        random_seed=42,
+        output_dir=".",
+        file_prefix="num_peaks_best_vs_random_dp0p90",
+    )
+    paired_df = run_molecule_selection_effect_analysis(effect_cfg_peaks)
+
+    effect_cfg_entropy = MoleculeSelectionEffectConfig(
+        pairs_parquet_path=OUTPUT_PAIRS_PATH,
+        similarity_metric_column="dotprod_similarity",
+        similarity_threshold=0.80,
+        similarity_metric_label="Dot Product",
+        selected_strategy="best_by_measure",
+        selection_measure="spectral_entropy",
+        selection_direction="max",
+        baseline_strategy="random",
+        random_seed=42,
+        output_dir=".",
+        file_prefix="entropy_best_vs_random_dp0p90",
+    )
+    paired_df = run_molecule_selection_effect_analysis(effect_cfg_entropy)
     return
 
 
