@@ -334,6 +334,115 @@ def _bin_spectra_to_matrix(
     return matrix
 
 
+def _flatten_spectra_to_numpy(
+    df: pl.DataFrame, mz_col: str, int_col: str
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, int]:
+    """
+    Flatten list-valued spectrum columns from `df` into:
+      - flat_mzs: np.ndarray[np.float64] of all m/z values
+      - flat_ints: np.ndarray[np.float32] of corresponding intensities
+      - spec_idx: np.ndarray[np.int64] of the originating spectrum index for each flattened peak
+      - n_spec: int number of spectra in `df`
+
+    Uses Polars' fast C-backed `explode` and avoids Python loops. Empty spectra are
+    handled gracefully (they produce no flattened rows, but `n_spec` preserves the
+    original number of spectra).
+    """
+    n_spec = len(df)
+    if n_spec == 0:
+        return (
+            np.asarray([], dtype=np.float64),
+            np.asarray([], dtype=np.float32),
+            np.asarray([], dtype=np.int64),
+            0,
+        )
+
+    # Add a row index so we can recover which spectrum each flattened peak
+    # belongs to (this mirrors the spec_idx construction from list lengths).
+    df_idx = df.with_row_count("__spec_idx")
+
+    # Explode the mz/intensity list columns. If a row has no peaks the explode
+    # will simply not produce rows for it (we still preserve `n_spec`).
+    exploded = df_idx.explode([mz_col, int_col])
+    if len(exploded) == 0:
+        return (
+            np.asarray([], dtype=np.float64),
+            np.asarray([], dtype=np.float32),
+            np.asarray([], dtype=np.int64),
+            n_spec,
+        )
+
+    # Export columns to NumPy arrays for fast, vectorized processing downstream.
+    flat_mzs = np.asarray(exploded.get_column(mz_col).to_list(), dtype=np.float64)
+    flat_ints = np.asarray(exploded.get_column(int_col).to_list(), dtype=np.float32)
+    spec_idx = np.asarray(exploded.get_column("__spec_idx").to_list(), dtype=np.int64)
+    return flat_mzs, flat_ints, spec_idx, n_spec
+
+
+def _bin_flat_spectra_to_matrix(
+    flat_mzs: np.ndarray,
+    flat_ints: np.ndarray,
+    spec_idx: np.ndarray,
+    n_spec: int,
+    upper_bound: int = 1000,
+    intensity_power: float = 0.5,
+) -> np.ndarray:
+    """
+    Bin already-flattened spectra arrays into a dense 2D matrix of shape (n_spec, nbins).
+
+    This mirrors `_bin_spectra_to_matrix`'s vectorized logic but accepts flattened
+    inputs (so callers can use Polars' `explode`/`list.len` workflow before converting
+    to NumPy).
+    """
+    nbins = int(upper_bound) + 1
+    if n_spec == 0:
+        return np.zeros((0, nbins), dtype=np.float32)
+    if flat_mzs.size == 0 or flat_ints.size == 0:
+        return np.zeros((n_spec, nbins), dtype=np.float32)
+
+    # Bin to nearest integer mass and apply bounds filter
+    mass_bins = np.rint(flat_mzs).astype(np.int64)
+    valid_mask = (mass_bins >= 0) & (mass_bins <= upper_bound) & (flat_ints > 0)
+    if not np.any(valid_mask):
+        return np.zeros((n_spec, nbins), dtype=np.float32)
+
+    mass_bins = mass_bins[valid_mask]
+    spec_idx = spec_idx[valid_mask].astype(np.int64)
+    weights = np.asarray(flat_ints[valid_mask], dtype=np.float32) ** float(
+        intensity_power
+    )
+
+    # Build 1D keys and use bincount for accumulation
+    flat_keys = spec_idx * nbins + mass_bins
+    accum = np.bincount(flat_keys, weights=weights, minlength=n_spec * nbins).astype(
+        np.float32
+    )
+    matrix = accum.reshape((n_spec, nbins))
+    return matrix
+
+
+def _bin_spectra_df_to_matrix(
+    df: pl.DataFrame,
+    mz_col: str = "cleaned_normalized_mz",
+    int_col: str = "cleaned_normalized_intensity",
+    upper_bound: int = 1000,
+    intensity_power: float = 0.5,
+) -> np.ndarray:
+    """
+    Explode list-valued spectra columns in `df` and bin them into a dense matrix
+    of shape (n_spectra, nbins) in a single, vectorized call.
+
+    This function delegates to the lower-level helpers `_flatten_spectra_to_numpy`
+    and `_bin_flat_spectra_to_matrix` to avoid duplicating the flatten/bin logic.
+    """
+    flat_mzs, flat_ints, spec_idx, n_spec = _flatten_spectra_to_numpy(
+        df, mz_col, int_col
+    )
+    return _bin_flat_spectra_to_matrix(
+        flat_mzs, flat_ints, spec_idx, n_spec, upper_bound, intensity_power
+    )
+
+
 def _compute_pairwise_proximate_similarity(
     left_mat: np.ndarray,
     right_mat: np.ndarray,
@@ -372,7 +481,7 @@ def _compute_pairwise_proximate_similarity(
         sim = (Ln @ Rn.T).astype(jnp.float32)
         return np.asarray(sim)
     else:
-        logging.getLogger(__name__).info(
+        logging.getLogger(__name__).debug(
             "JAX not available or failed; falling back to NumPy for proximate similarity."
         )
         # NumPy fallback: normalize rows first, then dot-product
@@ -397,13 +506,17 @@ def _filter_pairs_by_proximate_and_precise(
     use_gpu: bool,
     upper_bound: int = 1000,
     intensity_power: float = 0.5,
-    require_peak_overlap: bool = True,
 ) -> pl.DataFrame:
     """
     Given an in-memory `batch_df` (left) and the full `source_df` (right), compute a
     proximate (integer-binned) similarity for all left×right spectra grouped by `ion_mode`
     using a matrix multiply (JAX on GPU if available), then only send pairs whose
     proximate similarity >= threshold to the precise (plugin) dot-product calculation.
+
+    Note: this implementation no longer applies a per-spectrum peak-overlap
+    prefilter. Instead, it relies on the proximate (integer-binned) similarity
+    matrix as the fast, first-pass filter to prune candidate pairs before the
+    more expensive precise dot-product calculation.
 
     Returns a Polars DataFrame with the same column selection and filtering as the
     original pipeline (i.e. it includes `dotprod_similarity` and is filtered by `threshold`).
@@ -418,47 +531,28 @@ def _filter_pairs_by_proximate_and_precise(
         if len(left_sub) == 0 or len(right_sub) == 0:
             continue
 
-        # Extract lists of mz/intensity arrays
-        left_mzs = left_sub.get_column("cleaned_normalized_mz").to_list()
-        left_ints = left_sub.get_column("cleaned_normalized_intensity").to_list()
-        right_mzs = right_sub.get_column("cleaned_normalized_mz").to_list()
-        right_ints = right_sub.get_column("cleaned_normalized_intensity").to_list()
+        # Binning will be performed directly from the DataFrames using
+        # `_bin_spectra_df_to_matrix` (no explicit flattening in Python).
 
-        # If require_peak_overlap is set, we apply a cheap per-spectrum overlap prefilter:
-        # compute union of rounded integer masses in left_sub and prefilter right_sub
-        if require_peak_overlap:
-            # Build set of integer masses seen anywhere in left_sub to cheaply prune right_sub spectra
-            left_union_bins = set()
-            for mlist in left_mzs:
-                if mlist:
-                    left_union_bins.update(
-                        np.rint(np.asarray(mlist)).astype(np.int64).tolist()
-                    )
-            if len(left_union_bins) == 0:
-                continue
-            # keep right spectra that have any intersection with left_union_bins
-            keep_right_mask = []
-            for mzs in right_mzs:
-                if not mzs:
-                    keep_right_mask.append(False)
-                    continue
-                bins = set(np.rint(np.asarray(mzs)).astype(np.int64).tolist())
-                keep_right_mask.append(len(bins.intersection(left_union_bins)) > 0)
-            # Fast path: if nothing in right_sub shares peaks with left_sub, skip this mode
-            if not any(keep_right_mask):
-                continue
-            # Apply mask to right_sub and arrays
-            right_mzs = [mz for mz, keep in zip(right_mzs, keep_right_mask) if keep]
-            right_ints = [it for it, keep in zip(right_ints, keep_right_mask) if keep]
-            right_sub = right_sub.filter(np.array(keep_right_mask))
+        # Peak-overlap prefilter removed: rely on the proximate (integer-binned)
+        # similarity matrix (approximate search) to prune candidates instead.
 
-        # Build binned matrices (vectorized)
-        left_mat = _bin_spectra_to_matrix(
-            left_mzs, left_ints, upper_bound, intensity_power
+        # Build binned matrices (vectorized, directly from DataFrames)
+        left_mat = _bin_spectra_df_to_matrix(
+            left_sub,
+            "cleaned_normalized_mz",
+            "cleaned_normalized_intensity",
+            upper_bound,
+            intensity_power,
         )
-        right_mat = _bin_spectra_to_matrix(
-            right_mzs, right_ints, upper_bound, intensity_power
+        right_mat = _bin_spectra_df_to_matrix(
+            right_sub,
+            "cleaned_normalized_mz",
+            "cleaned_normalized_intensity",
+            upper_bound,
+            intensity_power,
         )
+
         if left_mat.size == 0 or right_mat.size == 0:
             continue
 
@@ -770,7 +864,6 @@ def build_and_write_pairs_parquet(
                             threshold=threshold,
                             upper_bound=proximate_bin_upper,
                             intensity_power=0.5,
-                            require_peak_overlap=True,
                             use_gpu=use_gpu,
                         )
                     except Exception:
@@ -793,13 +886,13 @@ def build_and_write_pairs_parquet(
 
                     block_t1 = perf_counter()
                     # Log progress periodically (1 out of every 10 flat blocks)
-                    if flat_idx % 10 == 0:
-                        _log_message_to_file(
-                            f"Processed block {flat_idx}/{total_blocks} (left_block={i_block}, right_block={j_block}). "
-                            f"Written {total_written} pairs so far. "
-                            f"Time for block: {block_t1 - block_t0:.3f}s",
-                            log_path,
-                        )
+
+                    _log_message_to_file(
+                        f"Processed block {flat_idx}/{total_blocks} (left_block={i_block}, right_block={j_block}). "
+                        f"Written {total_written} pairs so far. "
+                        f"Time for block: {block_t1 - block_t0:.3f}s",
+                        log_path,
+                    )
 
         except Exception:
             _log_message_to_file(
