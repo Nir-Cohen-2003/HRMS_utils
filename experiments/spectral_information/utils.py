@@ -118,6 +118,9 @@ else:
 _initialized_log_paths: set[str] = set()
 _initialized_log_paths_lock = threading.Lock()
 
+# Module logger (use debug level for timing info)
+logger = logging.getLogger(__name__)
+
 
 def _log_message_to_file(
     message: str,
@@ -357,6 +360,9 @@ def _flatten_spectra_to_numpy(
             0,
         )
 
+    # Start timing the flattening operation.
+    t0 = perf_counter()
+
     # Add a row index so we can recover which spectrum each flattened peak
     # belongs to (this mirrors the spec_idx construction from list lengths).
     df_idx = df.with_row_count("__spec_idx")
@@ -376,6 +382,15 @@ def _flatten_spectra_to_numpy(
     flat_mzs = np.asarray(exploded.get_column(mz_col).to_list(), dtype=np.float64)
     flat_ints = np.asarray(exploded.get_column(int_col).to_list(), dtype=np.float32)
     spec_idx = np.asarray(exploded.get_column("__spec_idx").to_list(), dtype=np.int64)
+
+    duration = perf_counter() - t0
+    logger.debug(
+        "Flattened %d spectra into %d peaks in %.4f s",
+        n_spec,
+        int(flat_mzs.size),
+        duration,
+    )
+
     return flat_mzs, flat_ints, spec_idx, n_spec
 
 
@@ -400,10 +415,21 @@ def _bin_flat_spectra_to_matrix(
     if flat_mzs.size == 0 or flat_ints.size == 0:
         return np.zeros((n_spec, nbins), dtype=np.float32)
 
+    t0 = perf_counter()
+
     # Bin to nearest integer mass and apply bounds filter
     mass_bins = np.rint(flat_mzs).astype(np.int64)
     valid_mask = (mass_bins >= 0) & (mass_bins <= upper_bound) & (flat_ints > 0)
+    n_peaks_total = int(flat_mzs.size)
+    n_peaks_valid = int(np.count_nonzero(valid_mask))
     if not np.any(valid_mask):
+        duration = perf_counter() - t0
+        logger.debug(
+            "Binning aborted: no valid peaks after filtering (n_spec=%d, nbins=%d) in %.4f s",
+            n_spec,
+            nbins,
+            duration,
+        )
         return np.zeros((n_spec, nbins), dtype=np.float32)
 
     mass_bins = mass_bins[valid_mask]
@@ -418,6 +444,15 @@ def _bin_flat_spectra_to_matrix(
         np.float32
     )
     matrix = accum.reshape((n_spec, nbins))
+    duration = perf_counter() - t0
+    logger.debug(
+        "Binned %d total peaks (%d valid) into matrix %dx%d in %.4f s",
+        n_peaks_total,
+        n_peaks_valid,
+        n_spec,
+        nbins,
+        duration,
+    )
     return matrix
 
 
@@ -459,6 +494,7 @@ def _compute_pairwise_proximate_similarity(
     if left_mat.size == 0 or right_mat.size == 0:
         return np.zeros((left_mat.shape[0], right_mat.shape[0]), dtype=np.float32)
 
+    t0 = perf_counter()
     if use_jax_if_available and jax_is_available:
         # Import jax.numpy locally to ensure the name is bound in this scope.
         # Doing the import here avoids importing JAX at module import time on
@@ -479,11 +515,16 @@ def _compute_pairwise_proximate_similarity(
         Rn = R / rnorm_safe
 
         sim = (Ln @ Rn.T).astype(jnp.float32)
+        duration = perf_counter() - t0
+        logger.debug(
+            "Proximate similarity (JAX) computed for %dx%d matrices in %.4f s",
+            left_mat.shape[0],
+            right_mat.shape[0],
+            duration,
+        )
         return np.asarray(sim)
     else:
-        logging.getLogger(__name__).debug(
-            "JAX not available or failed; falling back to NumPy for proximate similarity."
-        )
+        logger.debug("JAX not available; using NumPy for proximate similarity.")
         # NumPy fallback: normalize rows first, then dot-product
         lnorm = np.linalg.norm(left_mat, axis=1, keepdims=True)
         rnorm = np.linalg.norm(right_mat, axis=1, keepdims=True)
@@ -491,9 +532,14 @@ def _compute_pairwise_proximate_similarity(
         rnorm[rnorm == 0] = 1.0
         Ln = left_mat / lnorm
         Rn = right_mat / rnorm
-        sim = (Ln @ Rn.T).astype(
-            np.float32
-        )  # cosine similarity, which is equivalent to the dot product of normalized vectors, which is equivalent to a matrix multiplication of the two normalized matrices
+        sim = (Ln @ Rn.T).astype(np.float32)
+        duration = perf_counter() - t0
+        logger.debug(
+            "Proximate similarity (NumPy) computed for %dx%d matrices in %.4f s",
+            left_mat.shape[0],
+            right_mat.shape[0],
+            duration,
+        )
         return sim
 
 
@@ -620,6 +666,7 @@ def _filter_pairs_by_proximate_and_precise(
     )
 
     # Compute the precise NIST-like dot-product on only the filtered candidate rows.
+    t_precise = perf_counter()
     joined = (
         joined.with_columns(
             spectra=pl.struct(
@@ -657,6 +704,12 @@ def _filter_pairs_by_proximate_and_precise(
             "spectral_information_score",
             "spectral_information_score_right",
         )
+    )
+    duration_precise = perf_counter() - t_precise
+    logger.debug(
+        "Precise dot-product computed on %d candidate rows in %.4f s",
+        joined.height,
+        duration_precise,
     )
 
     return joined
@@ -878,7 +931,15 @@ def build_and_write_pairs_parquet(
                         table = pairs_block.to_arrow()
                         if writer is None:
                             writer = pq.ParquetWriter(output_path, table.schema)
+                        t_write = perf_counter()
                         writer.write_table(table)
+                        write_dur = perf_counter() - t_write
+                        logger.debug(
+                            "Wrote %d rows to %s in %.4f s",
+                            len(pairs_block),
+                            output_path,
+                            write_dur,
+                        )
                         total_written += len(pairs_block)
                         del pairs_block
                         del table
@@ -1136,10 +1197,18 @@ def compute_and_save_tanimoto_scores(
 
             # Write the processed DataFrame back to storage using Polars (single file)
             try:
+                t_write = perf_counter()
                 df_processed.write_parquet(str(output_path))
+                write_dur = perf_counter() - t_write
                 _log_message_to_file(
-                    f"Wrote processed DataFrame to {output_path} rows={df_processed.height}",
+                    f"Wrote processed DataFrame to {output_path} rows={df_processed.height} in {write_dur:.4f}s",
                     log_path,
+                )
+                logger.debug(
+                    "Wrote processed DataFrame to %s rows=%d in %.4f s",
+                    output_path,
+                    df_processed.height,
+                    write_dur,
                 )
             except Exception:
                 _log_message_to_file(
@@ -1235,7 +1304,12 @@ def compute_and_save_tanimoto_scores(
                     _log_message_to_file("Initialized parquet writer", log_path)
 
                 # Write batch
+                t_write = perf_counter()
                 writer.write_table(table)
+                batch_write_dur = perf_counter() - t_write
+                logger.debug(
+                    "Wrote a batch to %s in %.4f s", output_path, batch_write_dur
+                )
 
                 batch_t1 = perf_counter()
                 batch_time = batch_t1 - batch_t0
