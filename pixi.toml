@@ -143,6 +143,7 @@ hrms_utils = {path = "."}
 polars = ">=1.35.2,<2"
 rdkit = ">=2024.0.0"
 numpy = "*"
+jax = "*"
 optuna = "*"
 nvmolkit = "*"
 pyzmq = "*"

@@ -1,12 +1,16 @@
+import ctypes.util
 import gc
 import logging
 import math
+import os
+import shutil
+import subprocess
 import threading
 import traceback
 from glob import glob as _glob
 from pathlib import Path
 from time import perf_counter
-from typing import List, Union
+from typing import TYPE_CHECKING, List, Union
 
 import numpy as np
 import polars as pl
@@ -18,6 +22,98 @@ from rdkit import Chem
 
 from hrms_utils.rdkit import sanitize_smiles
 
+if TYPE_CHECKING:
+    # Type-only imports so static analyzers know the JAX symbols and attributes.
+    # These are only executed by type checkers and won't trigger imports at runtime.
+    import jax  # type: ignore
+    import jax.numpy as jnp  # type: ignore
+
+# Define these at module scope so static analysis tools know the names exist even
+# when JAX is not imported/used in this environment. They will be assigned real
+# module objects when a GPU is detected and JAX is successfully imported.
+jax = None  # type: ignore
+jnp = None  # type: ignore
+
+
+def _nvidia_gpu_available() -> bool:
+    """
+    Heuristic for detecting an NVIDIA GPU in the runtime environment.
+
+    Why: we only want to import and configure JAX when an NVIDIA GPU is available.
+    Importing JAX on systems where only TPU libraries are partially present can
+    result in noisy INFO logs like "Unable to initialize backend 'tpu': Failed to
+    open libtpu.so" even though the user has no TPU. By detecting a GPU first
+    and setting `JAX_PLATFORM_NAME` before importing JAX we avoid those logs and
+    ensure JAX will try to use the 'gpu' backend.
+    """
+    # If CUDA_VISIBLE_DEVICES is explicitly set to an empty string, treat that
+    # as "no GPU available".
+    cvd = os.environ.get("CUDA_VISIBLE_DEVICES")
+    if cvd is not None and cvd.strip() == "":
+        return False
+
+    # If nvidia-smi exists and reports devices, that's a reliable indicator.
+    nvsmi = shutil.which("nvidia-smi")
+    if nvsmi:
+        try:
+            out = subprocess.run(
+                [nvsmi, "-L"], capture_output=True, text=True, check=False
+            )
+            if out.returncode == 0 and out.stdout.strip() != "":
+                return True
+        except Exception:
+            # Best-effort; fall through to other checks.
+            pass
+
+    # Check for common CUDA libraries via ctypes
+    for libname in ("cuda", "cudart"):
+        try:
+            if ctypes.util.find_library(libname):
+                return True
+        except Exception:
+            pass
+
+    # Last resort: check common CUDA library locations.
+    if os.path.exists("/usr/local/cuda/lib64/libcudart.so") or os.path.exists(
+        "/usr/lib/x86_64-linux-gnu/libcuda.so"
+    ):
+        return True
+
+    return False
+
+
+jax_is_available = False
+if _nvidia_gpu_available():
+    # Force JAX to use the GPU backend. Must be set before importing JAX so
+    # other backends (TPU) aren't probed/initialized and produce noisy logs.
+    os.environ["JAX_PLATFORM_NAME"] = "gpu"
+    try:
+        import jax.numpy as jnp  # noqa: F401
+
+        # Reinforce backend selection if JAX was previously imported.
+        try:
+            from jax import config as jax_config
+
+            jax_config.update("jax_platform_name", "gpu")
+        except Exception:
+            # Non-fatal: if config update fails, JAX may already be configured.
+            pass
+
+        jax_is_available = True
+        logging.getLogger(__name__).info(
+            "JAX imported and configured to use the 'gpu' backend."
+        )
+    except Exception:
+        # If JAX fails to import even when GPU heuristics succeeded, fall back.
+        logging.getLogger(__name__).info(
+            "JAX import failed despite NVIDIA GPU detection; falling back to NumPy."
+        )
+        jax_is_available = False
+else:
+    logging.getLogger(__name__).info(
+        "No NVIDIA GPU detected; JAX will not be used (falling back to NumPy)."
+    )
+    jax_is_available = False
 # Tracks which log files have been truncated for this process so we only truncate once.
 _initialized_log_paths: set[str] = set()
 _initialized_log_paths_lock = threading.Lock()
@@ -167,6 +263,311 @@ def _cross_join_and_score(
     return lf
 
 
+def _bin_spectra_to_matrix(
+    mzs_list: List[list],
+    ints_list: List[list],
+    upper_bound: int = 1000,
+    intensity_power: float = 0.5,
+) -> np.ndarray:
+    """
+    Bin lists of spectra into a dense 2D matrix of shape (n_spectra, nbins).
+
+    Implementation notes (why this approach):
+      - Vectorized: flatten all spectra into 1D arrays, compute integer bin indices with
+        rounding and build a single 1D `np.bincount` where the flattened key is
+        `spec_idx * nbins + mass_bin`. This avoids Python loops over spectra while
+        being memory efficient and fast for typical batch sizes.
+      - We apply `intensity_power` (default 0.5 to match NIST-like dot-product weighting)
+        prior to accumulation, so the binned matrix entries correspond to the weighted
+        intensities used in similarity calculation.
+
+    Returns:
+      - np.ndarray(dtype=np.float32) shape (n_spectra, nbins)
+    """
+    nbins = int(upper_bound) + 1
+    n_spec = len(mzs_list)
+    if n_spec == 0:
+        return np.zeros((0, nbins), dtype=np.float32)
+
+    # Prepare lengths, handling None or empty lists gracefully
+    lengths = [len(m) if m is not None else 0 for m in mzs_list]
+    total_peaks = sum(lengths)
+    if total_peaks == 0:
+        return np.zeros((n_spec, nbins), dtype=np.float32)
+
+    # Flatten arrays (fast, vectorized)
+    mzs_arrs = [
+        np.asarray(m, dtype=np.float64)
+        if (m is not None and len(m) > 0)
+        else np.asarray([], dtype=np.float64)
+        for m in mzs_list
+    ]
+    ints_arrs = [
+        np.asarray(i, dtype=np.float32)
+        if (i is not None and len(i) > 0)
+        else np.asarray([], dtype=np.float32)
+        for i in ints_list
+    ]
+
+    flat_mzs = np.concatenate(mzs_arrs)
+    flat_ints = np.concatenate(ints_arrs)
+    spec_idx = np.repeat(np.arange(n_spec, dtype=np.int64), lengths)
+
+    # Bin to nearest integer mass and apply bounds filter
+    mass_bins = np.rint(flat_mzs).astype(np.int64)
+    valid_mask = (mass_bins >= 0) & (mass_bins <= upper_bound) & (flat_ints > 0)
+    if not np.any(valid_mask):
+        return np.zeros((n_spec, nbins), dtype=np.float32)
+
+    mass_bins = mass_bins[valid_mask]
+    spec_idx = spec_idx[valid_mask]
+    weights = np.asarray(flat_ints[valid_mask], dtype=np.float32) ** float(
+        intensity_power
+    )
+
+    # Build 1D keys and use bincount for accumulation
+    flat_keys = spec_idx * nbins + mass_bins
+    accum = np.bincount(flat_keys, weights=weights, minlength=n_spec * nbins).astype(
+        np.float32
+    )
+    matrix = accum.reshape((n_spec, nbins))
+    return matrix
+
+
+def _compute_pairwise_proximate_similarity(
+    left_mat: np.ndarray,
+    right_mat: np.ndarray,
+    use_jax_if_available: bool = True,
+) -> np.ndarray:
+    """
+    Compute pairwise cosine-like similarity between two binned matrices:
+      sim(i,j) = (left[i] · right[j]) / (||left[i]|| * ||right[j]||)
+
+    Prefer JAX (GPU) if available; fall back to NumPy on CPU otherwise.
+    Returns a NumPy array of dtype float32.
+    """
+    # Quick exits
+    if left_mat.size == 0 or right_mat.size == 0:
+        return np.zeros((left_mat.shape[0], right_mat.shape[0]), dtype=np.float32)
+
+    if use_jax_if_available and jax_is_available:
+        # Import jax.numpy locally to ensure the name is bound in this scope.
+        # Doing the import here avoids importing JAX at module import time on
+        # systems without GPUs and also satisfies static analyzers that may not
+        # be able to determine that `jnp` is assigned at module import time.
+        import jax.numpy as jnp  # type: ignore
+
+        # Move arrays to jax (device placement handled by jax)
+        L = jnp.asarray(left_mat, dtype=jnp.float32)
+        R = jnp.asarray(right_mat, dtype=jnp.float32)
+
+        # Normalize each spectrum (row) first so the dot product is the cosine.
+        lnorm = jnp.linalg.norm(L, axis=1, keepdims=True)
+        rnorm = jnp.linalg.norm(R, axis=1, keepdims=True)
+        lnorm_safe = jnp.where(lnorm > 0.0, lnorm, 1.0)
+        rnorm_safe = jnp.where(rnorm > 0.0, rnorm, 1.0)
+        Ln = L / lnorm_safe
+        Rn = R / rnorm_safe
+
+        sim = (Ln @ Rn.T).astype(jnp.float32)
+        return np.asarray(sim)
+    else:
+        logging.getLogger(__name__).info(
+            "JAX not available or failed; falling back to NumPy for proximate similarity."
+        )
+        # NumPy fallback: normalize rows first, then dot-product
+        lnorm = np.linalg.norm(left_mat, axis=1, keepdims=True)
+        rnorm = np.linalg.norm(right_mat, axis=1, keepdims=True)
+        lnorm[lnorm == 0] = 1.0
+        rnorm[rnorm == 0] = 1.0
+        Ln = left_mat / lnorm
+        Rn = right_mat / rnorm
+        sim = (Ln @ Rn.T).astype(
+            np.float32
+        )  # cosine similarity, which is equivalent to the dot product of normalized vectors, which is equivalent to a matrix multiplication of the two normalized matrices
+        return sim
+
+
+def _filter_pairs_by_proximate_and_precise(
+    batch_df: pl.DataFrame,
+    source_df: pl.DataFrame,
+    *,
+    ms2_tolerance_in_ppm: float,
+    threshold: float,
+    use_gpu: bool,
+    upper_bound: int = 1000,
+    intensity_power: float = 0.5,
+    require_peak_overlap: bool = True,
+) -> pl.DataFrame:
+    """
+    Given an in-memory `batch_df` (left) and the full `source_df` (right), compute a
+    proximate (integer-binned) similarity for all left×right spectra grouped by `ion_mode`
+    using a matrix multiply (JAX on GPU if available), then only send pairs whose
+    proximate similarity >= threshold to the precise (plugin) dot-product calculation.
+
+    Returns a Polars DataFrame with the same column selection and filtering as the
+    original pipeline (i.e. it includes `dotprod_similarity` and is filtered by `threshold`).
+    """
+    candidate_frames: List[pl.DataFrame] = []
+
+    # Iterate ion_modes present in the batch - comparisons only make sense within an ion mode.
+    ion_modes = set(batch_df.get_column("ion_mode").to_list())
+    for mode in ion_modes:
+        left_sub = batch_df.filter(pl.col("ion_mode") == mode)
+        right_sub = source_df.filter(pl.col("ion_mode") == mode)
+        if len(left_sub) == 0 or len(right_sub) == 0:
+            continue
+
+        # Extract lists of mz/intensity arrays
+        left_mzs = left_sub.get_column("cleaned_normalized_mz").to_list()
+        left_ints = left_sub.get_column("cleaned_normalized_intensity").to_list()
+        right_mzs = right_sub.get_column("cleaned_normalized_mz").to_list()
+        right_ints = right_sub.get_column("cleaned_normalized_intensity").to_list()
+
+        # If require_peak_overlap is set, we apply a cheap per-spectrum overlap prefilter:
+        # compute union of rounded integer masses in left_sub and prefilter right_sub
+        if require_peak_overlap:
+            # Build set of integer masses seen anywhere in left_sub to cheaply prune right_sub spectra
+            left_union_bins = set()
+            for mlist in left_mzs:
+                if mlist:
+                    left_union_bins.update(
+                        np.rint(np.asarray(mlist)).astype(np.int64).tolist()
+                    )
+            if len(left_union_bins) == 0:
+                continue
+            # keep right spectra that have any intersection with left_union_bins
+            keep_right_mask = []
+            for mzs in right_mzs:
+                if not mzs:
+                    keep_right_mask.append(False)
+                    continue
+                bins = set(np.rint(np.asarray(mzs)).astype(np.int64).tolist())
+                keep_right_mask.append(len(bins.intersection(left_union_bins)) > 0)
+            # Fast path: if nothing in right_sub shares peaks with left_sub, skip this mode
+            if not any(keep_right_mask):
+                continue
+            # Apply mask to right_sub and arrays
+            right_mzs = [mz for mz, keep in zip(right_mzs, keep_right_mask) if keep]
+            right_ints = [it for it, keep in zip(right_ints, keep_right_mask) if keep]
+            right_sub = right_sub.filter(np.array(keep_right_mask))
+
+        # Build binned matrices (vectorized)
+        left_mat = _bin_spectra_to_matrix(
+            left_mzs, left_ints, upper_bound, intensity_power
+        )
+        right_mat = _bin_spectra_to_matrix(
+            right_mzs, right_ints, upper_bound, intensity_power
+        )
+        if left_mat.size == 0 or right_mat.size == 0:
+            continue
+
+        # Compute proximate similarities (matrix multiply; prefer JAX on GPU)
+        sim_matrix = _compute_pairwise_proximate_similarity(
+            left_mat,
+            right_mat,
+            use_jax_if_available=use_gpu,
+        )
+
+        # Find candidate pairs exceeding proximate threshold
+        li, ri = np.where(sim_matrix >= float(threshold))
+        if li.size == 0:
+            continue
+
+        # Apply base_inchikey filter (avoid self-comparisons)
+        left_keys = left_sub.get_column("base_inchikey").to_list()
+        right_keys = right_sub.get_column("base_inchikey").to_list()
+        keep_mask = [left_keys[i] != right_keys[j] for i, j in zip(li, ri)]
+        if not any(keep_mask):
+            continue
+        li = np.asarray(li)[keep_mask]
+        ri = np.asarray(ri)[keep_mask]
+        prox_sims = sim_matrix[li, ri].astype(np.float32)
+
+        # Map back to global idx values (these are the idx columns we use downstream)
+        left_idxs = np.asarray(left_sub.get_column("idx").to_list(), dtype=np.int64)[li]
+        right_idxs = np.asarray(right_sub.get_column("idx").to_list(), dtype=np.int64)[
+            ri
+        ]
+
+        cand_df = pl.DataFrame(
+            {
+                "idx": left_idxs,
+                "idx_right": right_idxs,
+                "proximate_similarity": prox_sims,
+            }
+        )
+        candidate_frames.append(cand_df)
+
+    if not candidate_frames:
+        # Return an empty DataFrame with the expected schema (keeps downstream logic simple)
+        return pl.DataFrame(
+            {
+                "idx": pl.Series(dtype=pl.Int64),
+                "idx_right": pl.Series(dtype=pl.Int64),
+                "mol_idx": pl.Series(dtype=pl.Int64),
+                "mol_idx_right": pl.Series(dtype=pl.Int64),
+                "base_inchikey": pl.Series(dtype=pl.Utf8),
+                "ion_mode": pl.Series(dtype=pl.Utf8),
+                "base_inchikey_right": pl.Series(dtype=pl.Utf8),
+                "smiles": pl.Series(dtype=pl.Utf8),
+                "smiles_right": pl.Series(dtype=pl.Utf8),
+                "dotprod_similarity": pl.Series(dtype=pl.Float32),
+                "spectral_information_score": pl.Series(dtype=pl.Float32),
+                "spectral_information_score_right": pl.Series(dtype=pl.Float32),
+            }
+        )
+
+    candidates_all = pl.concat(candidate_frames, how="vertical").unique()
+
+    # Join candidate index pairs back to the full left/right rows to build structural columns for precise calculation.
+    joined = candidates_all.join(batch_df, on="idx").join(
+        source_df, left_on="idx_right", right_on="idx", suffix="_right"
+    )
+
+    # Compute the precise NIST-like dot-product on only the filtered candidate rows.
+    joined = (
+        joined.with_columns(
+            spectra=pl.struct(
+                mz1=pl.col("cleaned_normalized_mz"),
+                intensities1=pl.col("cleaned_normalized_intensity"),
+                mz2=pl.col("cleaned_normalized_mz_right"),
+                intensities2=pl.col("cleaned_normalized_intensity_right"),
+                precursor_mz1=pl.col("precursor_mz"),
+                precursor_mz2=pl.col("precursor_mz_right"),
+            )
+        )
+        .with_columns(
+            dotprod_similarity=pl.col("spectra").spectral_similarity.dotprod_similarity(
+                ms2_tolerance_in_ppm=ms2_tolerance_in_ppm,
+                clean_spectra_first=False,
+                ignore_precursor=True,
+            )
+        )
+        .drop("spectra")
+        .filter(
+            pl.col("dotprod_similarity").is_not_null(),
+            pl.col("dotprod_similarity").ge(threshold),
+        )
+        .select(
+            "idx",
+            "idx_right",
+            "mol_idx",
+            "mol_idx_right",
+            "base_inchikey",
+            "ion_mode",
+            "base_inchikey_right",
+            "smiles",
+            "smiles_right",
+            "dotprod_similarity",
+            "spectral_information_score",
+            "spectral_information_score_right",
+        )
+    )
+
+    return joined
+
+
 def build_and_write_pairs_parquet(
     parquet_paths: List[Path],
     output_path: Union[str, Path],
@@ -174,26 +575,34 @@ def build_and_write_pairs_parquet(
     num_spectra: int | None = None,
     ms2_tolerance_ppm: float = 10.0,
     batch_size: int = 1000,
-    use_pyarrow_batching: bool = True,
     mass_range: tuple[float, float] | None = None,
+    proximate_bin_upper: int = 1000,
+    use_gpu: bool = True,
 ) -> None:
     """
     Build unioned library LF, compute pairwise dot-product similarities (ignoring precursor),
     and write pairs with high similarity to parquet.
 
+    Notes:
+      - Adds a GPU-assisted proximate (integer-binned) dot-product prefilter which bins all spectra
+        into integer m/z bins (rounded, e.g. 4.78 -> 5) up to `proximate_bin_upper` (default 1000),
+        computes the pairwise similarity via a matrix multiply (uses JAX on GPU if available),
+        and only sends pairs with proximate similarity >= `threshold` to the precise dot-product
+        (plugin) computation. This reduces the number of expensive precise computations.
     Args:
       - parquet_paths: list of Path objects pointing at library parquet files
       - output_path: where to write the pairs with similarities (required)
       - threshold: float (default 0.8). Only pairs with dotprod_similarity >= threshold are saved.
       - num_spectra: Optional[int]. If provided, limit the number of molecules read from the
         unioned input using a lazy .limit(num_spectra) to avoid collecting the full dataset.
-      - batched: bool (default True). If True, materialize library and process in batches.
-        If False, use streaming mode with pl.Config.set_streaming_chunk_size(batch_size).
+      - The function operates in tiled batch mode: the library is processed in blocks
+        of shape `batch_size × batch_size` (left × right). The streaming-only path
+        has been removed; tiled batching is always used.
       - mass_range: Optional[tuple[float, float]] (default None). If provided, spectra will be
         filtered per-input-parquet by `precursor_mz` such that only spectra with
         `min <= precursor_mz <= max` are retained. This filtering is applied before the union
         of input libraries (i.e. before pairwise computation).
-
+      - proximate_bin_upper: int (default 1000). Upper bound for integer binning in the proximate prefilter.
     Returns:
       - None (writes parquet to output_path)
     """
@@ -201,7 +610,7 @@ def build_and_write_pairs_parquet(
     output_path = Path(output_path)
     log_path = output_path.with_suffix(".log")
     _log_message_to_file(
-        f"Started build_and_write_pairs_parquet: output={str(output_path)} threshold={threshold} num_spectra={num_spectra} parquet_paths={parquet_paths} batched={use_pyarrow_batching} mass_range={mass_range}",
+        f"Started build_and_write_pairs_parquet: output={str(output_path)} threshold={threshold} num_spectra={num_spectra} parquet_paths={parquet_paths} tiled_batching=True mass_range={mass_range}",
         log_path,
         overwrite=True,
     )
@@ -323,91 +732,85 @@ def build_and_write_pairs_parquet(
 
         start = perf_counter()
 
-        if use_pyarrow_batching:
-            _log_message_to_file(
-                "Materializing source library for batch processing...", log_path
-            )
-            df_source = lf.collect()
-            n_source = len(df_source)
-            _log_message_to_file(f"Source library size: {n_source}", log_path)
+        # Always use tiled batching: process the library in blocks of size
+        # `batch_size × batch_size` (left × right). The streaming path was removed.
+        _log_message_to_file(
+            "Materializing source library for tiled batch processing...", log_path
+        )
+        df_source = lf.collect()
+        n_source = len(df_source)
+        _log_message_to_file(f"Source library size: {n_source}", log_path)
 
-            _log_message_to_file(
-                f"Starting pairwise similarity computation (batch_size={batch_size})",
-                log_path,
-            )
+        _log_message_to_file(
+            f"Starting tiled pairwise similarity computation (batch_size={batch_size})",
+            log_path,
+        )
 
-            writer = None
-            total_written = 0
+        writer = None
+        total_written = 0
 
-            try:
-                for batch_start in range(0, n_source, batch_size):
-                    batch_t0 = perf_counter()
-                    # Slice the left side (batch) and use the full right side
-                    batch_lf = df_source.slice(batch_start, batch_size).lazy()
-                    source_lf = df_source.lazy()
+        try:
+            num_blocks = max(1, math.ceil(n_source / batch_size))
+            total_blocks = num_blocks * num_blocks
+            flat_idx = 0
+            for i_block in range(num_blocks):
+                left_start = i_block * batch_size
+                left_df = df_source.slice(left_start, batch_size)
+                for j_block in range(num_blocks):
+                    flat_idx += 1
+                    right_start = j_block * batch_size
+                    right_df = df_source.slice(right_start, batch_size)
 
-                    # Join and compute similarity
-                    pairs_batch = _cross_join_and_score(
-                        batch_lf,
-                        source_lf,
-                        ms2_tolerance_in_ppm=ms2_tolerance_ppm,
-                        threshold=threshold,
-                        require_peak_overlap=True,
-                    ).collect(engine="streaming")
+                    block_t0 = perf_counter()
+                    try:
+                        pairs_block = _filter_pairs_by_proximate_and_precise(
+                            left_df,
+                            right_df,
+                            ms2_tolerance_in_ppm=ms2_tolerance_ppm,
+                            threshold=threshold,
+                            upper_bound=proximate_bin_upper,
+                            intensity_power=0.5,
+                            require_peak_overlap=True,
+                            use_gpu=use_gpu,
+                        )
+                    except Exception:
+                        _log_message_to_file(
+                            f"Exception during tiled build loop (block {i_block},{j_block}):\n{traceback.format_exc()}",
+                            log_path,
+                            level=logging.ERROR,
+                        )
+                        raise
 
-                    if len(pairs_batch) > 0:
-                        table = pairs_batch.to_arrow()
+                    if len(pairs_block) > 0:
+                        table = pairs_block.to_arrow()
                         if writer is None:
                             writer = pq.ParquetWriter(output_path, table.schema)
                         writer.write_table(table)
-                        total_written += len(pairs_batch)
-                        del pairs_batch
+                        total_written += len(pairs_block)
+                        del pairs_block
                         del table
                         gc.collect()
-                    batch_t1 = perf_counter()
-                    if (batch_start // batch_size) % 10 == 0:
+
+                    block_t1 = perf_counter()
+                    # Log progress periodically (1 out of every 10 flat blocks)
+                    if flat_idx % 10 == 0:
                         _log_message_to_file(
-                            f"Processed batch {batch_start // batch_size} / {(n_source // batch_size) + 1}. "
+                            f"Processed block {flat_idx}/{total_blocks} (left_block={i_block}, right_block={j_block}). "
                             f"Written {total_written} pairs so far. "
-                            f"Time for batch: {batch_t1 - batch_t0:.3f}s",
+                            f"Time for block: {block_t1 - block_t0:.3f}s",
                             log_path,
                         )
 
-            except Exception:
-                _log_message_to_file(
-                    f"Exception during build_and_write_pairs_parquet loop:\n{traceback.format_exc()}",
-                    log_path,
-                    level=logging.ERROR,
-                )
-                raise
-            finally:
-                if writer:
-                    writer.close()
-        else:
-            # Streaming mode
-            pl.Config.set_streaming_chunk_size(batch_size)
+        except Exception:
             _log_message_to_file(
-                f"Starting pairwise similarity computation (streaming, chunk_size={batch_size})",
+                f"Exception during tiled build_and_write_pairs_parquet loop:\n{traceback.format_exc()}",
                 log_path,
+                level=logging.ERROR,
             )
-
-            # Join and compute similarity (identical logic, but on full LazyFrame)
-            pairs_filtered = _cross_join_and_score(
-                lf,
-                lf,
-                ms2_tolerance_in_ppm=ms2_tolerance_ppm,
-                threshold=threshold,
-            )
-
-            try:
-                pairs_filtered.sink_parquet(str(output_path), engine="streaming")
-            except Exception:
-                _log_message_to_file(
-                    f"Exception during build_and_write_pairs_parquet (streaming):\n{traceback.format_exc()}",
-                    log_path,
-                    level=logging.ERROR,
-                )
-                raise
+            raise
+        finally:
+            if writer:
+                writer.close()
 
         end = perf_counter()
         _log_message_to_file(
