@@ -34,3 +34,4 @@ packages/temp/
 packages/mass_decomposition/mass_decomposition/old_cpp_code/
 experiments/spectral_information/old/
 experiments/spectral_information/EAD_vs_CID_data/
+mprofile_**.dat

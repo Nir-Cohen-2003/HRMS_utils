@@ -22,6 +22,7 @@ Concise, actionable rules for editing this repository. Keep changes explicit, fa
 - When needing to accelerate function execution, use numba jit compilation and vectorization unless there's a compelling reason to use multiprocessing or threading, in which case document the reason and use processpoolexecutor/threadpoolexecutor with clear comments.
 - when needing even more performance, since its probably an operation on a large number of rows in a dataframe, we create a polars plugin/extend an existign plugin. all plugins reside in the packages directory, and their structres closely match.
 - work in the experiments folder is not under any "contract" so no need to write tests for it.
+- don't  run python files, tell me to run them.
 ---
 
 ## Practical patterns and examples

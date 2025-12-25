@@ -64,7 +64,7 @@ rust = ">=1.91.0"
 rust-src = ">=1.91.0"
 compilers = "*"
 cargo-bundle-licenses = "*"
-[package.host-dependencies] 
+[package.host-dependencies]
 python = "*"
 pip = "*"
 maturin = ">=1.09.0,<2.0"
@@ -88,6 +88,7 @@ connectorx = "*"
 sqlalchemy = "*"
 
 [feature.testing.tasks]
+check = "pyrefly check --ignore missing-import"
 check_all = "pyrefly check ./src/hrms_utils"
 check_nist_mspec = "pyrefly check ./src/hrms_utils/formats/nist_mspec.py"
 
@@ -137,7 +138,6 @@ ruff = "*"
 [feature.testing.pypi-dependencies]
 kaleido = ">=1.1.0, <2"
 
-# [feature.experiments.target.linux-64.system-requirements]
 [feature.experiments.target.linux-64.dependencies]
 hrms_utils = {path = "."}
 polars = ">=1.35.2,<2"
@@ -147,8 +147,16 @@ optuna = "*"
 nvmolkit = "*"
 pyzmq = "*"
 pytorch-gpu = "*"
-# cuda-version = "12.6.*"
 marimo ="*"
+memory_profiler = "*"
+pyarrow = "*"
 
 [feature.experiments.system-requirements]
 cuda = "12.0"
+
+[feature.experiments.tasks]
+profile = "mprof run experiments/spectral_information/similarity_vs_info.py"
+# When run without arguments, automatically select the newest file whose name starts with 'mprofile'
+# and run `mprof plot` on it. If arguments are provided they are forwarded to `mprof plot`.
+# The task exits with an error if no `mprofile*` files are found.
+plot-profile = "sh -lc 'if [ \"$#\" -eq 0 ]; then file=$(ls -t mprofile* 2>/dev/null | head -n1); if [ -z \"$file\" ]; then echo \"No mprofile file found\"; exit 1; fi; mprof plot \"$file\"; else mprof plot \"$@\"; fi' --"
