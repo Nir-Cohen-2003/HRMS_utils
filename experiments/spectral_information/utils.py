@@ -350,6 +350,9 @@ def _flatten_spectra_to_numpy(
     Uses Polars' fast C-backed `explode` and avoids Python loops. Empty spectra are
     handled gracefully (they produce no flattened rows, but `n_spec` preserves the
     original number of spectra).
+
+    Note: timing/logging for this step is performed at a higher level to allow
+    aggregation per-batch (not per-mode).
     """
     n_spec = len(df)
     if n_spec == 0:
@@ -359,9 +362,6 @@ def _flatten_spectra_to_numpy(
             np.asarray([], dtype=np.int64),
             0,
         )
-
-    # Start timing the flattening operation.
-    t0 = perf_counter()
 
     # Add a row index so we can recover which spectrum each flattened peak
     # belongs to (this mirrors the spec_idx construction from list lengths).
@@ -383,14 +383,6 @@ def _flatten_spectra_to_numpy(
     flat_ints = np.asarray(exploded.get_column(int_col).to_list(), dtype=np.float32)
     spec_idx = np.asarray(exploded.get_column("__spec_idx").to_list(), dtype=np.int64)
 
-    duration = perf_counter() - t0
-    logger.debug(
-        "Flattened %d spectra into %d peaks in %.4f s",
-        n_spec,
-        int(flat_mzs.size),
-        duration,
-    )
-
     return flat_mzs, flat_ints, spec_idx, n_spec
 
 
@@ -408,6 +400,8 @@ def _bin_flat_spectra_to_matrix(
     This mirrors `_bin_spectra_to_matrix`'s vectorized logic but accepts flattened
     inputs (so callers can use Polars' `explode`/`list.len` workflow before converting
     to NumPy).
+
+    Note: timing/logging for this step is collected by callers and aggregated per-batch.
     """
     nbins = int(upper_bound) + 1
     if n_spec == 0:
@@ -415,44 +409,24 @@ def _bin_flat_spectra_to_matrix(
     if flat_mzs.size == 0 or flat_ints.size == 0:
         return np.zeros((n_spec, nbins), dtype=np.float32)
 
-    t0 = perf_counter()
-
     # Bin to nearest integer mass and apply bounds filter
     mass_bins = np.rint(flat_mzs).astype(np.int64)
     valid_mask = (mass_bins >= 0) & (mass_bins <= upper_bound) & (flat_ints > 0)
-    n_peaks_total = int(flat_mzs.size)
-    n_peaks_valid = int(np.count_nonzero(valid_mask))
     if not np.any(valid_mask):
-        duration = perf_counter() - t0
-        logger.debug(
-            "Binning aborted: no valid peaks after filtering (n_spec=%d, nbins=%d) in %.4f s",
-            n_spec,
-            nbins,
-            duration,
-        )
         return np.zeros((n_spec, nbins), dtype=np.float32)
 
     mass_bins = mass_bins[valid_mask]
-    spec_idx = spec_idx[valid_mask].astype(np.int64)
+    spec_idx = spec_idx[valid_mask]
     weights = np.asarray(flat_ints[valid_mask], dtype=np.float32) ** float(
         intensity_power
     )
 
-    # Build 1D keys and use bincount for accumulation
+    # Build 1D keys and use bincount for accumulation (vectorized)
     flat_keys = spec_idx * nbins + mass_bins
     accum = np.bincount(flat_keys, weights=weights, minlength=n_spec * nbins).astype(
         np.float32
     )
     matrix = accum.reshape((n_spec, nbins))
-    duration = perf_counter() - t0
-    logger.debug(
-        "Binned %d total peaks (%d valid) into matrix %dx%d in %.4f s",
-        n_peaks_total,
-        n_peaks_valid,
-        n_spec,
-        nbins,
-        duration,
-    )
     return matrix
 
 
@@ -462,20 +436,54 @@ def _bin_spectra_df_to_matrix(
     int_col: str = "cleaned_normalized_intensity",
     upper_bound: int = 1000,
     intensity_power: float = 0.5,
-) -> np.ndarray:
+) -> tuple[np.ndarray, dict]:
     """
     Explode list-valued spectra columns in `df` and bin them into a dense matrix
     of shape (n_spectra, nbins) in a single, vectorized call.
 
-    This function delegates to the lower-level helpers `_flatten_spectra_to_numpy`
-    and `_bin_flat_spectra_to_matrix` to avoid duplicating the flatten/bin logic.
+    Returns:
+      - matrix: np.ndarray of shape (n_spectra, nbins)
+      - timings: dict with keys:
+          - 'flatten_time', 'bin_time', 'n_spec', 'n_peaks_total', 'n_peaks_valid', 'nbins'
     """
+    nbins = int(upper_bound) + 1
+    timings: dict = {
+        "flatten_time": 0.0,
+        "bin_time": 0.0,
+        "n_spec": 0,
+        "n_peaks_total": 0,
+        "n_peaks_valid": 0,
+        "nbins": nbins,
+    }
+
+    # Flatten (timed)
+    t_flat0 = perf_counter()
     flat_mzs, flat_ints, spec_idx, n_spec = _flatten_spectra_to_numpy(
         df, mz_col, int_col
     )
-    return _bin_flat_spectra_to_matrix(
+    timings["flatten_time"] = perf_counter() - t_flat0
+    timings["n_spec"] = int(n_spec)
+    timings["n_peaks_total"] = int(flat_mzs.size)
+
+    # Quick exits (preserve timings)
+    if n_spec == 0:
+        return np.zeros((0, nbins), dtype=np.float32), timings
+    if flat_mzs.size == 0 or flat_ints.size == 0:
+        return np.zeros((n_spec, nbins), dtype=np.float32), timings
+
+    # Compute counters for reporting
+    mass_bins = np.rint(flat_mzs).astype(np.int64)
+    valid_mask = (mass_bins >= 0) & (mass_bins <= upper_bound) & (flat_ints > 0)
+    timings["n_peaks_valid"] = int(np.count_nonzero(valid_mask))
+
+    # Binning (timed)
+    t_bin0 = perf_counter()
+    matrix = _bin_flat_spectra_to_matrix(
         flat_mzs, flat_ints, spec_idx, n_spec, upper_bound, intensity_power
     )
+    timings["bin_time"] = perf_counter() - t_bin0
+
+    return matrix, timings
 
 
 def _compute_pairwise_proximate_similarity(
@@ -489,17 +497,16 @@ def _compute_pairwise_proximate_similarity(
 
     Prefer JAX (GPU) if available; fall back to NumPy on CPU otherwise.
     Returns a NumPy array of dtype float32.
+
+    Note: timing for the proximate matrix multiply is measured by the caller so
+    we remove lower-level timing/logging from this helper.
     """
     # Quick exits
     if left_mat.size == 0 or right_mat.size == 0:
         return np.zeros((left_mat.shape[0], right_mat.shape[0]), dtype=np.float32)
 
-    t0 = perf_counter()
     if use_jax_if_available and jax_is_available:
         # Import jax.numpy locally to ensure the name is bound in this scope.
-        # Doing the import here avoids importing JAX at module import time on
-        # systems without GPUs and also satisfies static analyzers that may not
-        # be able to determine that `jnp` is assigned at module import time.
         import jax.numpy as jnp  # type: ignore
 
         # Move arrays to jax (device placement handled by jax)
@@ -515,16 +522,9 @@ def _compute_pairwise_proximate_similarity(
         Rn = R / rnorm_safe
 
         sim = (Ln @ Rn.T).astype(jnp.float32)
-        duration = perf_counter() - t0
-        logger.debug(
-            "Proximate similarity (JAX) computed for %dx%d matrices in %.4f s",
-            left_mat.shape[0],
-            right_mat.shape[0],
-            duration,
-        )
         return np.asarray(sim)
     else:
-        logger.debug("JAX not available; using NumPy for proximate similarity.")
+        # Fall back to NumPy when JAX isn't available
         # NumPy fallback: normalize rows first, then dot-product
         lnorm = np.linalg.norm(left_mat, axis=1, keepdims=True)
         rnorm = np.linalg.norm(right_mat, axis=1, keepdims=True)
@@ -533,13 +533,6 @@ def _compute_pairwise_proximate_similarity(
         Ln = left_mat / lnorm
         Rn = right_mat / rnorm
         sim = (Ln @ Rn.T).astype(np.float32)
-        duration = perf_counter() - t0
-        logger.debug(
-            "Proximate similarity (NumPy) computed for %dx%d matrices in %.4f s",
-            left_mat.shape[0],
-            right_mat.shape[0],
-            duration,
-        )
         return sim
 
 
@@ -552,7 +545,7 @@ def _filter_pairs_by_proximate_and_precise(
     use_gpu: bool,
     upper_bound: int = 1000,
     intensity_power: float = 0.5,
-) -> pl.DataFrame:
+) -> tuple[pl.DataFrame, dict]:
     """
     Given an in-memory `batch_df` (left) and the full `source_df` (right), compute a
     proximate (integer-binned) similarity for all left×right spectra grouped by `ion_mode`
@@ -564,10 +557,36 @@ def _filter_pairs_by_proximate_and_precise(
     matrix as the fast, first-pass filter to prune candidate pairs before the
     more expensive precise dot-product calculation.
 
-    Returns a Polars DataFrame with the same column selection and filtering as the
-    original pipeline (i.e. it includes `dotprod_similarity` and is filtered by `threshold`).
+    Returns:
+      - tuple:
+          - candidates (pl.DataFrame): filtered candidate pairs with the usual
+            selected columns (includes `dotprod_similarity` and is filtered by `threshold`)
+          - timings (dict): aggregated timings (floats, seconds) for this batch.
+            The timings dict contains the following keys:
+              - 'flatten_time': total time spent flattening list-columns to arrays
+              - 'bin_time': total time spent binning flattened arrays
+              - 'proximate_time': total time spent computing the proximate similarity matrix
+              - 'precise_time': total time spent computing the precise dot-product similarity
+              - 'write_time': time spent writing this batch to disk (0.0 if nothing was written)
+              - 'n_peaks_total': total number of input peaks encountered in this batch
+              - 'n_peaks_valid': number of peaks that passed bounds/intensity filters
+              - 'n_candidates': number of candidate rows (height of `candidates`)
+              - 'nbins': number of integer bins used (upper_bound + 1)
+
+    The returned `candidates` DataFrame has the same selection/filtering semantics as
+    before and is suitable for downstream precise scoring and pair writing.
     """
     candidate_frames: List[pl.DataFrame] = []
+    # Per-batch timing accumulators (aggregated across ion modes)
+    batch_timings: dict = {
+        "flatten_time": 0.0,
+        "bin_time": 0.0,
+        "proximate_time": 0.0,
+        "precise_time": 0.0,
+        "n_peaks_total": 0,
+        "n_peaks_valid": 0,
+        "n_candidates": 0,
+    }
 
     # Iterate ion_modes present in the batch - comparisons only make sense within an ion mode.
     ion_modes = set(batch_df.get_column("ion_mode").to_list())
@@ -583,15 +602,15 @@ def _filter_pairs_by_proximate_and_precise(
         # Peak-overlap prefilter removed: rely on the proximate (integer-binned)
         # similarity matrix (approximate search) to prune candidates instead.
 
-        # Build binned matrices (vectorized, directly from DataFrames)
-        left_mat = _bin_spectra_df_to_matrix(
+        # Build binned matrices (vectorized, directly from DataFrames) and accumulate timings
+        left_mat, left_t = _bin_spectra_df_to_matrix(
             left_sub,
             "cleaned_normalized_mz",
             "cleaned_normalized_intensity",
             upper_bound,
             intensity_power,
         )
-        right_mat = _bin_spectra_df_to_matrix(
+        right_mat, right_t = _bin_spectra_df_to_matrix(
             right_sub,
             "cleaned_normalized_mz",
             "cleaned_normalized_intensity",
@@ -599,15 +618,30 @@ def _filter_pairs_by_proximate_and_precise(
             intensity_power,
         )
 
+        batch_timings["flatten_time"] += left_t.get("flatten_time", 0.0) + right_t.get(
+            "flatten_time", 0.0
+        )
+        batch_timings["bin_time"] += left_t.get("bin_time", 0.0) + right_t.get(
+            "bin_time", 0.0
+        )
+        batch_timings["n_peaks_total"] += left_t.get("n_peaks_total", 0) + right_t.get(
+            "n_peaks_total", 0
+        )
+        batch_timings["n_peaks_valid"] += left_t.get("n_peaks_valid", 0) + right_t.get(
+            "n_peaks_valid", 0
+        )
+
         if left_mat.size == 0 or right_mat.size == 0:
             continue
 
         # Compute proximate similarities (matrix multiply; prefer JAX on GPU)
+        t_prox = perf_counter()
         sim_matrix = _compute_pairwise_proximate_similarity(
             left_mat,
             right_mat,
             use_jax_if_available=use_gpu,
         )
+        batch_timings["proximate_time"] += perf_counter() - t_prox
 
         # Find candidate pairs exceeding proximate threshold
         li, ri = np.where(sim_matrix >= float(threshold))
@@ -641,7 +675,7 @@ def _filter_pairs_by_proximate_and_precise(
 
     if not candidate_frames:
         # Return an empty DataFrame with the expected schema (keeps downstream logic simple)
-        return pl.DataFrame(
+        result_df = pl.DataFrame(
             {
                 "idx": pl.Series(dtype=pl.Int64),
                 "idx_right": pl.Series(dtype=pl.Int64),
@@ -657,6 +691,7 @@ def _filter_pairs_by_proximate_and_precise(
                 "spectral_information_score_right": pl.Series(dtype=pl.Float32),
             }
         )
+        return result_df, batch_timings
 
     candidates_all = pl.concat(candidate_frames, how="vertical").unique()
 
@@ -705,14 +740,9 @@ def _filter_pairs_by_proximate_and_precise(
             "spectral_information_score_right",
         )
     )
-    duration_precise = perf_counter() - t_precise
-    logger.debug(
-        "Precise dot-product computed on %d candidate rows in %.4f s",
-        joined.height,
-        duration_precise,
-    )
-
-    return joined
+    batch_timings["precise_time"] += perf_counter() - t_precise
+    batch_timings["n_candidates"] = joined.height
+    return joined, batch_timings
 
 
 def build_and_write_pairs_parquet(
@@ -895,6 +925,15 @@ def build_and_write_pairs_parquet(
 
         writer = None
         total_written = 0
+        total_timings = {
+            "flatten_time": 0.0,
+            "bin_time": 0.0,
+            "proximate_time": 0.0,
+            "precise_time": 0.0,
+            "write_time": 0.0,
+            "pairs_written": 0,
+            "blocks_processed": 0,
+        }
 
         try:
             num_blocks = max(1, math.ceil(n_source / batch_size))
@@ -910,14 +949,16 @@ def build_and_write_pairs_parquet(
 
                     block_t0 = perf_counter()
                     try:
-                        pairs_block = _filter_pairs_by_proximate_and_precise(
-                            left_df,
-                            right_df,
-                            ms2_tolerance_in_ppm=ms2_tolerance_ppm,
-                            threshold=threshold,
-                            upper_bound=proximate_bin_upper,
-                            intensity_power=0.5,
-                            use_gpu=use_gpu,
+                        pairs_block, batch_timings = (
+                            _filter_pairs_by_proximate_and_precise(
+                                left_df,
+                                right_df,
+                                ms2_tolerance_in_ppm=ms2_tolerance_ppm,
+                                threshold=threshold,
+                                upper_bound=proximate_bin_upper,
+                                intensity_power=0.5,
+                                use_gpu=use_gpu,
+                            )
                         )
                     except Exception:
                         _log_message_to_file(
@@ -927,23 +968,51 @@ def build_and_write_pairs_parquet(
                         )
                         raise
 
+                    # Write results if any and capture write time
                     if len(pairs_block) > 0:
+                        batch_pairs_written = len(pairs_block)
                         table = pairs_block.to_arrow()
                         if writer is None:
                             writer = pq.ParquetWriter(output_path, table.schema)
                         t_write = perf_counter()
                         writer.write_table(table)
                         write_dur = perf_counter() - t_write
-                        logger.debug(
-                            "Wrote %d rows to %s in %.4f s",
-                            len(pairs_block),
-                            output_path,
-                            write_dur,
-                        )
-                        total_written += len(pairs_block)
+                        batch_timings["write_time"] = write_dur
+                        total_timings["write_time"] += write_dur
+                        total_written += batch_pairs_written
+                        total_timings["pairs_written"] += batch_pairs_written
                         del pairs_block
                         del table
                         gc.collect()
+                    else:
+                        batch_pairs_written = 0
+                        # Ensure write_time is present in batch_timings for consistency
+                        batch_timings.setdefault("write_time", 0.0)
+
+                    # Accumulate totals and emit a single batch-level summary
+                    total_timings["flatten_time"] += batch_timings.get(
+                        "flatten_time", 0.0
+                    )
+                    total_timings["bin_time"] += batch_timings.get("bin_time", 0.0)
+                    total_timings["proximate_time"] += batch_timings.get(
+                        "proximate_time", 0.0
+                    )
+                    total_timings["precise_time"] += batch_timings.get(
+                        "precise_time", 0.0
+                    )
+                    total_timings["blocks_processed"] += 1
+
+                    batch_summary = (
+                        f"Batch {flat_idx}/{total_blocks} summary: "
+                        f"flatten={batch_timings.get('flatten_time', 0):.4f}s "
+                        f"bin={batch_timings.get('bin_time', 0):.4f}s "
+                        f"proximate={batch_timings.get('proximate_time', 0):.4f}s "
+                        f"precise={batch_timings.get('precise_time', 0):.4f}s "
+                        f"write={batch_timings.get('write_time', 0):.4f}s "
+                        f"pairs={batch_pairs_written}"
+                    )
+                    _log_message_to_file(batch_summary, log_path)
+                    logger.info(batch_summary)
 
                     block_t1 = perf_counter()
                     # Log progress periodically (1 out of every 10 flat blocks)
@@ -971,6 +1040,20 @@ def build_and_write_pairs_parquet(
             f"Wrote results of library search to file {str(output_path)} in time {end - start:.3f}s.",
             log_path,
         )
+
+        # Emit a single, final total summary for the run (aggregated across batches)
+        summary_msg = (
+            f"TOTAL SUMMARY: blocks={total_timings['blocks_processed']} "
+            f"pairs_written={total_timings['pairs_written']} "
+            f"total_time={end - start:.3f}s "
+            f"flatten={total_timings['flatten_time']:.3f}s "
+            f"bin={total_timings['bin_time']:.3f}s "
+            f"proximate={total_timings['proximate_time']:.3f}s "
+            f"precise={total_timings['precise_time']:.3f}s "
+            f"write={total_timings['write_time']:.3f}s"
+        )
+        _log_message_to_file(summary_msg, log_path)
+        logger.info(summary_msg)
 
     except Exception:
         _log_message_to_file(
