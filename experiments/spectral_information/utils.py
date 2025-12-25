@@ -1,10 +1,6 @@
-import ctypes.util
 import gc
 import logging
 import math
-import os
-import shutil
-import subprocess
 import threading
 import traceback
 from glob import glob as _glob
@@ -17,7 +13,6 @@ import polars as pl
 import pyarrow.parquet as pq
 from nvmolkit.fingerprints import MorganFingerprintGenerator
 from nvmolkit.similarity import crossTanimotoSimilarityMemoryConstrained
-from pyarrow import ChunkedArray, Table
 from rdkit import Chem
 
 from hrms_utils.rdkit import sanitize_smiles
@@ -28,92 +23,48 @@ if TYPE_CHECKING:
     import jax  # type: ignore
     import jax.numpy as jnp  # type: ignore
 
-# Define these at module scope so static analysis tools know the names exist even
-# when JAX is not imported/used in this environment. They will be assigned real
-# module objects when a GPU is detected and JAX is successfully imported.
-jax = None  # type: ignore
-jnp = None  # type: ignore
+# JAX will be imported unconditionally below; module-level placeholders are not needed.
 
 
-def _nvidia_gpu_available() -> bool:
+# Device detection helper removed:
+# Device/backend selection is delegated to JAX itself and to the per-call
+# `use_gpu` flag in the proximate similarity routine. If callers need to force a
+# particular backend or control visible devices, please use environment variables
+# such as `CUDA_VISIBLE_DEVICES` or `JAX_PLATFORM_NAME` externally, or pass
+# `use_gpu=False` to the proximate similarity call to force CPU-only execution.
+
+
+# Do not force a specific JAX backend at import time; delegate backend/device
+# selection to JAX (which will pick GPU if available and configured). If callers
+# need to ensure a CPU-only execution (for example, due to memory constraints),
+# pass `use_gpu=False` to the proximate similarity call so normalization/multiplication
+# remain on the CPU device.
+
+# Assume JAX is installed in the environment; import it unconditionally.
+import jax  # type: ignore
+import jax.numpy as jnp  # type: ignore
+
+logging.getLogger(__name__).info(
+    "JAX imported; backend/device selection is delegated to JAX (environment variables may influence choice)."
+)
+
+
+def _jax_proximate_similarity_workload(
+    L: "jnp.ndarray", R: "jnp.ndarray"
+) -> "jnp.ndarray":
     """
-    Heuristic for detecting an NVIDIA GPU in the runtime environment.
+    JAX workload (matmul): compute pairwise cosine-like similarity via
+    a matrix multiply on already-normalized rows.
 
-    Why: we only want to import and configure JAX when an NVIDIA GPU is available.
-    Importing JAX on systems where only TPU libraries are partially present can
-    result in noisy INFO logs like "Unable to initialize backend 'tpu': Failed to
-    open libtpu.so" even though the user has no TPU. By detecting a GPU first
-    and setting `JAX_PLATFORM_NAME` before importing JAX we avoid those logs and
-    ensure JAX will try to use the 'gpu' backend.
+    NOTE: This function is intentionally NOT jitted at import-time. Instead,
+    callers should jax.jit it with an explicit `device` or `backend` bound
+    depending on whether CPU-only execution is requested (`use_gpu=False`) so
+    we avoid accidental GPU compilation/transfers when a CPU execution is desired.
     """
-    # If CUDA_VISIBLE_DEVICES is explicitly set to an empty string, treat that
-    # as "no GPU available".
-    cvd = os.environ.get("CUDA_VISIBLE_DEVICES")
-    if cvd is not None and cvd.strip() == "":
-        return False
-
-    # If nvidia-smi exists and reports devices, that's a reliable indicator.
-    nvsmi = shutil.which("nvidia-smi")
-    if nvsmi:
-        try:
-            out = subprocess.run(
-                [nvsmi, "-L"], capture_output=True, text=True, check=False
-            )
-            if out.returncode == 0 and out.stdout.strip() != "":
-                return True
-        except Exception:
-            # Best-effort; fall through to other checks.
-            pass
-
-    # Check for common CUDA libraries via ctypes
-    for libname in ("cuda", "cudart"):
-        try:
-            if ctypes.util.find_library(libname):
-                return True
-        except Exception:
-            pass
-
-    # Last resort: check common CUDA library locations.
-    if os.path.exists("/usr/local/cuda/lib64/libcudart.so") or os.path.exists(
-        "/usr/lib/x86_64-linux-gnu/libcuda.so"
-    ):
-        return True
-
-    return False
+    sim = jnp.matmul(L, R.T).astype(jnp.float32)
+    return sim
 
 
-jax_is_available = False
-if _nvidia_gpu_available():
-    # Force JAX to use the GPU backend. Must be set before importing JAX so
-    # other backends (TPU) aren't probed/initialized and produce noisy logs.
-    os.environ["JAX_PLATFORM_NAME"] = "gpu"
-    try:
-        import jax.numpy as jnp  # noqa: F401
-
-        # Reinforce backend selection if JAX was previously imported.
-        try:
-            from jax import config as jax_config
-
-            jax_config.update("jax_platform_name", "gpu")
-        except Exception:
-            # Non-fatal: if config update fails, JAX may already be configured.
-            pass
-
-        jax_is_available = True
-        logging.getLogger(__name__).info(
-            "JAX imported and configured to use the 'gpu' backend."
-        )
-    except Exception:
-        # If JAX fails to import even when GPU heuristics succeeded, fall back.
-        logging.getLogger(__name__).info(
-            "JAX import failed despite NVIDIA GPU detection; falling back to NumPy."
-        )
-        jax_is_available = False
-else:
-    logging.getLogger(__name__).info(
-        "No NVIDIA GPU detected; JAX will not be used (falling back to NumPy)."
-    )
-    jax_is_available = False
 # Tracks which log files have been truncated for this process so we only truncate once.
 _initialized_log_paths: set[str] = set()
 _initialized_log_paths_lock = threading.Lock()
@@ -175,168 +126,6 @@ def _log_message_to_file(
         logger.setLevel(prev_level)
 
 
-def _cross_join_and_score(
-    newer: pl.LazyFrame,
-    older: pl.LazyFrame,
-    ms2_tolerance_in_ppm: float,
-    threshold: float,
-    require_peak_overlap: bool = False,
-) -> pl.LazyFrame:
-    """
-    Centralize the join/crossing operation used by pairwise scoring.
-
-    This function uses the definition of the first LazyFrame (`newer`) as the
-    drive side of the join so the join result is deterministic. It returns a
-    LazyFrame (no collection) with dot-product similarity computed and filtered
-    by `threshold`. If `require_peak_overlap` is True, an additional pre-filter
-    requiring at least one rounded m/z overlap is applied to reduce downstream
-    compute for obvious non-matching pairs.
-    """
-    # Deterministic join on ion_mode; the suffix ensures columns from `older` are suffixed.
-    joined = newer.join(other=older, on="ion_mode", suffix="_right")
-
-    # Base filter: avoid self-comparisons by different inchikeys.
-    filters = [pl.col("base_inchikey") != pl.col("base_inchikey_right")]
-
-    if require_peak_overlap:
-        filters.append(
-            pl.col("cleaned_normalized_mz")
-            .list.eval(pl.element().round(2))
-            .list.set_intersection(
-                pl.col("cleaned_normalized_mz_right").list.eval(pl.element().round(2))
-            )
-            .list.len()
-            .ge(1)
-        )
-
-    lf = (
-        joined.filter(*filters)
-        .with_columns(
-            spectra=pl.struct(
-                mz1=pl.col("cleaned_normalized_mz").alias("mz1"),
-                intensities1=pl.col("cleaned_normalized_intensity").alias(
-                    "intensities1"
-                ),
-                mz2=pl.col("cleaned_normalized_mz_right").alias("mz2"),
-                intensities2=pl.col("cleaned_normalized_intensity_right").alias(
-                    "intensities2"
-                ),
-                precursor_mz1=pl.col("precursor_mz").alias("precursor_mz1"),
-                precursor_mz2=pl.col("precursor_mz_right").alias("precursor_mz2"),
-            )
-        )
-        .drop(
-            [
-                "cleaned_normalized_mz",
-                "cleaned_normalized_intensity",
-                "cleaned_normalized_mz_right",
-                "cleaned_normalized_intensity_right",
-                "precursor_mz",
-                "precursor_mz_right",
-            ]
-        )
-        .with_columns(
-            dotprod_similarity=pl.col("spectra").spectral_similarity.dotprod_similarity(
-                ms2_tolerance_in_ppm=ms2_tolerance_in_ppm,
-                clean_spectra_first=False,
-                ignore_precursor=True,
-            )
-        )
-        .drop("spectra")
-        .filter(
-            pl.col("dotprod_similarity").is_not_null(),
-            pl.col("dotprod_similarity").ge(threshold),
-        )
-        .select(
-            "idx",
-            "idx_right",
-            "mol_idx",
-            "mol_idx_right",
-            "base_inchikey",
-            "ion_mode",
-            "base_inchikey_right",
-            "smiles",
-            "smiles_right",
-            "dotprod_similarity",
-            "spectral_information_score",
-            "spectral_information_score_right",
-        )
-    )
-
-    return lf
-
-
-def _bin_spectra_to_matrix(
-    mzs_list: List[list],
-    ints_list: List[list],
-    upper_bound: int = 1000,
-    intensity_power: float = 0.5,
-) -> np.ndarray:
-    """
-    Bin lists of spectra into a dense 2D matrix of shape (n_spectra, nbins).
-
-    Implementation notes (why this approach):
-      - Vectorized: flatten all spectra into 1D arrays, compute integer bin indices with
-        rounding and build a single 1D `np.bincount` where the flattened key is
-        `spec_idx * nbins + mass_bin`. This avoids Python loops over spectra while
-        being memory efficient and fast for typical batch sizes.
-      - We apply `intensity_power` (default 0.5 to match NIST-like dot-product weighting)
-        prior to accumulation, so the binned matrix entries correspond to the weighted
-        intensities used in similarity calculation.
-
-    Returns:
-      - np.ndarray(dtype=np.float32) shape (n_spectra, nbins)
-    """
-    nbins = int(upper_bound) + 1
-    n_spec = len(mzs_list)
-    if n_spec == 0:
-        return np.zeros((0, nbins), dtype=np.float32)
-
-    # Prepare lengths, handling None or empty lists gracefully
-    lengths = [len(m) if m is not None else 0 for m in mzs_list]
-    total_peaks = sum(lengths)
-    if total_peaks == 0:
-        return np.zeros((n_spec, nbins), dtype=np.float32)
-
-    # Flatten arrays (fast, vectorized)
-    mzs_arrs = [
-        np.asarray(m, dtype=np.float64)
-        if (m is not None and len(m) > 0)
-        else np.asarray([], dtype=np.float64)
-        for m in mzs_list
-    ]
-    ints_arrs = [
-        np.asarray(i, dtype=np.float32)
-        if (i is not None and len(i) > 0)
-        else np.asarray([], dtype=np.float32)
-        for i in ints_list
-    ]
-
-    flat_mzs = np.concatenate(mzs_arrs)
-    flat_ints = np.concatenate(ints_arrs)
-    spec_idx = np.repeat(np.arange(n_spec, dtype=np.int64), lengths)
-
-    # Bin to nearest integer mass and apply bounds filter
-    mass_bins = np.rint(flat_mzs).astype(np.int64)
-    valid_mask = (mass_bins >= 0) & (mass_bins <= upper_bound) & (flat_ints > 0)
-    if not np.any(valid_mask):
-        return np.zeros((n_spec, nbins), dtype=np.float32)
-
-    mass_bins = mass_bins[valid_mask]
-    spec_idx = spec_idx[valid_mask]
-    weights = np.asarray(flat_ints[valid_mask], dtype=np.float32) ** float(
-        intensity_power
-    )
-
-    # Build 1D keys and use bincount for accumulation
-    flat_keys = spec_idx * nbins + mass_bins
-    accum = np.bincount(flat_keys, weights=weights, minlength=n_spec * nbins).astype(
-        np.float32
-    )
-    matrix = accum.reshape((n_spec, nbins))
-    return matrix
-
-
 def _flatten_spectra_to_numpy(
     df: pl.DataFrame, mz_col: str, int_col: str
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, int]:
@@ -378,10 +167,15 @@ def _flatten_spectra_to_numpy(
             n_spec,
         )
 
-    # Export columns to NumPy arrays for fast, vectorized processing downstream.
-    flat_mzs = np.asarray(exploded.get_column(mz_col).to_list(), dtype=np.float64)
-    flat_ints = np.asarray(exploded.get_column(int_col).to_list(), dtype=np.float32)
-    spec_idx = np.asarray(exploded.get_column("__spec_idx").to_list(), dtype=np.int64)
+    # Export columns from Polars directly to JAX arrays (assume `.to_jax()` exists).
+    flat_mzs_jax = exploded.get_column(mz_col).to_jax()
+    flat_ints_jax = exploded.get_column(int_col).to_jax()
+    spec_idx_jax = exploded.get_column("__spec_idx").to_jax()
+
+    # Convert to NumPy arrays for the CPU-bound binning step (NumPy's `bincount` is used).
+    flat_mzs = np.asarray(jnp.asarray(flat_mzs_jax, dtype=jnp.float64))
+    flat_ints = np.asarray(jnp.asarray(flat_ints_jax, dtype=jnp.float32))
+    spec_idx = np.asarray(jnp.asarray(spec_idx_jax, dtype=jnp.int64))
 
     return flat_mzs, flat_ints, spec_idx, n_spec
 
@@ -489,14 +283,14 @@ def _bin_spectra_df_to_matrix(
 def _compute_pairwise_proximate_similarity(
     left_mat: np.ndarray,
     right_mat: np.ndarray,
-    use_jax_if_available: bool = True,
+    use_gpu: bool = True,
 ) -> np.ndarray:
     """
     Compute pairwise cosine-like similarity between two binned matrices:
       sim(i,j) = (left[i] · right[j]) / (||left[i]|| * ||right[j]||)
 
-    Prefer JAX (GPU) if available; fall back to NumPy on CPU otherwise.
-    Returns a NumPy array of dtype float32.
+    Compute using JAX (GPU for matmul when requested). Normalization is
+    performed on the CPU device via JAX primitives. Returns a NumPy array of dtype float32.
 
     Note: timing for the proximate matrix multiply is measured by the caller so
     we remove lower-level timing/logging from this helper.
@@ -505,35 +299,74 @@ def _compute_pairwise_proximate_similarity(
     if left_mat.size == 0 or right_mat.size == 0:
         return np.zeros((left_mat.shape[0], right_mat.shape[0]), dtype=np.float32)
 
-    if use_jax_if_available and jax_is_available:
-        # Import jax.numpy locally to ensure the name is bound in this scope.
-        import jax.numpy as jnp  # type: ignore
+    # Convert input matrices to JAX arrays and perform normalization using JAX on the CPU device.
+    # This keeps the normalization on the host (CPU) while using JAX primitives so device
+    # transfers are straightforward and deterministic.
+    L_jax = jnp.asarray(left_mat, dtype=jnp.float32)
+    R_jax = jnp.asarray(right_mat, dtype=jnp.float32)
 
-        # Move arrays to jax (device placement handled by jax)
-        L = jnp.asarray(left_mat, dtype=jnp.float32)
-        R = jnp.asarray(right_mat, dtype=jnp.float32)
-
-        # Normalize each spectrum (row) first so the dot product is the cosine.
-        lnorm = jnp.linalg.norm(L, axis=1, keepdims=True)
-        rnorm = jnp.linalg.norm(R, axis=1, keepdims=True)
-        lnorm_safe = jnp.where(lnorm > 0.0, lnorm, 1.0)
-        rnorm_safe = jnp.where(rnorm > 0.0, rnorm, 1.0)
-        Ln = L / lnorm_safe
-        Rn = R / rnorm_safe
-
-        sim = (Ln @ Rn.T).astype(jnp.float32)
-        return np.asarray(sim)
+    # Ensure normalization runs on the CPU device
+    cpu_dev = next((d for d in jax.devices() if d.platform == "cpu"), None)
+    if cpu_dev is not None:
+        L_cpu = jax.device_put(L_jax, device=cpu_dev)
+        R_cpu = jax.device_put(R_jax, device=cpu_dev)
     else:
-        # Fall back to NumPy when JAX isn't available
-        # NumPy fallback: normalize rows first, then dot-product
-        lnorm = np.linalg.norm(left_mat, axis=1, keepdims=True)
-        rnorm = np.linalg.norm(right_mat, axis=1, keepdims=True)
-        lnorm[lnorm == 0] = 1.0
-        rnorm[rnorm == 0] = 1.0
-        Ln = left_mat / lnorm
-        Rn = right_mat / rnorm
-        sim = (Ln @ Rn.T).astype(np.float32)
-        return sim
+        # If no explicit CPU device is exposed, use default placement
+        L_cpu = L_jax
+        R_cpu = R_jax
+
+    # JAX-based normalization on CPU
+    lnorm = jnp.linalg.norm(L_cpu, axis=1, keepdims=True)
+    rnorm = jnp.linalg.norm(R_cpu, axis=1, keepdims=True)
+    lnorm_safe = jnp.where(lnorm > 0.0, lnorm, 1.0)
+    rnorm_safe = jnp.where(rnorm > 0.0, rnorm, 1.0)
+    Ln_cpu = L_cpu / lnorm_safe
+    Rn_cpu = R_cpu / rnorm_safe
+
+    # Optionally move normalized arrays to GPU for the matmul if requested and available.
+    if use_gpu:
+        gpu_dev = next((d for d in jax.devices() if d.platform == "gpu"), None)
+        if gpu_dev is not None:
+            Ln = jax.device_put(Ln_cpu, device=gpu_dev)
+            Rn = jax.device_put(Rn_cpu, device=gpu_dev)
+        else:
+            Ln = Ln_cpu
+            Rn = Rn_cpu
+    else:
+        Ln = Ln_cpu
+        Rn = Rn_cpu
+
+    # Choose a cached jitted matmul wrapper for the requested device/backend.
+    # Creating the jitted wrapper once per device/backend avoids repeated
+    # `jax.jit` calls and redundant recompilations inside the tiled loops.
+    if use_gpu:
+        gpu_dev = next((d for d in jax.devices() if d.platform == "gpu"), None)
+        if gpu_dev is not None:
+            jit_workload = _get_proximate_jit_workload_for_device(device=gpu_dev)
+        else:
+            # No GPU device exposed: fall back to a CPU-bound jitted wrapper
+            jit_workload = _get_proximate_jit_workload_for_device(backend="cpu")
+    else:
+        cpu_dev2 = next((d for d in jax.devices() if d.platform == "cpu"), None)
+        if cpu_dev2 is not None:
+            jit_workload = _get_proximate_jit_workload_for_device(device=cpu_dev2)
+        else:
+            jit_workload = _get_proximate_jit_workload_for_device(backend="cpu")
+
+    logger.debug(
+        "Executing proximate similarity matmul on %s (left=%s, right=%s)",
+        "GPU" if use_gpu else "CPU",
+        getattr(Ln, "shape", None),
+        getattr(Rn, "shape", None),
+    )
+
+    sim_jax = jit_workload(Ln, Rn)
+
+    # Move result back to CPU and convert to a NumPy array for the rest of the pipeline.
+    cpu_dev = next((d for d in jax.devices() if d.platform == "cpu"), None)
+    if cpu_dev is not None:
+        sim_jax = jax.device_put(sim_jax, device=cpu_dev)
+    return np.asarray(sim_jax)
 
 
 def _filter_pairs_by_proximate_and_precise(
@@ -639,7 +472,7 @@ def _filter_pairs_by_proximate_and_precise(
         sim_matrix = _compute_pairwise_proximate_similarity(
             left_mat,
             right_mat,
-            use_jax_if_available=use_gpu,
+            use_gpu=use_gpu,
         )
         batch_timings["proximate_time"] += perf_counter() - t_prox
 
@@ -1012,7 +845,6 @@ def build_and_write_pairs_parquet(
                         f"pairs={batch_pairs_written}"
                     )
                     _log_message_to_file(batch_summary, log_path)
-                    logger.info(batch_summary)
 
                     block_t1 = perf_counter()
                     # Log progress periodically (1 out of every 10 flat blocks)
@@ -1053,7 +885,6 @@ def build_and_write_pairs_parquet(
             f"write={total_timings['write_time']:.3f}s"
         )
         _log_message_to_file(summary_msg, log_path)
-        logger.info(summary_msg)
 
     except Exception:
         _log_message_to_file(
@@ -1287,12 +1118,7 @@ def compute_and_save_tanimoto_scores(
                     f"Wrote processed DataFrame to {output_path} rows={df_processed.height} in {write_dur:.4f}s",
                     log_path,
                 )
-                logger.debug(
-                    "Wrote processed DataFrame to %s rows=%d in %.4f s",
-                    output_path,
-                    df_processed.height,
-                    write_dur,
-                )
+
             except Exception:
                 _log_message_to_file(
                     f"Failed to write processed DataFrame to {output_path}: {traceback.format_exc()}",
