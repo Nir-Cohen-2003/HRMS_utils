@@ -151,6 +151,7 @@ pytorch-gpu = "*"
 marimo ="*"
 memory_profiler = "*"
 pyarrow = "*"
+numba = "*"
 
 [feature.experiments.system-requirements]
 cuda = "12.0"
