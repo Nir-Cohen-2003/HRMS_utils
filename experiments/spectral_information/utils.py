@@ -1,5 +1,6 @@
 import logging
 import math
+import threading
 import traceback
 from glob import glob as _glob
 from pathlib import Path
@@ -14,6 +15,66 @@ from nvmolkit.similarity import crossTanimotoSimilarityMemoryConstrained
 from rdkit import Chem
 
 from hrms_utils.rdkit import sanitize_smiles
+
+# Tracks which log files have been truncated for this process so we only truncate once.
+_initialized_log_paths: set[str] = set()
+_initialized_log_paths_lock = threading.Lock()
+
+# Module logger (use debug level for timing info)
+logger = logging.getLogger(__name__)
+
+
+def _log_message_to_file(
+    message: str,
+    log_path: Union[str, Path],
+    level: int = logging.INFO,
+    overwrite: bool = False,
+) -> None:
+    """
+    Log a single message to a file by attaching a temporary FileHandler to the module logger.
+    The handler is removed and closed after logging so repeated calls do not accumulate handlers.
+
+    If `overwrite` is True, the file is opened in write mode ('w') for this write;
+    otherwise it is opened in append mode ('a'). This lets the caller truncate the
+    log at the start of a run and append for subsequent progress updates.
+    """
+    logger = logging.getLogger(__name__)
+    log_path = Path(log_path)
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    # If overwrite=True, only truncate on the first write for that canonical path
+    # during this process. Subsequent writes in the same process will append.
+    # This prevents accidental repeated truncation if the same function is invoked
+    # multiple times in one run.
+    canonical = str(Path(log_path).resolve(strict=False))
+    if overwrite:
+        with _initialized_log_paths_lock:
+            if canonical in _initialized_log_paths:
+                do_truncate = False
+            else:
+                do_truncate = True
+                _initialized_log_paths.add(canonical)
+    else:
+        do_truncate = False
+
+    mode = "w" if do_truncate else "a"
+    handler = logging.FileHandler(str(log_path), mode=mode)
+    handler.setLevel(level)
+    formatter = logging.Formatter("%(asctime)s %(levelname)s %(name)s: %(message)s")
+    handler.setFormatter(formatter)
+
+    # Some environments set the logger level to WARNING by default, which can
+    # filter out INFO/DEBUG messages. Temporarily set the logger level to DEBUG
+    # so the message will be emitted, then restore the original level.
+    prev_level = logger.level
+    logger.setLevel(logging.DEBUG)
+
+    logger.addHandler(handler)
+    try:
+        logger.log(level, message)
+    finally:
+        logger.removeHandler(handler)
+        handler.close()
+        logger.setLevel(prev_level)
 
 
 def process_batch_tanimoto(
