@@ -113,23 +113,10 @@ convert_msp = "python scripts/convert_msp.py"
 
 [feature.testing.dependencies]
 hrms_utils = {path = "."}
-polars = ">=1.35.2,<2"
-rdkit = ">=2024.0.0"
-numpy = ">=1.20.0,<2.3"
 numba = ">=0.61.0"
 pytest = ">=8.4.2,<9"
 optuna = "*"
-scipy = "*"
 requests = "*"
-aiohttp = "*"
-pyarrow = ">=12.0.0"
-pandas = "*"
-python-calamine = "*"
-openpyxl = "*"
-xlsx2csv = "*"
-xlsxwriter = "*"
-connectorx = "*"
-sqlalchemy = "*"
 ipykernel = "*"
 plotly = ">=6.3.0,<7"
 nbformat = ">=5.10.4,<6"
@@ -140,9 +127,6 @@ kaleido = ">=1.1.0, <2"
 
 [feature.experiments.target.linux-64.dependencies]
 hrms_utils = {path = "."}
-polars = ">=1.35.2,<2"
-rdkit = ">=2024.0.0"
-numpy = "*"
 jax = "*"
 optuna = "*"
 nvmolkit = "*"
@@ -150,14 +134,17 @@ pyzmq = "*"
 pytorch-gpu = "*"
 marimo ="*"
 memory_profiler = "*"
-pyarrow = "*"
 numba = "*"
-
+sparse_dot_mkl = "*"
+cupy = "*"
 [feature.experiments.system-requirements]
 cuda = "12.0"
 
 [feature.experiments.tasks]
 profile = "mprof run experiments/spectral_information/similarity_vs_info.py"
+sim = "python experiments/spectral_information/similarity_vs_info.py"
+plot-sim = "python experiments/spectral_information/plot_similarity_vs_info.py"
+approx_sim = {cmd="python experiments/fast_cosine_sim/approximate_similarity.py",env={ MKL_INTERFACE_LAYER = "LP64"}}
 # When run without arguments, automatically select the newest file whose name starts with 'mprofile'
 # and run `mprof plot` on it. If arguments are provided they are forwarded to `mprof plot`.
 # The task exits with an error if no `mprofile*` files are found.
