@@ -19,6 +19,7 @@ Key points:
 from __future__ import annotations, print_function
 
 import logging
+from dataclasses import dataclass
 from time import perf_counter
 from typing import Dict, Optional
 
@@ -31,7 +32,47 @@ import scipy.sparse as sp
 from numpy.typing import NDArray
 from sparse_dot_mkl import dot_product_mkl
 
-import hrms_utils
+
+@dataclass
+class SimilarityConfig:
+    """Configuration for proximate (approximate) similarity computations.
+
+    This config centralizes binning, expansion and similarity-threshold parameters
+    needed by the approximate stage. Derived parameters (like the number of bins
+    and the derived approximate threshold for the approximate stage) are computed
+    in `__post_init__`.
+
+    Attributes:
+        upper_mass_bound (float): maximal m/z to consider for binning (Da).
+        bin_size (float): bin width in Da.
+        ms2_tolerance_ppm (Optional[float]): MS2 tolerance in ppm for adaptive expansion.
+            If None adaptive expansion is disabled.
+        intensity_power (float): power applied to intensities during binning (default 0.5).
+        threshold (float): Final exact similarity threshold to be applied in the exact stage (0..1).
+        approx_threshold (float): Derived lower threshold for the approximate stage (threshold - 0.15, clipped >= 0).
+        nbins (int): computed number of bins (floor(upper_mass_bound / bin_size) + 1).
+    """
+
+    upper_mass_bound: float = 1000.0
+    bin_size: float = 0.0
+    ms2_tolerance_ppm: Optional[float] = 10.0
+    intensity_power: float = 0.5
+    threshold: float = 0.8
+    approx_threshold: float = 0.0
+    nbins: int = 0
+
+    def __post_init__(self) -> None:
+        assert self.upper_mass_bound > 0.0, "upper_mass_bound must be positive"
+        assert self.bin_size > 0.0, "bin_size must be positive"
+        # Compute number of bins used by binning/expansion routines.
+        self.nbins = int(np.floor(self.upper_mass_bound / float(self.bin_size))) + 1
+        assert self.nbins > 0, f"computed nbins must be positive, got {self.nbins}"
+        if self.ms2_tolerance_ppm is not None and self.ms2_tolerance_ppm <= 0.0:
+            raise ValueError("ms2_tolerance_ppm must be positive if provided")
+        # Validate threshold and compute the derived approximate-stage threshold.
+        assert 0.0 <= self.threshold <= 1.0, "threshold must be between 0 and 1"
+        self.approx_threshold = max(0.0, float(self.threshold) - 0.15)
+
 
 logger = logging.getLogger(__name__)
 MASS_TOLERANCE_CUTOFF = 200.0
@@ -130,7 +171,7 @@ def _sparse_bin_flat_spectra_to_csr(
     flat_ints: NDArray[np.float32],
     spec_idx: NDArray[np.int64],
     n_spec: int,
-    upper_bound: int = 1000,
+    upper_bound: int | float = 1000.0,
     intensity_power: float = 0.5,
     bin_size: float = 1.0,
 ) -> sp.csr_matrix:
@@ -158,43 +199,18 @@ def _sparse_bin_flat_spectra_to_csr(
     coo = sp.coo_matrix(
         (weights, (spec_idx, mass_bins)), shape=(n_spec, nbins), dtype=np.float32
     )
-    return coo.tocsr()
+    # Return a concrete SciPy CSR matrix (not csr_array) to satisfy typing and
+    # to ensure a consistent runtime type across SciPy versions.
+    return sp.csr_matrix(coo.tocsr())
 
 
-def _expand_csr_horizontal(
-    mat: "sp.csr_matrix", window: int, nbins: int
-) -> "sp.csr_matrix":
-    """
-    Expand a CSR matrix across columns by adding each entry to neighboring bins in [-window, window].
-    This is typically applied to the RIGHT matrix to make peaks fuzzy.
-    """
-    if window <= 0 or mat.nnz == 0:
-        return mat
-
-    coo = mat.tocoo()
-    rows_list = []
-    cols_list = []
-    data_list = []
-
-    for shift in range(-window, window + 1):
-        shifted_cols = coo.col + shift
-        mask = (shifted_cols >= 0) & (shifted_cols < nbins)
-        if not np.any(mask):
-            continue
-        rows_list.append(coo.row[mask])
-        cols_list.append(shifted_cols[mask])
-        data_list.append(coo.data[mask])
-
-    if not rows_list:
-        return sp.csr_matrix(mat.shape, dtype=np.float32)
-
-    rows = np.concatenate(rows_list)
-    cols = np.concatenate(cols_list)
-    data = np.concatenate(data_list)
-    new_coo = sp.coo_matrix(
-        (data.astype(np.float32), (rows, cols)), shape=mat.shape, dtype=np.float32
-    )
-    return new_coo.tocsr()
+# NOTE: Fixed-window horizontal expansion removed.
+# The non-adaptive (fixed-window) expansion variant was removed in favor of a
+# single, adaptive expansion method. Adaptive expansion is applied via
+# `_expand_csr_horizontal_adaptive` which computes bin-wise expansion windows
+# from `ms2_tolerance_ppm` and `bin_size`.
+# The old fixed-window implementation is intentionally omitted to keep the API
+# and implementation simpler and less error-prone.
 
 
 def _expand_csr_horizontal_adaptive(
@@ -254,7 +270,8 @@ def _expand_csr_horizontal_adaptive(
     new_coo = sp.coo_matrix(
         (data.astype(np.float32), (rows, cols)), shape=mat.shape, dtype=np.float32
     )
-    return new_coo.tocsr()
+    # Return a concrete SciPy CSR matrix (not csr_array) to satisfy typing across SciPy versions.
+    return sp.csr_matrix(new_coo.tocsr())
 
 
 def _normalize_csr_rows_inplace(mat: "sp.csr_matrix") -> NDArray[np.float32]:
@@ -289,10 +306,7 @@ def _sparse_proximate_similarity_pairs_above_threshold(
     left_global_idxs: NDArray[np.int64],
     right_global_idxs: NDArray[np.int64],
     return_timings: bool = False,
-    right_expansion_window: int = 0,
-    nbins: int | None = None,
-    ms2_tolerance_ppm: float | None = None,
-    bin_size: float | None = None,
+    approx_config: SimilarityConfig | None = None,
 ) -> (
     tuple[NDArray[np.int64], NDArray[np.int64], NDArray[np.float32]]
     | tuple[NDArray[np.int64], NDArray[np.int64], NDArray[np.float32], dict]
@@ -301,7 +315,11 @@ def _sparse_proximate_similarity_pairs_above_threshold(
     Compute row-wise cosine similarities between `left_csr` and `right_csr` using SciPy.
     Returns global index pairs and similarities for entries >= threshold.
 
-    Expansion (adaptive preferred) is applied AFTER normalization.
+    Notes:
+      - Only adaptive expansion is supported. If `approx_config` is provided and
+        `approx_config.ms2_tolerance_ppm` is not None, an adaptive expansion is
+        applied to the right-hand matrix using the bin-size and tolerance in the config.
+      - `approx_config.nbins` is computed in the config's `__post_init__`.
     """
     # Validate input shapes
     if left_csr.shape[0] == 0 or right_csr.shape[0] == 0:
@@ -316,33 +334,22 @@ def _sparse_proximate_similarity_pairs_above_threshold(
     _ = _normalize_csr_rows_inplace(R)
     norm_time = perf_counter() - t_norm0
 
-    # Expansion (after normalization)
-    if ms2_tolerance_ppm is not None and bin_size is not None:
-        assert nbins is not None, "nbins must be provided for adaptive expansion"
-        assert bin_size > 0, f"bin_size must be positive, got {bin_size}"
-        assert ms2_tolerance_ppm > 0, (
-            f"ms2_tolerance_ppm must be positive, got {ms2_tolerance_ppm}"
-        )
-
+    # Adaptive expansion (after normalization) if requested
+    if approx_config is not None and approx_config.ms2_tolerance_ppm is not None:
+        assert approx_config.nbins > 0, "computed nbins must be positive"
         t_exp0 = perf_counter()
-        R = _expand_csr_horizontal_adaptive(R, bin_size, ms2_tolerance_ppm, nbins)
+        R = _expand_csr_horizontal_adaptive(
+            R,
+            approx_config.bin_size,
+            approx_config.ms2_tolerance_ppm,
+            approx_config.nbins,
+        )
         expansion_time = perf_counter() - t_exp0
         norm_time += expansion_time
         logger.info(
             "Applied adaptive expansion with ms2_tolerance=%.1f ppm, bin_size=%.4f Da (time=%.3fs)",
-            ms2_tolerance_ppm,
-            bin_size,
-            expansion_time,
-        )
-    elif right_expansion_window and right_expansion_window > 0:
-        assert nbins is not None, "nbins must be provided when using fixed expansion"
-        t_exp0 = perf_counter()
-        R = _expand_csr_horizontal(R, right_expansion_window, nbins)
-        expansion_time = perf_counter() - t_exp0
-        norm_time += expansion_time
-        logger.info(
-            "Applied fixed expansion window=%d bins (time=%.3fs)",
-            right_expansion_window,
+            approx_config.ms2_tolerance_ppm,
+            approx_config.bin_size,
             expansion_time,
         )
 
@@ -411,7 +418,7 @@ def _sparse_bin_spectra_df_to_csr(
     df: pl.DataFrame,
     mz_col: str = "cleaned_normalized_mz",
     int_col: str = "cleaned_normalized_intensity",
-    upper_bound: int = 1000,
+    upper_bound: int | float = 1000.0,
     intensity_power: float = 0.5,
     bin_size: float = 1.0,
 ) -> tuple["sp.csr_matrix", Dict[str, float]]:
@@ -456,39 +463,11 @@ def _sparse_bin_spectra_df_to_csr(
     return matrix, timings
 
 
-def _expand_csr_horizontal_gpu(
-    mat: "cps.csr_matrix", window: int, nbins: int
-) -> "cps.csr_matrix":
-    """
-    GPU version of horizontal expansion using CuPy.
-    """
-    if window <= 0 or mat.nnz == 0:
-        return mat
-
-    coo = mat.tocoo()
-    rows_list = []
-    cols_list = []
-    data_list = []
-
-    for shift in range(-window, window + 1):
-        shifted_cols = coo.col + shift
-        mask = (shifted_cols >= 0) & (shifted_cols < nbins)
-        if not int(mask.sum()):
-            continue
-        rows_list.append(coo.row[mask])
-        cols_list.append(shifted_cols[mask])
-        data_list.append(coo.data[mask])
-
-    if not rows_list:
-        return cps.csr_matrix(mat.shape, dtype=cp.float32)
-
-    rows = cp.concatenate(rows_list)
-    cols = cp.concatenate(cols_list)
-    data = cp.concatenate(data_list)
-    new_coo = cps.coo_matrix(
-        (data.astype(cp.float32), (rows, cols)), shape=mat.shape, dtype=cp.float32
-    )
-    return new_coo.tocsr()
+# NOTE: Fixed-window GPU horizontal expansion removed.
+# Adaptive (mass-dependent) GPU expansion remains available via
+# `_expand_csr_horizontal_adaptive_gpu`. The explicit fixed-window GPU
+# expansion helper has been removed to keep the interface simple and
+# focused on adaptive expansion.
 
 
 def _expand_csr_horizontal_adaptive_gpu(
@@ -579,10 +558,7 @@ def _sparse_proximate_similarity_pairs_above_threshold_gpu(
     left_global_idxs: NDArray[np.int64],
     right_global_idxs: NDArray[np.int64],
     return_timings: bool = False,
-    right_expansion_window: int = 0,
-    nbins: int | None = None,
-    ms2_tolerance_ppm: float | None = None,
-    bin_size: float | None = None,
+    approx_config: SimilarityConfig | None = None,
 ) -> (
     tuple[NDArray[np.int64], NDArray[np.int64], NDArray[np.float32]]
     | tuple[NDArray[np.int64], NDArray[np.int64], NDArray[np.float32], dict]
@@ -590,6 +566,10 @@ def _sparse_proximate_similarity_pairs_above_threshold_gpu(
     """
     Compute row-wise cosine similarities using GPU (CuPy). Returns numpy arrays
     for indices and similarities. Timings include transfer times.
+
+    Only adaptive expansion (mass-dependent) is supported. If `approx_config` is
+    provided and `approx_config.ms2_tolerance_ppm` is not None, an adaptive
+    expansion is applied on the GPU using the bin_size and computed nbins.
     """
     if left_csr.shape[0] == 0 or right_csr.shape[0] == 0:
         raise ValueError("Input CSR matrices must have at least one row each")
@@ -606,28 +586,22 @@ def _sparse_proximate_similarity_pairs_above_threshold_gpu(
     _ = _normalize_csr_rows_inplace_gpu(R)
     norm_time = perf_counter() - t_norm0
 
-    # Expansion (after normalization)
-    if ms2_tolerance_ppm is not None and bin_size is not None:
-        assert nbins is not None
+    # Adaptive expansion (GPU) if requested
+    if approx_config is not None and approx_config.ms2_tolerance_ppm is not None:
+        assert approx_config.nbins > 0, "computed nbins must be positive"
         t_exp0 = perf_counter()
-        R = _expand_csr_horizontal_adaptive_gpu(R, bin_size, ms2_tolerance_ppm, nbins)
+        R = _expand_csr_horizontal_adaptive_gpu(
+            R,
+            approx_config.bin_size,
+            approx_config.ms2_tolerance_ppm,
+            approx_config.nbins,
+        )
         expansion_time = perf_counter() - t_exp0
         norm_time += expansion_time
         logger.info(
             "Applied adaptive expansion (GPU) with ms2_tolerance=%.1f ppm, bin_size=%.4f Da (time=%.3fs)",
-            ms2_tolerance_ppm,
-            bin_size,
-            expansion_time,
-        )
-    elif right_expansion_window and right_expansion_window > 0:
-        assert nbins is not None
-        t_exp0 = perf_counter()
-        R = _expand_csr_horizontal_gpu(R, right_expansion_window, nbins)
-        expansion_time = perf_counter() - t_exp0
-        norm_time += expansion_time
-        logger.info(
-            "Applied fixed expansion (GPU) window=%d bins (time=%.3fs)",
-            right_expansion_window,
+            approx_config.ms2_tolerance_ppm,
+            approx_config.bin_size,
             expansion_time,
         )
 
@@ -735,16 +709,15 @@ def proximate_all_vs_all_pairs(
     left_df: pl.DataFrame,
     right_df: pl.DataFrame,
     threshold: float,
-    ms2_tolerance_ppm: Optional[float] = None,
     mz_col: str = "cleaned_normalized_mz",
     int_col: str = "cleaned_normalized_intensity",
-    proximate_bin_upper: int = 1000,
+    proximate_bin_upper: float = 1000.0,
     proximate_bin_size: float = 1.0,
     intensity_power: float = 0.5,
-    right_expansion_window: int = 0,
-    use_adaptive_expansion: bool = True,
+    ms2_tolerance_ppm: Optional[float] = None,
     use_gpu: bool = False,
     return_timings: bool = False,
+    proximate_config: SimilarityConfig | None = None,
 ) -> pl.DataFrame | tuple[pl.DataFrame, dict]:
     """
     Compute proximate (binned dot-product) similarities between two collections
@@ -753,9 +726,8 @@ def proximate_all_vs_all_pairs(
     Notes:
       - This implementation always uses the sparse method (SciPy CSR matrices).
       - If `use_gpu=True`, computation is performed on the GPU using CuPy.
-      - `use_adaptive_expansion=True` (and providing `ms2_tolerance_ppm`) applies
-        mass-dependent expansion windows. Otherwise, `right_expansion_window`
-        (fixed integer) is used for expansion.
+      - Adaptive, mass-dependent expansion is used when `ms2_tolerance_ppm` is
+        provided (via `proximate_config` or the `ms2_tolerance_ppm` argument).
     """
     assert 0.0 <= threshold <= 1.0, "threshold must be between 0 and 1"
 
@@ -774,25 +746,44 @@ def proximate_all_vs_all_pairs(
             }
         )
 
-    # Number of bins (for expansion)
-    nbins = int(np.floor(proximate_bin_upper / float(proximate_bin_size))) + 1
+    # Build SimilarityConfig (ensuring the correct threshold is attached)
+    # If caller provided an explicit `proximate_config`, we re-create a new
+    # instance here so that its `threshold` is aligned with the `threshold`
+    # argument passed to this function (this guarantees `approx_threshold`
+    # is computed from the intended exact threshold).
+    if proximate_config is None:
+        proximate_config = SimilarityConfig(
+            upper_mass_bound=proximate_bin_upper,
+            bin_size=proximate_bin_size,
+            ms2_tolerance_ppm=ms2_tolerance_ppm,
+            intensity_power=intensity_power,
+            threshold=threshold,
+        )
+    else:
+        proximate_config = SimilarityConfig(
+            upper_mass_bound=proximate_config.upper_mass_bound,
+            bin_size=proximate_config.bin_size,
+            ms2_tolerance_ppm=proximate_config.ms2_tolerance_ppm,
+            intensity_power=proximate_config.intensity_power,
+            threshold=threshold,
+        )
 
-    # Bin both sides into sparse CSR matrices
+    # Bin both sides into sparse CSR matrices using proximate_config
     left_mat, left_timings = _sparse_bin_spectra_df_to_csr(
         left,
         mz_col,
         int_col,
-        upper_bound=proximate_bin_upper,
-        intensity_power=intensity_power,
-        bin_size=proximate_bin_size,
+        upper_bound=proximate_config.upper_mass_bound,
+        intensity_power=proximate_config.intensity_power,
+        bin_size=proximate_config.bin_size,
     )
     right_mat, right_timings = _sparse_bin_spectra_df_to_csr(
         right,
         mz_col,
         int_col,
-        upper_bound=proximate_bin_upper,
-        intensity_power=intensity_power,
-        bin_size=proximate_bin_size,
+        upper_bound=proximate_config.upper_mass_bound,
+        intensity_power=proximate_config.intensity_power,
+        bin_size=proximate_config.bin_size,
     )
 
     left_global_idxs = left["idx"].to_numpy()
@@ -818,57 +809,29 @@ def proximate_all_vs_all_pairs(
         preproc_total,
     )
 
-    # Approximate stage: sparse path (CPU or GPU)
+    # Approximate stage: use the derived (lower) threshold from the SimilarityConfig.
+    approx_stage_threshold = proximate_config.approx_threshold
+
     if use_gpu:
-        if use_adaptive_expansion and ms2_tolerance_ppm is not None:
-            ret = _sparse_proximate_similarity_pairs_above_threshold_gpu(
-                left_mat,
-                right_mat,
-                threshold * 0.9,
-                left_global_idxs,
-                right_global_idxs,
-                return_timings=True,
-                right_expansion_window=0,
-                nbins=nbins,
-                ms2_tolerance_ppm=ms2_tolerance_ppm,
-                bin_size=proximate_bin_size,
-            )
-        else:
-            ret = _sparse_proximate_similarity_pairs_above_threshold_gpu(
-                left_mat,
-                right_mat,
-                threshold * 0.9,
-                left_global_idxs,
-                right_global_idxs,
-                return_timings=True,
-                right_expansion_window=right_expansion_window,
-                nbins=nbins,
-            )
+        ret = _sparse_proximate_similarity_pairs_above_threshold_gpu(
+            left_mat,
+            right_mat,
+            approx_stage_threshold,
+            left_global_idxs,
+            right_global_idxs,
+            return_timings=True,
+            approx_config=proximate_config,
+        )
     else:
-        if use_adaptive_expansion and ms2_tolerance_ppm is not None:
-            ret = _sparse_proximate_similarity_pairs_above_threshold(
-                left_mat,
-                right_mat,
-                threshold * 0.9,
-                left_global_idxs,
-                right_global_idxs,
-                return_timings=True,
-                right_expansion_window=0,
-                nbins=nbins,
-                ms2_tolerance_ppm=ms2_tolerance_ppm,
-                bin_size=proximate_bin_size,
-            )
-        else:
-            ret = _sparse_proximate_similarity_pairs_above_threshold(
-                left_mat,
-                right_mat,
-                threshold * 0.9,
-                left_global_idxs,
-                right_global_idxs,
-                return_timings=True,
-                right_expansion_window=right_expansion_window,
-                nbins=nbins,
-            )
+        ret = _sparse_proximate_similarity_pairs_above_threshold(
+            left_mat,
+            right_mat,
+            approx_stage_threshold,
+            left_global_idxs,
+            right_global_idxs,
+            return_timings=True,
+            approx_config=proximate_config,
+        )
 
     if len(ret) == 4:
         l_idxs, r_idxs, sims, approx_tims = ret
@@ -1015,19 +978,10 @@ def proximate_all_vs_all_pairs(
     return results
 
 
-def calculate_recommended_bin_parameters(
-    ms2_tolerance_ppm: float,
-    reference_mz: float = 500.0,
-    bins_per_tolerance: int = 5,
-) -> tuple[float, int]:
-    """
-    Calculate recommended proximate_bin_size and right_expansion_window for fixed-window expansion.
-    """
-    effective_mz = max(reference_mz, MASS_TOLERANCE_CUTOFF)
-    tolerance_da = effective_mz * ms2_tolerance_ppm * 1e-6
-    bin_size = tolerance_da / float(bins_per_tolerance)
-    expansion_window = (bins_per_tolerance - 1) // 2
-    return bin_size, expansion_window
+# Legacy fixed-window recommendation helper removed.
+# Use adaptive expansion via `ApproximateSimilarityConfig` (provide `ms2_tolerance_ppm` and `bin_size`).
+# The fixed-window helper and fixed-window expansion mode have been intentionally removed
+# to simplify the interface and avoid maintaining two separate expansion strategies.
 
 
 def proximate_all_vs_all(
@@ -1103,26 +1057,13 @@ if __name__ == "__main__":
     print("without gpu:")
     print(timings_adaptive)
 
-    # Example 2: Using fixed expansion window (legacy mode)
-    print("\n=== Example 2: Fixed Expansion Window (Legacy) ===")
-    bin_size_fixed, window_fixed = calculate_recommended_bin_parameters(
-        ms2_tol, bins_per_tolerance=20
+    # Legacy fixed-window example removed.
+    # Use adaptive expansion by providing `ms2_tolerance_ppm` and `proximate_bin_size`
+    # (see Example 1 above). Fixed-window examples and helpers were removed to keep
+    # the public interface simple and adaptive-only.
+    print(
+        "Fixed-window example removed; prefer adaptive expansion using `ms2_tolerance_ppm` and `proximate_bin_size`."
     )
-    print(f"Using bin_size={bin_size_fixed:.4f} Da, expansion_window={window_fixed}")
-
-    results_fixed_df, timings_fixed = proximate_all_vs_all_pairs(
-        spectra,
-        spectra,
-        threshold=similarity_threhsold,
-        ms2_tolerance_ppm=ms2_tol,
-        proximate_bin_size=bin_size_fixed,
-        right_expansion_window=window_fixed,
-        use_adaptive_expansion=False,  # Disable adaptive expansion
-        return_timings=True,
-        use_gpu=True,
-    )
-    print(timings_fixed)
-    # Calculate statistics for adaptive expansion
     abs_diff_adaptive = np.abs(
         results_adaptive_df["proximate_similarity"].to_numpy()
         - results_adaptive_df["dotprod_similarity"].to_numpy()
