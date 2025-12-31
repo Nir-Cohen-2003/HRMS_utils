@@ -32,6 +32,8 @@ import scipy.sparse as sp
 from numpy.typing import NDArray
 from sparse_dot_mkl import dot_product_mkl
 
+import hrms_utils
+
 
 @dataclass
 class SimilarityConfig:
@@ -1028,7 +1030,6 @@ if __name__ == "__main__":
         threshold=similarity_threhsold,
         ms2_tolerance_ppm=ms2_tol,
         proximate_bin_size=bin_size,
-        use_adaptive_expansion=True,  # Enable adaptive expansion
         return_timings=True,
         use_gpu=True,
     )
@@ -1038,7 +1039,6 @@ if __name__ == "__main__":
         threshold=similarity_threhsold,
         ms2_tolerance_ppm=ms2_tol,
         proximate_bin_size=bin_size,
-        use_adaptive_expansion=True,  # Enable adaptive expansion
         return_timings=True,
         use_gpu=True,
     )
@@ -1050,20 +1050,12 @@ if __name__ == "__main__":
         threshold=similarity_threhsold,
         ms2_tolerance_ppm=ms2_tol,
         proximate_bin_size=bin_size,
-        use_adaptive_expansion=True,  # Enable adaptive expansion
         return_timings=True,
         use_gpu=False,
     )
     print("without gpu:")
     print(timings_adaptive)
 
-    # Legacy fixed-window example removed.
-    # Use adaptive expansion by providing `ms2_tolerance_ppm` and `proximate_bin_size`
-    # (see Example 1 above). Fixed-window examples and helpers were removed to keep
-    # the public interface simple and adaptive-only.
-    print(
-        "Fixed-window example removed; prefer adaptive expansion using `ms2_tolerance_ppm` and `proximate_bin_size`."
-    )
     abs_diff_adaptive = np.abs(
         results_adaptive_df["proximate_similarity"].to_numpy()
         - results_adaptive_df["dotprod_similarity"].to_numpy()
@@ -1080,45 +1072,14 @@ if __name__ == "__main__":
         float(np.sum(abs_diff_adaptive > 0.001)) / total_pairs_adaptive
     )
 
-    # Calculate statistics for fixed expansion
-    abs_diff_fixed = np.abs(
-        results_fixed_df["proximate_similarity"].to_numpy()
-        - results_fixed_df["dotprod_similarity"].to_numpy()
-    )
-    total_pairs_fixed = len(abs_diff_fixed)
-    avg_abs_diff_fixed = float(np.mean(abs_diff_fixed))
-    frac_over_0_1_fixed = float(np.sum(abs_diff_fixed > 0.1)) / total_pairs_fixed
-    frac_over_0_01_fixed = float(np.sum(abs_diff_fixed > 0.01)) / total_pairs_fixed
-    frac_over_0_001_fixed = float(np.sum(abs_diff_fixed > 0.001)) / total_pairs_fixed
-
     # Print side-by-side comparison
     print("\n" + "=" * 80)
     print("=== SIMILARITY COMPARISON: ADAPTIVE vs FIXED EXPANSION ===")
     print("=" * 80)
     print(f"\n{'Metric':<40} {'Adaptive':<20} {'Fixed':<20}")
     print("-" * 80)
-    print(
-        f"{'Total pairs found':<40} {total_pairs_adaptive:<20} {total_pairs_fixed:<20}"
-    )
-    print(
-        f"{'Average absolute difference':<40} {avg_abs_diff_adaptive:<20.6f} {avg_abs_diff_fixed:<20.6f}"
-    )
-    print(
-        f"{'Fraction with |diff| > 0.1':<40} {frac_over_0_1_adaptive:<20.6f} {frac_over_0_1_fixed:<20.6f}"
-    )
-    print(
-        f"{'Fraction with |diff| > 0.01':<40} {frac_over_0_01_adaptive:<20.6f} {frac_over_0_01_fixed:<20.6f}"
-    )
-    print(
-        f"{'Fraction with |diff| > 0.001':<40} {frac_over_0_001_adaptive:<20.6f} {frac_over_0_001_fixed:<20.6f}"
-    )
-    print(
-        f"{'Count with |diff| > 0.1':<40} {int(frac_over_0_1_adaptive * total_pairs_adaptive):<20} {int(frac_over_0_1_fixed * total_pairs_fixed):<20}"
-    )
-    print(
-        f"{'Count with |diff| > 0.01':<40} {int(frac_over_0_01_adaptive * total_pairs_adaptive):<20} {int(frac_over_0_01_fixed * total_pairs_fixed):<20}"
-    )
-    print(
-        f"{'Count with |diff| > 0.001':<40} {int(frac_over_0_001_adaptive * total_pairs_adaptive):<20} {int(frac_over_0_001_fixed * total_pairs_fixed):<20}"
-    )
-    print("=" * 80)
+    print(f"{'Total pairs found':<40} {total_pairs_adaptive:<20} ")
+    print(f"{'Average absolute difference':<40} {avg_abs_diff_adaptive:<20.6f} ")
+    print(f"{'Fraction with |diff| > 0.1':<40} {frac_over_0_1_adaptive:<20.6f} ")
+    print(f"{'Fraction with |diff| > 0.01':<40} {frac_over_0_01_adaptive:<20.6f} ")
+    print(f"{'Fraction with |diff| > 0.001':<40} {frac_over_0_001_adaptive:<20.6f} ")

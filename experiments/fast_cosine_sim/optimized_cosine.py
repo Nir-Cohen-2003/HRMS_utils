@@ -71,32 +71,49 @@ def greedy_cosine_fast_small(mz_a, int_a, len_a, mz_b, int_b, len_b, out_scores,
     # Load Data pointers
     la = len_a[global_warp_id]
     lb = len_b[global_warp_id]
-    offset_a = global_warp_id * stride
-    offset_b = global_warp_id * stride
 
     # 1. FIND MATCHES (Parallel)
     # Thread cyclic distribution over A
     for i in range(lane_id, la, 32):
-        val_mz_a = mz_a[offset_a + i]
-        # Precompute amplitude A (assume input is raw, or precomputed? Input names say int_a. 
-        # The prompt Numba code computed pow inside kernel. We follow that.)
-        val_int_a = int_a[offset_a + i]
-        amp_a = (val_mz_a ** mz_power) * (val_int_a ** int_power)
+        val_mz_a = mz_a[global_warp_id, i]
+        val_int_a = int_a[global_warp_id, i]
+        
+        # Optimization: Special case for standard cosine settings
+        if mz_power == 0 and int_power == 0.5:
+             amp_a = math.sqrt(val_int_a)
+        else:
+             amp_a = (val_mz_a ** mz_power) * (val_int_a ** int_power)
+
+        # PPM Tolerance Calculation
+        # max(mz, 200) rule
+        base_mz = val_mz_a
+        if base_mz < 200.0:
+            base_mz = 200.0
+        tol_da = base_mz * tolerance * 1e-6
 
         # Scan B (Sequential scan by thread, but B is short)
         # Optimization: B is sorted
         for j in range(lb):
-            val_mz_b = mz_b[offset_b + j]
-            mz_q_shifted = val_mz_b + shift
+            val_mz_b = mz_b[global_warp_id, j]
             
-            if mz_q_shifted > val_mz_a + tolerance:
+            if shift == 0:
+                mz_q_shifted = val_mz_b
+            else:
+                mz_q_shifted = val_mz_b + shift
+            
+            if mz_q_shifted > val_mz_a + tol_da:
                 break # Sorted B
-            if mz_q_shifted < val_mz_a - tolerance:
+            if mz_q_shifted < val_mz_a - tol_da:
                 continue
 
             # Found match
-            val_int_b = int_b[offset_b + j]
-            amp_b = (val_mz_b ** mz_power) * (val_int_b ** int_power)
+            val_int_b = int_b[global_warp_id, j]
+            
+            if mz_power == 0 and int_power == 0.5:
+                 amp_b = math.sqrt(val_int_b)
+            else:
+                 amp_b = (val_mz_b ** mz_power) * (val_int_b ** int_power)
+            
             score = amp_a * amp_b
             
             # Atomic Add to shared counter
@@ -181,15 +198,21 @@ def greedy_cosine_fast_small(mz_a, int_a, len_a, mz_b, int_b, len_b, out_scores,
     my_norm_b = float32(0.0)
     
     for i in range(lane_id, la, 32):
-        val_mz = mz_a[offset_a + i]
-        val_int = int_a[offset_a + i]
-        val = (val_mz ** mz_power) * (val_int ** int_power)
+        val_mz = mz_a[global_warp_id, i]
+        val_int = int_a[global_warp_id, i]
+        if mz_power == 0 and int_power == 0.5:
+            val = math.sqrt(val_int)
+        else:
+            val = (val_mz ** mz_power) * (val_int ** int_power)
         my_norm_a += val * val
 
     for i in range(lane_id, lb, 32):
-        val_mz = mz_b[offset_b + i]
-        val_int = int_b[offset_b + i]
-        val = (val_mz ** mz_power) * (val_int ** int_power)
+        val_mz = mz_b[global_warp_id, i]
+        val_int = int_b[global_warp_id, i]
+        if mz_power == 0 and int_power == 0.5:
+            val = math.sqrt(val_int)
+        else:
+            val = (val_mz ** mz_power) * (val_int ** int_power)
         my_norm_b += val * val
         
     # Simple shared memory atomic reduce for norm
@@ -241,28 +264,44 @@ def greedy_cosine_fast_medium(mz_a, int_a, len_a, mz_b, int_b, len_b, out_scores
         
     cuda.syncthreads()
     
-    offset_a = pair_idx * stride
-    offset_b = pair_idx * stride
     la = len_a[pair_idx]
     lb = len_b[pair_idx]
 
     # 1. Match Finding
     for i in range(tid, la, cuda.blockDim.x):
-        val_mz_a = mz_a[offset_a + i]
-        val_int_a = int_a[offset_a + i]
-        amp_a = (val_mz_a ** mz_power) * (val_int_a ** int_power)
+        val_mz_a = mz_a[pair_idx, i]
+        val_int_a = int_a[pair_idx, i]
+        
+        if mz_power == 0 and int_power == 0.5:
+             amp_a = math.sqrt(val_int_a)
+        else:
+             amp_a = (val_mz_a ** mz_power) * (val_int_a ** int_power)
+
+        base_mz = val_mz_a
+        if base_mz < 200.0:
+            base_mz = 200.0
+        tol_da = base_mz * tolerance * 1e-6
 
         for j in range(lb):
-            val_mz_b = mz_b[offset_b + j]
-            mz_q_shifted = val_mz_b + shift
+            val_mz_b = mz_b[pair_idx, j]
             
-            if mz_q_shifted > val_mz_a + tolerance:
+            if shift == 0:
+                mz_q_shifted = val_mz_b
+            else:
+                mz_q_shifted = val_mz_b + shift
+            
+            if mz_q_shifted > val_mz_a + tol_da:
                 break
-            if mz_q_shifted < val_mz_a - tolerance:
+            if mz_q_shifted < val_mz_a - tol_da:
                 continue
 
-            val_int_b = int_b[offset_b + j]
-            amp_b = (val_mz_b ** mz_power) * (val_int_b ** int_power)
+            val_int_b = int_b[pair_idx, j]
+            
+            if mz_power == 0 and int_power == 0.5:
+                 amp_b = math.sqrt(val_int_b)
+            else:
+                 amp_b = (val_mz_b ** mz_power) * (val_int_b ** int_power)
+            
             score = amp_a * amp_b
             
             idx = cuda.atomic.add(s_counter, 0, 1)
@@ -356,13 +395,19 @@ def greedy_cosine_fast_medium(mz_a, int_a, len_a, mz_b, int_b, len_b, out_scores
     
     my_a = float32(0.0)
     for i in range(tid, la, cuda.blockDim.x):
-        val = (mz_a[offset_a + i] ** mz_power) * (int_a[offset_a + i] ** int_power)
+        if mz_power == 0 and int_power == 0.5:
+             val = math.sqrt(int_a[pair_idx, i])
+        else:
+             val = (mz_a[pair_idx, i] ** mz_power) * (int_a[pair_idx, i] ** int_power)
         my_a += val * val
     s_norm_a[tid] = my_a
     
     my_b = float32(0.0)
     for i in range(tid, lb, cuda.blockDim.x):
-        val = (mz_b[offset_b + i] ** mz_power) * (int_b[offset_b + i] ** int_power)
+        if mz_power == 0 and int_power == 0.5:
+             val = math.sqrt(int_b[pair_idx, i])
+        else:
+             val = (mz_b[pair_idx, i] ** mz_power) * (int_b[pair_idx, i] ** int_power)
         my_b += val * val
     s_norm_b[tid] = my_b
     
@@ -416,28 +461,44 @@ def greedy_cosine_fast_large(mz_a, int_a, len_a, mz_b, int_b, len_b, out_scores,
         
     cuda.syncthreads()
     
-    offset_a = pair_idx * stride
-    offset_b = pair_idx * stride
     la = len_a[pair_idx]
     lb = len_b[pair_idx]
 
     # 1. Match Finding
     for i in range(tid, la, cuda.blockDim.x):
-        val_mz_a = mz_a[offset_a + i]
-        val_int_a = int_a[offset_a + i]
-        amp_a = (val_mz_a ** mz_power) * (val_int_a ** int_power)
+        val_mz_a = mz_a[pair_idx, i]
+        val_int_a = int_a[pair_idx, i]
+        
+        if mz_power == 0 and int_power == 0.5:
+             amp_a = math.sqrt(val_int_a)
+        else:
+             amp_a = (val_mz_a ** mz_power) * (val_int_a ** int_power)
+
+        base_mz = val_mz_a
+        if base_mz < 200.0:
+            base_mz = 200.0
+        tol_da = base_mz * tolerance * 1e-6
 
         for j in range(lb):
-            val_mz_b = mz_b[offset_b + j]
-            mz_q_shifted = val_mz_b + shift
+            val_mz_b = mz_b[pair_idx, j]
             
-            if mz_q_shifted > val_mz_a + tolerance:
+            if shift == 0:
+                mz_q_shifted = val_mz_b
+            else:
+                mz_q_shifted = val_mz_b + shift
+            
+            if mz_q_shifted > val_mz_a + tol_da:
                 break
-            if mz_q_shifted < val_mz_a - tolerance:
+            if mz_q_shifted < val_mz_a - tol_da:
                 continue
 
-            val_int_b = int_b[offset_b + j]
-            amp_b = (val_mz_b ** mz_power) * (val_int_b ** int_power)
+            val_int_b = int_b[pair_idx, j]
+            
+            if mz_power == 0 and int_power == 0.5:
+                 amp_b = math.sqrt(val_int_b)
+            else:
+                 amp_b = (val_mz_b ** mz_power) * (val_int_b ** int_power)
+            
             score = amp_a * amp_b
             
             idx = cuda.atomic.add(s_counter, 0, 1)
@@ -478,13 +539,13 @@ def greedy_cosine_fast_large(mz_a, int_a, len_a, mz_b, int_b, len_b, out_scores,
     # 1024 peaks -> 1024 bytes (boolean array).
     # Reuse shared memory? No, we need it.
     # Allocation:
-    s_used_a = cuda.shared.array(1024, boolean) # 1KB
-    s_used_b = cuda.shared.array(1024, boolean) # 1KB
+    s_used_a = cuda.shared.array(1024, int32) # Use int32 to avoid boolean issues
+    s_used_b = cuda.shared.array(1024, int32) # Use int32 to avoid boolean issues
     
     # Clear flags
     for i in range(tid, 1024, cuda.blockDim.x):
-        s_used_a[i] = False
-        s_used_b[i] = False
+        s_used_a[i] = 0
+        s_used_b[i] = 0
     
     cuda.syncthreads()
 
@@ -499,10 +560,10 @@ def greedy_cosine_fast_large(mz_a, int_a, len_a, mz_b, int_b, len_b, out_scores,
             q = s_q[i]
             
             # Use byte array flags
-            if not s_used_a[r] and not s_used_b[q]:
+            if s_used_a[r] == 0 and s_used_b[q] == 0:
                 final_score += s
-                s_used_a[r] = True
-                s_used_b[q] = True
+                s_used_a[r] = 1
+                s_used_b[q] = 1
                 
         out_scores[pair_idx] = final_score
         
@@ -512,13 +573,19 @@ def greedy_cosine_fast_large(mz_a, int_a, len_a, mz_b, int_b, len_b, out_scores,
     
     my_a = float32(0.0)
     for i in range(tid, la, cuda.blockDim.x):
-        val = (mz_a[offset_a + i] ** mz_power) * (int_a[offset_a + i] ** int_power)
+        if mz_power == 0 and int_power == 0.5:
+             val = math.sqrt(int_a[pair_idx, i])
+        else:
+             val = (mz_a[pair_idx, i] ** mz_power) * (int_a[pair_idx, i] ** int_power)
         my_a += val * val
     s_norm_a[tid] = my_a
     
     my_b = float32(0.0)
     for i in range(tid, lb, cuda.blockDim.x):
-        val = (mz_b[offset_b + i] ** mz_power) * (int_b[offset_b + i] ** int_power)
+        if mz_power == 0 and int_power == 0.5:
+             val = math.sqrt(int_b[pair_idx, i])
+        else:
+             val = (mz_b[pair_idx, i] ** mz_power) * (int_b[pair_idx, i] ** int_power)
         my_b += val * val
     s_norm_b[tid] = my_b
     

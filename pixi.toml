@@ -127,14 +127,13 @@ kaleido = ">=1.1.0, <2"
 
 [feature.experiments.target.linux-64.dependencies]
 hrms_utils = {path = "."}
-jax = "*"
 optuna = "*"
 nvmolkit = "*"
 pyzmq = "*"
-pytorch-gpu = "*"
 marimo ="*"
 memory_profiler = "*"
 numba = "*"
+numba-cuda ="*"
 sparse_dot_mkl = "*"
 cupy = "*"
 [feature.experiments.system-requirements]

@@ -12,6 +12,7 @@ Concise, actionable rules for editing this repository. Keep changes explicit, fa
 ## Core rules (highest priority)
 - Use Polars for all dataframe work. Example: `import polars as pl` and use `pl.DataFrame`, `pl.read_csv`, etc.
 - Use dataclasses for configs. Include explicit type hints (typing + np.typing.NDArray) and document array/tensor shapes.
+- no silent fallback to default if soemthing that should be defined is missing. raise an error instead.
 - If you introduce a breaking change in one module, update every dependent module to match the new contract. Remove legacy fallbacks unless backward-compatibility is explicitly requested.
 - Fail fast when a required resource, file, or configuration is missing (raise AssertionError or custom exception).
 - Comments should explain *why* a decision was made or why the code is required, not restate *what* the code does.
