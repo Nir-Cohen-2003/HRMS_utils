@@ -287,8 +287,20 @@ def benchmark_batched_simms_exact(
     t_cpu1 = time.perf_counter()
     if config.verbose:
         print(f"[exact-cpu] pairs={len(cpu_scores)} time={t_cpu1 - t_cpu0:.3f}s")
-    d_mz_a, d_int_a, d_len_a = _gather_dense_for_pairs(mz_left, int_left, pair_left)
-    d_mz_b, d_int_b, d_len_b = _gather_dense_for_pairs(mz_right, int_right, pair_right)
+
+    # Build unique spectra arrays and index mappings
+    left_unique, left_inv = np.unique(pair_left, return_inverse=True)
+    right_unique, right_inv = np.unique(pair_right, return_inverse=True)
+
+    d_mz_a, d_int_a, d_len_a = _gather_dense_for_pairs(mz_left, int_left, left_unique)
+    d_mz_b, d_int_b, d_len_b = _gather_dense_for_pairs(
+        mz_right, int_right, right_unique
+    )
+
+    pair_a_indices = left_inv.astype(np.int32)
+    pair_b_indices = right_inv.astype(np.int32)
+
+    # Warmup kernel
     _ = run_greedy_cosine_fast(
         d_mz_a,
         d_int_a,
@@ -300,8 +312,11 @@ def benchmark_batched_simms_exact(
         shift=0.0,
         mz_power=0.0,
         int_power=0.5,
+        pair_a_indices=pair_a_indices,
+        pair_b_indices=pair_b_indices,
     )
     cuda.synchronize()
+
     t_opt0 = time.perf_counter()
     scores_opt_dev = run_greedy_cosine_fast(
         d_mz_a,
@@ -314,6 +329,8 @@ def benchmark_batched_simms_exact(
         shift=0.0,
         mz_power=0.0,
         int_power=0.5,
+        pair_a_indices=pair_a_indices,
+        pair_b_indices=pair_b_indices,
     )
     cuda.synchronize()
     scores_opt = scores_opt_dev.copy_to_host().astype(np.float32)
