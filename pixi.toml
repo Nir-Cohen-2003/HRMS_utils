@@ -145,6 +145,7 @@ sim = "python experiments/spectral_information/similarity_vs_info.py"
 plot-sim = "python experiments/spectral_information/plot_similarity_vs_info.py"
 approx_sim = {cmd="python experiments/fast_cosine_sim/approximate_similarity.py",env={ MKL_INTERFACE_LAYER = "LP64"}}
 approx_sim_batched  = {cmd="python experiments/fast_cosine_sim/bathced_gpu.py",env={ MKL_INTERFACE_LAYER = "LP64"}}
+new_sim = {cmd="python experiments/fast_cosine_sim/simms_sparse_exact.py",env={ MKL_INTERFACE_LAYER = "LP64"}}
 # When run without arguments, automatically select the newest file whose name starts with 'mprofile'
 # and run `mprof plot` on it. If arguments are provided they are forwarded to `mprof plot`.
 # The task exits with an error if no `mprofile*` files are found.
