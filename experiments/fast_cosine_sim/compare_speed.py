@@ -112,10 +112,7 @@ def main():
 
     # Efficient way for GPU Kernel:
     # 1. Upload unique spectra to GPU ONCE (N x MaxPeaks).
-    # 2. But my kernel 'run_greedy_cosine_fast' expects aligned pairs (N_PAIRS x MaxPeaks).
-    #    It doesn't support broadcasting indices yet.
-    #    So I must materialize the 1M pairs (memory intensive, but for 1000 spectra it's fine).
-    #    1000 spectra * 1000 repeats * 256 float32 * 2 (mz/int) = 256MB. Easy.
+    # 2. Pass index arrays to the kernel to avoid materializing 1M pairs.
 
     t_prep0 = time.perf_counter()
 
@@ -130,32 +127,6 @@ def main():
     indices = np.arange(n_spectra, dtype=np.int32)
     idx_a = np.repeat(indices, n_spectra)
     idx_b = np.tile(indices, n_spectra)
-
-    # 3. Gather into full arrays (On GPU to save PCIe bandwidth)
-    # Numba doesn't have fancy indexing on DeviceArrays easily like Cupy.
-    # Let's use CuPy for the gather.
-    cp_mz_unique = cp.asarray(d_mz_unique)
-    cp_int_unique = cp.asarray(d_int_unique)
-    cp_len_unique = cp.asarray(d_len_unique)
-
-    cp_idx_a = cp.asarray(idx_a)
-    cp_idx_b = cp.asarray(idx_b)
-
-    cp_mz_a = cp_mz_unique[cp_idx_a]
-    cp_int_a = cp_int_unique[cp_idx_a]
-    cp_len_a = cp_len_unique[cp_idx_a]
-
-    cp_mz_b = cp_mz_unique[cp_idx_b]
-    cp_int_b = cp_int_unique[cp_idx_b]
-    cp_len_b = cp_len_unique[cp_idx_b]
-
-    # Convert back to Numba device array (view)
-    d_mz_a = cuda.as_cuda_array(cp_mz_a)
-    d_int_a = cuda.as_cuda_array(cp_int_a)
-    d_len_a = cuda.as_cuda_array(cp_len_a)
-    d_mz_b = cuda.as_cuda_array(cp_mz_b)
-    d_int_b = cuda.as_cuda_array(cp_int_b)
-    d_len_b = cuda.as_cuda_array(cp_len_b)
 
     cp.cuda.Stream.null.synchronize()
     t_prep1 = time.perf_counter()
@@ -211,32 +182,36 @@ def main():
     logger.info("\n--- Running Approach 2: Exact Optimized Kernel (GPU) ---")
     # warming run
     scores_gpu_dev = run_greedy_cosine_fast(
-        d_mz_a,
-        d_int_a,
-        d_len_a,
-        d_mz_b,
-        d_int_b,
-        d_len_b,
+        d_mz_unique,
+        d_int_unique,
+        d_len_unique,
+        d_mz_unique,
+        d_int_unique,
+        d_len_unique,
         tolerance=ms2_tol,  # PPM
         shift=0.0,
         mz_power=0.0,
         int_power=0.5,
+        pair_a_indices=idx_a,
+        pair_b_indices=idx_b,
     )
     cp.cuda.Stream.null.synchronize()
     del scores_gpu_dev
     gc.collect()
     t_gpu0 = time.perf_counter()
     scores_gpu_dev = run_greedy_cosine_fast(
-        d_mz_a,
-        d_int_a,
-        d_len_a,
-        d_mz_b,
-        d_int_b,
-        d_len_b,
+        d_mz_unique,
+        d_int_unique,
+        d_len_unique,
+        d_mz_unique,
+        d_int_unique,
+        d_len_unique,
         tolerance=ms2_tol,  # PPM
         shift=0.0,
         mz_power=0.0,
         int_power=0.5,
+        pair_a_indices=idx_a,
+        pair_b_indices=idx_b,
     )
     cp.cuda.Stream.null.synchronize()
     t_gpu1 = time.perf_counter()
