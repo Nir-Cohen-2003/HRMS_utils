@@ -23,7 +23,6 @@ src/hrms_utils/formula_annotation/mass_decomposition_impl/**.pyd
 # tests/data/
 **.png
 target/
-Cargo.lock
 vendor/
 packages/**/output/
 packages/my_plugin/

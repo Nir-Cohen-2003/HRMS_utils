@@ -1,20 +1,23 @@
 import marimo
+from pandas.util.version import PrePostDevType
 
-__generated_with = "0.18.4"
-app = marimo.App()
+__generated_with = "0.18.3"
+app = marimo.App(width="full")
 
 
 @app.cell
 def _():
-    import polars as pl
+    import matplotlib.pyplot as plt
     import numpy as np
     import numpy.typing as npt
-    import matplotlib.pyplot as plt
-    plt.style.use('default')
+    import polars as pl
+
+    plt.style.use("default")
 
     from dataclasses import dataclass, replace
     from pathlib import Path
-    from typing import List, Tuple, Dict, Optional, Literal
+    from typing import Dict, List, Literal, Optional, Tuple
+
     return (
         Dict,
         List,
@@ -35,7 +38,9 @@ def _():
 def _(Path, pl):
     input_PARQUET_PATHS = [
         Path("/home/analytit_admin/Data/spectral_libs/msp_for_Yonathan/NIST.parquet"),
-        Path("/home/analytit_admin/Data/spectral_libs/msp_for_Yonathan/fraghub.parquet"),
+        Path(
+            "/home/analytit_admin/Data/spectral_libs/msp_for_Yonathan/fraghub.parquet"
+        ),
     ]
     lfs = []
     for input_parquet_path in input_PARQUET_PATHS:
@@ -60,13 +65,13 @@ def _(List, Path, Tuple, dataclass, np, npt, pl, plt):
         bins: number of histogram bins.
         range: value range for the histogram (min, max).
         """
+
         parquet_paths: List[Path]
         labels: List[str]
         output_path: Path
         bins: int = 50
         range: Tuple[float, float] = (0.0, 3.0)
-        add_title:  bool = False
-
+        add_title: bool = False
 
     def read_library_scores_and_inchikeys(path: Path) -> pl.DataFrame:
         """
@@ -78,7 +83,9 @@ def _(List, Path, Tuple, dataclass, np, npt, pl, plt):
         """
         # Why: Fail early to avoid silent issues downstream with missing data columns or paths.
         assert path.exists(), f"Expected parquet file at {path} but it does not exist."
-        df = pl.read_parquet(path, columns=["spectral_information_score", "base_inchikey"])
+        df = pl.read_parquet(
+            path, columns=["spectral_information_score", "base_inchikey"]
+        )
         assert "spectral_information_score" in df.columns, (
             f"File {path} is missing required column 'spectral_information_score'."
         )
@@ -88,7 +95,6 @@ def _(List, Path, Tuple, dataclass, np, npt, pl, plt):
         # Why: Drop null spectral_information_score values to ensure accurate statistics and plotting.
         df = df.filter(pl.col("spectral_information_score").is_not_null())
         return df
-
 
     def compute_molecule_max_info(df: pl.DataFrame) -> np.ndarray:
         """
@@ -117,7 +123,9 @@ def _(List, Path, Tuple, dataclass, np, npt, pl, plt):
         This layout provides one graph per spectral library containing both spectra and molecule maxima,
         plotted on the same axis and scaled consistently to the requested histogram range.
         """
-        assert len(config.parquet_paths) == len(config.labels), "parquet_paths and labels must have same length"
+        assert len(config.parquet_paths) == len(config.labels), (
+            "parquet_paths and labels must have same length"
+        )
 
         # Why: Read all libraries and compute stats for each.
         stats = []
@@ -128,24 +136,47 @@ def _(List, Path, Tuple, dataclass, np, npt, pl, plt):
             molecule_max_info_arr = compute_molecule_max_info(df)
             n_molecules = int(molecule_max_info_arr.size)
 
-            spectrum_info_arr = df.select(pl.col("spectral_information_score").cast(pl.Float64)).to_numpy().ravel()
-            assert spectrum_info_arr.size > 0, f"No non-null 'spectral_information_score' values found in {path}"
-            print(f"Library '{label}': {n_spectra} spectra, {n_molecules} unique molecules.")
-            print(f"Per spectra, the mean is {np.mean(spectrum_info_arr):.4f} and the median is {np.median(spectrum_info_arr):.4f}.")
-            print(f"Per molecule max, the mean is {np.mean(molecule_max_info_arr):.4f} and the median is {np.median(molecule_max_info_arr):.4f}.")
-            stats.append({
-                "label": label,
-                "path": path,
-                "n_spectra": int(n_spectra),
-                "n_molecules": n_molecules,
-                "spectrum_info_arr": spectrum_info_arr,
-                "molecule_max_info_arr": molecule_max_info_arr,
-            })
+            spectrum_info_arr = (
+                df.select(pl.col("spectral_information_score").cast(pl.Float64))
+                .to_numpy()
+                .ravel()
+            )
+            assert spectrum_info_arr.size > 0, (
+                f"No non-null 'spectral_information_score' values found in {path}"
+            )
+            print(
+                f"Library '{label}': {n_spectra} spectra, {n_molecules} unique molecules."
+            )
+            print(
+                f"Per spectra, the mean is {np.mean(spectrum_info_arr):.4f} and the median is {np.median(spectrum_info_arr):.4f}."
+            )
+            print(
+                f"Per molecule max, the mean is {np.mean(molecule_max_info_arr):.4f} and the median is {np.median(molecule_max_info_arr):.4f}."
+            )
+            stats.append(
+                {
+                    "label": label,
+                    "path": path,
+                    "n_spectra": int(n_spectra),
+                    "n_molecules": n_molecules,
+                    "spectrum_info_arr": spectrum_info_arr,
+                    "molecule_max_info_arr": molecule_max_info_arr,
+                }
+            )
 
         # Prepare subplots: 1 row and N columns (one per library) to overlay both distributions on the same axis.
         n_libs = len(stats)
-        fig_width = max(5 * n_libs, 6)  # Provide reasonable width scaling with number of libraries.
-        fig, axes = plt.subplots(1, n_libs, figsize=(fig_width, 5), squeeze=False, sharex=False, facecolor="white")
+        fig_width = max(
+            5 * n_libs, 6
+        )  # Provide reasonable width scaling with number of libraries.
+        fig, axes = plt.subplots(
+            1,
+            n_libs,
+            figsize=(fig_width, 5),
+            squeeze=False,
+            sharex=False,
+            facecolor="white",
+        )
 
         bins = config.bins
         hist_range = config.range
@@ -217,14 +248,16 @@ def _(List, Path, Tuple, dataclass, np, npt, pl, plt):
         # Ensure output dir exists and save
         config.output_path.parent.mkdir(parents=True, exist_ok=True)
         fig.tight_layout()
-        fig.savefig(str(config.output_path), dpi=400, facecolor="white", transparent=False)
+        fig.savefig(
+            str(config.output_path), dpi=400, facecolor="white", transparent=False
+        )
         plt.close(fig)
+
     return PlotConfig, plot_distributions
 
 
 @app.cell
 def _(Path, PlotConfig, plot_distributions):
-
     # PARQUET_PATHS = [
     #     Path("/home/analytit_admin/Data/spectral_libs/msp_for_Yonathan/NIST.parquet"),
     #     Path("/home/analytit_admin/Data/spectral_libs/msp_for_Yonathan/fraghub.parquet"),
@@ -232,12 +265,16 @@ def _(Path, PlotConfig, plot_distributions):
     # LABELS = ["NIST23", "Fraghub"]
     PARQUET_PATHS = [
         # Path("/home/analytit_admin/Data/spectral_libs/msp_for_Yonathan/combined_spectral_lib.parquet"),
-            Path("/home/analytit_admin/Data/spectral_libs/msp_for_Yonathan/NIST.parquet"),
-        Path("/home/analytit_admin/Data/spectral_libs/msp_for_Yonathan/fraghub.parquet"),
+        Path("/home/analytit_admin/Data/spectral_libs/msp_for_Yonathan/NIST.parquet"),
+        Path(
+            "/home/analytit_admin/Data/spectral_libs/msp_for_Yonathan/fraghub.parquet"
+        ),
     ]
     LABELS = [
         # "Combined",
-     "NIST23", "Fraghub"]
+        "NIST23",
+        "Fraghub",
+    ]
     OUTPUT_PNG = Path("spectral_information_distribution_nist_and_fraghub.png")
 
     config = PlotConfig(
@@ -265,10 +302,10 @@ def _(Dict, List, Path, Tuple, dataclass, np, npt, pl, plt):
           base_inchikey: str - base inchikey used to filter spectra.
           color: str - color code used to draw the line (e.g. '#FF0000').
         """
+
         name: str
         base_inchikey: str
         color: str
-
 
     @dataclass
     class MoleculePlotConfig:
@@ -284,6 +321,7 @@ def _(Dict, List, Path, Tuple, dataclass, np, npt, pl, plt):
           add_title: bool - whether to set per-plot title.
           marker: str - default marker used at points.
         """
+
         parquet_path: Path
         molecules: List[MoleculeSpec]
         output_path: Path
@@ -291,7 +329,6 @@ def _(Dict, List, Path, Tuple, dataclass, np, npt, pl, plt):
         info_column: str = "spectral_information_score"
         add_title: bool = True
         marker: str = "o"
-
 
     def plot_informativity_vs_collision_energy(
         config: MoleculePlotConfig,
@@ -312,10 +349,17 @@ def _(Dict, List, Path, Tuple, dataclass, np, npt, pl, plt):
           - a defined molecule has no matching rows in the file
         """
         # Why: fail early on missing resources to avoid silent downstream errors
-        assert config.parquet_path.exists(), f"Expected parquet file at {config.parquet_path} but it does not exist."
+        assert config.parquet_path.exists(), (
+            f"Expected parquet file at {config.parquet_path} but it does not exist."
+        )
 
         # Only read the necessary columns to keep memory usage low
-        required_cols = {"base_inchikey", config.collision_energy_column, config.info_column,"precursor_type"}
+        required_cols = {
+            "base_inchikey",
+            config.collision_energy_column,
+            config.info_column,
+            "precursor_type",
+        }
         # Read as polars DataFrame and fail if columns missing
         df = pl.read_parquet(config.parquet_path, columns=list(required_cols))
         missing = required_cols.difference(set(df.columns))
@@ -327,15 +371,17 @@ def _(Dict, List, Path, Tuple, dataclass, np, npt, pl, plt):
         # Prepare plot
         fig, ax = plt.subplots(1, 1, figsize=(8, 5), facecolor="white")
 
-        plotted_data: Dict[str, Tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]] = {}
+        plotted_data: Dict[
+            str, Tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]
+        ] = {}
 
         for mol in config.molecules:
             # Why: keep original row order; pl.filter doesn't reorder rows
             sub = df.filter(pl.col("base_inchikey") == mol.base_inchikey)
             # Drop rows with missing values; plotting None values leads to broken lines
             sub = sub.filter(
-                pl.col(config.collision_energy_column).is_not_null() &
-                pl.col(config.info_column).is_not_null(),
+                pl.col(config.collision_energy_column).is_not_null()
+                & pl.col(config.info_column).is_not_null(),
                 pl.col("precursor_type").eq("[M+H]+"),
             ).sort(pl.col(config.collision_energy_column))
 
@@ -345,8 +391,16 @@ def _(Dict, List, Path, Tuple, dataclass, np, npt, pl, plt):
                 f"Check the base_inchikey and confirm column '{config.collision_energy_column}' and '{config.info_column}' exist."
             )
 
-            x = sub.select(pl.col(config.collision_energy_column).cast(pl.Float64)).to_numpy().ravel()
-            y = sub.select(pl.col(config.info_column).cast(pl.Float64)).to_numpy().ravel()
+            x = (
+                sub.select(pl.col(config.collision_energy_column).cast(pl.Float64))
+                .to_numpy()
+                .ravel()
+            )
+            y = (
+                sub.select(pl.col(config.info_column).cast(pl.Float64))
+                .to_numpy()
+                .ravel()
+            )
 
             # Keep the contiguous line order as in the parquet rows
             ax.plot(
@@ -356,7 +410,7 @@ def _(Dict, List, Path, Tuple, dataclass, np, npt, pl, plt):
                 marker=config.marker,
                 linewidth=1.5,
                 label=mol.name,
-                linestyle='-',
+                linestyle="-",
             )
 
             # Save for tests/inspection - we cast explicitly to numpy arrays of floats
@@ -370,33 +424,36 @@ def _(Dict, List, Path, Tuple, dataclass, np, npt, pl, plt):
         ax.legend(frameon=False)
         config.output_path.parent.mkdir(parents=True, exist_ok=True)
         fig.tight_layout()
-        fig.savefig(str(config.output_path), dpi=400, facecolor="white", transparent=False)
+        fig.savefig(
+            str(config.output_path), dpi=400, facecolor="white", transparent=False
+        )
         plt.close(fig)
 
         return plotted_data
 
     molecules = [
-            # MoleculeSpec(name="Amphetamine", base_inchikey="KWTSXDURSIMDCE", color="#FF0000"),  
-            # MoleculeSpec(name="Methmphetamine", base_inchikey="MYWUZJCMWCOHBA", color="#FF0000"), 
-            # MoleculeSpec(name="MDMA", base_inchikey="SHXWCVYOXRDMCX", color="#FF0000"), 
-            MoleculeSpec(name="Cocaine", base_inchikey="ZPUCINDJVBIVPJ", color="#0000FF"),
-            # MoleculeSpec(name="Clonazepam", base_inchikey="DGBIGWXXNGSACT", color="#0000FF"),
-            # MoleculeSpec(name="Fentanyl", base_inchikey="PJMPHNIQZUBGLI", color="#D55E00"),
-            MoleculeSpec(name="Lidocaine", base_inchikey="NNJVILVZKWQKPM", color="#000000ff"),
-            MoleculeSpec(name="Warfarin", base_inchikey="PJVWKTKQMONHTI", color="#FF0000"), 
-
-
-        ]
-
+        # MoleculeSpec(name="Amphetamine", base_inchikey="KWTSXDURSIMDCE", color="#FF0000"),
+        # MoleculeSpec(name="Methmphetamine", base_inchikey="MYWUZJCMWCOHBA", color="#FF0000"),
+        # MoleculeSpec(name="MDMA", base_inchikey="SHXWCVYOXRDMCX", color="#FF0000"),
+        MoleculeSpec(name="Cocaine", base_inchikey="ZPUCINDJVBIVPJ", color="#0000FF"),
+        # MoleculeSpec(name="Clonazepam", base_inchikey="DGBIGWXXNGSACT", color="#0000FF"),
+        # MoleculeSpec(name="Fentanyl", base_inchikey="PJMPHNIQZUBGLI", color="#D55E00"),
+        MoleculeSpec(
+            name="Lidocaine", base_inchikey="NNJVILVZKWQKPM", color="#000000ff"
+        ),
+        MoleculeSpec(name="Warfarin", base_inchikey="PJVWKTKQMONHTI", color="#FF0000"),
+    ]
 
     cfg = MoleculePlotConfig(
-        parquet_path=Path("/home/analytit_admin/Data/spectral_libs/NIST_hr_msms/NIST_hr_msms.parquet"),
+        parquet_path=Path(
+            "/home/analytit_admin/Data/spectral_libs/NIST_hr_msms/NIST_hr_msms.parquet"
+        ),
         molecules=molecules,
         output_path=Path("informativity_vs_collision_energy_nist.png"),
         collision_energy_column="collision_energy_ev",
         info_column="spectral_information_score",
         add_title=False,
-        marker='x',
+        marker="x",
     )
 
     plotted = plot_informativity_vs_collision_energy(cfg)
@@ -426,6 +483,7 @@ def _(
           x_range: optional (min, max) bounds to apply to the x-axis (applies to the chosen metric).
           bonds_column is no longer needed; 'bonds' metric uses the precursor_formula_array dot-product.
         """
+
         parquet_path: Path
         output_path: Path
         mass_column: str = "precursor_mz"
@@ -442,7 +500,7 @@ def _(
         show_mean_line: bool = True
 
         # New: select x-axis metric
-        x_metric: Literal["mass", "heavy_atoms", "bonds"] = "mass"
+        x_metric: Literal["mass", "heavy_atoms", "bonds", "bonds_sqrt"] = "mass"
 
         # Why: convenience helper to create a modified copy of the config with fail-fast validation.
         def copy(self, **changes) -> "InformativityVsMassConfig":
@@ -452,9 +510,10 @@ def _(
             """
             valid_fields = set(self.__dataclass_fields__.keys())
             unknown = set(changes) - valid_fields
-            assert not unknown, f"Unknown fields for InformativityVsMassConfig.copy(): {sorted(list(unknown))}"
+            assert not unknown, (
+                f"Unknown fields for InformativityVsMassConfig.copy(): {sorted(list(unknown))}"
+            )
             return replace(self, **changes)
-
 
     def compute_molecule_max_info_with_metric(
         df: pl.DataFrame, metric_expr: pl.Expr, metric_name: str
@@ -473,22 +532,29 @@ def _(
         """
         required = {"base_inchikey", "spectral_information_score"}
         missing = required.difference(set(df.columns))
-        assert not missing, f"DataFrame is missing required columns: {sorted(list(missing))}"
+        assert not missing, (
+            f"DataFrame is missing required columns: {sorted(list(missing))}"
+        )
 
         # Compute metric using the provided Polars expression and keep only required columns.
         df_with_metric = df.with_columns(metric_expr.alias(metric_name))
 
         # Drop rows with missing score or missing metric value to avoid wrong maxima selection
-        df_sub = df_with_metric.select(["base_inchikey", "spectral_information_score", metric_name]).filter(
-            pl.col("spectral_information_score").is_not_null() & pl.col(metric_name).is_not_null()
+        df_sub = df_with_metric.select(
+            ["base_inchikey", "spectral_information_score", metric_name]
+        ).filter(
+            pl.col("spectral_information_score").is_not_null()
+            & pl.col(metric_name).is_not_null()
         )
 
-        assert df_sub.height > 0, f"No valid rows found with non-null 'spectral_information_score' and '{metric_name}'."
+        assert df_sub.height > 0, (
+            f"No valid rows found with non-null 'spectral_information_score' and '{metric_name}'."
+        )
 
         # Sort descending by score and keep the first row per base_inchikey -> will be the row with max score
-        best_per_mol = df_sub.sort("spectral_information_score", descending=True).unique(
-            subset=["base_inchikey"], keep="first"
-        )
+        best_per_mol = df_sub.sort(
+            "spectral_information_score", descending=True
+        ).unique(subset=["base_inchikey"], keep="first")
 
         return best_per_mol.select(
             pl.col("spectral_information_score").alias("max_info").cast(pl.Float64),
@@ -504,26 +570,31 @@ def _(
         applied irrespective of the selected metric.
         """
         # Fail early on missing resources and invalid params
-        assert config.parquet_path.exists(), f"Expected parquet file at {config.parquet_path} but it does not exist."
-        assert config.x_bin_width > 0, f"x_bin_width must be > 0, got {config.x_bin_width}."
-        assert config.plot_kind in ("line", "scatter"), "plot_kind must be one of: 'line', 'scatter'"
-        assert config.x_metric in ("mass", "heavy_atoms", "bonds"), "x_metric must be 'mass', 'heavy_atoms' or 'bonds'"
+        assert config.parquet_path.exists(), (
+            f"Expected parquet file at {config.parquet_path} but it does not exist."
+        )
 
         # Decide which base columns we need depending on metric (fail fast if missing)
-        required_cols = ["spectral_information_score", "base_inchikey", config.mass_column]
-        if config.x_metric in ("heavy_atoms", "bonds"):
-            required_cols.append("precursor_formula_array")
-
+        required_cols = [
+            "spectral_information_score",
+            "base_inchikey",
+            "precursor_formula_array",
+            config.mass_column,
+        ]
         lf = pl.scan_parquet(config.parquet_path).select(required_cols)
         df = lf.collect()
         print(f"Read {df.height} rows from {config.parquet_path}.")
 
         for col in required_cols:
-            assert col in df.columns, f"File {config.parquet_path} is missing required column '{col}'."
+            assert col in df.columns, (
+                f"File {config.parquet_path} is missing required column '{col}'."
+            )
 
         # Drop null scores
         df = df.filter(pl.col("spectral_information_score").is_not_null())
-        assert df.height > 0, f"No non-null 'spectral_information_score' values found in {config.parquet_path}."
+        assert df.height > 0, (
+            f"No non-null 'spectral_information_score' values found in {config.parquet_path}."
+        )
 
         # Choose metric using match statement; build a Polars expression for metric (metric_expr)
         match config.x_metric:
@@ -536,9 +607,9 @@ def _(
                     "Requested x_metric 'heavy_atoms' but 'precursor_formula_array' column is missing."
                 )
                 metric_expr = (
-                    (pl.col("precursor_formula_array").arr.sum() - pl.col("precursor_formula_array").arr.get(0))
-                    .cast(pl.Float64)
-                )
+                    pl.col("precursor_formula_array").arr.sum()
+                    - pl.col("precursor_formula_array").arr.get(0)
+                ).cast(pl.Float64)
                 metric_label = "Number heavy atoms"
             case "bonds":
                 # Bonds metric: dot-product against coefficients vector using Polars expressions
@@ -547,34 +618,57 @@ def _(
                     "Requested x_metric 'bonds' but 'precursor_formula_array' column is missing."
                 )
                 # Build expression: sum(arr.get(i) * coeffs[i] for i in range(len(coeffs)))
-                coeff_expr = sum((pl.col("precursor_formula_array").arr.get(i) * coeffs[i]) for i in range(len(coeffs)))
+                coeff_expr = sum(
+                    (pl.col("precursor_formula_array").arr.get(i) * coeffs[i])
+                    for i in range(len(coeffs))
+                )
                 metric_expr = coeff_expr.cast(pl.Float64)
-                metric_label = "Bonds metric (dot product)"
-
+                metric_label = "Bonds metric"
+            case "bonds_sqrt":
+                coeffs = [-0.5, 2.0, 1.5, 1.0, 0.5, 0.5, 1.5, 1.0, 0.5, 0.5, 0.5, 0.5]
+                assert "precursor_formula_array" in df.columns, (
+                    "Requested x_metric 'bonds_sqrt' but 'precursor_formula_array' column is missing."
+                )
+                # Build expression: sum(arr.get(i) * coeffs[i] for i in range(len(coeffs)))
+                coeff_expr = sum(
+                    (pl.col("precursor_formula_array").arr.get(i) * coeffs[i])
+                    for i in range(len(coeffs))
+                )
+                metric_expr = coeff_expr.cast(pl.Float64).sqrt()
+                metric_label = "Bonds_sqrt metric"
         # Compute one row per molecule (the row with max informativity and its x metric)
-        max_rows_df = compute_molecule_max_info_with_metric(df, metric_expr, "x_metric_temp")
+        max_rows_df = compute_molecule_max_info_with_metric(
+            df, metric_expr, "x_metric_temp"
+        )
 
         # Optionally apply x range bounds to the per-molecule maxima (metric-agnostic)
         if config.x_range is not None:
             x_min, x_max = config.x_range
-            max_rows_df = max_rows_df.filter(pl.col("x_val").is_between(x_min, x_max, closed="both"))
-            assert max_rows_df.height > 0, f"No per-molecule maxima remain after applying x_range {config.x_range}."
+            max_rows_df = max_rows_df.filter(
+                pl.col("x_val").is_between(x_min, x_max, closed="both")
+            )
+            assert max_rows_df.height > 0, (
+                f"No per-molecule maxima remain after applying x_range {config.x_range}."
+            )
 
         # spearman correlation using polars
         spearman_corr = max_rows_df.select(
             pl.corr("x_val", "max_info", method="spearman")
-            ).item()
-        print(f"Spearman correlation between {config.x_metric} and max informativity: {spearman_corr:.4f}")
+        ).item()
+        print(
+            f"Spearman correlation between {config.x_metric} and max informativity: {spearman_corr:.4f}"
+        )
 
         # Use the unified bin width
         bin_width = config.x_bin_width
 
         # For line plots we compute binned means and stds on the per-molecule maxima
-        max_binned = max_rows_df.with_columns(((pl.col("x_val") / bin_width).round() * bin_width).alias("x_bin"))
+        max_binned = max_rows_df.with_columns(
+            ((pl.col("x_val") / bin_width).round() * bin_width).alias("x_bin")
+        )
 
         agg = (
-            max_binned
-            .group_by("x_bin")
+            max_binned.group_by("x_bin")
             .agg(
                 mean_info=pl.col("max_info").mean(),
                 std_info=pl.col("max_info").std(),
@@ -589,7 +683,9 @@ def _(
 
         # Fail fast if nothing to plot
         if config.plot_kind == "line":
-            assert x_bins.size > 0, "No x-binned data found after aggregation; check input dataframe and bin width."
+            assert x_bins.size > 0, (
+                "No x-binned data found after aggregation; check input dataframe and bin width."
+            )
         else:
             assert x_array.size > 0, "No per-molecule maxima found to plot as scatter."
 
@@ -608,7 +704,14 @@ def _(
             )
             fill_lower = mean_info - std_info
             fill_upper = mean_info + std_info
-            ax.fill_between(x_bins, fill_lower, fill_upper, color=config.color, alpha=0.2, label="±1 Standard Deviation")
+            ax.fill_between(
+                x_bins,
+                fill_lower,
+                fill_upper,
+                color=config.color,
+                alpha=0.2,
+                label="±1 Standard Deviation",
+            )
         else:
             ax.scatter(
                 x_array,
@@ -626,11 +729,17 @@ def _(
                     mean_info,
                     color=config.color,
                     linewidth=1.25,
-                    linestyle='-',
+                    linestyle="-",
                     alpha=0.9,
-                    label="Binned mean (±1 std)"
+                    label="Binned mean (±1 std)",
                 )
-                ax.fill_between(x_bins, mean_info - std_info, mean_info + std_info, color=config.color, alpha=0.15)
+                ax.fill_between(
+                    x_bins,
+                    mean_info - std_info,
+                    mean_info + std_info,
+                    color=config.color,
+                    alpha=0.15,
+                )
 
         ax.set_xlabel(metric_label)
         ax.set_ylabel("Maximal Spectral Informativiness per molecule")
@@ -644,12 +753,16 @@ def _(
         # Ensure output dir exists and save
         config.output_path.parent.mkdir(parents=True, exist_ok=True)
         fig.tight_layout()
-        fig.savefig(str(config.output_path), dpi=400, facecolor="white", transparent=False)
+        fig.savefig(
+            str(config.output_path), dpi=400, facecolor="white", transparent=False
+        )
         plt.close(fig)
         print(f"Plot successfully saved to {config.output_path}")
 
     bonds_config = InformativityVsMassConfig(
-        parquet_path=Path("/home/analytit_admin/Data/spectral_libs/msp_for_Yonathan/combined_spectral_lib.parquet"),
+        parquet_path=Path(
+            "/home/analytit_admin/Data/spectral_libs/msp_for_Yonathan/combined_spectral_lib.parquet"
+        ),
         output_path=Path("informativity_vs_bonds.png"),
         mass_column="precursor_mz",
         x_bin_width=2.0,
@@ -657,8 +770,16 @@ def _(
         plot_kind="line",  # Change to "scatter" to plot individual points
         x_metric="bonds",  # Choose "mass", "heavy_atoms", or "bonds"
     )
-
     plot_informativity_vs_metric(bonds_config)
+
+    bonds_sqrt_config = bonds_config.copy(
+        output_path=Path("informativity_vs_bonds_sqrt.png"),
+        x_metric="bonds_sqrt",
+        x_bin_width=0.5,
+        x_range=(0.0, 15.0),
+    )
+    plot_informativity_vs_metric(bonds_sqrt_config)
+
     mass_config = bonds_config.copy(
         output_path=Path("informativity_vs_mass.png"),
         x_metric="mass",

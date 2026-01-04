@@ -404,7 +404,7 @@ def _compute_batched_gpu_similarity_single_mode(
             # Thresholding & Extraction
             # Logic copied from _sparse_proximate_similarity_pairs_above_threshold_gpu
             # to avoid re-normalization issues.
-            mask = sim.data >= (config.approx_config.threshold - 0.15)
+            mask = sim.data >= config.approx_config.approx_threshold
 
             if int(mask.sum()) > 0:
                 out_data = sim.data[mask]

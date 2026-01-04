@@ -6,21 +6,25 @@ app = marimo.App(width="full")
 
 @app.cell
 def _():
-    import polars as pl
-    import numpy as np
     import matplotlib.pyplot as plt
-    plt.style.use('default')
-    import hrms_utils
-    from pathlib import Path
-    from dataclasses import dataclass, field, replace
-    from typing import List, Tuple, Union, Optional, Literal
-    import numpy.typing as npt
-    from rdkit import Chem
-    from nvmolkit.fingerprints import MorganFingerprintGenerator
-    from nvmolkit.similarity import crossTanimotoSimilarityMemoryConstrained
+    import numpy as np
+    import polars as pl
+
+    plt.style.use("default")
     import math
     import os
+    from dataclasses import dataclass, field, replace
+    from pathlib import Path
+    from typing import List, Literal, Optional, Tuple, Union
+
+    import numpy.typing as npt
+    from nvmolkit.fingerprints import MorganFingerprintGenerator
+    from nvmolkit.similarity import crossTanimotoSimilarityMemoryConstrained
+    from rdkit import Chem
     from scipy.stats import spearmanr, wilcoxon
+
+    import hrms_utils
+    from hrms_utils.rdkit import sanitize_smiles
 
     os.environ["RUST_BACKTRACE"] = "full"
     return (
@@ -33,6 +37,7 @@ def _():
         Tuple,
         Union,
         crossTanimotoSimilarityMemoryConstrained,
+        sanitize_smiles,
         dataclass,
         field,
         math,
@@ -46,22 +51,23 @@ def _():
 
 
 @app.cell
-def _(List, Path, Union, math, pl):
+def _(List, Path, Union, Optional, math, pl):
     def build_and_write_pairs_parquet(
         parquet_paths: List[Path],
-        output_path: Union[str, Path] = "/home/analytit_admin/Data/spectral_libs/all_pairs_with_similarities.parquet",
-        min_isomers: int = 10,
-        ms2_tolerance_ppm: float = 10.0,
+        output_path: Union[str, Path],
+        threshold: float = 0.8,
+        num_mols_to_sample: Optional[int] = None,
     ) -> None:
         """
-        Build unioned library LF, compute pairwise spectral similarities, and write pairs parquet.
+        Build unioned library LF, compute pairwise dot-product similarities (ignoring precursor),
+        and write pairs parquet.
 
         Args:
           - parquet_paths: list of Path objects pointing at library parquet files
-          - output_path: where to write the pairs with similarities
-          - min_isomers: minimum number of isomers per formula used to filter the library
-          - ms2_tolerance_ppm: used by the spectral similarity functions
-          - sink_engine: polars sink engine (streaming preferred for large data)
+          - output_path: where to write the pairs with similarities (required)
+          - threshold: float (default 0.8). Only pairs with dotprod_similarity >= threshold are saved.
+          - num_mols_to_sample: Optional[int]. If provided, limit the number of molecules read from the
+            unioned input using a lazy .limit(num_mols_to_sample) to avoid collecting the full dataset.
 
         Returns:
           - None (writes parquet to output_path)
@@ -70,106 +76,130 @@ def _(List, Path, Union, math, pl):
         # Load and union into a single lazyframe
         lf_list = []
         for PARQUET_PATH in parquet_paths:
-            assert Path(PARQUET_PATH).exists(), f"Requested parquet does not exist: {PARQUET_PATH}"
+            assert Path(PARQUET_PATH).exists(), (
+                f"Requested parquet does not exist: {PARQUET_PATH}"
+            )
             lf_list.append(pl.scan_parquet(PARQUET_PATH))
 
-        lf = pl.union(lf_list).filter(
-            pl.col("clean_precursor"),
-            pl.len().over("precursor_formula_array").ge(min_isomers),
-        )
+        lf = pl.union(lf_list).filter(pl.col("clean_precursor"))
+        # Use a reasonable default tolerance for MS2 matching (chosen internally since tolerance is not exposed).
+        ms2_tolerance_ppm = 10.0
+
+        # Optionally limit the number of molecules sampled from the unioned libraries.
+        if num_mols_to_sample is not None:
+            assert isinstance(num_mols_to_sample, int) and num_mols_to_sample > 0, (
+                "num_mols_to_sample must be a positive integer or None"
+            )
+            lf = lf.limit(num_mols_to_sample)
 
         # Keep only necessary columns; add idx and nominal_mass to join on
-        lf = lf.collect().lazy().select(
-            [
-                "precursor_type",
-                "precursor_mz",
-                "precursor_formula_array",
-                "ion_mode",
-                "base_inchikey",
-                "spectral_information_score",
-                "cleaned_normalized_mz",
-                "cleaned_normalized_intensity",
-                "smiles",
-            ]
-        ).filter(
-            pl.col("smiles").is_not_null()
-        ).with_row_index(
-            "idx"
-        ).with_columns(
-            nominal_mass=pl.col("precursor_mz").round(0),
-            weighted_spectral_information_score=pl.lit(100.0).mul(pl.col("spectral_information_score")).truediv(
-                pl.col("precursor_formula_array").arr.sum()-pl.col("precursor_formula_array").arr.get(0)
+        lf = (
+            lf.collect()
+            .lazy()
+            .select(
+                [
+                    "precursor_type",
+                    "precursor_mz",
+                    "precursor_formula_array",
+                    "ion_mode",
+                    "base_inchikey",
+                    "spectral_information_score",
+                    "cleaned_normalized_mz",
+                    "cleaned_normalized_intensity",
+                    "smiles",
+                ]
+            )
+            .filter(pl.col("smiles").is_not_null())
+            .with_row_index("idx")
+            .with_columns(
+                nominal_mass=pl.col("precursor_mz").round(0),
+                weighted_spectral_information_score=pl.lit(100.0)
+                .mul(pl.col("spectral_information_score"))
+                .truediv(
+                    pl.col("precursor_formula_array").arr.sum()
+                    - pl.col("precursor_formula_array").arr.get(0)
                 ),
-            spectral_entropy=(
-                pl.col("cleaned_normalized_intensity") / pl.col("cleaned_normalized_intensity").list.sum()
-                ).list.eval(pl.element().log(base=math.e).mul(pl.element())).list.sum().neg(),
-            num_clean_peaks=pl.col("cleaned_normalized_mz").list.len(),
-            normalized_spectral_information_score=( 
-                # here we normalize the SIS per molecule+Ion mode, so its a fraction of the max possible SIS for that molecule
-                pl.col("spectral_information_score").truediv(
-                    pl.col("spectral_information_score").mean().over(["base_inchikey", "ion_mode"])
+                spectral_entropy=(
+                    pl.col("cleaned_normalized_intensity")
+                    / pl.col("cleaned_normalized_intensity").list.sum()
+                )
+                .list.eval(pl.element().log(base=math.e).mul(pl.element()))
+                .list.sum()
+                .neg(),
+                num_clean_peaks=pl.col("cleaned_normalized_mz").list.len(),
+                normalized_spectral_information_score=(
+                    # here we normalize the SIS per molecule+Ion mode, so its a fraction of the max possible SIS for that molecule
+                    pl.col("spectral_information_score").truediv(
+                        pl.col("spectral_information_score")
+                        .mean()
+                        .over(["base_inchikey", "ion_mode"])
                     )
+                ),
             )
-        ).with_columns(
-            most_informative=pl.col("normalized_spectral_information_score").eq(1.0),
-            normalized_spectral_entropy=pl.col("spectral_entropy").truediv(
-                pl.col("spectral_entropy").mean().over(["base_inchikey", "ion_mode"])
-            ),
-            normalized_num_clean_peaks=pl.col("num_clean_peaks").truediv(
-                pl.col("num_clean_peaks").mean().over(["base_inchikey", "ion_mode"])
-            ),
-        ).collect().lazy()
+            .with_columns(
+                most_informative=pl.col("normalized_spectral_information_score").eq(
+                    1.0
+                ),
+                normalized_spectral_entropy=pl.col("spectral_entropy").truediv(
+                    pl.col("spectral_entropy")
+                    .mean()
+                    .over(["base_inchikey", "ion_mode"])
+                ),
+                normalized_num_clean_peaks=pl.col("num_clean_peaks").truediv(
+                    pl.col("num_clean_peaks").mean().over(["base_inchikey", "ion_mode"])
+                ),
+            )
+            .collect()
+            .lazy()
+        )
 
-        pairs_filtered = lf.join(
-            other=lf, on=["nominal_mass", "ion_mode"], suffix="_right"
-        ).filter(
-            pl.col("precursor_mz").is_close(pl.col("precursor_mz_right"), rel_tol=5e-6),
-            pl.col("base_inchikey") != pl.col("base_inchikey_right"),
-        ).with_columns(
-            spectra=pl.struct(
-                mz1=pl.col("cleaned_normalized_mz").alias("mz1"),
-                intensities1=pl.col("cleaned_normalized_intensity").alias("intensities1"),
-                mz2=pl.col("cleaned_normalized_mz_right").alias("mz2"),
-                intensities2=pl.col("cleaned_normalized_intensity_right").alias("intensities2"),
-                precursor_mz1=pl.col("precursor_mz").alias("precursor_mz1"),
-                precursor_mz2=pl.col("precursor_mz_right").alias("precursor_mz2"),
+        pairs_filtered = (
+            lf.join(other=lf, on=["nominal_mass", "ion_mode"], suffix="_right")
+            .filter(
+                pl.col("base_inchikey") != pl.col("base_inchikey_right"),
             )
-        ).drop(
-            [
-                "cleaned_normalized_mz",
-                "cleaned_normalized_intensity",
-                "cleaned_normalized_mz_right",
-                "cleaned_normalized_intensity_right",
-                "precursor_mz",
-                "precursor_mz_right",
-            ]
-        ).with_columns(
-            dotprod_similarity=pl.col("spectra").spectral_similarity.dotprod_similarity(
-                ms2_tolerance_in_ppm=ms2_tolerance_ppm,
-                clean_spectra_first=False,
-                ignore_precursor=True,
-            ),
-            dotprod_similarity_with_precursor=pl.col("spectra").spectral_similarity.dotprod_similarity(
-                ms2_tolerance_in_ppm=ms2_tolerance_ppm,
-                clean_spectra_first=False,
-                ignore_precursor=False,
-            ),
-            entropy_similarity=pl.col("spectra").spectral_similarity.entropy_similarity(
-                ms2_tolerance_in_ppm=ms2_tolerance_ppm,
-                clean_spectra_first=False,
-                ignore_precursor=True,
-            ),
-            mass_sqrt_cosine_similarity=pl.col("spectra").spectral_similarity.general_cosine_similarity(
-                ms2_tolerance_in_ppm=ms2_tolerance_ppm,
-                clean_spectra_first=False,
-                ignore_precursor=True,
-                mass_power=0.5,
-                intensity_power=0.5,
-            ),
+            .with_columns(
+                spectra=pl.struct(
+                    mz1=pl.col("cleaned_normalized_mz").alias("mz1"),
+                    intensities1=pl.col("cleaned_normalized_intensity").alias(
+                        "intensities1"
+                    ),
+                    mz2=pl.col("cleaned_normalized_mz_right").alias("mz2"),
+                    intensities2=pl.col("cleaned_normalized_intensity_right").alias(
+                        "intensities2"
+                    ),
+                    precursor_mz1=pl.col("precursor_mz").alias("precursor_mz1"),
+                    precursor_mz2=pl.col("precursor_mz_right").alias("precursor_mz2"),
+                )
+            )
+            .drop(
+                [
+                    "cleaned_normalized_mz",
+                    "cleaned_normalized_intensity",
+                    "cleaned_normalized_mz_right",
+                    "cleaned_normalized_intensity_right",
+                    "precursor_mz",
+                    "precursor_mz_right",
+                ]
+            )
+            .with_columns(
+                dotprod_similarity=pl.col(
+                    "spectra"
+                ).spectral_similarity.dotprod_similarity(
+                    ms2_tolerance_in_ppm=ms2_tolerance_ppm,
+                    clean_spectra_first=False,
+                    ignore_precursor=True,
+                )
+            )
+            .filter(
+                pl.col("dotprod_similarity").is_not_null(),
+                pl.col("dotprod_similarity") >= threshold,
+            )
         )
 
         # Sink to parquet for downstream analysis and return the lazyframe
         pairs_filtered.sink_parquet(str(output_path), engine="streaming")
+
     return (build_and_write_pairs_parquet,)
 
 
@@ -192,8 +222,6 @@ def _(
     replace,
     spearmanr,
 ):
-
-
     MeasureName = Literal[
         "spectral_information_score",
         "weighted_spectral_information_score",
@@ -225,7 +253,9 @@ def _(
 
     @dataclass
     class FprVsMeasureConfig:
-        pairs_parquet_path: Union[str, Path] = "/home/analytit_admin/Data/spectral_libs/all_pairs_with_similarities.parquet"
+        pairs_parquet_path: Union[str, Path] = (
+            "/home/analytit_admin/Data/spectral_libs/all_pairs_with_similarities.parquet"
+        )
 
         # Unified x-axis configuration used by the plots and raw Spearman computation.
         x_measure: MeasureName = "spectral_information_score"
@@ -240,8 +270,12 @@ def _(
 
         metrics: List[SimilarityMetricThreshold] = field(
             default_factory=lambda: [
-                SimilarityMetricThreshold("dotprod_similarity", 0.8, "Dot Product", "C0", "o"),
-                SimilarityMetricThreshold("entropy_similarity", 0.75, "Entropy", "C2", "^"),
+                SimilarityMetricThreshold(
+                    "dotprod_similarity", 0.8, "Dot Product", "C0", "o"
+                ),
+                SimilarityMetricThreshold(
+                    "entropy_similarity", 0.75, "Entropy", "C2", "^"
+                ),
             ]
         )
         min_count_threshold: int = 5
@@ -259,7 +293,9 @@ def _(
         def copy(self, **changes) -> "FprVsMeasureConfig":
             valid_fields = set(self.__dataclass_fields__.keys())
             unknown = set(changes) - valid_fields
-            assert not unknown, f"Unknown fields for FprVsMeasureConfig.copy(): {sorted(list(unknown))}"
+            assert not unknown, (
+                f"Unknown fields for FprVsMeasureConfig.copy(): {sorted(list(unknown))}"
+            )
             return replace(self, **changes)
 
     @dataclass(frozen=True)
@@ -300,7 +336,9 @@ def _(
         def copy(self, **changes) -> "TanimotoVsMeasureConfig":
             valid_fields = set(self.__dataclass_fields__.keys())
             unknown = set(changes) - valid_fields
-            assert not unknown, f"Unknown fields for TanimotoVsMeasureConfig.copy(): {sorted(list(unknown))}"
+            assert not unknown, (
+                f"Unknown fields for TanimotoVsMeasureConfig.copy(): {sorted(list(unknown))}"
+            )
             return replace(self, **changes)
 
     def _measure_label(measure: MeasureName) -> str:
@@ -345,29 +383,38 @@ def _(
             case _:
                 raise AssertionError(f"No default x_range for measure '{measure}'.")
 
-    def _resolve_x_range(x_measure: MeasureName, x_range: Optional[Tuple[float, float]]) -> tuple[float, float]:
+    def _resolve_x_range(
+        x_measure: MeasureName, x_range: Optional[Tuple[float, float]]
+    ) -> tuple[float, float]:
         if x_range is not None:
             x_min, x_max = x_range
             assert x_max >= x_min, f"x_range must satisfy max>=min, got {x_range}"
             return (float(x_min), float(x_max))
         return _default_x_range(x_measure)
 
-    def _resolve_x_range_for_measure(config: FprVsMeasureConfig, measure: MeasureName) -> tuple[float, float]:
+    def _resolve_x_range_for_measure(
+        config: FprVsMeasureConfig, measure: MeasureName
+    ) -> tuple[float, float]:
         # Why: config.x_range semantically applies to the current plotting x_measure; other measures use defaults.
         if measure == config.x_measure:
             return _resolve_x_range(config.x_measure, config.x_range)
         return _resolve_x_range(measure, None)
 
-    def _resolve_measure_difference_measure(config: FprVsMeasureConfig) -> InfoMeasureName:
+    def _resolve_measure_difference_measure(
+        config: FprVsMeasureConfig,
+    ) -> InfoMeasureName:
         # Why: Matched-info-diff is only meaningful for info-based measures; allow override but keep sane default.
         if config.measure_difference_measure is not None:
             return config.measure_difference_measure
         match config.x_measure:
-            case "spectral_information_score" | "weighted_spectral_information_score" | "normalized_spectral_information_score":
+            case (
+                "spectral_information_score"
+                | "weighted_spectral_information_score"
+                | "normalized_spectral_information_score"
+            ):
                 return config.x_measure  # type: ignore[return-value]
             case _:
                 return "spectral_information_score"
-
 
     def _compute_binned_fpr_stats_for_metric(
         *,
@@ -375,7 +422,9 @@ def _(
         config: FprVsMeasureConfig,
         metric: SimilarityMetricThreshold,
     ) -> pl.LazyFrame:
-        assert config.x_bin_width > 0, f"x_bin_width must be > 0, got {config.x_bin_width}"
+        assert config.x_bin_width > 0, (
+            f"x_bin_width must be > 0, got {config.x_bin_width}"
+        )
         x_min, x_max = _resolve_x_range(config.x_measure, config.x_range)
 
         required_cols = [
@@ -393,10 +442,9 @@ def _(
         if config.plot_only_most_informative:
             pairs_sim = pairs_sim.filter(pl.col("most_informative"))
 
-        base_per_spectrum = (
-            pairs_sim.select(["idx", "base_inchikey", config.x_measure])
-            .unique(subset="idx", keep="any")
-        )
+        base_per_spectrum = pairs_sim.select(
+            ["idx", "base_inchikey", config.x_measure]
+        ).unique(subset="idx", keep="any")
 
         matched_per_spectrum = (
             pairs_sim.filter(pl.col(metric.metric_column).ge(metric.threshold))
@@ -404,15 +452,22 @@ def _(
             .agg(
                 false_compound_count=pl.col("base_inchikey_right").n_unique(),
                 avg_matched_measure_diff=(
-                    (pl.col(f"{config.x_measure}_right") - pl.col(config.x_measure)).mean()
+                    (
+                        pl.col(f"{config.x_measure}_right") - pl.col(config.x_measure)
+                    ).mean()
                 ),
             )
         )
 
         per_spectrum = (
             base_per_spectrum.join(matched_per_spectrum, on="idx", how="left")
-            .with_columns(false_compound_count=pl.col("false_compound_count").fill_null(0))
-            .with_columns(info_bin_val=(pl.col(config.x_measure) / config.x_bin_width).floor() * config.x_bin_width)
+            .with_columns(
+                false_compound_count=pl.col("false_compound_count").fill_null(0)
+            )
+            .with_columns(
+                info_bin_val=(pl.col(config.x_measure) / config.x_bin_width).floor()
+                * config.x_bin_width
+            )
             .filter(
                 pl.col("info_bin_val").is_not_null(),
                 pl.col("info_bin_val").ge(float(x_min)),
@@ -458,7 +513,11 @@ def _(
         )
 
         x_min, x_max = _resolve_x_range(config.x_measure, config.x_range)
-        cdf_x = np.arange(float(x_min), float(x_max) + float(config.x_bin_width), float(config.x_bin_width))
+        cdf_x = np.arange(
+            float(x_min),
+            float(x_max) + float(config.x_bin_width),
+            float(config.x_bin_width),
+        )
 
         if config.plot_only_most_informative:
             pairs_sim = pairs_sim.filter(pl.col("most_informative"))
@@ -470,21 +529,36 @@ def _(
             .collect(engine="streaming")
         )
         total_molecules = molecule_max_x.height
-        assert total_molecules > 0, "No molecules available for CDF computation; check input data."
-        cdf_y = np.array([molecule_max_x.filter(pl.col("max_x") >= float(x)).height / total_molecules for x in cdf_x])
+        assert total_molecules > 0, (
+            "No molecules available for CDF computation; check input data."
+        )
+        cdf_y = np.array(
+            [
+                molecule_max_x.filter(pl.col("max_x") >= float(x)).height
+                / total_molecules
+                for x in cdf_x
+            ]
+        )
         return cdf_x, cdf_y
 
     def plot_fpr_vs_measure(config: FprVsMeasureConfig) -> None:
         pairs_sim = pl.scan_parquet(config.pairs_parquet_path)
 
-        assert config.y_axis_stat in ("avg_false_matches", "fraction_any_false_match"), (
+        assert config.y_axis_stat in (
+            "avg_false_matches",
+            "fraction_any_false_match",
+        ), (
             "config.y_axis_stat must be one of: avg_false_matches, fraction_any_false_match; "
             f"got {config.y_axis_stat}."
         )
 
         stats_lfs: list[pl.LazyFrame] = []
         for metric in config.metrics:
-            stats_lfs.append(_compute_binned_fpr_stats_for_metric(pairs_sim=pairs_sim, config=config, metric=metric))
+            stats_lfs.append(
+                _compute_binned_fpr_stats_for_metric(
+                    pairs_sim=pairs_sim, config=config, metric=metric
+                )
+            )
 
         all_stats = pl.concat(stats_lfs).collect(engine="streaming")
         if config.show_molecule_cdf:
@@ -505,12 +579,14 @@ def _(
 
         for metric in config.metrics:
             subset = all_stats.filter(
-                (pl.col("metric_name") == metric.metric_column) &
-                (pl.col("threshold_used") == metric.threshold) &
-                (pl.col("total_count") > config.min_count_threshold)
+                (pl.col("metric_name") == metric.metric_column)
+                & (pl.col("threshold_used") == metric.threshold)
+                & (pl.col("total_count") > config.min_count_threshold)
             )
             if subset.height == 0:
-                print(f"Warning: No data for {metric.plot_label} at threshold {metric.threshold}")
+                print(
+                    f"Warning: No data for {metric.plot_label} at threshold {metric.threshold}"
+                )
                 continue
 
             info_x = subset.get_column("info_bin_val").to_numpy()
@@ -520,7 +596,11 @@ def _(
                 local_max = float(np.nanmax(y_vals))
                 if np.isfinite(local_max):
                     # Why: auto-scale based on what we actually plotted (post min_count_threshold filtering).
-                    y_max_seen = local_max if not np.isfinite(y_max_seen) else max(y_max_seen, local_max)
+                    y_max_seen = (
+                        local_max
+                        if not np.isfinite(y_max_seen)
+                        else max(y_max_seen, local_max)
+                    )
 
             ax.plot(
                 info_x,
@@ -530,12 +610,23 @@ def _(
                 color=metric.plot_color,
             )
 
-            if (not y_is_fraction) and config.plot_show_percentile_band and "lower_percentile" in subset.columns and "upper_percentile" in subset.columns:
+            if (
+                (not y_is_fraction)
+                and config.plot_show_percentile_band
+                and "lower_percentile" in subset.columns
+                and "upper_percentile" in subset.columns
+            ):
                 lower_y = subset.get_column("lower_percentile").to_numpy()
                 upper_y = subset.get_column("upper_percentile").to_numpy()
-                ax.fill_between(info_x, lower_y, upper_y, color=metric.plot_color, alpha=0.15)
-                ax.plot(info_x, lower_y, linestyle="--", color=metric.plot_color, alpha=0.7)
-                ax.plot(info_x, upper_y, linestyle="--", color=metric.plot_color, alpha=0.7)
+                ax.fill_between(
+                    info_x, lower_y, upper_y, color=metric.plot_color, alpha=0.15
+                )
+                ax.plot(
+                    info_x, lower_y, linestyle="--", color=metric.plot_color, alpha=0.7
+                )
+                ax.plot(
+                    info_x, upper_y, linestyle="--", color=metric.plot_color, alpha=0.7
+                )
 
         if np.isfinite(y_max_seen):
             # Auto-scale the top of the axis to the observed data (+5% headroom).
@@ -585,7 +676,11 @@ def _(
 
         stats_lfs: list[pl.LazyFrame] = []
         for metric in config.metrics:
-            stats_lfs.append(_compute_binned_fpr_stats_for_metric(pairs_sim=pairs_sim, config=config, metric=metric))
+            stats_lfs.append(
+                _compute_binned_fpr_stats_for_metric(
+                    pairs_sim=pairs_sim, config=config, metric=metric
+                )
+            )
         all_stats = pl.concat(stats_lfs).collect(engine="streaming")
 
         measure_diff_col = _resolve_measure_difference_measure(config)
@@ -593,13 +688,17 @@ def _(
 
         for metric in config.metrics:
             subset = all_stats.filter(
-                (pl.col("metric_name") == metric.metric_column) &
-                (pl.col("threshold_used") == metric.threshold) &
-                (pl.col("total_count") > config.min_count_threshold)
+                (pl.col("metric_name") == metric.metric_column)
+                & (pl.col("threshold_used") == metric.threshold)
+                & (pl.col("total_count") > config.min_count_threshold)
             )
-            matched_subset = subset.filter(pl.col("avg_matched_measure_diff").is_not_null())
+            matched_subset = subset.filter(
+                pl.col("avg_matched_measure_diff").is_not_null()
+            )
             if matched_subset.height == 0:
-                print(f"Warning: No matched-info data for {metric.plot_label} at threshold {metric.threshold}")
+                print(
+                    f"Warning: No matched-info data for {metric.plot_label} at threshold {metric.threshold}"
+                )
                 continue
 
             x_vals = matched_subset.get_column("info_bin_val").to_numpy()
@@ -625,10 +724,14 @@ def _(
         ax.legend(loc="upper right")
         ax.grid(True, alpha=0.3)
         fig.tight_layout()
-        fig.savefig(str(config.matched_info_output_path), facecolor="white", transparent=False)
+        fig.savefig(
+            str(config.matched_info_output_path), facecolor="white", transparent=False
+        )
         plt.close(fig)
 
-    def compute_raw_spearman_false_matches_vs_measure(config: FprVsMeasureConfig, *, measures: Optional[List[MeasureName]] = None) -> pl.DataFrame:
+    def compute_raw_spearman_false_matches_vs_measure(
+        config: FprVsMeasureConfig, *, measures: Optional[List[MeasureName]] = None
+    ) -> pl.DataFrame:
         """
         Raw (non-binned) Spearman between each requested measure and per-spectrum false-compound counts.
 
@@ -651,7 +754,12 @@ def _(
         )
         assert len(measures_to_use) > 0, "measures must be non-empty"
 
-        required_cols = ["idx", "base_inchikey_right", "most_informative", *measures_to_use]
+        required_cols = [
+            "idx",
+            "base_inchikey_right",
+            "most_informative",
+            *measures_to_use,
+        ]
         pairs_sim.select(required_cols).limit(1).collect(engine="streaming")
 
         # One row per spectrum with all measures attached (avoid scanning per measure).
@@ -661,12 +769,16 @@ def _(
             .collect(engine="streaming")
         )
         if config.plot_only_most_informative:
-            per_spectrum_measures = per_spectrum_measures.filter(pl.col("most_informative"))
+            per_spectrum_measures = per_spectrum_measures.filter(
+                pl.col("most_informative")
+            )
 
         results: list[dict[str, object]] = []
         for metric in config.metrics:
             # Per-spectrum false-positive counts for this similarity metric threshold.
-            pairs_sim.select([metric.metric_column]).limit(1).collect(engine="streaming")
+            pairs_sim.select([metric.metric_column]).limit(1).collect(
+                engine="streaming"
+            )
             matched_counts = (
                 pairs_sim.filter(pl.col(metric.metric_column).ge(metric.threshold))
                 .group_by("idx")
@@ -674,16 +786,19 @@ def _(
                 .collect(engine="streaming")
             )
 
-            per_spectrum = (
-                per_spectrum_measures.join(matched_counts, on="idx", how="left")
-                .with_columns(false_compound_count=pl.col("false_compound_count").fill_null(0))
+            per_spectrum = per_spectrum_measures.join(
+                matched_counts, on="idx", how="left"
+            ).with_columns(
+                false_compound_count=pl.col("false_compound_count").fill_null(0)
             )
 
             for measure in measures_to_use:
-                xy = (
-                    per_spectrum.select([pl.col(measure).alias("x"), pl.col("false_compound_count").alias("y")])
-                    .filter(pl.col("x").is_not_null())
-                )
+                xy = per_spectrum.select(
+                    [
+                        pl.col(measure).alias("x"),
+                        pl.col("false_compound_count").alias("y"),
+                    ]
+                ).filter(pl.col("x").is_not_null())
 
                 x = xy.get_column("x").to_numpy()
                 y = xy.get_column("y").to_numpy()
@@ -698,33 +813,58 @@ def _(
                     f"{_measure_label(measure)}: rho={rho:.4g}, p={p_val:.4g}, n={int(x.size)}"
                 )
 
-                results.append({
-                    "metric_column": metric.metric_column,
-                    "threshold": float(metric.threshold),
-                    "plot_label": metric.plot_label,
-                    "measure": measure,
-                    "measure_label": _measure_label(measure),
-                    "spearman_rho": float(rho),
-                    "p_value": float(p_val),
-                    "n_points": int(x.size),
-                })
+                results.append(
+                    {
+                        "metric_column": metric.metric_column,
+                        "threshold": float(metric.threshold),
+                        "plot_label": metric.plot_label,
+                        "measure": measure,
+                        "measure_label": _measure_label(measure),
+                        "spearman_rho": float(rho),
+                        "p_value": float(p_val),
+                        "n_points": int(x.size),
+                    }
+                )
 
         return pl.DataFrame(results)
 
     def plot_avg_tanimoto_vs_measure(config: TanimotoVsMeasureConfig) -> pl.DataFrame:
-        assert len(config.metrics) > 0, "TanimotoVsMeasureConfig.metrics must be non-empty."
+        assert len(config.metrics) > 0, (
+            "TanimotoVsMeasureConfig.metrics must be non-empty."
+        )
         pairs_sim = pl.scan_parquet(config.pairs_parquet_path)
-        assert config.x_bin_width > 0, f"x_bin_width must be > 0, got {config.x_bin_width}"
+        # Local import to ensure sanitizer is available in this cell's scope.
+        from hrms_utils.rdkit import sanitize_smiles
+
+        assert config.x_bin_width > 0, (
+            f"x_bin_width must be > 0, got {config.x_bin_width}"
+        )
         x_min, x_max = _resolve_x_range(config.x_measure, config.x_range)
 
         # Fail fast on required columns for tanimoto + measure binning.
-        pairs_sim.select([config.left_smiles_col, config.right_smiles_col, config.x_measure, "most_informative"]).limit(1).collect(engine="streaming")
+        pairs_sim.select(
+            [
+                config.left_smiles_col,
+                config.right_smiles_col,
+                config.x_measure,
+                "most_informative",
+            ]
+        ).limit(1).collect(engine="streaming")
 
         if config.only_most_informative:
             pairs_sim = pairs_sim.filter(pl.col("most_informative"))
 
-        left_unique = pairs_sim.select(config.left_smiles_col).unique().with_row_index("l_idx").collect(engine="streaming")
-        right_unique = pairs_sim.select(config.right_smiles_col).unique().with_row_index("r_idx").collect(engine="streaming")
+        # Gather unique original SMILES (one per unique string present in pairs)
+        left_unique = (
+            pairs_sim.select(config.left_smiles_col)
+            .unique()
+            .collect(engine="streaming")
+        )
+        right_unique = (
+            pairs_sim.select(config.right_smiles_col)
+            .unique()
+            .collect(engine="streaming")
+        )
 
         left_smiles_list = left_unique.get_column(config.left_smiles_col).to_list()
         right_smiles_list = right_unique.get_column(config.right_smiles_col).to_list()
@@ -732,33 +872,104 @@ def _(
             "No smiles found on left or right side. Please verify SMILES columns."
         )
 
-        left_mols = [Chem.MolFromSmiles(s) for s in left_smiles_list]
-        right_mols = [Chem.MolFromSmiles(s) for s in right_smiles_list]
-        invalid_left = [s for s, m in zip(left_smiles_list, left_mols) if m is None]
-        invalid_right = [s for s, m in zip(right_smiles_list, right_mols) if m is None]
+        # Canonicalize SMILES (isomericSmiles=False) and deduplicate based on canonical forms.
+        left_canonical = sanitize_smiles(left_smiles_list)
+        right_canonical = sanitize_smiles(right_smiles_list)
+
+        invalid_left = [
+            s for s, cs in zip(left_smiles_list, left_canonical) if cs == ""
+        ]
+        invalid_right = [
+            s for s, cs in zip(right_smiles_list, right_canonical) if cs == ""
+        ]
         assert not invalid_left and not invalid_right, (
             f"Invalid SMILES encountered. Left invalid examples: {invalid_left[:3]}, "
             f"Right invalid examples: {invalid_right[:3]}"
         )
 
-        fpgen = MorganFingerprintGenerator(radius=config.fp_radius, fpSize=config.fp_size)
+        # Build mapping from original SMILES to canonical SMILES
+        left_map_df = pl.DataFrame(
+            {
+                config.left_smiles_col: left_smiles_list,
+                "canonical_smiles": left_canonical,
+            }
+        )
+        right_map_df = pl.DataFrame(
+            {
+                config.right_smiles_col: right_smiles_list,
+                "canonical_smiles": right_canonical,
+            }
+        )
+
+        # Reduce canonical SMILES to unique canonical set and assign indices
+        left_canonical_unique = (
+            left_map_df.select("canonical_smiles").unique().with_row_count("l_idx")
+        )
+        right_canonical_unique = (
+            right_map_df.select("canonical_smiles").unique().with_row_count("r_idx")
+        )
+
+        # Create mapping from original SMILES to canonical index
+        left_mapping = left_map_df.join(
+            left_canonical_unique, on="canonical_smiles", how="left"
+        ).select([config.left_smiles_col, "l_idx"])
+        right_mapping = right_map_df.join(
+            right_canonical_unique, on="canonical_smiles", how="left"
+        ).select([config.right_smiles_col, "r_idx"])
+
+        # Generate Mol objects and fingerprints from unique canonical SMILES
+        left_canonical_smiles_list = left_canonical_unique.get_column(
+            "canonical_smiles"
+        ).to_list()
+        right_canonical_smiles_list = right_canonical_unique.get_column(
+            "canonical_smiles"
+        ).to_list()
+
+        left_mols = [Chem.MolFromSmiles(s) for s in left_canonical_smiles_list]
+        right_mols = [Chem.MolFromSmiles(s) for s in right_canonical_smiles_list]
+
+        # Sanity checks: all canonical smiles should produce valid mols
+        invalid_left_after = [
+            s for s, m in zip(left_canonical_smiles_list, left_mols) if m is None
+        ]
+        invalid_right_after = [
+            s for s, m in zip(right_canonical_smiles_list, right_mols) if m is None
+        ]
+        assert not invalid_left_after and not invalid_right_after, (
+            f"Failed to construct RDKit Mol from canonical SMILES. Left examples: {invalid_left_after[:3]}, "
+            f"Right examples: {invalid_right_after[:3]}"
+        )
+
+        fpgen = MorganFingerprintGenerator(
+            radius=config.fp_radius, fpSize=config.fp_size
+        )
         fps_left = fpgen.GetFingerprints(left_mols, num_threads=config.fp_num_threads)
         fps_right = fpgen.GetFingerprints(right_mols, num_threads=config.fp_num_threads)
         sims_matrix = crossTanimotoSimilarityMemoryConstrained(fps_left, fps_right)
 
-        unique_pairs = pairs_sim.select([config.left_smiles_col, config.right_smiles_col]).unique().collect(engine="streaming")
+        unique_pairs = (
+            pairs_sim.select([config.left_smiles_col, config.right_smiles_col])
+            .unique()
+            .collect(engine="streaming")
+        )
         if unique_pairs.height == 0:
-            print("No unique pairs found for Tanimoto computation; returning empty DataFrame.")
-            return pl.DataFrame({"avg_tanimoto": [], "median_tanimoto": [], "count": []})
+            print(
+                "No unique pairs found for Tanimoto computation; returning empty DataFrame."
+            )
+            return pl.DataFrame(
+                {"avg_tanimoto": [], "median_tanimoto": [], "count": []}
+            )
 
-        pairs_indices = unique_pairs.join(left_unique, on=config.left_smiles_col).join(right_unique, on=config.right_smiles_col)
+        pairs_indices = unique_pairs.join(left_mapping, on=config.left_smiles_col).join(
+            right_mapping, on=config.right_smiles_col
+        )
         l_idxs = pairs_indices.get_column("l_idx").to_numpy()
         r_idxs = pairs_indices.get_column("r_idx").to_numpy()
         tanimoto_values = sims_matrix[l_idxs, r_idxs]
 
-        mapping_df = pairs_indices.select([config.left_smiles_col, config.right_smiles_col]).with_columns(
-            tanimoto_similarity=pl.Series(tanimoto_values)
-        )
+        mapping_df = pairs_indices.select(
+            [config.left_smiles_col, config.right_smiles_col]
+        ).with_columns(tanimoto_similarity=pl.Series(tanimoto_values))
 
         pairs_with_sim = pairs_sim.join(
             mapping_df.lazy(),
@@ -772,11 +983,18 @@ def _(
         all_stats: list[pl.DataFrame] = []
         for metric in config.metrics:
             # Why: Metric label is explicitly provided to avoid relying on column name semantics.
-            pairs_with_sim.select([metric.metric_column]).limit(1).collect(engine="streaming")
+            pairs_with_sim.select([metric.metric_column]).limit(1).collect(
+                engine="streaming"
+            )
 
             filtered = (
                 pairs_with_sim.filter(pl.col(metric.metric_column).ge(metric.threshold))
-                .with_columns(info_bin_val=(pl.col(config.x_measure) / pl.col(config.x_bin_width)).floor() * pl.col(config.x_bin_width))
+                .with_columns(
+                    info_bin_val=(
+                        pl.col(config.x_measure) / pl.col(config.x_bin_width)
+                    ).floor()
+                    * pl.col(config.x_bin_width)
+                )
                 .filter(
                     pl.col("info_bin_val").is_not_null(),
                     pl.col("info_bin_val").ge(float(x_min)),
@@ -786,7 +1004,12 @@ def _(
 
             # Raw Spearman on non-binned values (SciPy)
             raw_df = (
-                filtered.select([pl.col(config.x_measure).alias("x"), pl.col("tanimoto_similarity").alias("y")])
+                filtered.select(
+                    [
+                        pl.col(config.x_measure).alias("x"),
+                        pl.col("tanimoto_similarity").alias("y"),
+                    ]
+                )
                 .filter(pl.col("x").is_not_null(), pl.col("y").is_not_null())
                 .collect(engine="streaming")
             )
@@ -832,7 +1055,9 @@ def _(
                     color=metric.plot_color,
                 )
             else:
-                print(f"Warning: No binned tanimoto points above min_count_threshold for {metric.plot_label} (threshold = {metric.threshold})")
+                print(
+                    f"Warning: No binned tanimoto points above min_count_threshold for {metric.plot_label} (threshold = {metric.threshold})"
+                )
 
             ax.set_xlabel(_measure_label(config.x_measure))
             ax.set_ylabel("Average Tanimoto Similarity of Matches")
@@ -843,10 +1068,13 @@ def _(
                 metric_label=metric.plot_label.replace(" ", "_"),
                 threshold=str(metric.threshold).replace(".", "p"),
             )
-            fig.savefig(str(output_dir / out_name), facecolor="white", transparent=False)
+            fig.savefig(
+                str(output_dir / out_name), facecolor="white", transparent=False
+            )
             plt.close(fig)
 
         return pl.concat(all_stats) if all_stats else pl.DataFrame()
+
     return (
         FprVsMeasureConfig,
         SimilarityMetricThreshold,
@@ -864,26 +1092,30 @@ def _(Path):
     # Configuration
     # Why: Define constants for reproducibility and easy adjustment.
     # Update PARQUET_PATH to point to your actual data file.
-    PARQUET_PATHS =[
+    PARQUET_PATHS = [
         Path("/home/analytit_admin/Data/spectral_libs/msp_for_Yonathan/NIST.parquet"),
-        Path("/home/analytit_admin/Data/spectral_libs/msp_for_Yonathan/fraghub.parquet")
+        Path(
+            "/home/analytit_admin/Data/spectral_libs/msp_for_Yonathan/fraghub.parquet"
+        ),
     ]
-    MIN_ISOMERS = 10
-    OUTPUT_PAIRS_PATH = Path("/home/analytit_admin/Data/spectral_libs/all_pairs_with_similarities.parquet")
-    return MIN_ISOMERS, OUTPUT_PAIRS_PATH, PARQUET_PATHS
+    OUTPUT_PAIRS_PATH = Path(
+        "/home/analytit_admin/Data/spectral_libs/all_pairs_1000_sample.parquet"
+    )
+    return OUTPUT_PAIRS_PATH, PARQUET_PATHS
 
 
 @app.cell
 def _(
-    MIN_ISOMERS,
     OUTPUT_PAIRS_PATH,
     PARQUET_PATHS,
     build_and_write_pairs_parquet,
 ):
+    # Usage example: sample 1000 molecules from the input libraries and compute dot-product pairs.
     build_and_write_pairs_parquet(
         parquet_paths=PARQUET_PATHS,
         output_path=OUTPUT_PAIRS_PATH,
-        min_isomers=MIN_ISOMERS,
+        threshold=0.8,
+        num_mols_to_sample=1000,
     )
     return
 
@@ -897,8 +1129,12 @@ def _(FprVsMeasureConfig, OUTPUT_PAIRS_PATH, SimilarityMetricThreshold):
         x_range=(0.0, 3.0),
         # y_axis_stat="fraction_any_false_match",  # optional: plot fraction with >=1 false match
         metrics=[
-            SimilarityMetricThreshold("dotprod_similarity", 0.80, "Dot Product", "C0", "o"),
-            SimilarityMetricThreshold("dotprod_similarity", 0.90, "Dot Product", "C1", "o"),
+            SimilarityMetricThreshold(
+                "dotprod_similarity", 0.80, "Dot Product", "C0", "o"
+            ),
+            SimilarityMetricThreshold(
+                "dotprod_similarity", 0.90, "Dot Product", "C1", "o"
+            ),
         ],
         fpr_output_path="fpr_vs_spectral_information_score.png",
         matched_info_output_path="avg_matched_measure_diff.png",
@@ -928,8 +1164,12 @@ def _(SimilarityMetricThreshold, fpr_config, plot_fpr_vs_measure):
         x_range=(0.0, 3.0),
         y_axis_stat="avg_false_matches",
         metrics=[
-            SimilarityMetricThreshold("dotprod_similarity", 0.80, "Dot Product", "C0", "o"),
-            SimilarityMetricThreshold("dotprod_similarity", 0.90, "Dot Product", "C1", "o"),
+            SimilarityMetricThreshold(
+                "dotprod_similarity", 0.80, "Dot Product", "C0", "o"
+            ),
+            SimilarityMetricThreshold(
+                "dotprod_similarity", 0.90, "Dot Product", "C1", "o"
+            ),
         ],
         fpr_output_path="avg_fpr_vs_normalized_spectral_information_score.png",
     )
@@ -978,7 +1218,9 @@ def _(OUTPUT_PAIRS_PATH, TanimotoMetricThreshold, TanimotoVsMeasureConfig):
         x_bin_width=0.5,
         x_range=(0.0, 3.0),
         metrics=[
-            TanimotoMetricThreshold("dotprod_similarity", 0.90, "Dot Product", "C1", "o"),
+            TanimotoMetricThreshold(
+                "dotprod_similarity", 0.90, "Dot Product", "C1", "o"
+            ),
             TanimotoMetricThreshold("entropy_similarity", 0.75, "Entropy", "C2", "^"),
         ],
         only_most_informative=False,
@@ -999,7 +1241,6 @@ def _(
     SimilarityMetricThreshold,
     compute_raw_spearman_false_matches_vs_measure,
 ):
-
     spearman_config = FprVsMeasureConfig(
         pairs_parquet_path=OUTPUT_PAIRS_PATH,  # or Path("/path/to/all_pairs_with_similarities.parquet")
         # x_measure/x_bin_width/x_range are not required for the raw Spearman call,
@@ -1008,20 +1249,22 @@ def _(
         x_range=(0.0, 3.0),
         metrics=[
             # SimilarityMetricThreshold("dotprod_similarity", 0.80, "Dot Product", "C0", "o"),
-            SimilarityMetricThreshold("dotprod_similarity", 0.90, "Dot Product", "C1", "o"),
+            SimilarityMetricThreshold(
+                "dotprod_similarity", 0.90, "Dot Product", "C1", "o"
+            ),
         ],
-        plot_only_most_informative=False,  # optional: matches the logic in the function
+        plot_only_most_informative=True,  # optional: matches the logic in the function
     )
 
     spearman_df = compute_raw_spearman_false_matches_vs_measure(
         spearman_config,
         measures=[
             "spectral_information_score",
-            "normalized_spectral_information_score",
+            # "normalized_spectral_information_score",
             "spectral_entropy",
-            "normalized_spectral_entropy",
+            # "normalized_spectral_entropy",
             "num_clean_peaks",
-            "normalized_num_clean_peaks",
+            # "normalized_num_clean_peaks",
         ],
     )
 
@@ -1077,11 +1320,10 @@ def _(mo):
 
 @app.cell
 def _(Literal, Optional, Path, Union, dataclass, np, pl, replace, wilcoxon):
-
     SelectionStrategy = Literal[
-        "best_by_measure",          # pick the per-molecule spectrum that maximizes/minimizes `selection_measure`
-        "random",                   # pick a uniformly-random spectrum per molecule (seeded)
-        "closest_to_target_energy", # pick spectrum with minimal abs(energy - target_energy)
+        "best_by_measure",  # pick the per-molecule spectrum that maximizes/minimizes `selection_measure`
+        "random",  # pick a uniformly-random spectrum per molecule (seeded)
+        "closest_to_target_energy",  # pick spectrum with minimal abs(energy - target_energy)
     ]
 
     SelectionDirection = Literal["max", "min"]
@@ -1093,7 +1335,6 @@ def _(Literal, Optional, Path, Union, dataclass, np, pl, replace, wilcoxon):
         "spectral_entropy",
         "num_clean_peaks",
     ]
-
 
     @dataclass(frozen=True)
     class MoleculeSelectionEffectConfig:
@@ -1107,7 +1348,8 @@ def _(Literal, Optional, Path, Union, dataclass, np, pl, replace, wilcoxon):
           - false_compound_count per selected spectrum, based on similarity metric thresholding.
 
         Notes:
-          - "Advantage" is defined as (baseline_fp - selected_fp), so positive means improvement.
+          - "Advantage" is defined as (comparator_fp - selected_fp), so positive means improvement.
+          - Additional comparators can be enabled to contextualize selection beyond a single baseline draw.
         """
 
         pairs_parquet_path: Union[str, Path]
@@ -1125,40 +1367,57 @@ def _(Literal, Optional, Path, Union, dataclass, np, pl, replace, wilcoxon):
         # Baseline strategy to compare against.
         baseline_strategy: SelectionStrategy = "random"
 
-        # Random selection control (reproducible).
+        # Additional comparisons (independent of baseline_strategy).
+        compare_to_group_mean_false_positive_rate: bool = True
+        compare_to_worst_by_measure: bool = True
+
         random_seed: int = 0
+
+        # Repeat control (for stochastic strategies).
+        n_repeats: int = 1
+        random_seed_stride: int = 10_000
 
         # Energy-based baseline configuration.
         energy_column: str = "collision_energy"
-        target_energy: Optional[float] = None  # required if any strategy uses closest_to_target_energy
+        target_energy: Optional[float] = (
+            None  # required if any strategy uses closest_to_target_energy
+        )
 
         # Grouping columns (do not change unless you also change upstream parquet schema).
         molecule_id_column: str = "base_inchikey"
         ion_mode_column: str = "ion_mode"
 
         # Quality filters.
-        min_spectra_per_group: int = 2  # must be >=2 to allow "exclude selected from baseline"
+        min_spectra_per_group: int = (
+            2  # must be >=2 to allow "exclude selected from baseline"
+        )
         drop_groups_with_null_measure: bool = True
 
         # Wilcoxon signed-rank parameters.
-        wilcoxon_alternative: WilcoxonAlternative = "less"  # tests: selected_fp < baseline_fp
+        wilcoxon_alternative: WilcoxonAlternative = (
+            "less"  # tests: selected_fp < baseline_fp
+        )
         wilcoxon_zero_method: Literal["wilcox", "pratt", "zsplit"] = "pratt"
-
-        # Outputs
-        output_dir: Union[str, Path] = "."
-        file_prefix: str = "selection_effect"
 
         def copy(self, **changes) -> "MoleculeSelectionEffectConfig":
             valid_fields = set(self.__dataclass_fields__.keys())
             unknown = set(changes) - valid_fields
-            assert not unknown, f"Unknown fields for MoleculeSelectionEffectConfig.copy(): {sorted(list(unknown))}"
+            assert not unknown, (
+                f"Unknown fields for MoleculeSelectionEffectConfig.copy(): {sorted(list(unknown))}"
+            )
             return replace(self, **changes)
-
 
     def _require_columns_or_fail(lf: pl.LazyFrame, required_columns: list[str]) -> None:
         # Why: make missing parquet columns fail fast with a clear message before heavy computation.
         lf.select(required_columns).limit(1).collect(engine="streaming")
 
+    def _opposite_selection_direction(
+        direction: SelectionDirection,
+    ) -> SelectionDirection:
+        assert direction in ("max", "min"), (
+            f"direction must be max|min, got {direction}"
+        )
+        return "min" if direction == "max" else "max"
 
     def _compute_per_spectrum_false_compound_counts(
         *,
@@ -1180,24 +1439,30 @@ def _(Literal, Optional, Path, Union, dataclass, np, pl, replace, wilcoxon):
         _require_columns_or_fail(pairs_sim, required_cols)
 
         per_spectrum_base = (
-            pairs_sim.select(["idx", molecule_id_column, ion_mode_column, *spectrum_columns])
+            pairs_sim.select(
+                ["idx", molecule_id_column, ion_mode_column, *spectrum_columns]
+            )
             .unique(subset="idx", keep="any")
             .collect(engine="streaming")
         )
 
         matched_counts = (
-            pairs_sim.filter(pl.col(similarity_metric_column).ge(float(similarity_threshold)))
+            pairs_sim.filter(
+                pl.col(similarity_metric_column).ge(float(similarity_threshold))
+            )
             .group_by("idx")
             .agg(false_compound_count=pl.col("base_inchikey_right").n_unique())
             .collect(engine="streaming")
         )
 
-        per_spectrum = (
-            per_spectrum_base.join(matched_counts, on="idx", how="left")
-            .with_columns(false_compound_count=pl.col("false_compound_count").fill_null(0).cast(pl.Int64))
+        per_spectrum = per_spectrum_base.join(
+            matched_counts, on="idx", how="left"
+        ).with_columns(
+            false_compound_count=pl.col("false_compound_count")
+            .fill_null(0)
+            .cast(pl.Int64)
         )
         return per_spectrum
-
 
     def _select_one_spectrum_per_group_best_by_measure(
         *,
@@ -1208,7 +1473,9 @@ def _(Literal, Optional, Path, Union, dataclass, np, pl, replace, wilcoxon):
         selection_direction: SelectionDirection = "max",
     ) -> pl.DataFrame:
         group_cols = [molecule_id_column, ion_mode_column]
-        assert selection_direction in ("max", "min"), f"selection_direction must be max|min, got {selection_direction}"
+        assert selection_direction in ("max", "min"), (
+            f"selection_direction must be max|min, got {selection_direction}"
+        )
 
         descending = selection_direction == "max"
         sorted_df = per_spectrum.sort(
@@ -1217,9 +1484,10 @@ def _(Literal, Optional, Path, Union, dataclass, np, pl, replace, wilcoxon):
         )
 
         # Why: Polars includes group keys in the output; aggregating them again creates duplicate columns.
-        first_exprs = [pl.col(c).first().alias(c) for c in sorted_df.columns if c not in group_cols]
+        first_exprs = [
+            pl.col(c).first().alias(c) for c in sorted_df.columns if c not in group_cols
+        ]
         return sorted_df.group_by(group_cols, maintain_order=True).agg(first_exprs)
-
 
     def _select_one_spectrum_per_group_random(
         *,
@@ -1236,12 +1504,8 @@ def _(Literal, Optional, Path, Union, dataclass, np, pl, replace, wilcoxon):
         # first_exprs = [pl.col(c).first().alias(c) for c in sorted_df.columns if c not in group_cols and c != "_rand_key"]
         # return sorted_df.group_by(group_cols, maintain_order=True).agg(first_exprs)
         return per_spectrum.filter(
-            pl.int_range(pl.len())
-            .shuffle()
-            .over(group_cols)
-            .eq(0)
+            pl.int_range(pl.len()).shuffle(seed=seed).over(group_cols).eq(0)
         )
-
 
     def _select_one_spectrum_per_group_closest_to_target_energy(
         *,
@@ -1252,10 +1516,14 @@ def _(Literal, Optional, Path, Union, dataclass, np, pl, replace, wilcoxon):
         target_energy: float,
     ) -> pl.DataFrame:
         group_cols = [molecule_id_column, ion_mode_column]
-        assert target_energy is not None, "target_energy is required for closest_to_target_energy selection."
+        assert target_energy is not None, (
+            "target_energy is required for closest_to_target_energy selection."
+        )
 
         with_dist = per_spectrum.with_columns(
-            energy_distance=(pl.col(energy_column).cast(pl.Float64) - float(target_energy)).abs()
+            energy_distance=(
+                pl.col(energy_column).cast(pl.Float64) - float(target_energy)
+            ).abs()
         )
         sorted_df = with_dist.sort(
             by=[*group_cols, "energy_distance", "idx"],
@@ -1263,9 +1531,12 @@ def _(Literal, Optional, Path, Union, dataclass, np, pl, replace, wilcoxon):
         )
 
         # Why: exclude group keys to avoid DuplicateError; exclude the temp distance column as well.
-        first_exprs = [pl.col(c).first().alias(c) for c in sorted_df.columns if c not in group_cols and c != "energy_distance"]
+        first_exprs = [
+            pl.col(c).first().alias(c)
+            for c in sorted_df.columns
+            if c not in group_cols and c != "energy_distance"
+        ]
         return sorted_df.group_by(group_cols, maintain_order=True).agg(first_exprs)
-
 
     def _select_one_spectrum_per_group(
         *,
@@ -1319,29 +1590,56 @@ def _(Literal, Optional, Path, Union, dataclass, np, pl, replace, wilcoxon):
 
         raise AssertionError(f"Unknown selection strategy: {strategy}")
 
-
-    def run_molecule_selection_effect_analysis(config: MoleculeSelectionEffectConfig) -> pl.DataFrame:
-        """
-        Per (molecule, ion_mode), compare chosen spectrum vs baseline spectrum.
-
-        Prints:
-          - n_groups
-          - win/tie/loss rates
-          - average/median advantage (baseline_fp - selected_fp)
-          - Wilcoxon signed-rank test on paired fp counts
-
-        Writes:
-          - violin plot
-          - CDF plot
-          - delta histogram
-        """
-        pairs_sim = pl.scan_parquet(config.pairs_parquet_path)
-        assert config.min_spectra_per_group >= 2, (
-            f"min_spectra_per_group must be >= 2 to compare selected vs baseline, got {config.min_spectra_per_group}"
+    def _summarize_repeat_stats(stats_rows: list[dict[str, float]]) -> pl.DataFrame:
+        assert len(stats_rows) > 0, "stats_rows must be non-empty"
+        stats_df = pl.DataFrame(stats_rows)
+        numeric_cols = [
+            c for c, dt in zip(stats_df.columns, stats_df.dtypes) if dt.is_numeric()
+        ]
+        assert len(numeric_cols) > 0, (
+            "No numeric columns found in repeat stats; cannot summarize."
         )
 
+        p_value_cols = [c for c in stats_df.columns if c.startswith("wilcoxon_p_value")]
+
+        # Why: p-values don't average meaningfully, but mean/std + p<0.05 rate is a useful stability check across repeats.
+        summary_exprs: list[pl.Expr] = []
+        summary_exprs.extend(
+            [pl.col(c).mean().alias(f"{c}_mean") for c in numeric_cols]
+        )
+        summary_exprs.extend(
+            [pl.col(c).std(ddof=1).alias(f"{c}_std") for c in numeric_cols]
+        )
+        summary_exprs.extend(
+            [
+                pl.col(c).lt(0.05).mean().alias(f"fraction_{c}_lt_0p05")
+                for c in p_value_cols
+            ]
+        )
+        return stats_df.select(summary_exprs)
+
+    def run_molecule_selection_effect_analysis(
+        config: MoleculeSelectionEffectConfig,
+    ) -> pl.DataFrame:
+        """
+        Per (molecule, ion_mode), compare chosen spectrum vs baseline spectrum, and optionally also vs:
+          - the molecule's mean false-positive rate (group mean FP)
+          - the molecule's worst-by-measure spectrum (opposite of selection_direction for selection_measure)
+
+        If config.n_repeats > 1, repeats the full analysis with deterministic seed offsets.
+        """
+        assert config.n_repeats >= 1, f"n_repeats must be >= 1, got {config.n_repeats}"
+        assert config.random_seed_stride > 0, (
+            f"random_seed_stride must be > 0, got {config.random_seed_stride}"
+        )
+
+        pairs_sim = pl.scan_parquet(config.pairs_parquet_path)
+
         spectrum_columns: list[str] = [config.selection_measure]
-        if config.selected_strategy == "closest_to_target_energy" or config.baseline_strategy == "closest_to_target_energy":
+        if (
+            config.selected_strategy == "closest_to_target_energy"
+            or config.baseline_strategy == "closest_to_target_energy"
+        ):
             assert config.target_energy is not None, (
                 "target_energy must be set when any strategy is closest_to_target_energy."
             )
@@ -1359,21 +1657,26 @@ def _(Literal, Optional, Path, Union, dataclass, np, pl, replace, wilcoxon):
         group_cols = [config.molecule_id_column, config.ion_mode_column]
 
         if config.drop_groups_with_null_measure:
-            per_spectrum = per_spectrum.filter(pl.col(config.selection_measure).is_not_null())
+            per_spectrum = per_spectrum.filter(
+                pl.col(config.selection_measure).is_not_null()
+            )
 
         # Filter to groups with enough spectra.
         per_spectrum = per_spectrum.with_columns(_group_size=pl.len().over(group_cols))
-        per_spectrum = per_spectrum.filter(pl.col("_group_size").ge(config.min_spectra_per_group)).drop("_group_size")
+        per_spectrum = per_spectrum.filter(
+            pl.col("_group_size").ge(config.min_spectra_per_group)
+        ).drop("_group_size")
 
         if config.exclude_molecules_without_false_positives:
             # Why: selection effects are undefined if a molecule never produces a false match under the chosen threshold.
             per_spectrum = per_spectrum.with_columns(
-                _group_max_false_compound_count=pl.col("false_compound_count").max().over(group_cols)
+                _group_max_false_compound_count=pl.col("false_compound_count")
+                .max()
+                .over(group_cols)
             )
-            per_spectrum = (
-                per_spectrum.filter(pl.col("_group_max_false_compound_count").gt(0))
-                .drop("_group_max_false_compound_count")
-            )
+            per_spectrum = per_spectrum.filter(
+                pl.col("_group_max_false_compound_count").gt(0)
+            ).drop("_group_max_false_compound_count")
 
         assert per_spectrum.height > 0, (
             "No spectra remain after filtering by min_spectra_per_group, null-measure handling, "
@@ -1381,107 +1684,245 @@ def _(Literal, Optional, Path, Union, dataclass, np, pl, replace, wilcoxon):
             "Check your parquet contents and config."
         )
 
-        selected = _select_one_spectrum_per_group(
-            per_spectrum=per_spectrum,
-            strategy=config.selected_strategy,
-            molecule_id_column=config.molecule_id_column,
-            ion_mode_column=config.ion_mode_column,
-            selection_measure=config.selection_measure,
-            selection_direction=config.selection_direction,
-            seed=config.random_seed,
-            energy_column=config.energy_column,
-            target_energy=config.target_energy,
-        ).rename(
-            {"idx": "selected_idx", "false_compound_count": "selected_fp", config.selection_measure: "selected_measure"}
-        )
-
-        # Baseline is selected after excluding the selected spectrum to avoid trivial ties.
-        per_spectrum_for_baseline = per_spectrum.join(
-            selected.select([*group_cols, "selected_idx"]),
-            on=group_cols,
-            how="inner",
-        ).filter(pl.col("idx") != pl.col("selected_idx")).drop("selected_idx")
-
-        baseline = _select_one_spectrum_per_group(
-            per_spectrum=per_spectrum_for_baseline,
-            strategy=config.baseline_strategy,
-            molecule_id_column=config.molecule_id_column,
-            ion_mode_column=config.ion_mode_column,
-            selection_measure=config.selection_measure,
-            selection_direction=config.selection_direction,
-            seed=config.random_seed + 1,  # Why: ensure baseline random differs from selected random when both are random.
-            energy_column=config.energy_column,
-            target_energy=config.target_energy,
-        ).rename(
-            {"idx": "baseline_idx", "false_compound_count": "baseline_fp", config.selection_measure: "baseline_measure"}
-        )
-
-        paired = (
-            selected.join(baseline, on=group_cols, how="inner")
-            .with_columns(delta_fp=(pl.col("baseline_fp") - pl.col("selected_fp")).cast(pl.Int64))
-            .with_columns(
-                selected_strategy=pl.lit(config.selected_strategy),
-                baseline_strategy=pl.lit(config.baseline_strategy),
-                selection_measure=pl.lit(config.selection_measure),
-                similarity_metric_column=pl.lit(config.similarity_metric_column),
-                similarity_threshold=pl.lit(float(config.similarity_threshold)),
+        group_mean_fp: Optional[pl.DataFrame] = None
+        if config.compare_to_group_mean_false_positive_rate:
+            # Why: Provides a molecule-level reference independent of any single baseline draw.
+            group_mean_fp = (
+                per_spectrum.group_by(group_cols)
+                .agg(group_mean_fp=pl.col("false_compound_count").mean())
+                .with_columns(group_mean_fp=pl.col("group_mean_fp").cast(pl.Float64))
             )
-        )
 
-        n_groups = paired.height
-        assert n_groups > 0, (
-            "No paired groups available after baseline exclusion/join. "
-            "Likely too many groups have only one spectrum."
-        )
+        worst_per_group: Optional[pl.DataFrame] = None
+        if config.compare_to_worst_by_measure:
+            worst_direction = _opposite_selection_direction(config.selection_direction)
+            worst_per_group = _select_one_spectrum_per_group_best_by_measure(
+                per_spectrum=per_spectrum,
+                molecule_id_column=config.molecule_id_column,
+                ion_mode_column=config.ion_mode_column,
+                selection_measure=config.selection_measure,
+                selection_direction=worst_direction,
+            ).rename(
+                {
+                    "idx": "worst_idx",
+                    "false_compound_count": "worst_fp",
+                    config.selection_measure: "worst_measure",
+                }
+            )
 
-        selected_fp = paired.get_column("selected_fp").to_numpy()
-        baseline_fp = paired.get_column("baseline_fp").to_numpy()
-        delta_fp = paired.get_column("delta_fp").to_numpy()
+        repeat_stats: list[dict[str, float]] = []
+        paired_last: Optional[pl.DataFrame] = None
 
-        win_rate = float((delta_fp > 0).mean())
-        tie_rate = float((delta_fp == 0).mean())
-        loss_rate = float((delta_fp < 0).mean())
-        avg_advantage = float(np.mean(delta_fp))
-        median_advantage = float(np.median(delta_fp))
-        median_advantage_exclusing_ties = float(np.median(delta_fp[delta_fp != 0])) if np.any(delta_fp != 0) else 0.0
+        for repeat_index in range(int(config.n_repeats)):
+            seed_base = int(config.random_seed) + int(repeat_index) * int(
+                config.random_seed_stride
+            )
+            selected_seed = seed_base
+            baseline_seed = seed_base + 1
 
-        # Wilcoxon signed-rank on paired samples: selected vs baseline.
-        # We test whether selected_fp is stochastically smaller than baseline_fp (default alternative="less").
-        w_stat, p_val = wilcoxon(
-            x=selected_fp,
-            y=baseline_fp,
-            alternative=config.wilcoxon_alternative,
-            zero_method=config.wilcoxon_zero_method,
-        )
+            selected = _select_one_spectrum_per_group(
+                per_spectrum=per_spectrum,
+                strategy=config.selected_strategy,
+                molecule_id_column=config.molecule_id_column,
+                ion_mode_column=config.ion_mode_column,
+                selection_measure=config.selection_measure,
+                selection_direction=config.selection_direction,
+                seed=selected_seed,
+                energy_column=config.energy_column,
+                target_energy=config.target_energy,
+            ).rename(
+                {
+                    "idx": "selected_idx",
+                    "false_compound_count": "selected_fp",
+                    config.selection_measure: "selected_measure",
+                }
+            )
 
-        print(
-            "\nMolecule selection effect analysis\n"
-            f"  groups (molecule, ion_mode): {n_groups}\n"
-            f"  selected_strategy: {config.selected_strategy}\n"
-            f"  baseline_strategy: {config.baseline_strategy}\n"
-            f"  selection_measure: {config.selection_measure} ({config.selection_direction})\n"
-            f"  match metric: {config.similarity_metric_label} [{config.similarity_metric_column} >= {config.similarity_threshold}]\n"
-            f"  win/tie/loss: {win_rate:.4f} / {tie_rate:.4f} / {loss_rate:.4f}\n"
-            f"  avg advantage (baseline_fp - selected_fp): {avg_advantage:.4g}\n"
-            f"  avg advantage excluding ties : {avg_advantage/(1 - tie_rate):.4g}\n"
-            f"  median advantage (baseline_fp - selected_fp): {median_advantage:.4g}\n"
-            f"  median advantage excluding ties : {median_advantage_exclusing_ties:.4g}\n"
-            f"  Wilcoxon signed-rank (alt='{config.wilcoxon_alternative}', zero_method='{config.wilcoxon_zero_method}'): "
-            f"stat={float(w_stat):.4g}, p={float(p_val):.4g}\n"
-        )
+            # Baseline is selected after excluding the selected spectrum to avoid trivial ties.
+            per_spectrum_for_baseline = (
+                per_spectrum.join(
+                    selected.select([*group_cols, "selected_idx"]),
+                    on=group_cols,
+                    how="inner",
+                )
+                .filter(pl.col("idx") != pl.col("selected_idx"))
+                .drop("selected_idx")
+            )
 
-        out_dir = Path(config.output_dir)
-        out_dir.mkdir(parents=True, exist_ok=True)
+            baseline = _select_one_spectrum_per_group(
+                per_spectrum=per_spectrum_for_baseline,
+                strategy=config.baseline_strategy,
+                molecule_id_column=config.molecule_id_column,
+                ion_mode_column=config.ion_mode_column,
+                selection_measure=config.selection_measure,
+                selection_direction=config.selection_direction,
+                seed=baseline_seed,
+                energy_column=config.energy_column,
+                target_energy=config.target_energy,
+            ).rename(
+                {
+                    "idx": "baseline_idx",
+                    "false_compound_count": "baseline_fp",
+                    config.selection_measure: "baseline_measure",
+                }
+            )
 
-        selected_label = f"Selected ({config.selected_strategy})"
-        baseline_label = f"Baseline ({config.baseline_strategy})"
-        title_base = (
-            f"{config.similarity_metric_label} FP comparison per molecule\n"
-            f"measure={config.selection_measure}, thr={config.similarity_threshold}"
-        )
+            paired = (
+                selected.join(baseline, on=group_cols, how="inner")
+                .with_columns(
+                    delta_vs_baseline=(
+                        pl.col("baseline_fp") - pl.col("selected_fp")
+                    ).cast(pl.Int64)
+                )
+                .with_columns(
+                    selected_strategy=pl.lit(config.selected_strategy),
+                    baseline_strategy=pl.lit(config.baseline_strategy),
+                    selection_measure=pl.lit(config.selection_measure),
+                    similarity_metric_column=pl.lit(config.similarity_metric_column),
+                    similarity_threshold=pl.lit(float(config.similarity_threshold)),
+                    repeat_index=pl.lit(int(repeat_index)).cast(pl.Int64),
+                    selected_seed=pl.lit(int(selected_seed)).cast(pl.Int64),
+                    baseline_seed=pl.lit(int(baseline_seed)).cast(pl.Int64),
+                )
+            )
 
+            if group_mean_fp is not None:
+                paired = paired.join(
+                    group_mean_fp, on=group_cols, how="left"
+                ).with_columns(
+                    delta_vs_group_mean=(
+                        pl.col("group_mean_fp") - pl.col("selected_fp")
+                    ).cast(pl.Float64)
+                )
 
-        return paired
+            if worst_per_group is not None:
+                paired = paired.join(
+                    worst_per_group, on=group_cols, how="left"
+                ).with_columns(
+                    delta_vs_worst=(pl.col("worst_fp") - pl.col("selected_fp")).cast(
+                        pl.Int64
+                    )
+                )
+
+            n_groups = paired.height
+            assert n_groups > 0, (
+                "No paired groups available after baseline exclusion/join. "
+                "Likely too many groups have only one spectrum."
+            )
+
+            selected_fp = paired.get_column("selected_fp").to_numpy()
+            baseline_fp = paired.get_column("baseline_fp").to_numpy()
+            delta_baseline = paired.get_column("delta_vs_baseline").to_numpy()
+
+            win_rate = float((delta_baseline > 0).mean())
+            tie_rate = float((delta_baseline == 0).mean())
+            loss_rate = float((delta_baseline < 0).mean())
+            avg_advantage = float(np.mean(delta_baseline))
+            median_advantage = float(np.median(delta_baseline))
+            avg_advantage_excluding_ties = (
+                float("nan")
+                if tie_rate >= 1.0
+                else float(avg_advantage / (1.0 - tie_rate))
+            )
+
+            w_stat, p_val = wilcoxon(
+                x=selected_fp,
+                y=baseline_fp,
+                alternative=config.wilcoxon_alternative,
+                zero_method=config.wilcoxon_zero_method,
+            )
+
+            w_stat_mean, p_val_mean = float("nan"), float("nan")
+            if group_mean_fp is not None:
+                mean_fp = paired.get_column("group_mean_fp").to_numpy()
+                w_stat_mean, p_val_mean = wilcoxon(
+                    x=selected_fp,
+                    y=mean_fp,
+                    alternative=config.wilcoxon_alternative,
+                    zero_method=config.wilcoxon_zero_method,
+                )
+
+            w_stat_worst, p_val_worst = float("nan"), float("nan")
+            if worst_per_group is not None:
+                worst_fp = paired.get_column("worst_fp").to_numpy()
+                w_stat_worst, p_val_worst = wilcoxon(
+                    x=selected_fp,
+                    y=worst_fp,
+                    alternative=config.wilcoxon_alternative,
+                    zero_method=config.wilcoxon_zero_method,
+                )
+
+            repeat_stats.append(
+                {
+                    "repeat_index": float(repeat_index),
+                    "n_groups": float(n_groups),
+                    "win_rate": win_rate,
+                    "tie_rate": tie_rate,
+                    "loss_rate": loss_rate,
+                    "avg_advantage": avg_advantage,
+                    "median_advantage": median_advantage,
+                    "avg_advantage_excluding_ties": float(avg_advantage_excluding_ties),
+                    "wilcoxon_stat_vs_baseline": float(w_stat),
+                    "wilcoxon_p_value_vs_baseline": float(p_val),
+                    "wilcoxon_stat_vs_group_mean": float(w_stat_mean),
+                    "wilcoxon_p_value_vs_group_mean": float(p_val_mean),
+                    "wilcoxon_stat_vs_worst": float(w_stat_worst),
+                    "wilcoxon_p_value_vs_worst": float(p_val_worst),
+                }
+            )
+
+            if config.n_repeats == 1:
+                print(
+                    "\nMolecule selection effect analysis\n"
+                    f"  groups (molecule, ion_mode): {n_groups}\n"
+                    f"  selected_strategy: {config.selected_strategy}\n"
+                    f"  baseline_strategy: {config.baseline_strategy}\n"
+                    f"  selection_measure: {config.selection_measure} ({config.selection_direction})\n"
+                    f"  match metric: {config.similarity_metric_label} [{config.similarity_metric_column} >= {config.similarity_threshold}]\n"
+                    f"  vs baseline win/tie/loss: {win_rate:.4f} / {tie_rate:.4f} / {loss_rate:.4f}\n"
+                    f"  vs baseline avg advantage (baseline_fp - selected_fp): {avg_advantage:.4g}\n"
+                    f"  vs baseline avg advantage excluding ties: {avg_advantage_excluding_ties:.4g}\n"
+                    f"  Wilcoxon vs baseline (alt='{config.wilcoxon_alternative}', zero_method='{config.wilcoxon_zero_method}'): "
+                    f"stat={float(w_stat):.4g}, p={float(p_val):.4g}\n"
+                )
+                if group_mean_fp is not None:
+                    delta_mean = paired.get_column("delta_vs_group_mean").to_numpy()
+                    print(
+                        f"  vs group-mean avg advantage (mean_fp - selected_fp): {float(np.mean(delta_mean)):.4g}\n"
+                        f"  Wilcoxon vs group-mean: stat={float(w_stat_mean):.4g}, p={float(p_val_mean):.4g}\n"
+                    )
+                if worst_per_group is not None:
+                    delta_worst = paired.get_column("delta_vs_worst").to_numpy()
+                    print(
+                        f"  vs worst-by-measure avg advantage (worst_fp - selected_fp): {float(np.mean(delta_worst)):.4g}\n"
+                        f"  Wilcoxon vs worst-by-measure: stat={float(w_stat_worst):.4g}, p={float(p_val_worst):.4g}\n"
+                    )
+
+            paired_last = paired
+
+        assert paired_last is not None, "Internal error: paired_last was not set."
+
+        if config.n_repeats > 1:
+            stats_df = pl.DataFrame(repeat_stats)
+            summary_df = _summarize_repeat_stats(repeat_stats)
+            print(
+                "\nMolecule selection effect analysis (repeats)\n"
+                f"  repeats: {config.n_repeats}\n"
+                f"  selected_strategy: {config.selected_strategy}\n"
+                f"  baseline_strategy: {config.baseline_strategy}\n"
+                f"  selection_measure: {config.selection_measure} ({config.selection_direction})\n"
+                f"  match metric: {config.similarity_metric_label} [{config.similarity_metric_column} >= {config.similarity_threshold}]\n"
+                f"  win_rate mean±std: {summary_df.item(0, 'win_rate_mean'):.4g} ± {summary_df.item(0, 'win_rate_std'):.4g}\n"
+                f"  tie_rate mean±std: {summary_df.item(0, 'tie_rate_mean'):.4g} ± {summary_df.item(0, 'tie_rate_std'):.4g}\n"
+                f"  loss_rate mean±std: {summary_df.item(0, 'loss_rate_mean'):.4g} ± {summary_df.item(0, 'loss_rate_std'):.4g}\n"
+                f"  avg_advantage mean±std: {summary_df.item(0, 'avg_advantage_mean'):.4g} ± {summary_df.item(0, 'avg_advantage_std'):.4g}\n"
+                f"  median_advantage mean±std: {summary_df.item(0, 'median_advantage_mean'):.4g} ± {summary_df.item(0, 'median_advantage_std'):.4g}\n"
+                # f"  Wilcoxon p<0.05 fraction: {summary_df.item(0, 'fraction_p_lt_0p05'):.4g}\n"
+            )
+            # Keep detailed per-repeat stats available for ad-hoc inspection in the notebook.
+
+        return
+
     return (
         MoleculeSelectionEffectConfig,
         run_molecule_selection_effect_analysis,
@@ -1494,7 +1935,6 @@ def _(
     OUTPUT_PAIRS_PATH,
     run_molecule_selection_effect_analysis,
 ):
-    # ...existing code...
     effect_cfg = MoleculeSelectionEffectConfig(
         pairs_parquet_path=OUTPUT_PAIRS_PATH,
         similarity_metric_column="dotprod_similarity",
@@ -1505,11 +1945,10 @@ def _(
         selection_direction="max",
         baseline_strategy="random",
         random_seed=42,
-        output_dir=".",
-        file_prefix="sis_best_vs_random_dp0p90",
+        n_repeats=1,
     )
 
-    paired_df = run_molecule_selection_effect_analysis(effect_cfg)
+    run_molecule_selection_effect_analysis(effect_cfg)
 
     effect_cfg_peaks = MoleculeSelectionEffectConfig(
         pairs_parquet_path=OUTPUT_PAIRS_PATH,
@@ -1521,10 +1960,9 @@ def _(
         selection_direction="max",
         baseline_strategy="random",
         random_seed=42,
-        output_dir=".",
-        file_prefix="num_peaks_best_vs_random_dp0p90",
+        n_repeats=1,
     )
-    paired_df = run_molecule_selection_effect_analysis(effect_cfg_peaks)
+    run_molecule_selection_effect_analysis(effect_cfg_peaks)
 
     effect_cfg_entropy = MoleculeSelectionEffectConfig(
         pairs_parquet_path=OUTPUT_PAIRS_PATH,
@@ -1536,10 +1974,9 @@ def _(
         selection_direction="max",
         baseline_strategy="random",
         random_seed=42,
-        output_dir=".",
-        file_prefix="entropy_best_vs_random_dp0p90",
+        n_repeats=1,
     )
-    paired_df = run_molecule_selection_effect_analysis(effect_cfg_entropy)
+    run_molecule_selection_effect_analysis(effect_cfg_entropy)
     return
 
 

@@ -1,20 +1,20 @@
 import re
 from pathlib import Path
+from typing import Dict, Iterable, TypeVar, cast
 
 # import numpy as np
 import polars.selectors as plcs
-from typing import TypeVar, cast, Dict, Iterable
+
+from ..formula_annotation.element_table import ADDUCT_MASSES
 from ..formula_annotation.utils import (
-    formula_fits_mass,
     format_formula_string_to_array,
+    formula_fits_mass,
     get_precursor_ion_formula_array,
     num_elements,
 )
-from ..formula_annotation.element_table import ADDUCT_MASSES
 from ..hrms_core import *
-from pathlib import Path
 
-T = TypeVar("T", pl.DataFrame, pl.LazyFrame)
+polarsFrame = TypeVar("polarsFrame", pl.DataFrame, pl.LazyFrame)
 
 
 def create_nist_dataframe(
@@ -45,8 +45,9 @@ def read_MSPEC_file(
     raw_fragment_tolerance_ppm: float = 10.0,
     normalized_fragment_tolerance_ppm: float = 5.0,
     molecular_ion_tolerance_ppm: float = 5.0,
-    lazy: bool = False) -> pl.DataFrame | pl.LazyFrame:
-    with open(path, 'r') as file:
+    lazy: bool = False,
+) -> pl.DataFrame | pl.LazyFrame:
+    with open(path, "r") as file:
         file_contents = file.read()
 
     data = _read_file(file_contents)
@@ -104,6 +105,7 @@ def read_MSPEC_file(
             "explained_intensity",
             "molecular_ion_intensity",
             "spectral_information_score",
+            "spectral_information_score_with_hydrogens",
         ]
     )
 
@@ -255,7 +257,7 @@ def _read_file(file_contents: str):
     return data
 
 
-def _extract_collision_energy_values(data: T) -> T:
+def _extract_collision_energy_values(data: polarsFrame) -> polarsFrame:
     """
     cases we need to account for:
 
@@ -299,7 +301,7 @@ def _extract_collision_energy_values(data: T) -> T:
     pat_list_content = r"\[(.*?)\]"
 
     return cast(
-        T,
+        polarsFrame,
         data.with_columns(
             # Extract NCE candidates
             pl.col("collision_energy_raw")
@@ -377,7 +379,7 @@ def _extract_collision_energy_values(data: T) -> T:
     )
 
 
-def _annotate_and_filter_metadata(data: T) -> T:
+def _annotate_and_filter_metadata(data: polarsFrame) -> polarsFrame:
     """filters out entries with missing or invalid metadata or low resolution spectra"""
     instrument_data_columns = plcs.by_name(
         ["instrument", "instrument_type", "ionization"]
@@ -390,7 +392,7 @@ def _annotate_and_filter_metadata(data: T) -> T:
     )
 
     data = cast(
-        T,
+        polarsFrame,
         data.filter(
             qq_mask.not_()  # keep rows unless one of the instrument columns explicitly includes QQ
         ).with_columns(
@@ -426,8 +428,10 @@ def _annotate_and_filter_metadata(data: T) -> T:
 
 
 def _annotate_spectra(
-    data: T, raw_fragment_tolerance_ppm: float, normalized_fragment_tolerance_ppm: float
-) -> T:
+    data: polarsFrame,
+    raw_fragment_tolerance_ppm: float,
+    normalized_fragment_tolerance_ppm: float,
+) -> polarsFrame:
     """cleans and normalizes the masses and intensities in the spectra, and adds explained intensity column. also, it filters entries where the precursor mass does not match the precursor formula."""
     # Determine adduct_mass based on precursor_type
     adduct_mapping = pl.Series(
@@ -443,17 +447,17 @@ def _annotate_spectra(
     if isinstance(data, pl.LazyFrame):
         adduct_lf = adduct_df.lazy()
         data_lf = data.join(adduct_lf, on="precursor_type", how="left")
-        data_frame = cast(T, data_lf)
+        data_frame = cast(polarsFrame, data_lf)
     elif isinstance(data, pl.DataFrame):
         data_df = data.join(adduct_df, on="precursor_type", how="left")
-        data_frame = cast(T, data_df)
+        data_frame = cast(polarsFrame, data_df)
     else:
         raise TypeError(
             f"In function '_annotate_spectra', data must be a Polars DataFrame or LazyFrame, got {type(data)}"
         )
 
     return cast(
-        T,
+        polarsFrame,
         data_frame.with_columns(
             pl.col("raw_spectrum_intensity")
             .truediv(pl.col("raw_spectrum_intensity").list.sum())
@@ -504,7 +508,7 @@ def _annotate_spectra(
     )
 
 
-def _add_precursor_type_indicators(data: T) -> T:
+def _add_precursor_type_indicators(data: polarsFrame) -> polarsFrame:
     fragment_pattern = (
         r"-\d*"
         + r"((H(\d+|[A-Z]|[a-z]))|([A-G]|[I-Z])[a-z]?\d*)"
@@ -512,7 +516,7 @@ def _add_precursor_type_indicators(data: T) -> T:
     )
 
     return cast(
-        T,
+        polarsFrame,
         data.with_columns(
             pl.col("precursor_type").str.contains("i").alias("Isotope"),
             pl.col("precursor_type").str.contains("Cat").alias("Cation"),
@@ -536,7 +540,9 @@ def _add_precursor_type_indicators(data: T) -> T:
     )
 
 
-def _add_molecular_ion_info(NIST: T, tolerance_ppm: float = 10.0) -> T:
+def _add_molecular_ion_info(
+    NIST: polarsFrame, tolerance_ppm: float = 10.0
+) -> polarsFrame:
     lazy_frame = NIST.lazy()
     lazy_frame = lazy_frame.with_columns(
         molecular_ion_intensity=pl.when(
@@ -553,36 +559,43 @@ def _add_molecular_ion_info(NIST: T, tolerance_ppm: float = 10.0) -> T:
     )
 
     if isinstance(NIST, pl.LazyFrame):
-        return cast(T, lazy_frame)
+        return cast(polarsFrame, lazy_frame)
     elif isinstance(NIST, pl.DataFrame):
-        return cast(T, lazy_frame.collect(engine="streaming"))
+        return cast(polarsFrame, lazy_frame.collect(engine="streaming"))
     else:
         raise TypeError(
             f"In function '_add_molecular_ion_info', NIST must be a Polars DataFrame or LazyFrame, got {type(NIST)}"
         )
 
 
-def _add_spectral_information_score(data: T) -> T:
+def _add_spectral_information_score(data: polarsFrame) -> polarsFrame:
     return cast(
-        T,
+        polarsFrame,
         data.with_columns(
             pl.struct(
                 [
                     pl.col("precursor_formula_array").alias("precursor_formula"),
                     pl.col("cleaned_fragment_formulas").alias("fragment_formulas"),
                 ]
-            )
+            ).alias("spectra_for_spectral_info")
+        ).with_columns(
+            pl.col("spectra_for_spectral_info")
             .spectral_info.spectral_info_score(
                 distance_metric="l2", ignore_hydrogens=True
             )
-            .alias("spectral_information_score")  # type: ignore[missing-attribute]
+            .alias("spectral_information_score"),  # type: ignore[missing-attribute]
+            pl.col("spectra_for_spectral_info")
+            .spectral_info.spectral_info_score(
+                distance_metric="l2", ignore_hydrogens=False
+            )
+            .alias("spectral_information_score_with_hydrogens"),  # type: ignore[missing-attribute]
         ),
     )
 
 
-def _add_base_peak_mz_fraction_and_diff(NIST: T) -> T:
+def _add_base_peak_mz_fraction_and_diff(NIST: polarsFrame) -> polarsFrame:
     return cast(
-        T,
+        polarsFrame,
         NIST.with_columns(
             pl.col("raw_spectrum_mz")
             .list.get(pl.col("raw_spectrum_intensity").list.arg_max())
@@ -632,14 +645,18 @@ if __name__ == "__main__":
         .otherwise(pl.col("DB_Name"))
         .alias("DB_Name")
     )
-    nist= pl.read_parquet(r"D:\Nir\pyscreen_test\NIST23.parquet")
+    nist = pl.read_parquet(r"D:\Nir\pyscreen_test\NIST23.parquet")
     # replace the DB_Name with the correct one:
     # hr_msms -> hr_msms_nist
     # NIST_hr_msms2 -> nist_hr_msms#2
     nist = nist.with_columns(
-        pl.when(pl.col('DB_Name').eq('hr_msms')).then(pl.lit('hr_msms_nist'))
-        .when(pl.col('DB_Name').eq('NIST_hr_msms2')).then(pl.lit('nist_hr_msms#2'))
-        .otherwise(pl.col('DB_Name')).alias('DB_Name'))
+        pl.when(pl.col("DB_Name").eq("hr_msms"))
+        .then(pl.lit("hr_msms_nist"))
+        .when(pl.col("DB_Name").eq("NIST_hr_msms2"))
+        .then(pl.lit("nist_hr_msms#2"))
+        .otherwise(pl.col("DB_Name"))
+        .alias("DB_Name")
+    )
     nist.write_parquet(r"D:\Nir\pyscreen_test\NIST23_fixed.parquet")
 
     # #### creation of NIST23 dataframe
