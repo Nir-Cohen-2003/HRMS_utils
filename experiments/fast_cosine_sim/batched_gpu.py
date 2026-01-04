@@ -55,7 +55,7 @@ class BatchedGPUConfig:
     batch_size: int = 1000
     threshold: float = 0.8
     gpu_batch_write_interval: int = 10
-    target_gpu_mem_ratio: float = 0.6
+    target_gpu_mem_ratio: float = 0.1
     max_peaks_per_batch: int | None = None
     approx_config: SimilarityConfig | None = None
 
@@ -265,12 +265,21 @@ def _compute_batched_gpu_similarity_single_mode(
     free_mem, total_mem = cp.cuda.Device(0).mem_info
     target_mem = free_mem * config.target_gpu_mem_ratio
 
-    # Heuristic:
-    # CSR storage: ~12 bytes per peak (float32 data + int32 indices + amortized indptr)
-    # Expansion factor: Depends on tolerance. Let's estimate conservatively.
-    # If tolerance is used, expansion can be 10-50x.
-    # We want: (Right_Expanded + Left + Result) < Target_Mem
-    # Right_Expanded is the biggest chunk.
+    # Memory model:
+    # Why: The similarity matrix (N×N×4 bytes) dominates memory usage, not CSR storage.
+    # During computation we have simultaneously in GPU memory:
+    # 1. R_gpu (expanded): N_spectra * avg_peaks_per_spectrum * 12 bytes * expansion_factor
+    # 2. L_gpu: N_spectra * avg_peaks_per_spectrum * 12 bytes
+    # 3. sim matrix: N_spectra^2 * 4 bytes (dense/semi-dense similarity matrix)
+    # 4. Temporary arrays during thresholding: ~20% overhead
+    #
+    # Total ≈ N * bytes_per_spectrum * (1 + expansion) + N^2 * 4 + overhead
+    # This is quadratic in N due to the similarity matrix.
+
+    bytes_per_peak = 12
+    avg_peaks_per_spectrum = left_csr_matrix.nnz / max(n_spectra_left, 1)
+
+    # Calculate expansion factor, due to expandign the right CSR matrix due to ms2 tolerance
     expansion_factor = 1.0
     if approx_config.ms2_tolerance_ppm is not None:
         # Estimate expansion: window_da / bin_size
@@ -282,9 +291,34 @@ def _compute_batched_gpu_similarity_single_mode(
         # Add safety margin for density
         expansion_factor *= 2.0
 
-    bytes_per_peak = 12
-    # We assume Right batch dominates memory due to expansion
-    estimated_max_peaks = int(target_mem / (bytes_per_peak * expansion_factor))
+    bytes_per_spectrum_csr = avg_peaks_per_spectrum * bytes_per_peak
+    bytes_per_spectrum_expanded = bytes_per_spectrum_csr * expansion_factor
+
+    # Solve quadratic equation for optimal batch size N:
+    # target_mem * safety_factor = N^2 * 4 + N * (bytes_expanded + bytes_csr)
+    # Rearranged: 4*N^2 + (bytes_expanded + bytes_csr)*N - target_mem*safety_factor = 0
+    safety_factor = 0.8  # Use 80% of target to account for temporary allocations
+
+    a = 4.0  # bytes per element in similarity matrix
+    b = bytes_per_spectrum_expanded + bytes_per_spectrum_csr
+    c = -target_mem * safety_factor
+
+    discriminant = b**2 - 4 * a * c
+
+    if discriminant > 0:
+        # Quadratic formula: (-b + sqrt(b^2 - 4ac)) / 2a
+        estimated_spectra_per_batch = int((-b + np.sqrt(discriminant)) / (2 * a))
+    else:
+        # Fallback: very conservative estimate
+        estimated_spectra_per_batch = int(
+            target_mem / (bytes_per_spectrum_expanded * 10)
+        )
+
+    # Ensure reasonable minimum batch size
+    estimated_spectra_per_batch = max(100, estimated_spectra_per_batch)
+
+    # Convert from spectra count to peak count for batching logic
+    estimated_max_peaks = int(estimated_spectra_per_batch * avg_peaks_per_spectrum)
 
     # Clamp with user config if provided
     if config.max_peaks_per_batch is not None:
@@ -297,8 +331,9 @@ def _compute_batched_gpu_similarity_single_mode(
 
     _log_message_to_file(
         f"  Dynamic Batching: Free GPU Mem={free_mem / 1e9:.2f}GB. "
-        f"Target Usage={config.target_gpu_mem_ratio:.0%}. "
+        f"Target Usage={config.target_gpu_mem_ratio:.0%} (={target_mem / 1e9:.2f}GB). "
         f"Est. Expansion={expansion_factor:.1f}x. "
+        f"Est. Spectra/Batch={estimated_spectra_per_batch:_}. "
         f"Max Peaks/Batch={max_peaks:_}",
         log_path,
     )
@@ -429,7 +464,8 @@ def _compute_batched_gpu_similarity_single_mode(
 
             # Free Left batch memory immediately
             del L_gpu, sim
-            # cp.get_default_memory_pool().free_all_blocks() # Optional, might be slow
+            if j % 1 == 0:
+                cp.get_default_memory_pool().free_all_blocks()  # Optional, might be slow
 
         # Free Right batch memory after inner loop
         del R_gpu
@@ -583,6 +619,25 @@ def build_and_write_pairs_parquet_gpu_batched(
             _log_message_to_file("Left library is empty, nothing to do.", log_path)
             return
 
+        # Persist minimal left-library snapshot for downstream joins (idx/mol_idx + metadata)
+        left_library_snapshot = df_source.select(
+            [
+                "idx",
+                "mol_idx",
+                "base_inchikey",
+                "ion_mode",
+                "smiles",
+                "precursor_mz",
+                "spectral_information_score",
+            ]
+        )
+        left_snapshot_path = output_path.with_suffix(".left_library.parquet")
+        left_library_snapshot.write_parquet(left_snapshot_path)
+        _log_message_to_file(
+            f"Wrote left library snapshot to {left_snapshot_path} (rows={len(left_library_snapshot)})",
+            log_path,
+        )
+
         # --- Step 1b: Load and Preprocess Right Library (if cross-library) ---
         df_source_right = None
         if is_cross_library:
@@ -647,6 +702,25 @@ def build_and_write_pairs_parquet_gpu_batched(
             if len(df_source_right) == 0:
                 _log_message_to_file("Right library is empty, nothing to do.", log_path)
                 return
+
+            # Persist minimal right-library snapshot for downstream joins (idx/mol_idx + metadata)
+            right_library_snapshot = df_source_right.select(
+                [
+                    "idx",
+                    "mol_idx",
+                    "base_inchikey",
+                    "ion_mode",
+                    "smiles",
+                    "precursor_mz",
+                    "spectral_information_score",
+                ]
+            )
+            right_snapshot_path = output_path.with_suffix(".right_library.parquet")
+            right_library_snapshot.write_parquet(right_snapshot_path)
+            _log_message_to_file(
+                f"Wrote right library snapshot to {right_snapshot_path} (rows={len(right_library_snapshot)})",
+                log_path,
+            )
 
             # Concatenate for final exact computation
             # Why: Needed for efficient joining in streaming exact stage
@@ -816,15 +890,7 @@ def build_and_write_pairs_parquet_gpu_batched(
                 "idx_right",
                 "mol_idx",
                 "mol_idx_right",
-                "base_inchikey",
-                "ion_mode",
-                "base_inchikey_right",
-                "smiles",
-                "smiles_right",
                 "dotprod_similarity",
-                "spectral_information_score",
-                "spectral_information_score_right",
-                "proximate_similarity",
             )
         )
 

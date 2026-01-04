@@ -1,11 +1,11 @@
 import logging
 import math
+import tempfile
 import threading
 import traceback
-from glob import glob as _glob
 from pathlib import Path
 from time import perf_counter
-from typing import List, Union
+from typing import List, Optional, Union
 
 import numpy as np
 import polars as pl
@@ -83,20 +83,19 @@ def process_batch_tanimoto(
     """Process one batch (a polars DataFrame) of pairs and compute Tanimoto similarity.
 
     Notes:
-      - This implementation canonicalizes SMILES using `sanitize_smiles` and builds the
-        union of unique canonical SMILES present in either the left (`smiles`) or right
-        (`smiles_right`) columns.
-      - We generate fingerprints once per canonical SMILES (in a deterministic `clean_order`),
-        then compute the full, memory-constrained N×N Tanimoto similarity matrix across
-        the union using `crossTanimotoSimilarityMemoryConstrained`.
-      - We avoid indexing into GPU-backed fingerprint objects (they can be asynchronous).
-        Instead, we map canonical SMILES to their index in `clean_order` and look up
-        per-pair similarity by indexing the computed similarity matrix (matrix[idx1, idx2]).
+      - Canonicalizes SMILES using `sanitize_smiles` and deduplicates the left and right
+        sides independently (preserving first-seen order). No cross-side union is built.
+      - Generates fingerprints separately for the left and right canonical sets, then
+        computes the left_unique × right_unique memory-constrained Tanimoto matrix via
+        `crossTanimotoSimilarityMemoryConstrained`.
+      - Avoids indexing into GPU-backed fingerprint objects; maps canonical SMILES to
+        their side-specific indices and reads per-pair similarity from the left×right
+        matrix.
       - There is no RDKit fallback: if nvmolkit's Tanimoto computation fails we let the
         exception propagate (fail fast).
-      - Because we compute the union NxN matrix, this approach fingerprints each SMILES
-        once and is most efficient when many rows share SMILES across the dataset; it
-        may be more expensive for extremely large unions (tradeoff noted).
+      - Because fingerprinting is side-specific, each canonical SMILES is fingerprinted
+        once per side; this is efficient when many rows reuse molecules within a side
+        but can be heavier if both sides are extremely large.
 
     The function expects the DataFrame to contain columns `smiles` and `smiles_right`.
 
@@ -211,213 +210,173 @@ def process_batch_tanimoto(
 def compute_and_save_tanimoto_scores(
     input_parquet_path: Union[str, Path],
     output_path: Union[str, Path],
+    left_library_parquet_path: Union[str, Path],
+    right_library_parquet_path: Optional[Union[str, Path]] = None,
     batch_size: Union[int, None] = 100_000,
     fp_radius: int = 2,
     fp_size: int = 2048,
 ) -> None:
     """
-    Computes Tanimoto similarity for pairs in the input parquet using nvmolkit.
-    Reads 'smiles' and 'smiles_right' columns, computes similarity, and appends 'tanimoto_similarity'.
+    Join the minimal pairs parquet with saved library snapshot(s) to obtain SMILES,
+    compute Tanimoto similarity, and write a minimal output parquet containing only
+    idx, idx_right, mol_idx, mol_idx_right, dotprod_similarity, and tanimoto_similarity.
 
-    If `batch_size` is set to `None`, all matching input parquet files are read into memory
-    using Polars and the entire dataset is processed in a single call (no pyarrow iter_batches).
-    The processed DataFrame is then written as a single parquet file to `output_path`.
+    All joins are executed on LazyFrames with streaming; intermediate data are trimmed
+    to the smallest required column set before being written to disk.
     """
-
     input_path = Path(input_parquet_path)
     output_path = Path(output_path)
+    left_lib_path = Path(left_library_parquet_path)
+    right_lib_path = (
+        Path(right_library_parquet_path)
+        if right_library_parquet_path
+        else left_lib_path
+    )
+
+    assert input_path.exists(), f"Pairs parquet not found: {input_path}"
+    assert left_lib_path.exists(), f"Left library parquet not found: {left_lib_path}"
+    assert right_lib_path.exists(), f"Right library parquet not found: {right_lib_path}"
+
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
-    # Create log early so it exists even if the function fails immediately
     log_path = output_path.with_suffix(".log")
     _log_message_to_file(
-        f"Started compute_and_save_tanimoto_scores: input={str(input_parquet_path)} output={str(output_path)} batch_size={batch_size} fp_radius={fp_radius} fp_size={fp_size}",
+        f"Started compute_and_save_tanimoto_scores: input={input_path} output={output_path} left_lib={left_lib_path} right_lib={right_lib_path} batch_size={batch_size} fp_radius={fp_radius} fp_size={fp_size}",
         log_path,
         overwrite=True,
     )
 
-    writer = None
+    writer: pq.ParquetWriter | None = None
     total_rows = 0
     start = perf_counter()
 
+    # Temporary parquet that holds only the columns needed for Tanimoto computation
+    temp_handle = tempfile.NamedTemporaryFile(
+        prefix="tanimoto_join_", suffix=".parquet", delete=False
+    )
+    temp_join_path = Path(temp_handle.name)
+    temp_handle.close()
+
     try:
-        # Robust input path handling (kept inside try so exceptions are logged)
-        parquet_paths = []
-        path_str = str(input_parquet_path)
-        if input_path.is_dir():
-            parquet_paths = sorted(input_path.rglob("*.parquet"))
-        elif any(ch in path_str for ch in ("*", "?", "[")):
-            parquet_paths = [Path(p) for p in sorted(_glob(path_str, recursive=True))]
-        else:
-            parquet_paths = [input_path]
+        # Build streaming joins to attach SMILES from library snapshots
+        pairs_lf = pl.scan_parquet(str(input_path)).select(
+            [
+                pl.col("idx").cast(pl.Int64),
+                pl.col("idx_right").cast(pl.Int64),
+                pl.col("mol_idx").cast(pl.Int64),
+                pl.col("mol_idx_right").cast(pl.Int64),
+                pl.col("dotprod_similarity").cast(pl.Float32),
+            ]
+        )
 
-        if not parquet_paths:
-            raise FileNotFoundError(f"No parquet files found for {input_path}")
+        left_lib_lf = (
+            pl.scan_parquet(str(left_lib_path))
+            .select(
+                pl.col("idx").cast(pl.Int64),
+                pl.col("smiles"),
+            )
+            .filter(pl.col("smiles").is_not_null())
+        )
 
-        # If batch_size is None, process all input parquet(s) in-memory with Polars
-        # and write the final DataFrame in one shot (do not use pyarrow iter_batches).
+        right_lib_lf = (
+            pl.scan_parquet(str(right_lib_path))
+            .select(
+                pl.col("idx").alias("idx_right").cast(pl.Int64),
+                pl.col("smiles").alias("smiles_right"),
+            )
+            .filter(pl.col("smiles_right").is_not_null())
+        )
+
+        joined_lf = (
+            pairs_lf.join(left_lib_lf, on="idx", how="left")
+            .join(right_lib_lf, on="idx_right", how="left")
+            .select(
+                [
+                    "idx",
+                    "idx_right",
+                    "mol_idx",
+                    "mol_idx_right",
+                    "dotprod_similarity",
+                    "smiles",
+                    "smiles_right",
+                ]
+            )
+        )
+
+        _log_message_to_file(
+            f"Streaming join of pairs with libraries to {temp_join_path}",
+            log_path,
+        )
+        joined_lf.sink_parquet(str(temp_join_path), maintain_order=False)
+
+        # Fast path: process all rows in one go
         if batch_size is None:
+            df_all = pl.read_parquet(str(temp_join_path))
             _log_message_to_file(
-                f"Processing without batching (batch_size=None). Reading {len(parquet_paths)} file(s) into memory.",
+                f"Processing without batching (batch_size=None). Rows={df_all.height}",
                 log_path,
             )
-            try:
-                dfs = [pl.read_parquet(str(p)) for p in parquet_paths]
-            except Exception:
-                _log_message_to_file(
-                    f"Failed to read parquet files into Polars: {traceback.format_exc()}",
-                    log_path,
-                    level=logging.ERROR,
-                )
-                raise
-
-            if len(dfs) == 0:
-                raise FileNotFoundError(f"No parquet files found for {input_path}")
-
-            # Concatenate if multiple files were provided
-            if len(dfs) == 1:
-                df_all = dfs[0]
-            else:
-                df_all = pl.concat(dfs, how="vertical")
-
-            _log_message_to_file(
-                f"Read total rows={df_all.height} from {len(parquet_paths)} files; starting Tanimoto processing",
-                log_path,
-            )
-
-            # Process the entire DataFrame in one shot
             df_processed = process_batch_tanimoto(
                 df_all, fp_radius=fp_radius, fp_size=fp_size
-            )
-
-            # Write the processed DataFrame back to storage using Polars (single file)
-            try:
-                t_write = perf_counter()
-                df_processed.write_parquet(str(output_path))
-                write_dur = perf_counter() - t_write
-                _log_message_to_file(
-                    f"Wrote processed DataFrame to {output_path} rows={df_processed.height} in {write_dur:.4f}s",
-                    log_path,
-                )
-
-            except Exception:
-                _log_message_to_file(
-                    f"Failed to write processed DataFrame to {output_path}: {traceback.format_exc()}",
-                    log_path,
-                    level=logging.ERROR,
-                )
-                raise
-
-            # Also log the total time like the batched path does
-            end = perf_counter()
+            ).drop(["smiles", "smiles_right"])
+            t_write = perf_counter()
+            df_processed.write_parquet(str(output_path))
+            write_dur = perf_counter() - t_write
             total_rows = int(df_processed.height)
+            _log_message_to_file(
+                f"Wrote processed DataFrame to {output_path} rows={total_rows} in {write_dur:.4f}s",
+                log_path,
+            )
+            end = perf_counter()
             _log_message_to_file(
                 f"Wrote the pairs with tanimoto to file {str(output_path)} in time {end - start:.3f}s total_rows={total_rows}",
                 log_path,
             )
-
-            # Done - skip the per-file batched loop
             return
 
-        for p_path in parquet_paths:
-            # Open parquet file and read metadata without loading the full dataset
-            try:
-                pf = pq.ParquetFile(p_path)
-            except Exception:
-                _log_message_to_file(
-                    f"Processing parquet file: {p_path} (could not open parquet file: {traceback.format_exc()})",
-                    log_path,
-                    level=logging.ERROR,
-                )
-                raise
+        # Batched processing via PyArrow iterator on the joined parquet
+        pf = pq.ParquetFile(temp_join_path)
+        total_rows_in_file = getattr(pf.metadata, "num_rows", None)
+        num_batches = None
+        if total_rows_in_file is not None:
+            num_batches = max(1, math.ceil(int(total_rows_in_file) / batch_size))
+            _log_message_to_file(
+                f"Processing joined parquet {temp_join_path} (total_rows={total_rows_in_file}, estimated_batches={num_batches})",
+                log_path,
+            )
 
-            total_rows_in_file = None
-            try:
-                if getattr(pf, "metadata", None) is not None:
-                    # Prefer the direct num_rows property
-                    total_rows_in_file = getattr(pf.metadata, "num_rows", None)
-                    # If not present, fall back to summing row-groups
-                    if total_rows_in_file is None:
-                        total_rows_in_file = sum(
-                            int(pf.metadata.row_group(i).num_rows)
-                            for i in range(pf.metadata.num_row_groups)
-                        )
-            except Exception:
-                _log_message_to_file(
-                    f"Failed to read row count metadata for {p_path}: {traceback.format_exc()}",
-                    log_path,
-                    level=logging.WARNING,
-                )
+        for batch_idx, batch in enumerate(pf.iter_batches(batch_size=batch_size)):
+            batch_t0 = perf_counter()
+            df_batch = pl.from_arrow(batch)
+            assert isinstance(df_batch, pl.DataFrame)
 
-            # Compute estimated number of batches for progress reporting (if we know total rows)
-            if total_rows_in_file is not None:
-                try:
-                    num_batches = max(
-                        1, math.ceil(int(total_rows_in_file) / batch_size)
-                    )
-                except Exception:
-                    num_batches = None
+            df_processed = process_batch_tanimoto(
+                df_batch, fp_radius=fp_radius, fp_size=fp_size
+            ).drop(["smiles", "smiles_right"])
+
+            table = df_processed.to_arrow()
+            if writer is None:
+                writer = pq.ParquetWriter(output_path, table.schema)
+                _log_message_to_file("Initialized parquet writer", log_path)
+
+            t_write = perf_counter()
+            writer.write_table(table)
+            batch_write_dur = perf_counter() - t_write
+            logger.debug("Wrote a batch to %s in %.4f s", output_path, batch_write_dur)
+
+            batch_time = perf_counter() - batch_t0
+            batch_rows = df_processed.height
+            total_rows += batch_rows
+            if num_batches is not None:
                 _log_message_to_file(
-                    f"Processing parquet file: {p_path} (total_rows={int(total_rows_in_file)}, estimated_batches={num_batches})",
+                    f"Wrote batch {batch_idx + 1}/{num_batches} from {temp_join_path}: rows={batch_rows}, cumulative_rows={total_rows}, time={batch_time:.3f}s",
                     log_path,
                 )
             else:
-                num_batches = None
                 _log_message_to_file(
-                    f"Processing parquet file: {p_path} (total_rows=unknown)",
+                    f"Wrote batch {batch_idx + 1} from {temp_join_path}: rows={batch_rows}, cumulative_rows={total_rows}, time={batch_time:.3f}s",
                     log_path,
-                    level=logging.WARNING,
                 )
-
-            # Iterate over batches
-            for batch_idx, batch in enumerate(pf.iter_batches(batch_size=batch_size)):
-                # Time the processing and writing of each batch
-                batch_t0 = perf_counter()
-
-                # Convert to Polars
-                df_batch = pl.from_arrow(batch)
-                assert isinstance(df_batch, pl.DataFrame)
-
-                # Process batch
-                df_processed = process_batch_tanimoto(
-                    df_batch,
-                    fp_radius=fp_radius,
-                    fp_size=fp_size,
-                )
-
-                # Convert back to Arrow
-                table = df_processed.to_arrow()
-
-                # Initialize writer if needed
-                if writer is None:
-                    writer = pq.ParquetWriter(output_path, table.schema)
-                    _log_message_to_file("Initialized parquet writer", log_path)
-
-                # Write batch
-                t_write = perf_counter()
-                writer.write_table(table)
-                batch_write_dur = perf_counter() - t_write
-                logger.debug(
-                    "Wrote a batch to %s in %.4f s", output_path, batch_write_dur
-                )
-
-                batch_t1 = perf_counter()
-                batch_time = batch_t1 - batch_t0
-
-                # Update counters and log
-                batch_rows = getattr(batch, "num_rows", len(batch))
-                total_rows += batch_rows
-                # Report batch progress with 1-based indexing and total batches if known, include timing
-                if num_batches is not None:
-                    _log_message_to_file(
-                        f"Wrote batch {batch_idx + 1}/{num_batches} from {p_path}: rows={batch_rows}, cumulative_rows={total_rows}, time={batch_time:.3f}s",
-                        log_path,
-                    )
-                else:
-                    _log_message_to_file(
-                        f"Wrote batch {batch_idx + 1} from {p_path}: rows={batch_rows}, cumulative_rows={total_rows}, time={batch_time:.3f}s",
-                        log_path,
-                    )
 
     except Exception:
         _log_message_to_file(
@@ -429,6 +388,15 @@ def compute_and_save_tanimoto_scores(
     finally:
         if writer:
             writer.close()
+        if temp_join_path.exists():
+            try:
+                temp_join_path.unlink()
+            except Exception:
+                _log_message_to_file(
+                    f"Failed to delete temporary join parquet {temp_join_path}: {traceback.format_exc()}",
+                    log_path,
+                    level=logging.WARNING,
+                )
 
     end = perf_counter()
     _log_message_to_file(

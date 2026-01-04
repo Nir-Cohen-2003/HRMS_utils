@@ -60,8 +60,8 @@ class SimilarityConfig:
     ms2_tolerance_ppm: Optional[float] = 10.0
     intensity_power: float = 0.5
     threshold: float = 0.8
-    approx_threshold: float = 0.0
     nbins: int = 0
+    approx_threshold: float = -1.0
 
     def __post_init__(self) -> None:
         assert self.upper_mass_bound > 0.0, "upper_mass_bound must be positive"
@@ -73,7 +73,8 @@ class SimilarityConfig:
             raise ValueError("ms2_tolerance_ppm must be positive if provided")
         # Validate threshold and compute the derived approximate-stage threshold.
         assert 0.0 <= self.threshold <= 1.0, "threshold must be between 0 and 1"
-        self.approx_threshold = max(0.0, float(self.threshold) - 0.15)
+        if self.approx_threshold < 0.0:
+            self.approx_threshold = max(0.0, float(self.threshold) - 0.15)
 
 
 logger = logging.getLogger(__name__)
@@ -923,7 +924,7 @@ def proximate_all_vs_all_pairs(
         dotprod_similarity=pl.col("spectra").spectral_similarity.dotprod_similarity(  # type: ignore
             ms2_tolerance_in_ppm=float(ms2_tolerance_ppm),
             clean_spectra_first=False,
-            ignore_precursor=True,
+            ignore_precursor=False,
         )
     )
 

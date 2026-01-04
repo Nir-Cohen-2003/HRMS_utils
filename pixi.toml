@@ -140,13 +140,12 @@ cupy = "*"
 cuda = "12.0"
 
 [feature.experiments.tasks]
-profile = "mprof run experiments/spectral_information/similarity_vs_info.py"
-sim = "python experiments/spectral_information/similarity_vs_info.py"
-plot-sim = "python experiments/spectral_information/plot_similarity_vs_info.py"
+sim_vs_info = {cmd="python experiments/spectral_information/similarity_vs_info.py",env={ MKL_INTERFACE_LAYER = "LP64"}}
+plot_sim_vs_info = "python experiments/spectral_information/plot_similarity_vs_info.py"
 approx_sim = {cmd="python experiments/fast_cosine_sim/approximate_similarity.py",env={ MKL_INTERFACE_LAYER = "LP64"}}
-approx_sim_batched  = {cmd="python experiments/fast_cosine_sim/bathced_gpu.py",env={ MKL_INTERFACE_LAYER = "LP64"}}
-new_sim = {cmd="python experiments/fast_cosine_sim/simms_sparse_exact_benchmark.py",env={ MKL_INTERFACE_LAYER = "LP64"}}
+approx_sim_batched  = {cmd="python experiments/fast_cosine_sim/batched_gpu.py",env={ MKL_INTERFACE_LAYER = "LP64"}}
+# profile = "mprof run experiments/spectral_information/similarity_vs_info.py"
 # When run without arguments, automatically select the newest file whose name starts with 'mprofile'
 # and run `mprof plot` on it. If arguments are provided they are forwarded to `mprof plot`.
 # The task exits with an error if no `mprofile*` files are found.
-plot-profile = "sh -lc 'if [ \"$#\" -eq 0 ]; then file=$(ls -t mprofile* 2>/dev/null | head -n1); if [ -z \"$file\" ]; then echo \"No mprofile file found\"; exit 1; fi; mprof plot \"$file\"; else mprof plot \"$@\"; fi' --"
+# plot-profile = "sh -lc 'if [ \"$#\" -eq 0 ]; then file=$(ls -t mprofile* 2>/dev/null | head -n1); if [ -z \"$file\" ]; then echo \"No mprofile file found\"; exit 1; fi; mprof plot \"$file\"; else mprof plot \"$@\"; fi' --"
