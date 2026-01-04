@@ -35,52 +35,18 @@ from approximate_similarity import (
     _sparse_bin_spectra_df_to_csr,
     _sparse_proximate_similarity_pairs_above_threshold_gpu,
 )
+from batched_exact_cosine import (
+    _compute_dynamic_max_peaks_exact,
+    _extract_lists_from_df,
+    _run_exact_cosine_gpu_batched,
+)
+from batched_utils import BatchedGPUConfig, _log_message_to_file, _yield_batches_dynamic
+from numpy.dtypes import UShortDType
 from numpy.typing import NDArray
 
 import hrms_utils
 
 logger = logging.getLogger(__name__)
-
-
-@dataclass
-class BatchedGPUConfig:
-    """Configuration for batched GPU similarity computation (batch-level only).
-
-    This dataclass encapsulates the parameters that are relevant to the batching
-    behavior (batch size, write interval, threshold). All binning/expansion
-    parameters are centralized into `ApproximateSimilarityConfig` and attached
-    here via `approx_config`.
-    """
-
-    approx_config: SimilarityConfig
-    batch_size: int = 1000
-    gpu_batch_write_interval: int = 10
-    target_gpu_mem_ratio: float = 0.1
-    max_peaks_per_batch: int | None = None
-
-    def __post_init__(self):
-        if self.batch_size <= 0:
-            raise ValueError("batch_size must be positive")
-        if self.gpu_batch_write_interval <= 0:
-            raise ValueError("gpu_batch_write_interval must be positive")
-        if not (0.0 < self.target_gpu_mem_ratio <= 1.0):
-            raise ValueError("target_gpu_mem_ratio must be in (0.0, 1.0]")
-        if self.max_peaks_per_batch is not None and self.max_peaks_per_batch <= 0:
-            raise ValueError("max_peaks_per_batch must be positive")
-        # If approx_config is provided, its own __post_init__ performs validation.
-
-
-def _log_message_to_file(
-    message: str,
-    log_path: Path,
-    level: int = logging.INFO,
-    overwrite: bool = False,
-) -> None:
-    """Write a message to log file and logger."""
-    logger.log(level, message)
-    mode = "w" if overwrite else "a"
-    with open(log_path, mode) as f:
-        f.write(f"{message}\n")
 
 
 def _write_batch_results_to_parquet(
@@ -131,48 +97,8 @@ def _write_batch_results_to_parquet(
     return n_pairs
 
 
-def _yield_batches_dynamic(
-    csr_matrix: "sp.csr_matrix",
-    global_idxs: NDArray[np.int64],
-    max_peaks: int,
-    min_batch_size: int = 100,
-):
-    """
-    Yield batches of (start_idx, end_idx, csr_batch, idxs_batch) dynamically
-    based on the number of peaks (non-zero elements).
-    """
-    n_spectra = csr_matrix.shape[0]
-    start_idx = 0
-
-    # indptr has n_spectra + 1 elements
-    indptr = csr_matrix.indptr
-
-    while start_idx < n_spectra:
-        # Greedily add rows until max_peaks is reached
-        # We want indptr[end_idx] - indptr[start_idx] <= max_peaks
-        target_peaks = indptr[start_idx] + max_peaks
-
-        # Find the index where indptr exceeds target_peaks
-        # searchsorted returns the first index where value > target
-        candidate_end = np.searchsorted(indptr, target_peaks, side="right") - 1
-
-        if candidate_end <= start_idx:
-            # Even one row is too big? Take at least one row.
-            candidate_end = start_idx + 1
-
-        # Enforce min_batch_size if possible (unless we hit end of data)
-        if candidate_end - start_idx < min_batch_size:
-            candidate_end = min(start_idx + min_batch_size, n_spectra)
-
-        # Enforce bounds
-        end_idx = min(candidate_end, n_spectra)
-
-        batch_csr = csr_matrix[start_idx:end_idx]
-        batch_idxs = global_idxs[start_idx:end_idx]
-
-        yield start_idx, end_idx, batch_csr, batch_idxs
-
-        start_idx = end_idx
+# `_yield_batches_dynamic` implementation moved to `batched_utils._yield_batches_dynamic`.
+# Refer to that module for the implementation that yields batches based on non-zero counts.
 
 
 def _compute_batched_gpu_similarity_single_mode(
@@ -820,9 +746,11 @@ def build_and_write_pairs_parquet_gpu_batched(
             )
             return
 
-        # --- Step 3: Streaming Exact Similarity Computation ---
+        # --- Step 3: Exact Similarity Computation ---
+        use_gpu_exact = batched_config.approx_config.use_gpu_exact_cosine
+        exact_method = "GPU (batched)" if use_gpu_exact else "CPU (streaming)"
         _log_message_to_file(
-            "\nStarting exact similarity computation (streaming)...", log_path
+            f"\nStarting exact similarity computation ({exact_method})...", log_path
         )
         exact_start = perf_counter()
 
@@ -832,9 +760,7 @@ def build_and_write_pairs_parquet_gpu_batched(
         # Prepare source for joining (use combined source if cross-library)
         lf_source = df_source_combined.lazy()
 
-        # Build streaming query
-        # Why streaming: Avoids loading all pairs into memory, processes in chunks
-
+        # Join to get pair metadata and filter self-matches
         # 1. Join left spectra
         joined = lf_indices.join(lf_source, on="idx")
 
@@ -850,50 +776,152 @@ def build_and_write_pairs_parquet_gpu_batched(
         # Why: Even in cross-library mode, same molecule could appear in both libraries
         joined = joined.filter(pl.col("base_inchikey") != pl.col("base_inchikey_right"))
 
-        # 4. Prepare struct for exact similarity computation
-        joined = joined.with_columns(
-            spectra=pl.struct(
-                mz1=pl.col("cleaned_normalized_mz"),
-                intensities1=pl.col("cleaned_normalized_intensity"),
-                mz2=pl.col("cleaned_normalized_mz_right"),
-                intensities2=pl.col("cleaned_normalized_intensity_right"),
-                precursor_mz1=pl.col("precursor_mz"),
-                precursor_mz2=pl.col("precursor_mz_right"),
-            )
-        )
-
-        # 5. Compute exact dotprod similarity and filter
         # Ensure ms2 tolerance is set in the approximate config (fail fast if not).
         assert batched_config.approx_config.ms2_tolerance_ppm is not None, (
             "approx_config.ms2_tolerance_ppm must be provided on batched_config"
         )
-        results = (
-            joined.with_columns(
-                dotprod_similarity=pl.col(
-                    "spectra"
-                ).spectral_similarity.dotprod_similarity(  # type: ignore
-                    ms2_tolerance_in_ppm=batched_config.approx_config.ms2_tolerance_ppm,
-                    clean_spectra_first=False,
-                    ignore_precursor=True,
+
+        if use_gpu_exact:
+            # GPU exact path: collect pairs and compute in batches
+            _log_message_to_file(
+                "Using GPU exact cosine with dynamic batching", log_path
+            )
+
+            # Collect pairs that need exact computation
+            pairs_df = joined.select(
+                [
+                    "idx",
+                    "idx_right",
+                    "mol_idx",
+                    "mol_idx_right",
+                    "base_inchikey",
+                    "base_inchikey_right",
+                ]
+            ).collect()
+
+            n_pairs = len(pairs_df)
+            _log_message_to_file(
+                f"Computing exact similarity for {n_pairs} pairs on GPU", log_path
+            )
+
+            if n_pairs == 0:
+                _log_message_to_file("No pairs to process after filtering", log_path)
+                # Create empty output
+                pl.DataFrame(
+                    {
+                        "idx": [],
+                        "idx_right": [],
+                        "mol_idx": [],
+                        "mol_idx_right": [],
+                        "dotprod_similarity": [],
+                    }
+                ).write_parquet(output_path)
+            else:
+                # Extract spectra
+                mz_left, int_left = _extract_lists_from_df(df_source_combined)
+                mz_right, int_right = mz_left, int_left
+
+                pair_left = pairs_df["idx"].to_numpy()
+                pair_right = pairs_df["idx_right"].to_numpy()
+
+                # Compute max peaks per batch
+                max_peaks_per_batch = _compute_dynamic_max_peaks_exact(
+                    target_gpu_mem_ratio=0.5,
+                    user_max_peaks=None,
+                )
+                _log_message_to_file(
+                    f"GPU exact batch size: {max_peaks_per_batch} total peaks from unique spectra",
+                    log_path,
+                )
+
+                # Run GPU exact cosine
+                exact_scores = _run_exact_cosine_gpu_batched(
+                    pair_left,
+                    pair_right,
+                    mz_left,
+                    int_left,
+                    mz_right,
+                    int_right,
+                    config=batched_config.approx_config,
+                    max_peaks_per_batch=max_peaks_per_batch,
+                    verbose=True,
+                )
+
+                # Add scores to pairs DataFrame and filter by threshold
+                results = (
+                    pairs_df.with_columns(
+                        dotprod_similarity=pl.Series("dotprod_similarity", exact_scores)
+                    )
+                    .filter(
+                        pl.col("dotprod_similarity").is_not_null(),
+                        pl.col("dotprod_similarity").ge(
+                            batched_config.approx_config.threshold
+                        ),
+                    )
+                    .select(
+                        [
+                            "idx",
+                            "idx_right",
+                            "mol_idx",
+                            "mol_idx_right",
+                            "dotprod_similarity",
+                        ]
+                    )
+                )
+
+                # Write results
+                results.write_parquet(output_path)
+
+                _log_message_to_file(
+                    f"GPU exact complete: {len(results)} pairs above threshold",
+                    log_path,
+                )
+        else:
+            # CPU exact path: streaming computation
+            _log_message_to_file("Using CPU exact cosine (streaming)", log_path)
+
+            # 4. Prepare struct for exact similarity computation
+            joined = joined.with_columns(
+                spectra=pl.struct(
+                    mz1=pl.col("cleaned_normalized_mz"),
+                    intensities1=pl.col("cleaned_normalized_intensity"),
+                    mz2=pl.col("cleaned_normalized_mz_right"),
+                    intensities2=pl.col("cleaned_normalized_intensity_right"),
+                    precursor_mz1=pl.col("precursor_mz"),
+                    precursor_mz2=pl.col("precursor_mz_right"),
                 )
             )
-            .drop("spectra")
-            .filter(
-                pl.col("dotprod_similarity").is_not_null(),
-                pl.col("dotprod_similarity").ge(batched_config.approx_config.threshold),
-            )
-            .select(
-                "idx",
-                "idx_right",
-                "mol_idx",
-                "mol_idx_right",
-                "dotprod_similarity",
-            )
-        )
 
-        # 6. Sink to output parquet (streaming)
-        # Why sink: Processes and writes in streaming fashion, low memory footprint
-        results.sink_parquet(output_path, maintain_order=False)
+            # 5. Compute exact dotprod similarity and filter
+            results = (
+                joined.with_columns(
+                    dotprod_similarity=pl.col(
+                        "spectra"
+                    ).spectral_similarity.dotprod_similarity(  # type: ignore
+                        ms2_tolerance_in_ppm=batched_config.approx_config.ms2_tolerance_ppm,
+                        clean_spectra_first=False,
+                        ignore_precursor=True,
+                    )
+                )
+                .drop("spectra")
+                .filter(
+                    pl.col("dotprod_similarity").is_not_null(),
+                    pl.col("dotprod_similarity").ge(
+                        batched_config.approx_config.threshold
+                    ),
+                )
+                .select(
+                    "idx",
+                    "idx_right",
+                    "mol_idx",
+                    "mol_idx_right",
+                    "dotprod_similarity",
+                )
+            )
+
+            # 6. Sink to output parquet (streaming)
+            # Why sink: Processes and writes in streaming fashion, low memory footprint
+            results.sink_parquet(output_path, maintain_order=False)
 
         exact_time = perf_counter() - exact_start
         _log_message_to_file(
@@ -932,7 +960,10 @@ def build_and_write_pairs_parquet_gpu_batched(
 if __name__ == "__main__":
     # Example usage
     example_parquet_paths = [
-        Path("/home/analytit_admin/Data/spectral_libs/fraghub/fraghub.parquet"),
+        # Path("/home/analytit_admin/Data/spectral_libs/info_score/fraghub_100k.parquet"),
+        Path("/home/analytit_admin/Data/spectral_libs/info_score/fraghub_300k.parquet"),
+        # Path("/home/analytit_admin/Data/spectral_libs/info_score/fraghub_600k.parquet"),
+        # Path("/home/analytit_admin/Data/spectral_libs/fraghub/fraghub.parquet"),
     ]
     output_parquet_path = Path("output_similarity_pairs.parquet")
 
@@ -942,6 +973,7 @@ if __name__ == "__main__":
         ms2_tolerance_ppm=10.0,
         intensity_power=0.5,
         threshold=0.8,
+        use_gpu_exact_cosine=True,
     )
 
     # Construct the BatchedGPUConfig here (non-optional) and pass it to the

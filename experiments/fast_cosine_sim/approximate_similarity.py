@@ -53,6 +53,8 @@ class SimilarityConfig:
         threshold (float): Final exact similarity threshold to be applied in the exact stage (0..1).
         approx_threshold (float): Derived lower threshold for the approximate stage (threshold - 0.15, clipped >= 0).
         nbins (int): computed number of bins (floor(upper_mass_bound / bin_size) + 1).
+        use_gpu_exact_cosine (bool): If True, use GPU with dynamic batching for exact cosine.
+            If False, use CPU exact cosine. Default False.
     """
 
     upper_mass_bound: float = 1000.0
@@ -62,6 +64,7 @@ class SimilarityConfig:
     threshold: float = 0.8
     nbins: int = 0
     approx_threshold: float = -1.0
+    use_gpu_exact_cosine: bool = False
 
     def __post_init__(self) -> None:
         assert self.upper_mass_bound > 0.0, "upper_mass_bound must be positive"

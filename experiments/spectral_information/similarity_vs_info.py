@@ -16,7 +16,8 @@ import polars as pl
 sys.path.append(str(Path(__file__).parents[1] / "fast_cosine_sim"))
 
 from approximate_similarity import SimilarityConfig
-from batched_gpu import BatchedGPUConfig, build_and_write_pairs_parquet_gpu_batched
+from batched_gpu import build_and_write_pairs_parquet_gpu_batched
+from batched_utils import BatchedGPUConfig
 from utils import compute_and_save_tanimoto_scores
 
 logging.basicConfig(level=logging.INFO)

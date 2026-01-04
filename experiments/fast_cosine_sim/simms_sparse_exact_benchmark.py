@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-Benchmark approximate (batched GPU) + exact pipelines (CPU, dense GPU, SimMS sparse GPU).
+Benchmark approximate (batched GPU) + exact pipelines (CPU, dense GPU, batched GPU, SimMS sparse GPU).
 
 This module moves the benchmarking logic out of `simms_sparse_exact.py` and
 switches the approximate stage to the batched GPU path defined in `bathced_gpu.py`.
@@ -22,7 +22,8 @@ from approximate_similarity import (
     _normalize_csr_rows_inplace_gpu,
     _sparse_bin_spectra_df_to_csr,
 )
-from bathced_gpu import BatchedGPUConfig, _yield_batches_dynamic
+from batched_exact_cosine import _extract_lists_from_df, _run_exact_cosine_gpu_batched
+from batched_gpu import BatchedGPUConfig, _yield_batches_dynamic
 from numba import cuda
 from optimized_cosine import run_greedy_cosine_fast
 from simms_sparse_exact import SparseExactConfig, sparse_exact_cosine_from_pairs_gpu
@@ -54,21 +55,6 @@ def _diff_stats(name: str, cpu_scores: np.ndarray, test_scores: np.ndarray) -> N
         f">1e-2={(diff > 1e-2).mean() * 100:.2f}% "
         f">1e-3={(diff > 1e-3).mean() * 100:.2f}%"
     )
-
-
-def _extract_lists_from_df(
-    df: pl.DataFrame,
-) -> tuple[list[np.ndarray], list[np.ndarray]]:
-    """Extract mz/intensity lists from a Polars dataframe."""
-    assert "cleaned_normalized_mz" in df.columns, (
-        "cleaned_normalized_mz column is required"
-    )
-    assert "cleaned_normalized_intensity" in df.columns, (
-        "cleaned_normalized_intensity column is required"
-    )
-    return df["cleaned_normalized_mz"].to_list(), df[
-        "cleaned_normalized_intensity"
-    ].to_list()
 
 
 def _gather_dense_for_pairs(
@@ -206,7 +192,7 @@ def _run_batched_approximate_gpu(
 def benchmark_batched_simms_exact(
     df: pl.DataFrame, config: BenchmarkConfig | None = None
 ) -> None:
-    """Run approximate (batched GPU) then exact benchmarks (CPU, dense GPU, SimMS sparse GPU)."""
+    """Run approximate (batched GPU) then exact benchmarks (CPU, dense GPU, batched GPU, SimMS sparse GPU)."""
     if config is None:
         config = BenchmarkConfig()
     assert 0.0 <= config.threshold <= 1.0, "threshold must be within [0, 1]"
@@ -220,7 +206,6 @@ def benchmark_batched_simms_exact(
     )
     batched_cfg = BatchedGPUConfig(
         batch_size=config.batch_size,
-        threshold=config.threshold,
         gpu_batch_write_interval=config.gpu_batch_write_interval,
         target_gpu_mem_ratio=config.target_gpu_mem_ratio,
         max_peaks_per_batch=config.max_peaks_per_batch,
@@ -337,6 +322,34 @@ def benchmark_batched_simms_exact(
     t_opt1 = time.perf_counter()
     if config.verbose:
         print(f"[exact-optimized] pairs={len(scores_opt)} time={t_opt1 - t_opt0:.3f}s")
+
+    # Batched GPU exact path
+    approx_cfg_for_exact = SimilarityConfig(
+        upper_mass_bound=config.approx_upper,
+        bin_size=config.approx_bin_size,
+        ms2_tolerance_ppm=config.ms2_tolerance_ppm,
+        intensity_power=0.5,
+        threshold=config.threshold,
+        use_gpu_exact_cosine=True,
+    )
+    t_batched0 = time.perf_counter()
+    scores_batched = _run_exact_cosine_gpu_batched(
+        pair_left,
+        pair_right,
+        mz_left,
+        int_left,
+        mz_right,
+        int_right,
+        config=approx_cfg_for_exact,
+        max_peaks_per_batch=10_000_000,
+        verbose=config.verbose,
+    )
+    t_batched1 = time.perf_counter()
+    if config.verbose:
+        print(
+            f"[exact-batched-gpu] pairs={len(scores_batched)} time={t_batched1 - t_batched0:.3f}s"
+        )
+
     simms_cfg = SparseExactConfig(
         tolerance_ppm=config.ms2_tolerance_ppm,
         mz_power=0.0,
@@ -357,20 +370,24 @@ def benchmark_batched_simms_exact(
         )
 
     _diff_stats("optimized", cpu_scores, scores_opt)
+    _diff_stats("batched_gpu", cpu_scores, scores_batched)
     _diff_stats("simms_sparse", cpu_scores, simms_scores)
     print(
         "\nSummary timings (s): "
         f"approx={t_approx1 - t_approx0:.3f}, "
         f"exact_cpu={t_cpu1 - t_cpu0:.3f}, "
         f"exact_optimized_gpu={t_opt1 - t_opt0:.3f}, "
+        f"exact_batched_gpu={t_batched1 - t_batched0:.3f}, "
         f"exact_simms_sparse_gpu={t_simms1 - t_simms0:.3f}"
     )
 
 
 if __name__ == "__main__":
     spectra = (
-        pl.scan_parquet("/gpfs01/work/nircoh/HRMS_utils/data/fraghub.parquet")
-        .head(50_000)
+        pl.scan_parquet(
+            "/home/analytit_admin/Data/spectral_libs/info_score/combined_library.parquet"
+        )
+        .head(10_000)
         .collect()
     )
     benchmark_batched_simms_exact(spectra)
