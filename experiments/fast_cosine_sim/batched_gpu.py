@@ -52,18 +52,15 @@ class BatchedGPUConfig:
     here via `approx_config`.
     """
 
+    approx_config: SimilarityConfig
     batch_size: int = 1000
-    threshold: float = 0.8
     gpu_batch_write_interval: int = 10
     target_gpu_mem_ratio: float = 0.1
     max_peaks_per_batch: int | None = None
-    approx_config: SimilarityConfig | None = None
 
     def __post_init__(self):
         if self.batch_size <= 0:
             raise ValueError("batch_size must be positive")
-        if not (0.0 < self.threshold <= 1.0):
-            raise ValueError("threshold must be in (0.0, 1.0]")
         if self.gpu_batch_write_interval <= 0:
             raise ValueError("gpu_batch_write_interval must be positive")
         if not (0.0 < self.target_gpu_mem_ratio <= 1.0):
@@ -407,7 +404,7 @@ def _compute_batched_gpu_similarity_single_mode(
             # Thresholding & Extraction
             # Logic copied from _sparse_proximate_similarity_pairs_above_threshold_gpu
             # to avoid re-normalization issues.
-            mask = sim.data >= (config.threshold - 0.15)
+            mask = sim.data >= (config.approx_config.threshold - 0.15)
 
             if int(mask.sum()) > 0:
                 out_data = sim.data[mask]
@@ -548,7 +545,7 @@ def build_and_write_pairs_parquet_gpu_batched(
         f"  Mode: {comparison_mode}\n"
         f"  Approx config: {batched_config.approx_config}\n"
         f"  Batch size: {batched_config.batch_size}\n"
-        f"  Threshold: {batched_config.threshold}\n",
+        f"  Threshold: {batched_config.approx_config.threshold}\n",
         log_path,
         overwrite=True,
     )
@@ -883,7 +880,7 @@ def build_and_write_pairs_parquet_gpu_batched(
             .drop("spectra")
             .filter(
                 pl.col("dotprod_similarity").is_not_null(),
-                pl.col("dotprod_similarity").ge(batched_config.threshold),
+                pl.col("dotprod_similarity").ge(batched_config.approx_config.threshold),
             )
             .select(
                 "idx",
@@ -944,6 +941,7 @@ if __name__ == "__main__":
         bin_size=0.0001,
         ms2_tolerance_ppm=10.0,
         intensity_power=0.5,
+        threshold=0.8,
     )
 
     # Construct the BatchedGPUConfig here (non-optional) and pass it to the
@@ -952,7 +950,6 @@ if __name__ == "__main__":
     batched_cfg = BatchedGPUConfig(
         batch_size=10000,
         gpu_batch_write_interval=100,
-        threshold=0.8,
         approx_config=approx_cfg,
         target_gpu_mem_ratio=0.1,
     )

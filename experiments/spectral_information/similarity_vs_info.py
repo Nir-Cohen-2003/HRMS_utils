@@ -40,12 +40,12 @@ if __name__ == "__main__":
         bin_size=0.0001,
         ms2_tolerance_ppm=10.0,
         intensity_power=0.5,
+        threshold=0.5,
     )
 
     batched_cfg = BatchedGPUConfig(
         batch_size=10000,
         gpu_batch_write_interval=100,
-        threshold=0.5,
         approx_config=approx_cfg,
         target_gpu_mem_ratio=0.1,
     )
