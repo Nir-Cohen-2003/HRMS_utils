@@ -31,6 +31,8 @@ from numba import cuda
 from numpy.typing import NDArray
 from optimized_cosine import run_greedy_cosine_fast
 
+INT32_MAX = np.iinfo(np.int32).max
+
 
 def _extract_lists_from_df(
     df: pl.DataFrame,
@@ -155,13 +157,29 @@ def _run_batched_approximate_gpu(
         intensity_power=approx_cfg.intensity_power,
         bin_size=approx_cfg.bin_size,
     )
-    global_idxs = df["idx"].cast(pl.Int64).to_numpy()
+
+    # Use int32 global indices for memory efficiency; fail fast if overflow would occur.
+    # Why: IDs are "per spectrum", and for up to ~10M spectra int32 is sufficient and
+    # materially reduces memory footprint for large candidate pair sets.
+    idx_max = df.select(pl.col("idx").max()).item()
+    assert idx_max is not None, (
+        "idx max was None; dataframe appears empty or idx missing unexpectedly"
+    )
+    assert int(idx_max) <= INT32_MAX, (
+        f"idx values must fit in int32 (<= {INT32_MAX}), got max idx={idx_max}. "
+        "Reduce library size, shard input, or change index dtype policy."
+    )
+    global_idxs = df["idx"].cast(pl.Int32).to_numpy().astype(np.int32, copy=False)
+
     max_peaks = _compute_dynamic_max_peaks_approximate(
         approx_cfg, batched_cfg.target_gpu_mem_ratio, batched_cfg.max_peaks_per_batch
     )
     batches = list(
         _yield_batches_dynamic(
-            left_csr, global_idxs, max_peaks, min_batch_size=batched_cfg.batch_size
+            left_csr,
+            global_idxs.astype(np.int32, copy=False),
+            max_peaks,
+            min_batch_size=batched_cfg.batch_size,
         )
     )
     total_pairs: list[np.ndarray] = []
@@ -170,6 +188,9 @@ def _run_batched_approximate_gpu(
     approx_threshold = approx_cfg.approx_threshold
     t0 = time.perf_counter()
     for j, (r_start, r_end, r_csr, r_idxs) in enumerate(batches):
+        # Ensure batch id arrays are int32 (they may come in as int64 depending on upstream)
+        r_idxs = np.asarray(r_idxs, dtype=np.int32)
+
         R_gpu = cps.csr_matrix(r_csr)
         _normalize_csr_rows_inplace_gpu(R_gpu)
         if approx_cfg.ms2_tolerance_ppm is not None:
@@ -180,6 +201,9 @@ def _run_batched_approximate_gpu(
                 approx_cfg.nbins,
             )
         for i, (l_start, l_end, l_csr, l_idxs) in enumerate(batches):
+            # Ensure batch id arrays are int32 (they may come in as int64 depending on upstream)
+            l_idxs = np.asarray(l_idxs, dtype=np.int32)
+
             if i > j:
                 continue
             L_gpu = cps.csr_matrix(l_csr)
@@ -192,9 +216,13 @@ def _run_batched_approximate_gpu(
             out_cols = sim.indices[mask]
             indices_in_data = cp.nonzero(mask)[0]
             out_rows = cp.searchsorted(sim.indptr, indices_in_data, side="right") - 1
-            left_pairs = l_idxs[cp.asnumpy(out_rows).astype(np.int64)]
-            right_pairs = r_idxs[cp.asnumpy(out_cols).astype(np.int64)]
+
+            # These are row/col positions inside the (batch-local) similarity matrix.
+            # Use int32 throughout when indexing the batch-global id arrays.
+            left_pairs = l_idxs[cp.asnumpy(out_rows).astype(np.int32)]
+            right_pairs = r_idxs[cp.asnumpy(out_cols).astype(np.int32)]
             scores = cp.asnumpy(out_data).astype(np.float32)
+
             if i == j:
                 diag_mask = left_pairs != right_pairs
                 left_pairs = left_pairs[diag_mask]
@@ -206,9 +234,12 @@ def _run_batched_approximate_gpu(
                 scores = scores[upper_mask]
             if len(left_pairs) == 0:
                 continue
-            total_pairs.append(left_pairs)
-            total_pairs_right.append(right_pairs)
+
+            # Ensure stored pair ids remain int32 (avoid accidental upcast from numpy ops)
+            total_pairs.append(np.asarray(left_pairs, dtype=np.int32))
+            total_pairs_right.append(np.asarray(right_pairs, dtype=np.int32))
             total_scores.append(scores)
+
         cp.get_default_memory_pool().free_all_blocks()
         if verbose:
             elapsed = time.perf_counter() - t0
@@ -219,8 +250,8 @@ def _run_batched_approximate_gpu(
         return pl.DataFrame({"idx": [], "idx_right": [], "proximate_similarity": []})
     return pl.DataFrame(
         {
-            "idx": np.concatenate(total_pairs),
-            "idx_right": np.concatenate(total_pairs_right),
+            "idx": np.concatenate(total_pairs).astype(np.int32, copy=False),
+            "idx_right": np.concatenate(total_pairs_right).astype(np.int32, copy=False),
             "proximate_similarity": np.concatenate(total_scores),
         }
     )
@@ -535,7 +566,20 @@ def run_approximate_and_exact_similarity(
     assert "precursor_mz" in df.columns, "precursor_mz column is required"
 
     # Add row index
-    df_idx = df.with_row_index("idx").with_columns(pl.col("idx").cast(pl.Int64))
+    df_idx = df.with_row_index("idx").with_columns(pl.col("idx").cast(pl.Int32))
+
+    # Fail fast: idx must fit in int32 because we cast and store indices as int32 for memory efficiency.
+    idx_max = df_idx.select(pl.col("idx").max()).item()
+    assert idx_max is not None, (
+        "idx max was None; dataframe appears empty or idx missing unexpectedly"
+    )
+    assert int(idx_max) <= INT32_MAX, (
+        f"idx values must fit in int32 (<= {INT32_MAX}), got max idx={idx_max}. "
+        "Reduce library size, shard input, or change index dtype policy."
+    )
+
+    # Use int32 for downstream arrays/joins
+    df_idx = df_idx.with_columns(pl.col("idx").cast(pl.Int32))
 
     # Configure approximate stage
     batched_cfg = BatchedGPUConfig(

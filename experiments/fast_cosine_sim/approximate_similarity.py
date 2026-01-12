@@ -34,6 +34,34 @@ from sparse_dot_mkl import dot_product_mkl
 
 import hrms_utils
 
+# -----------------------------------------------------------------------------
+# Global dtype parameters (approximate stage only)
+# -----------------------------------------------------------------------------
+# Why: candidate pair sets can be huge; using smaller dtypes decreases memory
+# pressure and transfer costs. These dtypes must not affect the exact cosine
+# stage (which uses original list spectra); therefore, we only apply them to
+# the exported/binned sparse matrices and approximate outputs.
+INDEX_DTYPE_NP = np.int32
+INDEX_DTYPE_PL = pl.Int32
+
+# Approximate-stage intensity/weight dtype:
+# - CPU sparse matmul (MKL) is most stable/compatible with float32
+# - GPU transfer can use float16/float32 to reduce bandwidth/memory
+# We store CSR data in float32 on CPU, but can cast to this dtype right before GPU transfer.
+APPROX_INTENSITY_DTYPE_NP = np.float32
+APPROX_INTENSITY_DTYPE_PL = pl.Float32
+# CPU-side CSR data dtype (SciPy/MKL compatibility)
+CSR_DATA_DTYPE_CPU = np.float32
+# IMPORTANT: These parameters are for *estimation only*; they must reflect what
+# you actually transfer/compute with in the approximate GPU stage.
+GPU_CSR_INDEX_DTYPE_NP = np.int32
+GPU_CSR_INDPTR_DTYPE_NP = np.int32
+# CuPy sparse dot produces float32 accumulations by default, but keep this adjustable.
+GPU_SIM_DTYPE_NP = np.float32
+# Conservative overhead multipliers used by the batching memory model.
+GPU_CSR_OVERHEAD_FACTOR = 1.25
+GPU_SIM_TEMP_OVERHEAD_FACTOR = 1.20
+
 
 @dataclass
 class SimilarityConfig:
@@ -90,7 +118,7 @@ def _extract_indices_and_values_above_threshold_from_csr(
     indices: NDArray[np.int32],
     data: NDArray[np.float32],
     threshold: float,
-) -> tuple[NDArray[np.int64], NDArray[np.int64], NDArray[np.float32]]:
+) -> tuple[NDArray[np.int32], NDArray[np.int32], NDArray[np.float32]]:
     """
     Extract row indices, column indices, and values from a CSR matrix where data >= threshold.
 
@@ -107,8 +135,8 @@ def _extract_indices_and_values_above_threshold_from_csr(
                 count += 1
 
     # Allocate outputs
-    row_out = np.empty(count, dtype=np.int64)
-    col_out = np.empty(count, dtype=np.int64)
+    row_out = np.empty(count, dtype=np.int32)
+    col_out = np.empty(count, dtype=np.int32)
     val_out = np.empty(count, dtype=np.float32)
 
     # Fill arrays
@@ -128,14 +156,19 @@ def _extract_indices_and_values_above_threshold_from_csr(
 
 def _flatten_spectra_to_numpy(
     df: pl.DataFrame, mz_col: str, int_col: str
-) -> tuple[NDArray[np.float64], NDArray[np.float32], NDArray[np.int64], int]:
+) -> tuple[NDArray[np.float64], NDArray[np.float32], NDArray[np.int32], int]:
     """
     Flatten list-valued spectrum columns from `df` into NumPy arrays.
+
+    Note: We keep `flat_ints` as float32 here. The int/float dtype reduction for
+    approximate similarity is applied later (when exporting/batching and right
+    before GPU transfer) to avoid impacting any downstream exact-similarity logic
+    that uses the original list spectra.
 
     Returns: (flat_mzs, flat_ints, spec_idx, n_spec)
       - flat_mzs: np.ndarray[np.float64] of all m/z values
       - flat_ints: np.ndarray[np.float32] of intensities
-      - spec_idx: np.ndarray[np.int64] mapping each flattened peak to its spectrum index
+      - spec_idx: np.ndarray[np.int32] mapping each flattened peak to its spectrum index
       - n_spec: number of spectra
     """
     n_spec = len(df)
@@ -143,7 +176,7 @@ def _flatten_spectra_to_numpy(
         return (
             np.asarray([], dtype=np.float64),
             np.asarray([], dtype=np.float32),
-            np.asarray([], dtype=np.int64),
+            np.asarray([], dtype=np.int32),
             0,
         )
 
@@ -153,15 +186,16 @@ def _flatten_spectra_to_numpy(
         return (
             np.asarray([], dtype=np.float64),
             np.asarray([], dtype=np.float32),
-            np.asarray([], dtype=np.int64),
+            np.asarray([], dtype=np.int32),
             n_spec,
         )
 
     exploded = exploded.with_columns(
         [
             pl.col(mz_col).cast(pl.Float32),
+            # Keep float32 here; approximate-stage compression happens later at export/transfer time.
             pl.col(int_col).cast(pl.Float32),
-            pl.col("__spec_idx").cast(pl.Int64),
+            pl.col("__spec_idx").cast(INDEX_DTYPE_PL),
         ]
     )
 
@@ -175,7 +209,7 @@ def _flatten_spectra_to_numpy(
 def _sparse_bin_flat_spectra_to_csr(
     flat_mzs: NDArray[np.float64],
     flat_ints: NDArray[np.float32],
-    spec_idx: NDArray[np.int64],
+    spec_idx: NDArray[np.int32],
     n_spec: int,
     upper_bound: int | float = 1000.0,
     intensity_power: float = 0.5,
@@ -191,19 +225,23 @@ def _sparse_bin_flat_spectra_to_csr(
     if flat_mzs.size == 0 or flat_ints.size == 0:
         return sp.csr_matrix((n_spec, nbins), dtype=np.float32)
 
-    mass_bins = np.rint(flat_mzs / float(bin_size)).astype(np.int64)
+    mass_bins = np.rint(flat_mzs / float(bin_size)).astype(np.int32)
     valid_mask = (mass_bins >= 0) & (mass_bins < nbins) & (flat_ints > 0)
     if not np.any(valid_mask):
         return sp.csr_matrix((n_spec, nbins), dtype=np.float32)
 
-    mass_bins = mass_bins[valid_mask].astype(np.int64)
-    spec_idx = spec_idx[valid_mask].astype(np.int64)
+    mass_bins = mass_bins[valid_mask].astype(np.int32)
+    spec_idx = spec_idx[valid_mask].astype(np.int32)
     weights = np.asarray(flat_ints[valid_mask], dtype=np.float32) ** float(
         intensity_power
     )
 
+    # Note: keep CSR data float32 on CPU (MKL/Scipy compatibility). We cast to float16
+    # only right before GPU transfer in the GPU approximate path.
     coo = sp.coo_matrix(
-        (weights, (spec_idx, mass_bins)), shape=(n_spec, nbins), dtype=np.float32
+        (weights.astype(CSR_DATA_DTYPE_CPU, copy=False), (spec_idx, mass_bins)),
+        shape=(n_spec, nbins),
+        dtype=CSR_DATA_DTYPE_CPU,
     )
     # Return a concrete SciPy CSR matrix (not csr_array) to satisfy typing and
     # to ensure a consistent runtime type across SciPy versions.
@@ -296,6 +334,8 @@ def _normalize_csr_rows_inplace(mat: "sp.csr_matrix") -> NDArray[np.float32]:
     safe = norms.copy()
     safe[safe == 0.0] = 1.0
 
+    # Fail fast and help type-checkers: SciPy stubs may consider `indptr` Optional.
+    assert mat.indptr is not None, "CSR matrix indptr must not be None"
     counts = np.diff(mat.indptr)
     if counts.sum() > 0:
         row_idx = np.repeat(np.arange(n_rows), counts)
@@ -309,13 +349,13 @@ def _sparse_proximate_similarity_pairs_above_threshold(
     left_csr: "sp.csr_matrix",
     right_csr: "sp.csr_matrix",
     threshold: float,
-    left_global_idxs: NDArray[np.int64],
-    right_global_idxs: NDArray[np.int64],
+    left_global_idxs: NDArray[np.int32],
+    right_global_idxs: NDArray[np.int32],
     return_timings: bool = False,
     approx_config: SimilarityConfig | None = None,
 ) -> (
-    tuple[NDArray[np.int64], NDArray[np.int64], NDArray[np.float32]]
-    | tuple[NDArray[np.int64], NDArray[np.int64], NDArray[np.float32], dict]
+    tuple[NDArray[np.int32], NDArray[np.int32], NDArray[np.float32]]
+    | tuple[NDArray[np.int32], NDArray[np.int32], NDArray[np.float32], dict]
 ):
     """
     Compute row-wise cosine similarities between `left_csr` and `right_csr` using SciPy.
@@ -344,6 +384,10 @@ def _sparse_proximate_similarity_pairs_above_threshold(
     if approx_config is not None and approx_config.ms2_tolerance_ppm is not None:
         assert approx_config.nbins > 0, "computed nbins must be positive"
         t_exp0 = perf_counter()
+        # Help type-checkers: this branch guarantees `approx_config` is not None.
+        assert approx_config is not None, (
+            "approx_config must not be None when expansion is enabled"
+        )
         R = _expand_csr_horizontal_adaptive(
             R,
             approx_config.bin_size,
@@ -392,14 +436,14 @@ def _sparse_proximate_similarity_pairs_above_threshold(
         }
         if return_timings:
             return (
-                np.empty((0,), dtype=np.int64),
-                np.empty((0,), dtype=np.int64),
+                np.empty((0,), dtype=np.int32),
+                np.empty((0,), dtype=np.int32),
                 np.empty((0,), dtype=np.float32),
                 timings,
             )
         return (
-            np.empty((0,), dtype=np.int64),
-            np.empty((0,), dtype=np.int64),
+            np.empty((0,), dtype=np.int32),
+            np.empty((0,), dtype=np.int32),
             np.empty((0,), dtype=np.float32),
         )
 
@@ -452,11 +496,11 @@ def _sparse_bin_spectra_df_to_csr(
     timings["n_peaks_total"] = int(flat_mzs.size)
 
     if n_spec == 0:
-        return sp.csr_matrix((0, nbins), dtype=np.float32), timings
+        return sp.csr_matrix((0, nbins), dtype=CSR_DATA_DTYPE_CPU), timings
     if flat_mzs.size == 0 or flat_ints.size == 0:
-        return sp.csr_matrix((n_spec, nbins), dtype=np.float32), timings
+        return sp.csr_matrix((n_spec, nbins), dtype=CSR_DATA_DTYPE_CPU), timings
 
-    mass_bins = np.rint(flat_mzs / float(bin_size)).astype(np.int64)
+    mass_bins = np.rint(flat_mzs / float(bin_size)).astype(np.int32)
     valid_mask = (mass_bins >= 0) & (mass_bins < nbins) & (flat_ints > 0)
     timings["n_peaks_valid"] = int(np.count_nonzero(valid_mask))
 
@@ -484,6 +528,10 @@ def _expand_csr_horizontal_adaptive_gpu(
 ) -> "cps.csr_matrix":
     """
     GPU version of adaptive horizontal expansion using fully vectorized operations.
+
+    Why: This function allocates several intermediate CuPy arrays whose size scales with
+    the expanded NNZ. We `del` temporaries as soon as possible to reduce peak live device
+    memory and allocator pressure (even though the CuPy memory pool may retain blocks).
     """
     if mat.nnz == 0:
         return mat
@@ -493,37 +541,52 @@ def _expand_csr_horizontal_adaptive_gpu(
     eff_mz = cp.maximum(col_mz, MASS_TOLERANCE_CUTOFF)
     tol_da = eff_mz * ms2_tolerance_ppm * 1e-6
     windows = cp.ceil(tol_da / bin_size).astype(cp.int32)
+    del col_mz, eff_mz, tol_da
 
     repeats = 2 * windows + 1
     ends = cp.cumsum(repeats)
     total_items = int(ends[-1])
     dest_indices = cp.arange(total_items, dtype=cp.int64)
     source_idxs = cp.searchsorted(ends, dest_indices, side="right")
+    del repeats, ends, total_items
 
     new_data = mat.data[source_idxs]
 
-    starts = cp.zeros_like(ends)
-    starts[1:] = ends[:-1]
+    # Start offset per *source nnz element* (length = mat.nnz), then gather by `source_idxs`.
+    # `windows` (and thus repeats) is per nnz element, so the cumulative starts must be per nnz too.
+    # The previous version incorrectly sized `starts` by `source_idxs.size` (expanded items),
+    # which caused a broadcast error when assigning cumsums of length `mat.nnz - 1`.
+    starts = cp.zeros((mat.nnz,), dtype=cp.int64)
+    starts[1:] = cp.cumsum(2 * windows + 1, dtype=cp.int64)[:-1]
     start_offsets = starts[source_idxs]
+    del starts
+
     local_offsets = dest_indices - start_offsets
     shifts = local_offsets - windows[source_idxs]
     new_cols = col_indices[source_idxs] + shifts
+    del dest_indices, start_offsets, local_offsets, shifts
 
     mask = (new_cols >= 0) & (new_cols < nbins)
-    if not int(mask.sum()):
+    n_valid = int(mask.sum())
+    if not n_valid:
+        del mask, new_cols, new_data, source_idxs, windows
         return cps.csr_matrix(mat.shape, dtype=cp.float32)
 
     new_cols = new_cols[mask]
     new_data = new_data[mask]
     valid_source_idxs = source_idxs[mask]
+    del mask, source_idxs
 
     source_rows_compact = (
         cp.searchsorted(mat.indptr, cp.arange(mat.nnz, dtype=cp.int32), side="right")
         - 1
     )
     new_rows = source_rows_compact[valid_source_idxs]
+    del source_rows_compact, valid_source_idxs, windows
 
-    return cps.coo_matrix((new_data, (new_rows, new_cols)), shape=mat.shape).tocsr()
+    out = cps.coo_matrix((new_data, (new_rows, new_cols)), shape=mat.shape).tocsr()
+    del new_data, new_rows, new_cols
+    return out
 
 
 def _normalize_csr_rows_inplace_gpu(mat: "cps.csr_matrix") -> "cp.ndarray":
@@ -544,6 +607,8 @@ def _normalize_csr_rows_inplace_gpu(mat: "cps.csr_matrix") -> "cp.ndarray":
     safe = norms.copy()
     safe[safe == 0.0] = 1.0
 
+    # Fail fast and help type-checkers: sparse stubs may consider `indptr` Optional.
+    assert mat.indptr is not None, "CSR matrix indptr must not be None"
     if mat.nnz > 0:
         row_idx = (
             cp.searchsorted(
@@ -561,13 +626,13 @@ def _sparse_proximate_similarity_pairs_above_threshold_gpu(
     left_csr: "sp.csr_matrix",
     right_csr: "sp.csr_matrix",
     threshold: float,
-    left_global_idxs: NDArray[np.int64],
-    right_global_idxs: NDArray[np.int64],
+    left_global_idxs: NDArray[np.int32],
+    right_global_idxs: NDArray[np.int32],
     return_timings: bool = False,
     approx_config: SimilarityConfig | None = None,
 ) -> (
-    tuple[NDArray[np.int64], NDArray[np.int64], NDArray[np.float32]]
-    | tuple[NDArray[np.int64], NDArray[np.int64], NDArray[np.float32], dict]
+    tuple[NDArray[np.int32], NDArray[np.int32], NDArray[np.float32]]
+    | tuple[NDArray[np.int32], NDArray[np.int32], NDArray[np.float32], dict]
 ):
     """
     Compute row-wise cosine similarities using GPU (CuPy). Returns numpy arrays
@@ -581,9 +646,23 @@ def _sparse_proximate_similarity_pairs_above_threshold_gpu(
         raise ValueError("Input CSR matrices must have at least one row each")
 
     # Transfer to GPU
+    # Why float16: reduce memory and bandwidth in the approximate stage.
+    # We represent CSR values as float16 on GPU without affecting the exact stage
+    # (which uses original list spectra on CPU).
     t_transfer_in = perf_counter()
-    L = cps.csr_matrix(left_csr)
-    R = cps.csr_matrix(right_csr)
+
+    left_csr_fp16 = left_csr.copy()
+    left_csr_fp16.data = left_csr_fp16.data.astype(
+        APPROX_INTENSITY_DTYPE_NP, copy=False
+    )
+    right_csr_fp16 = right_csr.copy()
+    right_csr_fp16.data = right_csr_fp16.data.astype(
+        APPROX_INTENSITY_DTYPE_NP, copy=False
+    )
+
+    L = cps.csr_matrix(left_csr_fp16)
+    R = cps.csr_matrix(right_csr_fp16)
+
     transfer_in_time = perf_counter() - t_transfer_in
 
     # Normalize
@@ -596,6 +675,10 @@ def _sparse_proximate_similarity_pairs_above_threshold_gpu(
     if approx_config is not None and approx_config.ms2_tolerance_ppm is not None:
         assert approx_config.nbins > 0, "computed nbins must be positive"
         t_exp0 = perf_counter()
+        # Help type-checkers: this branch guarantees `approx_config` is not None.
+        assert approx_config is not None, (
+            "approx_config must not be None when GPU expansion is enabled"
+        )
         R = _expand_csr_horizontal_adaptive_gpu(
             R,
             approx_config.bin_size,
@@ -635,14 +718,14 @@ def _sparse_proximate_similarity_pairs_above_threshold_gpu(
         }
         if return_timings:
             return (
-                np.empty((0,), dtype=np.int64),
-                np.empty((0,), dtype=np.int64),
+                np.empty((0,), dtype=np.int32),
+                np.empty((0,), dtype=np.int32),
                 np.empty((0,), dtype=np.float32),
                 timings,
             )
         return (
-            np.empty((0,), dtype=np.int64),
-            np.empty((0,), dtype=np.int64),
+            np.empty((0,), dtype=np.int32),
+            np.empty((0,), dtype=np.int32),
             np.empty((0,), dtype=np.float32),
         )
 
@@ -662,14 +745,14 @@ def _sparse_proximate_similarity_pairs_above_threshold_gpu(
         }
         if return_timings:
             return (
-                np.empty((0,), dtype=np.int64),
-                np.empty((0,), dtype=np.int64),
+                np.empty((0,), dtype=np.int32),
+                np.empty((0,), dtype=np.int32),
                 np.empty((0,), dtype=np.float32),
                 timings,
             )
         return (
-            np.empty((0,), dtype=np.int64),
-            np.empty((0,), dtype=np.int64),
+            np.empty((0,), dtype=np.int32),
+            np.empty((0,), dtype=np.int32),
             np.empty((0,), dtype=np.float32),
         )
 
@@ -677,8 +760,8 @@ def _sparse_proximate_similarity_pairs_above_threshold_gpu(
 
     # Transfer back to CPU (only the passing elements)
     t_transfer_out = perf_counter()
-    li = cp.asnumpy(out_rows).astype(np.int64)
-    ri = cp.asnumpy(out_cols).astype(np.int64)
+    li = cp.asnumpy(out_rows).astype(np.int32)
+    ri = cp.asnumpy(out_cols).astype(np.int32)
     prox_sims_out = cp.asnumpy(out_data).astype(np.float32)
     transfer_out_time = perf_counter() - t_transfer_out
 
@@ -705,10 +788,25 @@ def _sparse_proximate_similarity_pairs_above_threshold_gpu(
 def _ensure_idx_column(df: pl.DataFrame, idx_col: str = "idx") -> pl.DataFrame:
     """
     Ensure the DataFrame has an integer row-index column named `idx_col`.
+
+    Note: For memory efficiency in approximate similarity, we standardize spectrum ids
+    to `INDEX_DTYPE_PL` on CPU (libraries may store Int64). We also fail fast if an
+    overflow would occur when casting to int32.
     """
-    if idx_col in df.columns:
-        return df.with_columns(pl.col(idx_col).cast(pl.Int64))
-    return df.with_row_index(idx_col).with_columns(pl.col(idx_col).cast(pl.Int64))
+    if idx_col not in df.columns:
+        df = df.with_row_index(idx_col)
+
+    # Fail fast on overflow instead of silently wrapping/truncating.
+    idx_max = df.select(pl.col(idx_col).max()).item()
+    assert idx_max is not None, (
+        f"{idx_col} max was None; dataframe appears empty unexpectedly"
+    )
+    assert int(idx_max) <= np.iinfo(INDEX_DTYPE_NP).max, (
+        f"{idx_col} values must fit in int32 (<= {np.iinfo(INDEX_DTYPE_NP).max}), got max {idx_col}={idx_max}. "
+        "Reduce library size, shard input, or change index dtype policy."
+    )
+
+    return df.with_columns(pl.col(idx_col).cast(INDEX_DTYPE_PL))
 
 
 def proximate_all_vs_all_pairs(
@@ -746,8 +844,8 @@ def proximate_all_vs_all_pairs(
     if n_left == 0 or n_right == 0:
         return pl.DataFrame(
             {
-                "idx": pl.Series([], dtype=pl.Int64),
-                "idx_right": pl.Series([], dtype=pl.Int64),
+                "idx": pl.Series([], dtype=INDEX_DTYPE_PL),
+                "idx_right": pl.Series([], dtype=INDEX_DTYPE_PL),
                 "proximate_similarity": pl.Series([], dtype=pl.Float32),
             }
         )
@@ -792,8 +890,11 @@ def proximate_all_vs_all_pairs(
         bin_size=proximate_config.bin_size,
     )
 
-    left_global_idxs = left["idx"].to_numpy()
-    right_global_idxs = right["idx"].to_numpy()
+    # Cast to int32 on CPU even if upstream libraries store idx as int64.
+    # Cast to int32 on CPU even if upstream libraries store idx as int64.
+    # Fail-fast overflow checks are handled in `_ensure_idx_column`.
+    left_global_idxs = left["idx"].to_numpy().astype(INDEX_DTYPE_NP, copy=False)
+    right_global_idxs = right["idx"].to_numpy().astype(INDEX_DTYPE_NP, copy=False)
 
     left_flat = float(left_timings.get("flatten_time", 0.0))
     right_flat = float(right_timings.get("flatten_time", 0.0))
@@ -871,8 +972,8 @@ def proximate_all_vs_all_pairs(
     if n_candidates == 0:
         empty = pl.DataFrame(
             {
-                "idx": pl.Series([], dtype=pl.Int64),
-                "idx_right": pl.Series([], dtype=pl.Int64),
+                "idx": pl.Series([], dtype=INDEX_DTYPE_PL),
+                "idx_right": pl.Series([], dtype=INDEX_DTYPE_PL),
                 "proximate_similarity": pl.Series([], dtype=pl.Float32),
             }
         )
@@ -895,9 +996,9 @@ def proximate_all_vs_all_pairs(
 
     out = pl.DataFrame(
         {
-            "idx": l_idxs.astype(np.int64),
-            "idx_right": r_idxs.astype(np.int64),
-            "proximate_similarity": sims.astype(np.float32),
+            "idx": l_idxs.astype(INDEX_DTYPE_NP, copy=False),
+            "idx_right": r_idxs.astype(INDEX_DTYPE_NP, copy=False),
+            "proximate_similarity": sims.astype(np.float32, copy=False),
         }
     )
 
@@ -972,8 +1073,8 @@ def proximate_all_vs_all_pairs(
 
     results = results.with_columns(
         [
-            pl.col("idx").cast(pl.Int64),
-            pl.col("idx_right").cast(pl.Int64),
+            pl.col("idx").cast(INDEX_DTYPE_PL),
+            pl.col("idx_right").cast(INDEX_DTYPE_PL),
             pl.col("proximate_similarity").cast(pl.Float32),
             pl.col("dotprod_similarity").cast(pl.Float32),
         ]
@@ -1037,7 +1138,7 @@ if __name__ == "__main__":
         return_timings=True,
         use_gpu=True,
     )
-    results_adaptive_df, timings_adaptive = proximate_all_vs_all_pairs(
+    results_gpu_df_any, timings_gpu = proximate_all_vs_all_pairs(
         spectra,
         spectra,
         threshold=similarity_threhsold,
@@ -1046,9 +1147,12 @@ if __name__ == "__main__":
         return_timings=True,
         use_gpu=True,
     )
+    assert isinstance(results_gpu_df_any, pl.DataFrame)
+    results_gpu_df: pl.DataFrame = results_gpu_df_any
     print("with gpu:")
-    print(timings_adaptive)
-    results_adaptive_df, timings_adaptive = proximate_all_vs_all_pairs(
+    print(timings_gpu)
+
+    results_cpu_df_any, timings_cpu = proximate_all_vs_all_pairs(
         spectra,
         spectra,
         threshold=similarity_threhsold,
@@ -1057,12 +1161,14 @@ if __name__ == "__main__":
         return_timings=True,
         use_gpu=False,
     )
+    assert isinstance(results_cpu_df_any, pl.DataFrame)
+    results_cpu_df: pl.DataFrame = results_cpu_df_any
     print("without gpu:")
-    print(timings_adaptive)
+    print(timings_cpu)
 
     abs_diff_adaptive = np.abs(
-        results_adaptive_df["proximate_similarity"].to_numpy()
-        - results_adaptive_df["dotprod_similarity"].to_numpy()
+        results_cpu_df.get_column("proximate_similarity").to_numpy()
+        - results_cpu_df.get_column("dotprod_similarity").to_numpy()
     )
     total_pairs_adaptive = len(abs_diff_adaptive)
     avg_abs_diff_adaptive = float(np.mean(abs_diff_adaptive))

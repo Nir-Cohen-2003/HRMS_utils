@@ -14,11 +14,9 @@ transfers and overlapping I/O with compute.
 
 import gc
 import logging
-import math
 import shutil
 import tempfile
 import traceback
-from dataclasses import dataclass
 from pathlib import Path
 from time import perf_counter
 from typing import List, Union
@@ -27,13 +25,13 @@ import cupy as cp
 import cupyx.scipy.sparse as cps
 import numpy as np
 import polars as pl
-import scipy.sparse as sp
 from approximate_similarity import (
+    APPROX_INTENSITY_DTYPE_NP,
+    INDEX_DTYPE_NP,
     SimilarityConfig,
     _expand_csr_horizontal_adaptive_gpu,
     _normalize_csr_rows_inplace_gpu,
     _sparse_bin_spectra_df_to_csr,
-    _sparse_proximate_similarity_pairs_above_threshold_gpu,
 )
 from batched_exact_cosine import (
     _compute_dynamic_max_peaks_exact,
@@ -41,19 +39,32 @@ from batched_exact_cosine import (
     _run_exact_cosine_gpu_batched,
 )
 from batched_utils import BatchedGPUConfig, _log_message_to_file, _yield_batches_dynamic
-from numpy.dtypes import UShortDType
 from numpy.typing import NDArray
-
-import hrms_utils
 
 logger = logging.getLogger(__name__)
 
 
+def _assert_idx_fits_int32(df: pl.DataFrame, idx_col: str = "idx") -> None:
+    """
+    Fail fast if `idx_col` cannot be safely cast to int32.
+
+    Why: We store spectrum ids as int32 for memory efficiency; we must not allow silent overflow.
+    """
+    idx_max = df.select(pl.col(idx_col).max()).item()
+    assert idx_max is not None, (
+        f"{idx_col} max was None; dataframe appears empty unexpectedly"
+    )
+    assert int(idx_max) <= np.iinfo(np.int32).max, (
+        f"{idx_col} values must fit in int32 (<= {np.iinfo(np.int32).max}), "
+        f"got max {idx_col}={idx_max}. Reduce library size, shard input, or change index dtype policy."
+    )
+
+
 def _write_batch_results_to_parquet(
     batch_results: List[
-        tuple[NDArray[np.int64], NDArray[np.int64], NDArray[np.float32]]
+        tuple[NDArray[np.int32], NDArray[np.int32], NDArray[np.float32]]
     ],
-    output_path: Path,
+    temp_dir: Path,
     mode_name: str,
     batch_counter: int,
 ) -> int:
@@ -85,13 +96,21 @@ def _write_batch_results_to_parquet(
     # Create dataframe and write
     df = pl.DataFrame(
         {
-            "idx": all_left,
-            "idx_right": all_right,
+            "idx": all_left.astype(INDEX_DTYPE_NP, copy=False),
+            "idx_right": all_right.astype(INDEX_DTYPE_NP, copy=False),
             "proximate_similarity": all_sims,
         }
     )
 
-    chunk_path = output_path / f"pairs_{mode_name}_batch_{batch_counter}.parquet"
+    chunk_path = temp_dir / f"pairs_{mode_name}_batch_{batch_counter}.parquet"
+    # Ensure parquet stores ids as int32 (avoid accidental upcast during IO)
+    df = df.with_columns(
+        [
+            pl.col("idx").cast(pl.Int32),
+            pl.col("idx_right").cast(pl.Int32),
+            pl.col("proximate_similarity").cast(pl.Float32),
+        ]
+    )
     df.write_parquet(chunk_path)
 
     return n_pairs
@@ -121,6 +140,13 @@ def _compute_batched_gpu_similarity_single_mode(
 
     if n_spectra_left == 0:
         return 0
+
+    # Profiling: split proximate stage into (a) compute-only and (b) total (compute + writes).
+    # Why: compute-only approximates GPU throughput; total includes I/O backpressure.
+    approx_total_start = perf_counter()
+    approx_compute_seconds = 0.0
+    approx_write_seconds = 0.0
+    approx_write_pairs_total = 0
 
     # Determine if cross-library comparison
     is_cross_library = right_mode_df is not None
@@ -156,7 +182,10 @@ def _compute_batched_gpu_similarity_single_mode(
         intensity_power=approx_config.intensity_power,
         bin_size=approx_config.bin_size,
     )
-    left_global_idxs = mode_df["idx"].cast(pl.Int64).to_numpy()
+    _assert_idx_fits_int32(mode_df, "idx")
+    left_global_idxs = (
+        mode_df["idx"].cast(pl.Int32).to_numpy().astype(INDEX_DTYPE_NP, copy=False)
+    )
 
     # Convert right library to CSR matrix if cross-library
     if is_cross_library:
@@ -171,7 +200,13 @@ def _compute_batched_gpu_similarity_single_mode(
             intensity_power=approx_config.intensity_power,
             bin_size=approx_config.bin_size,
         )
-        right_global_idxs = right_mode_df["idx"].cast(pl.Int64).to_numpy()
+        _assert_idx_fits_int32(right_mode_df, "idx")
+        right_global_idxs = (
+            right_mode_df["idx"]
+            .cast(pl.Int32)
+            .to_numpy()
+            .astype(INDEX_DTYPE_NP, copy=False)
+        )
     else:
         # Self-comparison: use same matrix for both sides
         right_csr_matrix = left_csr_matrix
@@ -189,20 +224,56 @@ def _compute_batched_gpu_similarity_single_mode(
     target_mem = free_mem * config.target_gpu_mem_ratio
 
     # Memory model:
-    # Why: The similarity matrix (N×N×4 bytes) dominates memory usage, not CSR storage.
-    # During computation we have simultaneously in GPU memory:
-    # 1. R_gpu (expanded): N_spectra * avg_peaks_per_spectrum * 12 bytes * expansion_factor
-    # 2. L_gpu: N_spectra * avg_peaks_per_spectrum * 12 bytes
-    # 3. sim matrix: N_spectra^2 * 4 bytes (dense/semi-dense similarity matrix)
-    # 4. Temporary arrays during thresholding: ~20% overhead
+    # Why: The similarity matrix dominates memory usage (quadratic), but CSR storage and
+    # intermediate thresholding buffers also matter. This estimate must track the *actual*
+    # dtypes used for GPU transfer and similarity computation.
     #
-    # Total ≈ N * bytes_per_spectrum * (1 + expansion) + N^2 * 4 + overhead
-    # This is quadratic in N due to the similarity matrix.
+    # During computation we have simultaneously in GPU memory (order-of-magnitude):
+    # 1. R_gpu (expanded CSR)
+    # 2. L_gpu (CSR)
+    # 3. sim matrix (dense/semi-dense)
+    # 4. Temporary arrays during thresholding (~overhead)
+    #
+    # Total ≈ N * bytes_per_spectrum * (1 + expansion) + N^2 * sim_bytes_per_element + overhead
 
-    bytes_per_peak = 12
+    # ---- CSR bytes-per-nnz on GPU (dtype-adjustable) ----
+    # We cast CSR `.data` to APPROX_INTENSITY_DTYPE_NP right before GPU transfer.
+    # CSR `.indices` and `.indptr` dtypes come from the SciPy CSR matrix as built by the
+    # binning routine; do not assume int32 here—measure and fail fast if unexpected.
+    #
+    # Use memory-model parameters from approximate_similarity so this is globally adjustable.
+    from approximate_similarity import (
+        GPU_CSR_OVERHEAD_FACTOR,
+        GPU_SIM_DTYPE_NP,
+        GPU_SIM_TEMP_OVERHEAD_FACTOR,
+    )
+
+    bytes_per_data = int(np.dtype(APPROX_INTENSITY_DTYPE_NP).itemsize)
+
+    csr_indices_dtype = left_csr_matrix.indices.dtype
+    csr_indptr_dtype = left_csr_matrix.indptr.dtype
+    assert np.dtype(csr_indices_dtype).kind in ("i", "u"), (
+        f"CSR indices must be integer dtype, got {csr_indices_dtype}"
+    )
+    assert np.dtype(csr_indptr_dtype).kind in ("i", "u"), (
+        f"CSR indptr must be integer dtype, got {csr_indptr_dtype}"
+    )
+    bytes_per_index = int(np.dtype(csr_indices_dtype).itemsize)
+    bytes_per_indptr = int(np.dtype(csr_indptr_dtype).itemsize)
+
     avg_peaks_per_spectrum = left_csr_matrix.nnz / max(n_spectra_left, 1)
 
-    # Calculate expansion factor, due to expandign the right CSR matrix due to ms2 tolerance
+    # Conservative upper bound: assign full indptr cost per nnz (overestimates, but safe).
+    bytes_per_peak = bytes_per_data + bytes_per_index + bytes_per_indptr
+
+    # Small safety margin for internal allocations/cusparse metadata/alignment.
+    bytes_per_peak *= float(GPU_CSR_OVERHEAD_FACTOR)
+
+    # Similarity matrix dtype + temp overhead are globally adjustable.
+    sim_bytes_per_element = float(np.dtype(GPU_SIM_DTYPE_NP).itemsize)
+    sim_temp_overhead_factor = float(GPU_SIM_TEMP_OVERHEAD_FACTOR)
+
+    # Calculate expansion factor, due to expanding the right CSR matrix due to ms2 tolerance
     expansion_factor = 1.0
     if approx_config.ms2_tolerance_ppm is not None:
         # Estimate expansion: window_da / bin_size
@@ -217,12 +288,21 @@ def _compute_batched_gpu_similarity_single_mode(
     bytes_per_spectrum_csr = avg_peaks_per_spectrum * bytes_per_peak
     bytes_per_spectrum_expanded = bytes_per_spectrum_csr * expansion_factor
 
-    # Solve quadratic equation for optimal batch size N:
-    # target_mem * safety_factor = N^2 * 4 + N * (bytes_expanded + bytes_csr)
-    # Rearranged: 4*N^2 + (bytes_expanded + bytes_csr)*N - target_mem*safety_factor = 0
-    safety_factor = 0.8  # Use 80% of target to account for temporary allocations
+    # Similarity matrix dtype is provided by approximate_similarity.GPU_SIM_DTYPE_NP.
+    # Temp overhead factor is provided by approximate_similarity.GPU_SIM_TEMP_OVERHEAD_FACTOR.
 
-    a = 4.0  # bytes per element in similarity matrix
+    # Solve quadratic equation for optimal batch size N:
+    # Why include `sim_temp_overhead_factor`: thresholding creates temporary buffers roughly
+    # proportional to the similarity matrix's nnz/data size; this factor is a conservative
+    # multiplier that you can tune globally.
+    #
+    # target_mem * safety_factor = N^2 * sim_bytes * sim_temp_overhead + N * (bytes_expanded + bytes_csr)
+    # Rearranged: (sim_bytes*sim_temp_overhead)*N^2 + (bytes_expanded + bytes_csr)*N - target_mem*safety_factor = 0
+    safety_factor = 0.4  # there is a 2-3 times larger overhead than the arrays here.
+
+    a = (
+        sim_bytes_per_element * sim_temp_overhead_factor
+    )  # effective bytes per sim element incl temp buffers
     b = bytes_per_spectrum_expanded + bytes_per_spectrum_csr
     c = -target_mem * safety_factor
 
@@ -284,7 +364,7 @@ def _compute_batched_gpu_similarity_single_mode(
 
     total_pairs = 0
     batch_results: List[
-        tuple[NDArray[np.int64], NDArray[np.int64], NDArray[np.float32]]
+        tuple[NDArray[np.int32], NDArray[np.int32], NDArray[np.float32]]
     ] = []
     gpu_batch_count = 0
     file_counter = 0
@@ -295,7 +375,20 @@ def _compute_batched_gpu_similarity_single_mode(
         t_batch_right = perf_counter()
 
         # Transfer Right to GPU
-        R_gpu = cps.csr_matrix(r_csr)
+        # Why: keep CPU-side CSR in float32 for compatibility and numeric stability,
+        # but move to GPU in float16 to reduce memory pressure.
+        # Transfer Right to GPU without copying the SciPy CSR.
+        # Why: `cps.csr_matrix(sp_csr)` may alias host buffers; we want an explicit
+        # device allocation for `data/indices/indptr` and we must not mutate `r_csr`.
+        r_data_gpu = cp.asarray(
+            np.asarray(r_csr.data).astype(APPROX_INTENSITY_DTYPE_NP, copy=False)
+        )
+        r_indices_gpu = cp.asarray(np.asarray(r_csr.indices))
+        r_indptr_gpu = cp.asarray(np.asarray(r_csr.indptr))
+        R_gpu = cps.csr_matrix(
+            (r_data_gpu, r_indices_gpu, r_indptr_gpu), shape=r_csr.shape
+        )
+        del r_data_gpu, r_indices_gpu, r_indptr_gpu
         # Normalize Right (before expansion)
         _ = _normalize_csr_rows_inplace_gpu(R_gpu)
 
@@ -316,10 +409,24 @@ def _compute_batched_gpu_similarity_single_mode(
             if not is_cross_library and i > j:
                 continue
 
-            t_gpu = perf_counter()
+            # "Compute" timer includes: transfer->GPU, normalize, matmul, thresholding,
+            # and returning results to CPU arrays. It does NOT include parquet writes.
+            t_compute = perf_counter()
 
             # Transfer Left to GPU
-            L_gpu = cps.csr_matrix(l_csr)
+            # Why: keep CPU-side CSR in float32 for compatibility and numeric stability,
+            # but move to GPU in float16 to reduce memory pressure.
+            # Transfer Left to GPU without copying the SciPy CSR.
+            # Why: avoid mutating `l_csr` (batch slice) and avoid large host-side copies.
+            l_data_gpu = cp.asarray(
+                np.asarray(l_csr.data).astype(APPROX_INTENSITY_DTYPE_NP, copy=False)
+            )
+            l_indices_gpu = cp.asarray(np.asarray(l_csr.indices))
+            l_indptr_gpu = cp.asarray(np.asarray(l_csr.indptr))
+            L_gpu = cps.csr_matrix(
+                (l_data_gpu, l_indices_gpu, l_indptr_gpu), shape=l_csr.shape
+            )
+            del l_data_gpu, l_indices_gpu, l_indptr_gpu
             # Normalize Left
             _ = _normalize_csr_rows_inplace_gpu(L_gpu)
 
@@ -340,13 +447,23 @@ def _compute_batched_gpu_similarity_single_mode(
                     cp.searchsorted(sim.indptr, indices_in_data, side="right") - 1
                 )
 
+                # `mask` is no longer needed after extracting `out_*`.
+                del mask
+
                 # Transfer back to CPU
-                li = cp.asnumpy(out_rows).astype(np.int64)
-                ri = cp.asnumpy(out_cols).astype(np.int64)
+                # Ensure batch-local id arrays are int32 (may arrive as int64 depending on upstream)
+                l_idxs = np.asarray(l_idxs, dtype=np.int32)
+                r_idxs = np.asarray(r_idxs, dtype=np.int32)
+
+                li = cp.asnumpy(out_rows).astype(np.int32)
+                ri = cp.asnumpy(out_cols).astype(np.int32)
                 prox_sims_out = cp.asnumpy(out_data).astype(np.float32)
 
-                left_pairs = l_idxs[li]
-                right_pairs = r_idxs[ri]
+                # Free GPU temporaries ASAP to reduce peak device memory.
+                del out_rows, out_cols, out_data, indices_in_data
+
+                left_pairs = l_idxs[li].astype(np.int32, copy=False)
+                right_pairs = r_idxs[ri].astype(np.int32, copy=False)
 
                 # Filter diagonal block for self-comparison
                 if not is_cross_library and i == j:
@@ -366,6 +483,7 @@ def _compute_batched_gpu_similarity_single_mode(
                     batch_results.append((left_pairs, right_pairs, prox_sims_out))
                     total_pairs += len(left_pairs)
 
+            approx_compute_seconds += perf_counter() - t_compute
             gpu_batch_count += 1
 
             # Periodic write
@@ -377,8 +495,12 @@ def _compute_batched_gpu_similarity_single_mode(
                     mode_name,
                     file_counter,
                 )
+                write_seconds = perf_counter() - t_write
+                approx_write_seconds += write_seconds
+                approx_write_pairs_total += int(pairs_written)
+
                 _log_message_to_file(
-                    f"    Wrote {pairs_written} pairs to file {file_counter} in {perf_counter() - t_write:.3f}s",
+                    f"    Wrote {pairs_written} pairs to file {file_counter} in {write_seconds:.3f}s",
                     log_path,
                 )
                 batch_results.clear()
@@ -386,6 +508,7 @@ def _compute_batched_gpu_similarity_single_mode(
                 gc.collect()
 
             # Free Left batch memory immediately
+            # Free Left batch memory immediately (and any remaining temporaries).
             del L_gpu, sim
             if j % 1 == 0:
                 cp.get_default_memory_pool().free_all_blocks()  # Optional, might be slow
@@ -408,11 +531,25 @@ def _compute_batched_gpu_similarity_single_mode(
             mode_name,
             file_counter,
         )
+        write_seconds = perf_counter() - t_write
+        approx_write_seconds += write_seconds
+        approx_write_pairs_total += int(pairs_written)
+
         _log_message_to_file(
-            f"    Wrote final {pairs_written} pairs to file {file_counter} in {perf_counter() - t_write:.3f}s",
+            f"    Wrote final {pairs_written} pairs to file {file_counter} in {write_seconds:.3f}s",
             log_path,
         )
         batch_results.clear()
+
+    approx_total_seconds = perf_counter() - approx_total_start
+    _log_message_to_file(
+        "  Approximate profiling summary (single mode):\n"
+        f"    approx_compute_seconds={approx_compute_seconds:.6f}s\n"
+        f"    approx_write_seconds={approx_write_seconds:.6f}s\n"
+        f"    approx_total_seconds={approx_total_seconds:.6f}s\n"
+        f"    approx_pairs_total={total_pairs} (pairs_written={approx_write_pairs_total})",
+        log_path,
+    )
 
     gc.collect()
     cp.get_default_memory_pool().free_all_blocks()
@@ -960,10 +1097,14 @@ def build_and_write_pairs_parquet_gpu_batched(
 if __name__ == "__main__":
     # Example usage
     example_parquet_paths = [
-        # Path("/home/analytit_admin/Data/spectral_libs/info_score/fraghub_100k.parquet"),
-        Path("/home/analytit_admin/Data/spectral_libs/info_score/fraghub_300k.parquet"),
-        # Path("/home/analytit_admin/Data/spectral_libs/info_score/fraghub_600k.parquet"),
-        # Path("/home/analytit_admin/Data/spectral_libs/fraghub/fraghub.parquet"),
+        Path(
+            "/home/analytit_admin/Data/spectral_libs/fast_similarity/fraghub_P_100k.parqeut"
+        ),
+        # Path("/home/analytit_admin/Data/spectral_libs/fast_similarity/fraghub_P_300k.parqeut"),
+        # Path("/home/analytit_admin/Data/spectral_libs/fast_similarity/fraghub_P_500k.parqeut"),
+        # Path(
+        #     "/home/analytit_admin/Data/spectral_libs/fast_similarity/fraghub_P.parqeut"
+        # ),
     ]
     output_parquet_path = Path("output_similarity_pairs.parquet")
 
@@ -983,7 +1124,7 @@ if __name__ == "__main__":
         batch_size=10000,
         gpu_batch_write_interval=100,
         approx_config=approx_cfg,
-        target_gpu_mem_ratio=0.1,
+        target_gpu_mem_ratio=0.3,
     )
 
     build_and_write_pairs_parquet_gpu_batched(
