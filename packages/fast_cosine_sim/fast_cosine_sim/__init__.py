@@ -9,17 +9,21 @@ the exact similarity computation/refinement.
 from __future__ import annotations
 
 from .config import (
-    BatchedApproximateGpuConfig,
-    DataTypeConfig,
+    ApproximateGpuBatchedSimilarityConfig,
+    ApproximateGpuDtypesConfig,
+    BatchSizingConfig,
     IntensityTransformConfig,
-    OutputConfig,
+    LoggingConfig,
+    OutputParquetConfig,
 )
 from .gpu_batched_approximate import compute_gpu_batched_approximate_similarity_pairs
 
 __all__ = [
-    "BatchedApproximateGpuConfig",
-    "DataTypeConfig",
+    "ApproximateGpuBatchedSimilarityConfig",
+    "ApproximateGpuDtypesConfig",
+    "BatchSizingConfig",
     "IntensityTransformConfig",
-    "OutputConfig",
+    "LoggingConfig",
+    "OutputParquetConfig",
     "compute_gpu_batched_approximate_similarity_pairs",
 ]

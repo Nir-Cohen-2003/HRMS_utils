@@ -1,18 +1,34 @@
 from __future__ import annotations
 
+from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterator
+from typing import Protocol
 
 import numpy as np
 import polars as pl
 import scipy.sparse as sp
+from numpy.typing import NDArray
 
 from .config import ApproximateGpuBatchedSimilarityConfig
 
 # Why: conservative overhead multipliers for the batching memory model.
 GPU_CSR_OVERHEAD_FACTOR: float = 1.25
 GPU_SIM_TEMP_OVERHEAD_FACTOR: float = 1.20
+
+
+class LoggerLike(Protocol):
+    def info(self, message: str) -> None: ...
+
+
+def _log(logger: LoggerLike | None, message: str) -> None:
+    # Why: caller-provided loggers can vary; fail-safe logging avoids breaking GPU jobs.
+    if logger is None:
+        return
+    try:
+        logger.info(message)
+    except Exception:
+        return
 
 
 def _collect_if_lazy(frame: pl.DataFrame | pl.LazyFrame) -> pl.DataFrame:
@@ -28,98 +44,135 @@ def _ensure_row_index_column(
 
 
 def _apply_intensity_power_if_needed(intensity: np.ndarray, *, power: float) -> np.ndarray:
-    # Contract from you: "enable dictating the power ... with a check for 0 to prevent extra work".
-    # Semantics: power==0 is treated as identity (skip work), not x**0 == 1.
-    if float(power) == 0.0:
+    # Contract from you:
+    #   - power==1.0 => skip extra work (identity)
+    #   - power==0.0 => presence-only (set all non-zero to 1.0)
+    p = float(power)
+    if p == 1.0:
         return intensity
+    if p == 0.0:
+        # Note: intensity here is already filtered to valid bins and zeros are later dropped after summing.
+        return np.ones_like(intensity)
     # Why: avoid implicit float64 upcast.
-    return np.power(intensity, float(power), dtype=intensity.dtype)
+    return np.power(intensity, p, dtype=intensity.dtype)
 
 
-def _sparse_bin_spectra_df_to_csr(
-    df: pl.DataFrame,
+def _flatten_spectra_to_numpy(
+    df: pl.DataFrame, *, mz_col: str, intensity_col: str, spectrum_index_col: str
+) -> tuple[NDArray[np.float64], NDArray[np.float32], NDArray[np.int32], int]:
+    """
+    Flatten list-valued spectrum columns into NumPy arrays via Polars explode.
+
+    Returns: (flat_mzs, flat_ints, spec_pos, n_spec)
+      - flat_mzs: float64 m/z values (exploded)
+      - flat_ints: float32 intensities (exploded)
+      - spec_pos: int32 position index of the parent spectrum for each peak
+      - n_spec: number of spectra (rows in original df)
+    """
+    n_spec = int(len(df))
+    if n_spec == 0:
+        return (
+            np.asarray([], dtype=np.float64),
+            np.asarray([], dtype=np.float32),
+            np.asarray([], dtype=np.int32),
+            0,
+        )
+
+    df_idx = df.with_row_index(spectrum_index_col)
+    exploded = df_idx.explode([mz_col, intensity_col])
+    if len(exploded) == 0:
+        return (
+            np.asarray([], dtype=np.float64),
+            np.asarray([], dtype=np.float32),
+            np.asarray([], dtype=np.int32),
+            n_spec,
+        )
+
+    exploded = exploded.with_columns(
+        [
+            pl.col(mz_col).cast(pl.Float64),
+            pl.col(intensity_col).cast(pl.Float32),
+            pl.col(spectrum_index_col).cast(pl.Int32),
+        ]
+    )
+
+    flat_mzs: NDArray[np.float64] = exploded.get_column(mz_col).to_numpy()
+    flat_ints: NDArray[np.float32] = exploded.get_column(intensity_col).to_numpy()
+    spec_pos: NDArray[np.int32] = exploded.get_column(spectrum_index_col).to_numpy()
+
+    return flat_mzs, flat_ints, spec_pos, n_spec
+
+
+def _sparse_bin_flat_spectra_to_csr(
     *,
-    mz_column_name: str,
-    intensity_column_name: str,
+    flat_mzs: NDArray[np.float64],
+    flat_ints: NDArray[np.float32],
+    spec_pos: NDArray[np.int32],
+    n_spec: int,
     upper_bound: float,
     bin_size: float,
     intensity_power: float,
-    intensity_dtype: np.dtype,
     csr_index_dtype: np.dtype,
+    intensity_dtype: np.dtype,
 ) -> sp.csr_matrix:
-    assert mz_column_name in df.columns, f"Missing column: {mz_column_name}"
-    assert intensity_column_name in df.columns, f"Missing column: {intensity_column_name}"
+    """
+    Turn flattened arrays into a sparse CSR matrix (n_spec, nbins).
+
+    Binning uses bin = rint(mz / bin_size) (matches the experiment path).
+    Duplicates are summed via COO -> CSR.
+
+    Intensity semantics:
+      - power == 1.0 => identity
+      - power == 0.0 => presence-only (set to 1)
+      - otherwise => intensity ** power
+    """
     assert upper_bound > 0.0, "upper_bound must be positive"
     assert bin_size > 0.0, "bin_size must be positive"
 
     nbins = int(np.floor(float(upper_bound) / float(bin_size))) + 1
     assert nbins > 0, f"Computed nbins must be positive, got {nbins}"
 
-    mz_list: list[np.ndarray] = df[mz_column_name].to_list()
-    intensity_list: list[np.ndarray] = df[intensity_column_name].to_list()
-    assert len(mz_list) == len(intensity_list) == len(df), "List columns must align with df height"
+    if n_spec == 0:
+        return sp.csr_matrix((0, nbins), dtype=intensity_dtype)
+    if flat_mzs.size == 0 or flat_ints.size == 0:
+        return sp.csr_matrix((n_spec, nbins), dtype=intensity_dtype)
 
-    data_parts: list[np.ndarray] = []
-    indices_parts: list[np.ndarray] = []
-    indptr = np.zeros(len(df) + 1, dtype=np.int64)
+    mass_bins = np.rint(flat_mzs / float(bin_size)).astype(np.int32, copy=False)
 
-    nnz_total = 0
-    for row_i, (mz, intensity) in enumerate(zip(mz_list, intensity_list, strict=True)):
-        mz = np.asarray(mz)
-        intensity = np.asarray(intensity)
+    # Keep only in-range bins and positive intensities.
+    valid_mask = (mass_bins >= 0) & (mass_bins < nbins) & (flat_ints > 0)
+    if not np.any(valid_mask):
+        return sp.csr_matrix((n_spec, nbins), dtype=intensity_dtype)
 
-        assert mz.ndim == 1 and intensity.ndim == 1, "mz/intensity must be 1D arrays per spectrum"
-        assert mz.shape[0] == intensity.shape[0], "mz and intensity must have same length"
+    mass_bins = mass_bins[valid_mask].astype(np.int32, copy=False)
+    spec_pos = spec_pos[valid_mask].astype(np.int32, copy=False)
 
-        if mz.size == 0:
-            indptr[row_i + 1] = nnz_total
-            continue
+    weights = np.asarray(flat_ints[valid_mask], dtype=np.float32, order="C", copy=False)
+    weights = _apply_intensity_power_if_needed(weights, power=float(intensity_power)).astype(
+        intensity_dtype, copy=False
+    )
 
-        bin_idx = np.floor(mz / float(bin_size)).astype(np.int64, copy=False)
-        valid = (bin_idx >= 0) & (bin_idx < nbins)
-        bin_idx = bin_idx[valid]
-        if bin_idx.size == 0:
-            indptr[row_i + 1] = nnz_total
-            continue
-
-        values = intensity[valid].astype(intensity_dtype, copy=False)
-        values = _apply_intensity_power_if_needed(values, power=intensity_power)
-
-        # Aggregate duplicate bins inside the spectrum.
-        order = np.argsort(bin_idx, kind="mergesort")
-        bin_idx = bin_idx[order]
-        values = values[order]
-
-        uniq_bins, start_positions = np.unique(bin_idx, return_index=True)
-        summed = np.add.reduceat(values, start_positions)
-
-        # Drop zeros to limit nnz and
-        # GPU transfer.
-        keep = summed != 0
-        uniq_bins = uniq_bins[keep]
-        summed = summed[keep]
-
-        if uniq_bins.size:
-            indices_parts.append(uniq_bins.astype(csr_index_dtype, copy=False))
-            data_parts.append(summed.astype(intensity_dtype, copy=False))
-            nnz_total += int(uniq_bins.size)
-
-        indptr[row_i + 1] = nnz_total
-
-    if nnz_total == 0:
-        return sp.csr_matrix((len(df), nbins), dtype=intensity_dtype)
-
-    data = np.concatenate(data_parts).astype(intensity_dtype, copy=False)
-    indices = np.concatenate(indices_parts).astype(csr_index_dtype, copy=False)
+    coo = sp.coo_matrix(
+        (weights, (spec_pos, mass_bins)),
+        shape=(n_spec, nbins),
+        dtype=intensity_dtype,
+    )
+    csr = sp.csr_matrix(coo.tocsr())
 
     # CuPy sparse is most compatible with int32 indices/indptr; fail fast if too large.
-    assert nnz_total <= np.iinfo(np.int32).max, (
-        f"CSR nnz too large for int32 indptr (nnz_total={nnz_total}); "
+    assert csr.nnz <= np.iinfo(np.int32).max, (
+        f"CSR nnz too large for int32 indptr (nnz_total={csr.nnz}); "
         "lower batch sizes / reduce nnz or switch approach."
     )
-    indptr_i32 = indptr.astype(csr_index_dtype, copy=False)
 
-    return sp.csr_matrix((data, indices, indptr_i32), shape=(len(df), nbins))
+    # Enforce dtypes for GPU transfer.
+    assert csr.indices is not None, "CSR indices must not be None"
+    assert csr.indptr is not None, "CSR indptr must not be None"
+    csr.indices = np.asarray(csr.indices, dtype=csr_index_dtype)
+    csr.indptr = np.asarray(csr.indptr, dtype=csr_index_dtype)
+    csr.data = np.asarray(csr.data, dtype=intensity_dtype)
+
+    return csr
 
 
 def _normalize_csr_rows_inplace_gpu(x_gpu) -> None:
@@ -218,12 +271,22 @@ def _estimate_max_peaks_per_batch(
 
 def _yield_batches_dynamic(
     csr_matrix: sp.csr_matrix,
-    global_ids: np.ndarray,
+    global_ids: NDArray[np.int64] | NDArray[np.int32] | NDArray[np.uint64] | NDArray[np.uint32],
     *,
     max_peaks: int,
     min_batch_size: int,
-) -> Iterator[tuple[int, int, sp.csr_matrix, np.ndarray]]:
+) -> Iterator[
+    tuple[
+        int,
+        int,
+        sp.csr_matrix,
+        NDArray[np.int64] | NDArray[np.int32] | NDArray[np.uint64] | NDArray[np.uint32],
+    ]
+]:
     n_rows = int(csr_matrix.shape[0])
+    # Why: some type checkers treat CSR `indptr` as potentially optional; we explicitly assert.
+    assert csr_matrix.indptr is not None, "CSR matrix indptr must not be None"
+    # Note: `indptr` dtype follows the CSR index dtype (often int32), so don't over-constrain it to int64.
     indptr = np.asarray(csr_matrix.indptr)
     assert indptr.ndim == 1 and indptr.size == n_rows + 1, "CSR indptr shape mismatch"
 
@@ -259,6 +322,7 @@ def compute_gpu_batched_approximate_similarity_pairs(
     config: ApproximateGpuBatchedSimilarityConfig,
     *,
     right: pl.DataFrame | pl.LazyFrame | None = None,
+    logger: LoggerLike | None = None,
 ) -> pl.DataFrame | pl.LazyFrame:
     """GPU batched approximate similarity candidate generation.
 
@@ -278,8 +342,8 @@ def compute_gpu_batched_approximate_similarity_pairs(
       If config.batching.flush_to_parquet_every_n_batches is None:
         returns a `pl.DataFrame`
       Else:
-        requires `output_parquet_path` be provided by setting it on `config` via your wrapper
-        and returns a `pl.LazyFrame` via `pl.scan_parquet(dir/*.parquet)`
+        uses `config.output_parquet.path` as the directory and returns a `pl.LazyFrame`
+        via `pl.scan_parquet(dir/*.parquet)`.
     """
     import cupy as cp
 
@@ -292,6 +356,7 @@ def compute_gpu_batched_approximate_similarity_pairs(
             "If right is provided, config.comparison_mode must be 'cross'"
         )
 
+    _log(logger, "compute_gpu_batched_approximate_similarity_pairs: start")
     left = _ensure_row_index_column(left, index_column_name=config.spectrum_id_column)
     right_frame = (
         None
@@ -306,44 +371,56 @@ def compute_gpu_batched_approximate_similarity_pairs(
         for col in (config.spectrum_id_column, config.mz_column, config.intensity_column):
             assert col in df.columns, f"{label} missing required column: {col}"
 
-    # Build CSR matrices + global ids from frames.
+    # Build CSR matrices + global ids from frames (use explode/flatten path from experiment for speed).
     left_ids = (
-        left_df[config.spectrum_id_column]
-        .cast(_polars_dtype_from_numpy(config.dtypes.index_dtype))
+        left_df.get_column(config.spectrum_id_column)
         .to_numpy()
         .astype(config.dtypes.index_dtype, copy=False)
     )
     right_ids = (
-        right_df[config.spectrum_id_column]
-        .cast(_polars_dtype_from_numpy(config.dtypes.index_dtype))
+        right_df.get_column(config.spectrum_id_column)
         .to_numpy()
         .astype(config.dtypes.index_dtype, copy=False)
     )
 
-    left_csr = _sparse_bin_spectra_df_to_csr(
+    flat_left_mzs, flat_left_ints, left_spec_pos, n_left = _flatten_spectra_to_numpy(
         left_df,
-        mz_column_name=config.mz_column,
-        intensity_column_name=config.intensity_column,
-        upper_bound=config.upper_mass_bound,
-        bin_size=config.bin_size,
-        intensity_power=config.intensity.power,
-        intensity_dtype=config.dtypes.intensity_dtype,
+        mz_col=config.mz_column,
+        intensity_col=config.intensity_column,
+        spectrum_index_col="__spec_pos",
+    )
+    left_csr = _sparse_bin_flat_spectra_to_csr(
+        flat_mzs=flat_left_mzs,
+        flat_ints=flat_left_ints,
+        spec_pos=left_spec_pos,
+        n_spec=n_left,
+        upper_bound=float(config.upper_mass_bound),
+        bin_size=float(config.bin_size),
+        intensity_power=float(config.intensity.power),
         csr_index_dtype=config.dtypes.csr_index_dtype,
+        intensity_dtype=config.dtypes.intensity_dtype,
     )
-    right_csr = (
-        left_csr
-        if right_frame is None
-        else _sparse_bin_spectra_df_to_csr(
+
+    if right_frame is None:
+        right_csr = left_csr
+    else:
+        flat_right_mzs, flat_right_ints, right_spec_pos, n_right = _flatten_spectra_to_numpy(
             right_df,
-            mz_column_name=config.mz_column,
-            intensity_column_name=config.intensity_column,
-            upper_bound=config.upper_mass_bound,
-            bin_size=config.bin_size,
-            intensity_power=config.intensity.power,
-            intensity_dtype=config.dtypes.intensity_dtype,
-            csr_index_dtype=config.dtypes.csr_index_dtype,
+            mz_col=config.mz_column,
+            intensity_col=config.intensity_column,
+            spectrum_index_col="__spec_pos",
         )
-    )
+        right_csr = _sparse_bin_flat_spectra_to_csr(
+            flat_mzs=flat_right_mzs,
+            flat_ints=flat_right_ints,
+            spec_pos=right_spec_pos,
+            n_spec=n_right,
+            upper_bound=float(config.upper_mass_bound),
+            bin_size=float(config.bin_size),
+            intensity_power=float(config.intensity.power),
+            csr_index_dtype=config.dtypes.csr_index_dtype,
+            intensity_dtype=config.dtypes.intensity_dtype,
+        )
 
     assert left_csr.shape[0] == left_ids.shape[0], "left ids and CSR rows must align"
     assert right_csr.shape[0] == right_ids.shape[0], "right ids and CSR rows must align"
@@ -392,21 +469,29 @@ def compute_gpu_batched_approximate_similarity_pairs(
         )
     )
 
-    should_write = config.batching.flush_to_parquet_every_n_batches is not None
+    flush_every_n_batches = config.batching.flush_to_parquet_every_n_batches
+    should_write = flush_every_n_batches is not None
+
+    # Predeclare to satisfy static typing / definite assignment analysis.
+    buffer_parts: list[pl.DataFrame] = []
+    collected_parts: list[pl.DataFrame] = []
+    writer: _ParquetPartitionWriter | None = None
+    part_index = 0
+    write_every = 0
+
     if should_write:
-        assert config.output_parquet_path is not None, (
-            "When flush_to_parquet_every_n_batches is set, config.output_parquet_path must be set"
+        assert config.output_parquet.path is not None, (
+            "When flush_to_parquet_every_n_batches is set, config.output_parquet.path must be set"
         )
-        out_dir = Path(config.output_parquet_path)
+        out_dir = Path(config.output_parquet.path)
         assert not out_dir.exists(), (
             f"Output path already exists: {out_dir}. Remove it or choose a new one."
         )
         writer = _ParquetPartitionWriter(out_dir)
-        write_every = int(config.batching.flush_to_parquet_every_n_batches)
-        buffer_parts: list[pl.DataFrame] = []
-        part_index = 0
+        write_every = int(flush_every_n_batches)
+        _log(logger, f"write mode enabled: out_dir={out_dir} write_every={write_every}")
     else:
-        collected_parts: list[pl.DataFrame] = []
+        _log(logger, "in-memory mode enabled")
 
     batch_counter = 0
 
@@ -436,15 +521,21 @@ def compute_gpu_batched_approximate_similarity_pairs(
 
             batch_counter += 1
             if should_write and (batch_counter % write_every == 0) and buffer_parts:
+                assert writer is not None, "writer must be initialized when should_write is True"
                 writer.write_partition(pl.concat(buffer_parts), partition_index=part_index)
                 buffer_parts.clear()
                 part_index += 1
 
     if should_write:
         if buffer_parts:
+            assert writer is not None, "writer must be initialized when should_write is True"
             writer.write_partition(pl.concat(buffer_parts), partition_index=part_index)
 
-        out_dir = Path(config.output_parquet_path)  # type: ignore[arg-type]
+        out_dir = Path(config.output_parquet.path)  # type: ignore[arg-type]
+        _log(
+            logger,
+            f"compute_gpu_batched_approximate_similarity_pairs: done (wrote parquet to {out_dir})",
+        )
         return pl.scan_parquet(str(out_dir / "*.parquet"))
 
     if not collected_parts:
@@ -456,5 +547,11 @@ def compute_gpu_batched_approximate_similarity_pairs(
             }
         )
 
+    _log(
+        logger,
+        (
+            "compute_gpu_batched_approximate_similarity_pairs: done "
+            f"(rows={sum(p.height for p in collected_parts)})"
+        ),
+    )
     return pl.concat(collected_parts)
-# 
