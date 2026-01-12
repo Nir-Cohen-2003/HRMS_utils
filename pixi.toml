@@ -1,6 +1,7 @@
 [workspace]
 channels = [
   "https://prefix.dev/pixi-build-backends",
+  # "rapidsai",
   "https://prefix.dev/conda-forge",
   "https://prefix.dev/nir-cohen",
   "conda-forge",
@@ -113,23 +114,10 @@ convert_msp = "python scripts/convert_msp.py"
 
 [feature.testing.dependencies]
 hrms_utils = {path = "."}
-polars = ">=1.35.2,<2"
-rdkit = ">=2024.0.0"
-numpy = ">=1.20.0,<2.3"
 numba = ">=0.61.0"
 pytest = ">=8.4.2,<9"
 optuna = "*"
-scipy = "*"
 requests = "*"
-aiohttp = "*"
-pyarrow = ">=12.0.0"
-pandas = "*"
-python-calamine = "*"
-openpyxl = "*"
-xlsx2csv = "*"
-xlsxwriter = "*"
-connectorx = "*"
-sqlalchemy = "*"
 ipykernel = "*"
 plotly = ">=6.3.0,<7"
 nbformat = ">=5.10.4,<6"
@@ -140,24 +128,39 @@ kaleido = ">=1.1.0, <2"
 
 [feature.experiments.target.linux-64.dependencies]
 hrms_utils = {path = "."}
-polars = ">=1.35.2,<2"
-rdkit = ">=2024.0.0"
-numpy = "*"
-jax = "*"
+# python ="3.12.*"
 optuna = "*"
 nvmolkit = "*"
 pyzmq = "*"
-pytorch-gpu = "*"
 marimo ="*"
 memory_profiler = "*"
-pyarrow = "*"
-
+numba = "*"
+numba-cuda ="*"
+sparse_dot_mkl = "*"
+cupy = "*"
+# catboost = "*"
+xgboost = "*"
+scikit-learn ="*"
+scikit-learn-intelex = "*"
+# cuml = "*"
+# [feature.experiments.target.linux-64.pypi-dependencies]
+# cuml-cu12 ="*"
+# cudf-cu12 ="*"
 [feature.experiments.system-requirements]
 cuda = "12.0"
 
 [feature.experiments.tasks]
-profile = "mprof run experiments/spectral_information/similarity_vs_info.py"
+sim_vs_info = {cmd="python experiments/spectral_information/similarity_vs_info.py",env={ MKL_INTERFACE_LAYER = "LP64"}}
+plot_sim_vs_info = "python experiments/spectral_information/plot_similarity_vs_info.py"
+approx_sim = {cmd="python experiments/fast_cosine_sim/approximate_similarity.py",env={ MKL_INTERFACE_LAYER = "LP64"}}
+approx_sim_batched  = {cmd="python experiments/fast_cosine_sim/batched_gpu.py",env={ MKL_INTERFACE_LAYER = "LP64"}}
+benchmark_gpu_cosine = {cmd="python experiments/fast_cosine_sim/simms_sparse_exact_benchmark.py",env={ MKL_INTERFACE_LAYER = "LP64"}}
+
+fit_models = "python experiments/spectral_information/tanimoto_similarity_prediction.py"
+
+isotope_fit = "python experiments/find_optimal_isotopic_parameters.py"
+# profile = "mprof run experiments/spectral_information/similarity_vs_info.py"
 # When run without arguments, automatically select the newest file whose name starts with 'mprofile'
 # and run `mprof plot` on it. If arguments are provided they are forwarded to `mprof plot`.
 # The task exits with an error if no `mprofile*` files are found.
-plot-profile = "sh -lc 'if [ \"$#\" -eq 0 ]; then file=$(ls -t mprofile* 2>/dev/null | head -n1); if [ -z \"$file\" ]; then echo \"No mprofile file found\"; exit 1; fi; mprof plot \"$file\"; else mprof plot \"$@\"; fi' --"
+# plot-profile = "sh -lc 'if [ \"$#\" -eq 0 ]; then file=$(ls -t mprofile* 2>/dev/null | head -n1); if [ -z \"$file\" ]; then echo \"No mprofile file found\"; exit 1; fi; mprof plot \"$file\"; else mprof plot \"$@\"; fi' --"

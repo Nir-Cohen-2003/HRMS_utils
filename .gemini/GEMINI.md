@@ -20,7 +20,8 @@ Concise, actionable rules for editing this repository. Keep changes explicit, fa
 - Use type hints everywhere. Avoid `Any` unless absolutely necessary, and document why if you do.
 - when using assertions, include a message that explains what went wrong and how.
 - When needing to accelerate function execution, use numba jit compilation and vectorization unless there's a compelling reason to use multiprocessing or threading, in which case document the reason and use processpoolexecutor/threadpoolexecutor with clear comments.
-- when needing even more performance, since its probably an operation on a large number of rows in a dataframe, we create a polars plugin/extend an existign plugin. all plugins reside in the packages directory, and their structres closely match.
+- when needing even more performance, since its probably an operation on a large number of rows in a dataframe, we create a polars plugin/extend an existign plugin. all plugins reside in the hrms_core directory, and their structres closely match.
+- when running python scripts from the command line, use pixi with the appropriate environemt for the script. use "pixi run -e <env_name> 'python <script.py>'". if the script is in the experiments  directory, use the "experiments" environment, if it is in tests , use the "testing" environment.
 ---
 
 ## Practical patterns and examples
