@@ -1,0 +1,49 @@
+[workspace]
+name = "fast_cosine_sim"
+version = "0.1.0"
+description = "GPU batched approximate similarity (CuPy + Polars); no hrms_utils dependency."
+authors = ["Analytit <dev@analytit.local>"]
+channels = [
+  "https://prefix.dev/pixi-build-backends",
+  "https://prefix.dev/conda-forge",
+  "https://prefix.dev/nir-cohen",
+  "conda-forge",
+]
+platforms = ["linux-64","win-64"]
+preview = ["pixi-build"]
+
+[package]
+name = "fast_cosine_sim"
+version = "0.1.0"
+license = "Apache-2.0"
+license-file = "LICENSE"
+authors = ["Nir Cohen"]
+
+[package.build]
+backend = { name = "pixi-build-python", version = "*", channels = [
+  "https://prefix.dev/pixi-build-backends",
+  "https://prefix.dev/conda-forge",
+]}
+
+[tasks]
+build-all = {cmd="python -m build --wheel --sdist --outdir dist",depends-on = ["clean_dist"]}
+clean_dist = "rm -rf dist || true"
+[dependencies]
+# Local package itself is defined by this pixi project; no self-dependency entry needed.
+python = ">=3.11"
+[pypi-dependencies]
+build = "*"
+[package.host-dependencies]
+# Keep the build system as simple as possible for a pure-python package.
+python = ">=3.11"
+pip = "*"
+setuptools = ">=68"
+wheel = "*"
+
+[package.run-dependencies]
+python = ">=3.11"
+numpy = ">=1.26"
+scipy = ">=1.11"
+polars = ">=1.36"
+pyarrow = "*"
+cupy = ">=12.0.0"
