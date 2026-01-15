@@ -28,11 +28,20 @@ backend = { name = "pixi-build-python", version = "*", channels = [
 [tasks]
 build-all = {cmd="python -m build --wheel --sdist --outdir dist",depends-on = ["clean_dist"]}
 clean_dist = "rm -rf dist || true"
+[target.win-64.tasks]
+build-all = { cmd = "python -m build --wheel --sdist --no-isolation --outdir dist"}
+publish-testpypi = {cmd="twine upload --repository testpypi --skip-existing dist/*", depends-on = ["build-all"]}
+publish-pypi = {cmd="twine upload --repository pypi --skip-existing dist/*", depends-on = ["build-all"]}
+
 [dependencies]
 # Local package itself is defined by this pixi project; no self-dependency entry needed.
 python = ">=3.11"
 [pypi-dependencies]
 build = "*"
+
+[environments]
+default = {features = [], solve-group = "default"}
+testing = {features = ["testing"], solve-group = "testing"}
 [package.host-dependencies]
 # Keep the build system as simple as possible for a pure-python package.
 python = ">=3.11"
@@ -47,3 +56,13 @@ scipy = ">=1.11"
 polars = ">=1.36"
 pyarrow = "*"
 cupy = ">=12.0.0"
+
+
+[feature.testing.tasks]
+check = "pyrefly check --ignore missing-import"
+check_all = "pyrefly check ./src/hrms_utils"
+test = "python -m pytest "
+[feature.testing.dependencies]
+fast_cosine_sim = {path = "."}
+pytest = "*"
+pyrefly = "*"

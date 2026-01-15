@@ -16,6 +16,16 @@ dependencies = [
   "cupy>=12.0.0,<13.0.0",
 ]
 
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0.0",
+]
+
+[tool.pytest.ini_options]
+markers = [
+  "runtime: runtime/integration-style tests that may require CUDA/CuPy and can be skipped when unavailable",
+]
+
 [build-system]
 requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"

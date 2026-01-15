@@ -6,6 +6,10 @@ from typing import Literal, Optional
 
 import numpy as np
 
+# Why: below this m/z cutoff, ppm-based tolerances become unrealistically small; the
+# experiments version uses the same cutoff for adaptive expansion windows.
+MASS_TOLERANCE_CUTOFF: float = 200.0
+
 
 @dataclass(frozen=True, slots=True)
 class ApproximateGpuDtypesConfig:
@@ -35,13 +39,21 @@ class ApproximateGpuDtypesConfig:
             object.__setattr__(self, field_name, np.dtype(field_value))
 
         if np.dtype(self.index_dtype).kind not in ("i", "u"):
-            raise TypeError(f"index_dtype must be an integer dtype, got {self.index_dtype}")
+            raise TypeError(
+                f"index_dtype must be an integer dtype, got {self.index_dtype}"
+            )
         if np.dtype(self.csr_index_dtype).kind not in ("i", "u"):
-            raise TypeError(f"csr_index_dtype must be an integer dtype, got {self.csr_index_dtype}")
+            raise TypeError(
+                f"csr_index_dtype must be an integer dtype, got {self.csr_index_dtype}"
+            )
         if np.dtype(self.intensity_dtype).kind != "f":
-            raise TypeError(f"intensity_dtype must be a float dtype, got {self.intensity_dtype}")
+            raise TypeError(
+                f"intensity_dtype must be a float dtype, got {self.intensity_dtype}"
+            )
         if np.dtype(self.similarity_dtype).kind != "f":
-            raise TypeError(f"similarity_dtype must be a float dtype, got {self.similarity_dtype}")
+            raise TypeError(
+                f"similarity_dtype must be a float dtype, got {self.similarity_dtype}"
+            )
 
 
 @dataclass(frozen=True, slots=True)
@@ -79,7 +91,9 @@ class OutputParquetConfig:
 
     def __post_init__(self) -> None:
         if self.path is not None and not isinstance(self.path, Path):
-            raise TypeError(f"path must be a pathlib.Path or None, got {type(self.path)}")
+            raise TypeError(
+                f"path must be a pathlib.Path or None, got {type(self.path)}"
+            )
 
 
 @dataclass(frozen=True, slots=True)
@@ -94,7 +108,9 @@ class LoggingConfig:
 
     def __post_init__(self) -> None:
         if self.log_path is not None and not isinstance(self.log_path, Path):
-            raise TypeError(f"log_path must be a pathlib.Path or None, got {type(self.log_path)}")
+            raise TypeError(
+                f"log_path must be a pathlib.Path or None, got {type(self.log_path)}"
+            )
 
 
 @dataclass(frozen=True, slots=True)
@@ -153,6 +169,12 @@ class ApproximateGpuBatchedSimilarityConfig:
     bin_size: float
     approx_threshold: float
 
+    # adaptive (mass-dependent) right-matrix expansion
+    # Why: candidate generation must account for MS2 fragment tolerance by dilating the RHS
+    # across neighboring bins; this mirrors the original experiments implementation.
+    ms2_tolerance_ppm: Optional[float] = None
+    mass_tolerance_cutoff_mz: float = MASS_TOLERANCE_CUTOFF
+
     # knobs
     dtypes: ApproximateGpuDtypesConfig = ApproximateGpuDtypesConfig()
     intensity: IntensityTransformConfig = IntensityTransformConfig()
@@ -171,6 +193,15 @@ class ApproximateGpuBatchedSimilarityConfig:
         assert self.upper_mass_bound > 0.0, "upper_mass_bound must be positive"
         assert self.bin_size > 0.0, "bin_size must be positive"
         assert 0.0 <= self.approx_threshold <= 1.0, "approx_threshold must be in [0, 1]"
+
+        if self.ms2_tolerance_ppm is not None and float(self.ms2_tolerance_ppm) <= 0.0:
+            raise ValueError(
+                f"ms2_tolerance_ppm must be positive if provided, got {self.ms2_tolerance_ppm}"
+            )
+        assert float(self.mass_tolerance_cutoff_mz) > 0.0, (
+            "mass_tolerance_cutoff_mz must be positive; "
+            f"got {self.mass_tolerance_cutoff_mz}"
+        )
 
         if self.comparison_mode not in ("self", "cross"):
             raise ValueError(

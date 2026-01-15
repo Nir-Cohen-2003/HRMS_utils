@@ -38,12 +38,14 @@ def _collect_if_lazy(frame: pl.DataFrame | pl.LazyFrame) -> pl.DataFrame:
 def _ensure_row_index_column(
     frame: pl.DataFrame | pl.LazyFrame, *, index_column_name: str
 ) -> pl.DataFrame | pl.LazyFrame:
-    if index_column_name in frame.columns:
+    if index_column_name in frame.collect_schema().names():
         return frame
     return frame.with_row_index(index_column_name)
 
 
-def _apply_intensity_power_if_needed(intensity: np.ndarray, *, power: float) -> np.ndarray:
+def _apply_intensity_power_if_needed(
+    intensity: np.ndarray, *, power: float
+) -> np.ndarray:
     # Contract from you:
     #   - power==1.0 => skip extra work (identity)
     #   - power==0.0 => presence-only (set all non-zero to 1.0)
@@ -148,9 +150,9 @@ def _sparse_bin_flat_spectra_to_csr(
     spec_pos = spec_pos[valid_mask].astype(np.int32, copy=False)
 
     weights = np.asarray(flat_ints[valid_mask], dtype=np.float32, order="C", copy=False)
-    weights = _apply_intensity_power_if_needed(weights, power=float(intensity_power)).astype(
-        intensity_dtype, copy=False
-    )
+    weights = _apply_intensity_power_if_needed(
+        weights, power=float(intensity_power)
+    ).astype(intensity_dtype, copy=False)
 
     coo = sp.coo_matrix(
         (weights, (spec_pos, mass_bins)),
@@ -178,6 +180,10 @@ def _sparse_bin_flat_spectra_to_csr(
 def _normalize_csr_rows_inplace_gpu(x_gpu) -> None:
     import cupy as cp
 
+    # Why: fail fast; some sparse stubs treat indptr/indices as Optional.
+    assert x_gpu.indptr is not None, "GPU CSR indptr must not be None"
+    assert x_gpu.indices is not None, "GPU CSR indices must not be None"
+
     indptr = x_gpu.indptr
     data = x_gpu.data
 
@@ -191,6 +197,97 @@ def _normalize_csr_rows_inplace_gpu(x_gpu) -> None:
 
     row_ids = cp.repeat(cp.arange(x_gpu.shape[0], dtype=cp.int32), cp.diff(indptr))
     data *= scales[row_ids]
+
+
+def _expand_csr_horizontal_adaptive_gpu(
+    mat_gpu,
+    *,
+    bin_size: float,
+    ms2_tolerance_ppm: float,
+    nbins: int,
+    mass_tolerance_cutoff_mz: float,
+):
+    """
+    GPU version of adaptive horizontal expansion using fully vectorized operations.
+
+    Mirrors the experiments implementation in `experiments/fast_cosine_sim/approximate_similarity.py`
+    (`_expand_csr_horizontal_adaptive_gpu`): for each non-zero at column j (m/z=j*bin_size),
+    compute a ppm-based tolerance in Da (with a low-m/z cutoff), convert to a window size
+    in bins, and replicate the entry into all columns within +/- window.
+
+    Contract:
+      - mat_gpu is a CuPy CSR matrix (cupyx.scipy.sparse.csr_matrix)
+      - Returns a CuPy CSR matrix with the same shape as mat_gpu
+    """
+    import cupy as cp
+    import cupyx.scipy.sparse as cps
+
+    assert float(bin_size) > 0.0, f"bin_size must be positive, got {bin_size}"
+    assert float(ms2_tolerance_ppm) > 0.0, (
+        f"ms2_tolerance_ppm must be positive, got {ms2_tolerance_ppm}"
+    )
+    assert int(nbins) > 0, f"nbins must be positive, got {nbins}"
+    assert float(mass_tolerance_cutoff_mz) > 0.0, (
+        f"mass_tolerance_cutoff_mz must be positive; got {mass_tolerance_cutoff_mz}"
+    )
+
+    if mat_gpu.nnz == 0:
+        return mat_gpu
+
+    # Why: fail fast; some sparse stubs treat indptr/indices as Optional.
+    assert mat_gpu.indptr is not None, "GPU CSR indptr must not be None"
+    assert mat_gpu.indices is not None, "GPU CSR indices must not be None"
+
+    col_indices = mat_gpu.indices
+    col_mz = col_indices.astype(cp.float64) * float(bin_size)
+    eff_mz = cp.maximum(col_mz, float(mass_tolerance_cutoff_mz))
+    tol_da = eff_mz * float(ms2_tolerance_ppm) * 1e-6
+    windows = cp.ceil(tol_da / float(bin_size)).astype(cp.int32)
+    del col_mz, eff_mz, tol_da
+
+    repeats = 2 * windows + 1
+    ends = cp.cumsum(repeats)
+    total_items = int(ends[-1])
+    dest_indices = cp.arange(total_items, dtype=cp.int64)
+    source_idxs = cp.searchsorted(ends, dest_indices, side="right")
+    del repeats, ends, total_items
+
+    new_data = mat_gpu.data[source_idxs]
+
+    # Start offset per *source nnz element* (length = mat_gpu.nnz), then gather by `source_idxs`.
+    starts = cp.zeros((mat_gpu.nnz,), dtype=cp.int64)
+    starts[1:] = cp.cumsum(2 * windows + 1, dtype=cp.int64)[:-1]
+    start_offsets = starts[source_idxs]
+    del starts
+
+    local_offsets = dest_indices - start_offsets
+    shifts = local_offsets - windows[source_idxs]
+    new_cols = col_indices[source_idxs] + shifts
+    del dest_indices, start_offsets, local_offsets, shifts
+
+    mask = (new_cols >= 0) & (new_cols < int(nbins))
+    n_valid = int(mask.sum())
+    if not n_valid:
+        del mask, new_cols, new_data, source_idxs, windows
+        return cps.csr_matrix(mat_gpu.shape, dtype=cp.float32)
+
+    new_cols = new_cols[mask]
+    new_data = new_data[mask]
+    valid_source_idxs = source_idxs[mask]
+    del mask, source_idxs
+
+    source_rows_compact = (
+        cp.searchsorted(
+            mat_gpu.indptr, cp.arange(mat_gpu.nnz, dtype=cp.int32), side="right"
+        )
+        - 1
+    )
+    new_rows = source_rows_compact[valid_source_idxs]
+    del source_rows_compact, valid_source_idxs, windows
+
+    out = cps.coo_matrix((new_data, (new_rows, new_cols)), shape=mat_gpu.shape).tocsr()
+    del new_data, new_rows, new_cols
+    return out
 
 
 def _pairs_above_threshold_from_sparse_dot_gpu(
@@ -254,7 +351,11 @@ def _estimate_max_peaks_per_batch(
     assert target_mem > 0, "Computed target GPU memory target must be positive"
 
     # Similarity matrix dominates memory: min_batch^2 * sim_bytes with overhead.
-    sim_bytes = int(min_spectra_per_batch) * int(min_spectra_per_batch) * int(similarity_itemsize)
+    sim_bytes = (
+        int(min_spectra_per_batch)
+        * int(min_spectra_per_batch)
+        * int(similarity_itemsize)
+    )
     sim_bytes = int(sim_bytes * GPU_SIM_TEMP_OVERHEAD_FACTOR)
 
     remaining = target_mem - sim_bytes
@@ -271,7 +372,10 @@ def _estimate_max_peaks_per_batch(
 
 def _yield_batches_dynamic(
     csr_matrix: sp.csr_matrix,
-    global_ids: NDArray[np.int64] | NDArray[np.int32] | NDArray[np.uint64] | NDArray[np.uint32],
+    global_ids: NDArray[np.int64]
+    | NDArray[np.int32]
+    | NDArray[np.uint64]
+    | NDArray[np.uint32],
     *,
     max_peaks: int,
     min_batch_size: int,
@@ -284,10 +388,14 @@ def _yield_batches_dynamic(
     ]
 ]:
     n_rows = int(csr_matrix.shape[0])
-    # Why: some type checkers treat CSR `indptr` as potentially optional; we explicitly assert.
+
+    # Why: some type checkers treat CSR internals as Optional; we explicitly assert and fail fast.
     assert csr_matrix.indptr is not None, "CSR matrix indptr must not be None"
-    # Note: `indptr` dtype follows the CSR index dtype (often int32), so don't over-constrain it to int64.
-    indptr = np.asarray(csr_matrix.indptr)
+    assert csr_matrix.indices is not None, "CSR matrix indices must not be None"
+
+    # Why: `indptr` is used for indexing and for computing `target_peaks`. Some sparse stacks keep this as
+    # int32; we upcast to int64 to avoid overflow in cumulative peak counts for large batches.
+    indptr = np.asarray(csr_matrix.indptr, dtype=np.int64)
     assert indptr.ndim == 1 and indptr.size == n_rows + 1, "CSR indptr shape mismatch"
 
     start = 0
@@ -361,14 +469,20 @@ def compute_gpu_batched_approximate_similarity_pairs(
     right_frame = (
         None
         if right is None
-        else _ensure_row_index_column(right, index_column_name=config.spectrum_id_column)
+        else _ensure_row_index_column(
+            right, index_column_name=config.spectrum_id_column
+        )
     )
 
     left_df = _collect_if_lazy(left)
     right_df = left_df if right_frame is None else _collect_if_lazy(right_frame)
 
     for label, df in (("left", left_df), ("right", right_df)):
-        for col in (config.spectrum_id_column, config.mz_column, config.intensity_column):
+        for col in (
+            config.spectrum_id_column,
+            config.mz_column,
+            config.intensity_column,
+        ):
             assert col in df.columns, f"{label} missing required column: {col}"
 
     # Build CSR matrices + global ids from frames (use explode/flatten path from experiment for speed).
@@ -404,11 +518,13 @@ def compute_gpu_batched_approximate_similarity_pairs(
     if right_frame is None:
         right_csr = left_csr
     else:
-        flat_right_mzs, flat_right_ints, right_spec_pos, n_right = _flatten_spectra_to_numpy(
-            right_df,
-            mz_col=config.mz_column,
-            intensity_col=config.intensity_column,
-            spectrum_index_col="__spec_pos",
+        flat_right_mzs, flat_right_ints, right_spec_pos, n_right = (
+            _flatten_spectra_to_numpy(
+                right_df,
+                mz_col=config.mz_column,
+                intensity_col=config.intensity_column,
+                spectrum_index_col="__spec_pos",
+            )
         )
         right_csr = _sparse_bin_flat_spectra_to_csr(
             flat_mzs=flat_right_mzs,
@@ -430,16 +546,24 @@ def compute_gpu_batched_approximate_similarity_pairs(
             {
                 "idx_left": np.empty((0,), dtype=config.dtypes.index_dtype),
                 "idx_right": np.empty((0,), dtype=config.dtypes.index_dtype),
-                "approx_similarity": np.empty((0,), dtype=config.dtypes.similarity_dtype),
+                "approx_similarity": np.empty(
+                    (0,), dtype=config.dtypes.similarity_dtype
+                ),
             }
         )
-        return empty if config.batching.flush_to_parquet_every_n_batches is None else empty.lazy()
+        return (
+            empty
+            if config.batching.flush_to_parquet_every_n_batches is None
+            else empty.lazy()
+        )
 
     free_mem, _ = cp.cuda.Device(0).mem_info
 
     max_peaks = _estimate_max_peaks_per_batch(
         free_mem_bytes=int(free_mem),
-        target_gpu_memory_usage_ratio=float(config.batching.target_gpu_memory_usage_ratio),
+        target_gpu_memory_usage_ratio=float(
+            config.batching.target_gpu_memory_usage_ratio
+        ),
         min_spectra_per_batch=int(config.batching.min_spectra_per_batch),
         csr_index_itemsize=int(np.dtype(config.dtypes.csr_index_dtype).itemsize),
         intensity_itemsize=int(np.dtype(config.dtypes.intensity_dtype).itemsize),
@@ -495,13 +619,29 @@ def compute_gpu_batched_approximate_similarity_pairs(
 
     batch_counter = 0
 
+    nbins = int(np.floor(float(config.upper_mass_bound) / float(config.bin_size))) + 1
+
     for _, _, right_batch_csr, right_batch_ids in right_batches:
-        right_gpu = cp.sparse.csr_matrix(right_batch_csr)
-        _normalize_csr_rows_inplace_gpu(right_gpu)
+        right_gpu_base = cp.sparse.csr_matrix(right_batch_csr)
+        _normalize_csr_rows_inplace_gpu(right_gpu_base)
 
         for _, _, left_batch_csr, left_batch_ids in left_batches:
             left_gpu = cp.sparse.csr_matrix(left_batch_csr)
             _normalize_csr_rows_inplace_gpu(left_gpu)
+
+            right_gpu = right_gpu_base
+
+            # Adaptive (mass-dependent) horizontal expansion on the RHS, mirroring the experiments version.
+            # Why: expansion increases nnz; keeping a normalized, unexpanded base avoids compounding expansion
+            # across left batches and avoids renormalizing already-normalized data.
+            if config.ms2_tolerance_ppm is not None:
+                right_gpu = _expand_csr_horizontal_adaptive_gpu(
+                    right_gpu,
+                    bin_size=float(config.bin_size),
+                    ms2_tolerance_ppm=float(config.ms2_tolerance_ppm),
+                    nbins=nbins,
+                    mass_tolerance_cutoff_mz=float(config.mass_tolerance_cutoff_mz),
+                )
 
             pairs = _pairs_above_threshold_from_sparse_dot_gpu(
                 left_gpu,
@@ -521,14 +661,20 @@ def compute_gpu_batched_approximate_similarity_pairs(
 
             batch_counter += 1
             if should_write and (batch_counter % write_every == 0) and buffer_parts:
-                assert writer is not None, "writer must be initialized when should_write is True"
-                writer.write_partition(pl.concat(buffer_parts), partition_index=part_index)
+                assert writer is not None, (
+                    "writer must be initialized when should_write is True"
+                )
+                writer.write_partition(
+                    pl.concat(buffer_parts), partition_index=part_index
+                )
                 buffer_parts.clear()
                 part_index += 1
 
     if should_write:
         if buffer_parts:
-            assert writer is not None, "writer must be initialized when should_write is True"
+            assert writer is not None, (
+                "writer must be initialized when should_write is True"
+            )
             writer.write_partition(pl.concat(buffer_parts), partition_index=part_index)
 
         out_dir = Path(config.output_parquet.path)  # type: ignore[arg-type]
@@ -543,7 +689,9 @@ def compute_gpu_batched_approximate_similarity_pairs(
             {
                 "idx_left": np.empty((0,), dtype=config.dtypes.index_dtype),
                 "idx_right": np.empty((0,), dtype=config.dtypes.index_dtype),
-                "approx_similarity": np.empty((0,), dtype=config.dtypes.similarity_dtype),
+                "approx_similarity": np.empty(
+                    (0,), dtype=config.dtypes.similarity_dtype
+                ),
             }
         )
 
