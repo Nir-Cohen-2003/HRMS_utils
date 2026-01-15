@@ -28,19 +28,51 @@ from fast_cosine_sim.gpu_batched_approximate import (
 
 
 def _skip_if_no_gpu() -> None:
-    # Fail-fast: this package's approximate stage depends on CuPy; on CPU-only
-    # environments the test should be skipped rather than failing.
-    try:
-        import cupy as cp  # noqa: F401
-    except Exception:
-        pytest.skip("CuPy is unavailable; skipping GPU runtime test.")
+    """
+    Skip helper that reports *why* CUDA/CuPy isn't usable in this environment.
 
+    Rationale:
+    - In many CI/dev setups you "have a GPU" but the Python env can't see it due to
+      missing CUDA runtime, incompatible drivers, wrong CuPy build, or CUDA
+      visibility config (e.g. CUDA_VISIBLE_DEVICES).
+    - Pytest skips should be actionable, not silent.
+    """
     try:
         import cupy as cp
+    except Exception as exc:
+        pytest.skip(f"CuPy import failed: {exc!r}")
 
-        _ = cp.cuda.runtime.getDeviceCount()
-    except Exception:
-        pytest.skip("No CUDA device available; skipping GPU runtime test.")
+    diagnostics: list[str] = []
+
+    # Basic environment visibility info
+    try:
+        import os
+
+        diagnostics.append(
+            f"CUDA_VISIBLE_DEVICES={os.environ.get('CUDA_VISIBLE_DEVICES')!r}"
+        )
+    except Exception as exc:
+        diagnostics.append(f"env diagnostics failed: {exc!r}")
+
+    # CUDA runtime visibility
+    try:
+        device_count = int(cp.cuda.runtime.getDeviceCount())
+        diagnostics.append(f"cp.cuda.runtime.getDeviceCount()={device_count}")
+        if device_count <= 0:
+            pytest.skip("CUDA runtime reports 0 devices. " + " | ".join(diagnostics))
+    except Exception as exc:
+        diagnostics.append(f"cp.cuda.runtime.getDeviceCount() raised {exc!r}")
+
+        # Try a second, often-more-informative probe
+        try:
+            _ = cp.cuda.Device(0).compute_capability
+            diagnostics.append("cp.cuda.Device(0) is accessible")
+        except Exception as exc2:
+            diagnostics.append(f"cp.cuda.Device(0) probe raised {exc2!r}")
+
+        pytest.skip("CUDA device probe failed. " + " | ".join(diagnostics))
+
+    # If we got here, CuPy imported and CUDA sees at least one device.
 
 
 def _make_single_peak_df(*, idx: int, mz: float, intensity: float) -> pl.DataFrame:

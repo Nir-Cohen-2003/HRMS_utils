@@ -28,10 +28,10 @@ backend = { name = "pixi-build-python", version = "*", channels = [
 [tasks]
 build-all = {cmd="python -m build --wheel --sdist --outdir dist",depends-on = ["clean_dist"]}
 clean_dist = "rm -rf dist || true"
-[target.win-64.tasks]
-build-all = { cmd = "python -m build --wheel --sdist --no-isolation --outdir dist"}
 publish-testpypi = {cmd="twine upload --repository testpypi --skip-existing dist/*", depends-on = ["build-all"]}
 publish-pypi = {cmd="twine upload --repository pypi --skip-existing dist/*", depends-on = ["build-all"]}
+[target.win-64.tasks]
+build-all = { cmd = "python -m build --wheel --sdist --no-isolation --outdir dist"}
 
 [dependencies]
 # Local package itself is defined by this pixi project; no self-dependency entry needed.
@@ -66,3 +66,4 @@ test = "python -m pytest "
 fast_cosine_sim = {path = "."}
 pytest = "*"
 pyrefly = "*"
+cupy = ">=12.0.0,<13.0.0"
