@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol
 
+import cupyx.scipy.sparse as cps
 import numpy as np
 import polars as pl
 import scipy.sparse as sp
@@ -139,17 +140,22 @@ def _sparse_bin_flat_spectra_to_csr(
     if flat_mzs.size == 0 or flat_ints.size == 0:
         return sp.csr_matrix((n_spec, nbins), dtype=intensity_dtype)
 
-    mass_bins = np.rint(flat_mzs / float(bin_size)).astype(np.int32, copy=False)
+    mass_bins = np.rint(flat_mzs / float(bin_size)).astype(csr_index_dtype, copy=False)
 
     # Keep only in-range bins and positive intensities.
     valid_mask = (mass_bins >= 0) & (mass_bins < nbins) & (flat_ints > 0)
     if not np.any(valid_mask):
         return sp.csr_matrix((n_spec, nbins), dtype=intensity_dtype)
 
-    mass_bins = mass_bins[valid_mask].astype(np.int32, copy=False)
+    mass_bins = mass_bins[valid_mask].astype(csr_index_dtype, copy=False)
+    # Why: COO row indices must be integer; keep as int32 for SciPy compatibility.
     spec_pos = spec_pos[valid_mask].astype(np.int32, copy=False)
 
-    weights = np.asarray(flat_ints[valid_mask], dtype=np.float32, order="C", copy=False)
+    # NumPy 2.x removed `copy=` from `np.asarray(...)` (it's available on `np.array(...)`).
+    # Why: we want a C-contiguous float32 view when possible, but must remain compatible across NumPy versions.
+    weights = np.array(
+        flat_ints[valid_mask], dtype=intensity_dtype, order="C", copy=False
+    )
     weights = _apply_intensity_power_if_needed(
         weights, power=float(intensity_power)
     ).astype(intensity_dtype, copy=False)
@@ -177,26 +183,49 @@ def _sparse_bin_flat_spectra_to_csr(
     return csr
 
 
-def _normalize_csr_rows_inplace_gpu(x_gpu) -> None:
+def _normalize_csr_rows_inplace_gpu(mat_gpu) -> "cp.ndarray":
+    """
+    GPU version of row-normalization. Returns norms as a CuPy array.
+
+    Why: this mirrors the experiments implementation in
+    `experiments/fast_cosine_sim/approximate_similarity.py` and avoids using
+    `cp.repeat(..., repeats=cupy_array)` which is not supported on some CuPy versions.
+    """
     import cupy as cp
+    import cupyx.scipy.sparse as cps
 
-    # Why: fail fast; some sparse stubs treat indptr/indices as Optional.
-    assert x_gpu.indptr is not None, "GPU CSR indptr must not be None"
-    assert x_gpu.indices is not None, "GPU CSR indices must not be None"
+    n_rows = mat_gpu.shape[0]
+    if n_rows == 0:
+        return cp.zeros(
+            (0,), dtype=mat_gpu.data.dtype if mat_gpu.nnz > 0 else cp.float32
+        )
+    if mat_gpu.nnz == 0:
+        return cp.zeros((n_rows,), dtype=cp.float32)
 
-    indptr = x_gpu.indptr
-    data = x_gpu.data
+    data_sq = mat_gpu.data**2
+    sq = cps.csr_matrix((data_sq, mat_gpu.indices, mat_gpu.indptr), shape=mat_gpu.shape)
+    row_sums_sq = sq.sum(axis=1).ravel()
+    norms = cp.sqrt(row_sums_sq)
 
-    squared = data * data
-    row_sums = cp.add.reduceat(squared, indptr[:-1])
-    norms = cp.sqrt(row_sums)
+    safe = norms.copy()
+    safe[safe == 0.0] = 1.0
 
-    nonzero_rows = norms > 0
-    scales = cp.ones_like(norms)
-    scales[nonzero_rows] = 1.0 / norms[nonzero_rows]
+    # Fail fast and help type-checkers: sparse stubs may consider `indptr` Optional.
+    assert mat_gpu.indptr is not None, "GPU CSR indptr must not be None"
+    if mat_gpu.nnz > 0:
+        row_idx = (
+            cp.searchsorted(
+                mat_gpu.indptr,
+                cp.arange(mat_gpu.nnz, dtype=mat_gpu.indptr.dtype),
+                side="right",
+            )
+            - 1
+        )
+        # Keep configured GPU intensity dtype; do not hard-cast to float32.
+        mat_gpu.data = mat_gpu.data.astype(mat_gpu.data.dtype, copy=False)
+        mat_gpu.data /= safe[row_idx].astype(mat_gpu.data.dtype, copy=False)
 
-    row_ids = cp.repeat(cp.arange(x_gpu.shape[0], dtype=cp.int32), cp.diff(indptr))
-    data *= scales[row_ids]
+    return norms
 
 
 def _expand_csr_horizontal_adaptive_gpu(
@@ -269,7 +298,7 @@ def _expand_csr_horizontal_adaptive_gpu(
     n_valid = int(mask.sum())
     if not n_valid:
         del mask, new_cols, new_data, source_idxs, windows
-        return cps.csr_matrix(mat_gpu.shape, dtype=cp.float32)
+        return cps.csr_matrix(mat_gpu.shape, dtype=mat_gpu.data.dtype)
 
     new_cols = new_cols[mask]
     new_data = new_data[mask]
@@ -278,7 +307,9 @@ def _expand_csr_horizontal_adaptive_gpu(
 
     source_rows_compact = (
         cp.searchsorted(
-            mat_gpu.indptr, cp.arange(mat_gpu.nnz, dtype=cp.int32), side="right"
+            mat_gpu.indptr,
+            cp.arange(mat_gpu.nnz, dtype=mat_gpu.indptr.dtype),
+            side="right",
         )
         - 1
     )
@@ -302,19 +333,14 @@ def _pairs_above_threshold_from_sparse_dot_gpu(
 ) -> pl.DataFrame:
     import cupy as cp
 
-    sim = (left_gpu @ right_gpu.T).astype(similarity_dtype, copy=False)
-    mask = sim >= cp.asarray(float(approx_threshold), dtype=sim.dtype)
+    # Match experiments behavior:
+    # - use sparse dot -> CSR `sim`
+    # - threshold on `sim.data`
+    # - map `data` positions back to (row, col) using `sim.indices` and `sim.indptr`
+    sim = (left_gpu @ right_gpu.T).astype(similarity_dtype)
 
-    row_idx, col_idx = cp.nonzero(mask)
-
-    if upper_triangle_by_position:
-        # Self mode: only keep i<j where positions are within the same ordering.
-        # Why: this is stable and avoids moving full id grids to GPU.
-        keep = row_idx < col_idx
-        row_idx = row_idx[keep]
-        col_idx = col_idx[keep]
-
-    if row_idx.size == 0:
+    mask = sim.data >= cp.asarray(float(approx_threshold), dtype=sim.data.dtype)
+    if not int(mask.sum()):
         return pl.DataFrame(
             {
                 "idx_left": np.empty((0,), dtype=left_global_ids.dtype),
@@ -323,17 +349,48 @@ def _pairs_above_threshold_from_sparse_dot_gpu(
             }
         )
 
-    scores = sim[row_idx, col_idx]
+    out_data = sim.data[mask]
+    out_cols = sim.indices[mask]
+    indices_in_data = cp.nonzero(mask)[0]
+    if indices_in_data.size == 0:
+        return pl.DataFrame(
+            {
+                "idx_left": np.empty((0,), dtype=left_global_ids.dtype),
+                "idx_right": np.empty((0,), dtype=right_global_ids.dtype),
+                "approx_similarity": np.empty((0,), dtype=np.dtype(similarity_dtype)),
+            }
+        )
 
-    # Map local to global ids.
-    left_ids = left_global_ids[cp.asnumpy(row_idx)]
-    right_ids = right_global_ids[cp.asnumpy(col_idx)]
+    out_rows = cp.searchsorted(sim.indptr, indices_in_data, side="right") - 1
+
+    if upper_triangle_by_position:
+        # Self mode: keep upper triangle by *position* within the batch ordering.
+        # Experiments also remove diagonal/self-matches.
+        keep = out_rows < out_cols
+        out_rows = out_rows[keep]
+        out_cols = out_cols[keep]
+        out_data = out_data[keep]
+
+        if out_rows.size == 0:
+            return pl.DataFrame(
+                {
+                    "idx_left": np.empty((0,), dtype=left_global_ids.dtype),
+                    "idx_right": np.empty((0,), dtype=right_global_ids.dtype),
+                    "approx_similarity": np.empty(
+                        (0,), dtype=np.dtype(similarity_dtype)
+                    ),
+                }
+            )
+
+    # Map local to global ids (CPU index arrays).
+    left_ids = left_global_ids[cp.asnumpy(out_rows)]
+    right_ids = right_global_ids[cp.asnumpy(out_cols)]
 
     return pl.DataFrame(
         {
             "idx_left": left_ids,
             "idx_right": right_ids,
-            "approx_similarity": cp.asnumpy(scores),
+            "approx_similarity": cp.asnumpy(out_data),
         }
     )
 
@@ -621,31 +678,55 @@ def compute_gpu_batched_approximate_similarity_pairs(
 
     nbins = int(np.floor(float(config.upper_mass_bound) / float(config.bin_size))) + 1
 
+    # Outer loop: right batches (normalize + expand once, reuse for all left batches).
     for _, _, right_batch_csr, right_batch_ids in right_batches:
-        right_gpu_base = cp.sparse.csr_matrix(right_batch_csr)
+        # Match experiments transfer/CSR construction semantics:
+        # explicitly allocate device buffers and avoid mutating the host CSR.
+        r_data_gpu = cp.asarray(
+            np.asarray(right_batch_csr.data).astype(
+                config.dtypes.intensity_dtype, copy=False
+            )
+        )
+        r_indices_gpu = cp.asarray(np.asarray(right_batch_csr.indices))
+        r_indptr_gpu = cp.asarray(np.asarray(right_batch_csr.indptr))
+        right_gpu_base = cps.csr_matrix(
+            (r_data_gpu, r_indices_gpu, r_indptr_gpu),
+            shape=right_batch_csr.shape,
+        )
+        del r_data_gpu, r_indices_gpu, r_indptr_gpu
+
         _normalize_csr_rows_inplace_gpu(right_gpu_base)
 
+        # Adaptive (mass-dependent) horizontal expansion on the RHS (MANDATORY).
+        # Why: this is a core part of the approximate candidate generation logic; without it,
+        # peaks that are within MS2 tolerance but in adjacent bins would not match.
+        right_gpu_base = _expand_csr_horizontal_adaptive_gpu(
+            right_gpu_base,
+            bin_size=float(config.bin_size),
+            ms2_tolerance_ppm=float(config.ms2_tolerance_ppm),
+            nbins=nbins,
+            mass_tolerance_cutoff_mz=float(config.mass_tolerance_cutoff_mz),
+        )
+
+        # Inner loop: left batches
         for _, _, left_batch_csr, left_batch_ids in left_batches:
-            left_gpu = cp.sparse.csr_matrix(left_batch_csr)
-            _normalize_csr_rows_inplace_gpu(left_gpu)
-
-            right_gpu = right_gpu_base
-
-            # Adaptive (mass-dependent) horizontal expansion on the RHS, mirroring the experiments version.
-            # Why: expansion increases nnz; keeping a normalized, unexpanded base avoids compounding expansion
-            # across left batches and avoids renormalizing already-normalized data.
-            if config.ms2_tolerance_ppm is not None:
-                right_gpu = _expand_csr_horizontal_adaptive_gpu(
-                    right_gpu,
-                    bin_size=float(config.bin_size),
-                    ms2_tolerance_ppm=float(config.ms2_tolerance_ppm),
-                    nbins=nbins,
-                    mass_tolerance_cutoff_mz=float(config.mass_tolerance_cutoff_mz),
+            l_data_gpu = cp.asarray(
+                np.asarray(left_batch_csr.data).astype(
+                    config.dtypes.intensity_dtype, copy=False
                 )
+            )
+            l_indices_gpu = cp.asarray(np.asarray(left_batch_csr.indices))
+            l_indptr_gpu = cp.asarray(np.asarray(left_batch_csr.indptr))
+            left_gpu = cps.csr_matrix(
+                (l_data_gpu, l_indices_gpu, l_indptr_gpu), shape=left_batch_csr.shape
+            )
+            del l_data_gpu, l_indices_gpu, l_indptr_gpu
+
+            _normalize_csr_rows_inplace_gpu(left_gpu)
 
             pairs = _pairs_above_threshold_from_sparse_dot_gpu(
                 left_gpu,
-                right_gpu,
+                right_gpu_base,
                 approx_threshold=float(config.approx_threshold),
                 similarity_dtype=config.dtypes.similarity_dtype,
                 upper_triangle_by_position=(right_frame is None),

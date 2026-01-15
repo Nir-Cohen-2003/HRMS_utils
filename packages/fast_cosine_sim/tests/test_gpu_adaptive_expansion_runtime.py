@@ -107,37 +107,28 @@ def test_gpu_adaptive_expansion_enables_adjacent_bin_match() -> None:
         intensity_column="intensity",
     )
 
-    # Case A: expansion disabled => should NOT match (peaks in different bins)
-    config_no_expand = ApproximateGpuBatchedSimilarityConfig(
-        **base_kwargs,
-        ms2_tolerance_ppm=5.0,
-    )
-    out_no = compute_gpu_batched_approximate_similarity_pairs(
-        left, config_no_expand, right=right
-    )
-    assert out_no.height == 0, (
-        "Expected no candidates without adaptive expansion, but got "
-        f"{out_no.height} rows: {out_no}"
-    )
-
-    # Case B: expansion enabled with 20 ppm at m/z~500 => tolerance_da=0.01 => window=ceil(0.01/0.01)=1 bin.
-    # This should expand RHS peak into adjacent bins and enable matching.
+    # Expansion is mandatory in the library, so this test validates that a match is produced
+    # for peaks that fall into adjacent bins but are within MS2 tolerance.
+    #
+    # With bin_size=0.001 and m/z~500, 20 ppm => tolerance_da=0.01 which corresponds to a
+    # window of ceil(0.01 / 0.001) = 10 bins, easily covering the 1-bin offset between
+    # 500.000 and 500.001.
     config_expand = ApproximateGpuBatchedSimilarityConfig(
         **base_kwargs,
         ms2_tolerance_ppm=20.0,
         # Use the experiments cutoff behavior (default is 200.0); keep explicit for test clarity.
         mass_tolerance_cutoff_mz=200.0,
     )
-    out_yes = compute_gpu_batched_approximate_similarity_pairs(
+    out = compute_gpu_batched_approximate_similarity_pairs(
         left, config_expand, right=right
     )
 
-    assert out_yes.height == 1, (
-        "Expected exactly 1 candidate with adaptive expansion enabled, "
-        f"but got {out_yes.height} rows: {out_yes}"
+    assert out.height == 1, (
+        "Expected exactly 1 candidate with mandatory adaptive expansion enabled, "
+        f"but got {out.height} rows: {out}"
     )
 
-    row = out_yes.row(0, named=True)
+    row = out.row(0, named=True)
     assert int(row["idx_left"]) == 1
     assert int(row["idx_right"]) == 2
     assert np.isclose(float(row["approx_similarity"]), 1.0, atol=1e-6), (

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Literal, Optional
+from typing import Literal
 
 import numpy as np
 
@@ -125,8 +125,8 @@ class BatchSizingConfig:
 
     target_gpu_memory_usage_ratio: float = 0.1
     min_spectra_per_batch: int = 256
-    max_peaks_per_batch: Optional[int] = None
-    flush_to_parquet_every_n_batches: Optional[int] = None
+    max_peaks_per_batch: int | None = None
+    flush_to_parquet_every_n_batches: int | None = None
 
     def __post_init__(self) -> None:
         if not (0.0 < float(self.target_gpu_memory_usage_ratio) <= 1.0):
@@ -169,10 +169,10 @@ class ApproximateGpuBatchedSimilarityConfig:
     bin_size: float
     approx_threshold: float
 
-    # adaptive (mass-dependent) right-matrix expansion
+    # adaptive (mass-dependent) right-matrix expansion (MANDATORY)
     # Why: candidate generation must account for MS2 fragment tolerance by dilating the RHS
-    # across neighboring bins; this mirrors the original experiments implementation.
-    ms2_tolerance_ppm: Optional[float] = None
+    # across neighboring bins; this is a core part of the algorithm and matches the experiments implementation.
+    ms2_tolerance_ppm: float
     mass_tolerance_cutoff_mz: float = MASS_TOLERANCE_CUTOFF
 
     # knobs
@@ -194,10 +194,15 @@ class ApproximateGpuBatchedSimilarityConfig:
         assert self.bin_size > 0.0, "bin_size must be positive"
         assert 0.0 <= self.approx_threshold <= 1.0, "approx_threshold must be in [0, 1]"
 
-        if self.ms2_tolerance_ppm is not None and float(self.ms2_tolerance_ppm) <= 0.0:
+        if not np.isfinite(float(self.ms2_tolerance_ppm)):
             raise ValueError(
-                f"ms2_tolerance_ppm must be positive if provided, got {self.ms2_tolerance_ppm}"
+                f"ms2_tolerance_ppm must be finite, got {self.ms2_tolerance_ppm}"
             )
+        if float(self.ms2_tolerance_ppm) <= 0.0:
+            raise ValueError(
+                f"ms2_tolerance_ppm must be positive, got {self.ms2_tolerance_ppm}"
+            )
+
         assert float(self.mass_tolerance_cutoff_mz) > 0.0, (
             "mass_tolerance_cutoff_mz must be positive; "
             f"got {self.mass_tolerance_cutoff_mz}"
