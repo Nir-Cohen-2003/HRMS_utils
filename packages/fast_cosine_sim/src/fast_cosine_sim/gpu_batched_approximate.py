@@ -554,6 +554,7 @@ def compute_gpu_batched_approximate_similarity_pairs(
         via `pl.scan_parquet(dir/*.parquet)`.
     """
     import cupy as cp
+    from time import perf_counter
 
     if right is None:
         assert config.comparison_mode == "self", (
@@ -565,6 +566,15 @@ def compute_gpu_batched_approximate_similarity_pairs(
         )
 
     _log(logger, "compute_gpu_batched_approximate_similarity_pairs: start")
+    
+    # Track timing breakdown
+    t_total_start = perf_counter()
+    t_flatten = 0.0
+    t_centroid = 0.0
+    t_binning = 0.0
+    t_gpu_compute = 0.0
+    t_write = 0.0
+    
     left = _ensure_row_index_column(left, index_column_name=config.spectrum_id_column)
     right_frame = (
         None
@@ -597,16 +607,19 @@ def compute_gpu_batched_approximate_similarity_pairs(
         .astype(config.dtypes.index_dtype, copy=False)
     )
 
+    t_flatten_start = perf_counter()
     flat_left_mzs, flat_left_ints, left_spec_pos, n_left = _flatten_spectra_to_numpy(
         left_df,
         mz_col=config.mz_column,
         intensity_col=config.intensity_column,
         spectrum_index_col="__spec_pos",
     )
+    t_flatten += perf_counter() - t_flatten_start
     
     # Apply centroiding if enabled
     # Why: prevents one-to-many peak matching which causes similarities > 1.0
     if config.centroiding.enabled:
+        t_centroid_start = perf_counter()
         from .centroiding import centroid_flat_spectra
         
         flat_left_mzs, flat_left_ints, left_spec_pos, n_left = centroid_flat_spectra(
@@ -617,7 +630,10 @@ def compute_gpu_batched_approximate_similarity_pairs(
             tolerance_ppm=config.ms2_tolerance_ppm,
             mass_tolerance_cutoff_mz=config.mass_tolerance_cutoff_mz,
         )
+        t_centroid += perf_counter() - t_centroid_start
+        _log(logger, f"  Left centroiding: {t_centroid:.3f}s ({len(flat_left_mzs)} peaks after)")
     
+    t_binning_start = perf_counter()
     left_csr = _sparse_bin_flat_spectra_to_csr(
         flat_mzs=flat_left_mzs,
         flat_ints=flat_left_ints,
@@ -629,10 +645,12 @@ def compute_gpu_batched_approximate_similarity_pairs(
         csr_index_dtype=config.dtypes.csr_index_dtype,
         intensity_dtype=config.dtypes.intensity_dtype,
     )
+    t_binning += perf_counter() - t_binning_start
 
     if right_frame is None:
         right_csr = left_csr
     else:
+        t_flatten_start = perf_counter()
         flat_right_mzs, flat_right_ints, right_spec_pos, n_right = (
             _flatten_spectra_to_numpy(
                 right_df,
@@ -641,10 +659,12 @@ def compute_gpu_batched_approximate_similarity_pairs(
                 spectrum_index_col="__spec_pos",
             )
         )
+        t_flatten += perf_counter() - t_flatten_start
         
         # Apply centroiding if enabled
         # Why: prevents one-to-many peak matching which causes similarities > 1.0
         if config.centroiding.enabled:
+            t_centroid_start = perf_counter()
             from .centroiding import centroid_flat_spectra
             
             flat_right_mzs, flat_right_ints, right_spec_pos, n_right = centroid_flat_spectra(
@@ -655,7 +675,10 @@ def compute_gpu_batched_approximate_similarity_pairs(
                 tolerance_ppm=config.ms2_tolerance_ppm,
                 mass_tolerance_cutoff_mz=config.mass_tolerance_cutoff_mz,
             )
+            t_centroid += perf_counter() - t_centroid_start
+            _log(logger, f"  Right centroiding: {perf_counter() - t_centroid_start:.3f}s ({len(flat_right_mzs)} peaks after)")
         
+        t_binning_start = perf_counter()
         right_csr = _sparse_bin_flat_spectra_to_csr(
             flat_mzs=flat_right_mzs,
             flat_ints=flat_right_ints,
@@ -667,6 +690,9 @@ def compute_gpu_batched_approximate_similarity_pairs(
             csr_index_dtype=config.dtypes.csr_index_dtype,
             intensity_dtype=config.dtypes.intensity_dtype,
         )
+        t_binning += perf_counter() - t_binning_start
+
+    _log(logger, f"  Preprocessing complete: flatten={t_flatten:.3f}s, centroid={t_centroid:.3f}s, binning={t_binning:.3f}s")
 
     assert left_csr.shape[0] == left_ids.shape[0], "left ids and CSR rows must align"
     assert right_csr.shape[0] == right_ids.shape[0], "right ids and CSR rows must align"
@@ -800,6 +826,7 @@ def compute_gpu_batched_approximate_similarity_pairs(
             #         f"  Inner loop (left batch): {i_l + 1}/{n_left} (vs right {i_r + 1}/{n_right})",
             #     )
 
+            t_gpu_start = perf_counter()
             l_data_gpu = cp.asarray(
                 np.asarray(left_batch_csr.data).astype(
                     config.dtypes.intensity_dtype, copy=False
@@ -823,6 +850,7 @@ def compute_gpu_batched_approximate_similarity_pairs(
                 left_global_ids=left_batch_ids,
                 right_global_ids=right_batch_ids,
             )
+            t_gpu_compute += perf_counter() - t_gpu_start
 
             if pairs.height > 0:
                 if should_write:
@@ -835,24 +863,46 @@ def compute_gpu_batched_approximate_similarity_pairs(
                 assert writer is not None, (
                     "writer must be initialized when should_write is True"
                 )
+                t_write_start = perf_counter()
                 _log(logger, f"    Flushing partition {part_index} to disk...")
                 writer.write_partition(
                     pl.concat(buffer_parts), partition_index=part_index
                 )
                 buffer_parts.clear()
                 part_index += 1
+                t_write += perf_counter() - t_write_start
+            
+            # Free Left batch GPU memory immediately after processing
+            # Why: Reduces peak GPU memory usage and prevents fragmentation
+            del left_gpu
+        
+        # Free Right batch GPU memory after completing all left batches
+        # Why: Allows GPU allocator to reclaim memory before next right batch
+        del right_gpu_base
+        
+        # Aggressive memory cleanup to prevent fragmentation
+        # Why: Matches old implementation behavior - ensures GPU memory is fully released
+        # between right batches, preventing OOM on large datasets
+        cp.get_default_memory_pool().free_all_blocks()
 
     if should_write:
         if buffer_parts:
             assert writer is not None, (
                 "writer must be initialized when should_write is True"
             )
+            t_write_start = perf_counter()
             writer.write_partition(pl.concat(buffer_parts), partition_index=part_index)
+            t_write += perf_counter() - t_write_start
 
         out_dir = Path(config.output_parquet.path)  # type: ignore[arg-type]
+        t_total = perf_counter() - t_total_start
         _log(
             logger,
             f"compute_gpu_batched_approximate_similarity_pairs: done (wrote parquet to {out_dir})",
+        )
+        _log(
+            logger,
+            f"  Timing breakdown: total={t_total:.3f}s | flatten={t_flatten:.3f}s | centroid={t_centroid:.3f}s | binning={t_binning:.3f}s | gpu_compute={t_gpu_compute:.3f}s | write={t_write:.3f}s",
         )
         return pl.scan_parquet(str(out_dir / "*.parquet"))
 
@@ -867,11 +917,16 @@ def compute_gpu_batched_approximate_similarity_pairs(
             }
         )
 
+    t_total = perf_counter() - t_total_start
     _log(
         logger,
         (
             "compute_gpu_batched_approximate_similarity_pairs: done "
             f"(rows={sum(p.height for p in collected_parts)})"
         ),
+    )
+    _log(
+        logger,
+        f"  Timing breakdown: total={t_total:.3f}s | flatten={t_flatten:.3f}s | centroid={t_centroid:.3f}s | binning={t_binning:.3f}s | gpu_compute={t_gpu_compute:.3f}s",
     )
     return pl.concat(collected_parts)

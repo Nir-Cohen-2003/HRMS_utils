@@ -1097,10 +1097,12 @@ def build_and_write_pairs_parquet_gpu_batched(
 if __name__ == "__main__":
     # Example usage
     example_parquet_paths = [
+        # Path(
+        #     "/home/analytit_admin/Data/spectral_libs/fast_similarity/fraghub_P_100k.parqeut"
+        # ),
         Path(
-            "/home/analytit_admin/Data/spectral_libs/fast_similarity/fraghub_P_100k.parqeut"
+            "/home/analytit_admin/Data/spectral_libs/fast_similarity/fraghub_P_300k.parqeut"
         ),
-        # Path("/home/analytit_admin/Data/spectral_libs/fast_similarity/fraghub_P_300k.parqeut"),
         # Path("/home/analytit_admin/Data/spectral_libs/fast_similarity/fraghub_P_500k.parqeut"),
         # Path(
         #     "/home/analytit_admin/Data/spectral_libs/fast_similarity/fraghub_P.parqeut"
