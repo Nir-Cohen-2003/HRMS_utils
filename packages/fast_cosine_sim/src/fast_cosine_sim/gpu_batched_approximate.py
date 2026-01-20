@@ -400,31 +400,74 @@ def _estimate_max_peaks_per_batch(
     free_mem_bytes: int,
     target_gpu_memory_usage_ratio: float,
     min_spectra_per_batch: int,
+    avg_peaks_per_spectrum: float,
     csr_index_itemsize: int,
     intensity_itemsize: int,
     similarity_itemsize: int,
+    upper_mass_bound: float,
+    bin_size: float,
+    ms2_tolerance_ppm: float,
 ) -> int:
-    target_mem = int(float(free_mem_bytes) * float(target_gpu_memory_usage_ratio))
+    """
+    Estimate max peaks per batch by solving the quadratic memory equation:
+      Memory = N^2 * sim_element_size + N * (csr_size + expanded_size)
+    """
+    target_mem = float(free_mem_bytes) * float(target_gpu_memory_usage_ratio)
     assert target_mem > 0, "Computed target GPU memory target must be positive"
 
-    # Similarity matrix dominates memory: min_batch^2 * sim_bytes with overhead.
-    sim_bytes = (
-        int(min_spectra_per_batch)
-        * int(min_spectra_per_batch)
-        * int(similarity_itemsize)
+    # Per-element sizes
+    bytes_per_data = float(intensity_itemsize)
+    bytes_per_index = float(csr_index_itemsize)
+    # Conservative upper bound: assign full indptr cost per nnz (overestimates, but safe).
+    bytes_per_indptr = float(csr_index_itemsize)
+
+    bytes_per_peak = bytes_per_data + bytes_per_index + bytes_per_indptr
+    bytes_per_peak *= float(GPU_CSR_OVERHEAD_FACTOR)
+
+    # Expansion factor estimation
+    expansion_factor = 1.0
+    if ms2_tolerance_ppm > 0.0:
+        window_da = float(upper_mass_bound) * float(ms2_tolerance_ppm) * 1e-6
+        # 2x window (plus/minus)
+        expansion_factor = max(1.0, (2 * window_da) / float(bin_size))
+        # Add safety margin for density
+        expansion_factor *= 2.0
+
+    bytes_per_spectrum_csr = float(avg_peaks_per_spectrum) * bytes_per_peak
+    bytes_per_spectrum_expanded = bytes_per_spectrum_csr * expansion_factor
+
+    sim_bytes_per_element = float(similarity_itemsize)
+    sim_temp_overhead_factor = float(GPU_SIM_TEMP_OVERHEAD_FACTOR)
+
+    # Solve quadratic equation for optimal batch size N:
+    # target_mem * safety_factor = (sim_bytes*sim_temp_overhead)*N^2 + (bytes_expanded + bytes_csr)*N
+
+    # Why 0.4: there is a 2-3 times larger overhead than the arrays accounted for here (fragmentation, etc).
+    safety_factor = 0.4
+
+    a = sim_bytes_per_element * sim_temp_overhead_factor
+    b = bytes_per_spectrum_expanded + bytes_per_spectrum_csr
+    c = -target_mem * safety_factor
+
+    discriminant = b**2 - 4 * a * c
+
+    if discriminant > 0:
+        estimated_spectra_per_batch = int((-b + np.sqrt(discriminant)) / (2 * a))
+    else:
+        # Fallback: very conservative estimate
+        estimated_spectra_per_batch = int(
+            target_mem / (bytes_per_spectrum_expanded * 10)
+        )
+
+    estimated_spectra_per_batch = max(
+        int(min_spectra_per_batch), estimated_spectra_per_batch
     )
-    sim_bytes = int(sim_bytes * GPU_SIM_TEMP_OVERHEAD_FACTOR)
 
-    remaining = target_mem - sim_bytes
-    if remaining <= 0:
-        # Fall back: allow at least one peak per spectrum.
-        return int(min_spectra_per_batch)
+    # Convert back to max peaks (which is what the batch generator expects as a limit)
+    max_peaks = int(estimated_spectra_per_batch * avg_peaks_per_spectrum)
 
-    bytes_per_nnz = int(csr_index_itemsize + intensity_itemsize)
-    bytes_per_nnz = int(bytes_per_nnz * GPU_CSR_OVERHEAD_FACTOR)
-
-    max_peaks = remaining // (2 * bytes_per_nnz)
-    return max(int(max_peaks), int(min_spectra_per_batch))
+    # Ensure reasonable minimum (e.g. 100k peaks)
+    return max(max_peaks, 100_000)
 
 
 def _yield_batches_dynamic(
@@ -560,6 +603,21 @@ def compute_gpu_batched_approximate_similarity_pairs(
         intensity_col=config.intensity_column,
         spectrum_index_col="__spec_pos",
     )
+    
+    # Apply centroiding if enabled
+    # Why: prevents one-to-many peak matching which causes similarities > 1.0
+    if config.centroiding.enabled:
+        from .centroiding import centroid_flat_spectra
+        
+        flat_left_mzs, flat_left_ints, left_spec_pos, n_left = centroid_flat_spectra(
+            flat_left_mzs,
+            flat_left_ints,
+            left_spec_pos,
+            n_left,
+            tolerance_ppm=config.ms2_tolerance_ppm,
+            mass_tolerance_cutoff_mz=config.mass_tolerance_cutoff_mz,
+        )
+    
     left_csr = _sparse_bin_flat_spectra_to_csr(
         flat_mzs=flat_left_mzs,
         flat_ints=flat_left_ints,
@@ -583,6 +641,21 @@ def compute_gpu_batched_approximate_similarity_pairs(
                 spectrum_index_col="__spec_pos",
             )
         )
+        
+        # Apply centroiding if enabled
+        # Why: prevents one-to-many peak matching which causes similarities > 1.0
+        if config.centroiding.enabled:
+            from .centroiding import centroid_flat_spectra
+            
+            flat_right_mzs, flat_right_ints, right_spec_pos, n_right = centroid_flat_spectra(
+                flat_right_mzs,
+                flat_right_ints,
+                right_spec_pos,
+                n_right,
+                tolerance_ppm=config.ms2_tolerance_ppm,
+                mass_tolerance_cutoff_mz=config.mass_tolerance_cutoff_mz,
+            )
+        
         right_csr = _sparse_bin_flat_spectra_to_csr(
             flat_mzs=flat_right_mzs,
             flat_ints=flat_right_ints,
@@ -616,15 +689,20 @@ def compute_gpu_batched_approximate_similarity_pairs(
 
     free_mem, _ = cp.cuda.Device(0).mem_info
 
+    avg_peaks_per_spectrum = left_csr.nnz / max(left_csr.shape[0], 1)
     max_peaks = _estimate_max_peaks_per_batch(
         free_mem_bytes=int(free_mem),
         target_gpu_memory_usage_ratio=float(
             config.batching.target_gpu_memory_usage_ratio
         ),
         min_spectra_per_batch=int(config.batching.min_spectra_per_batch),
+        avg_peaks_per_spectrum=float(avg_peaks_per_spectrum),
         csr_index_itemsize=int(np.dtype(config.dtypes.csr_index_dtype).itemsize),
         intensity_itemsize=int(np.dtype(config.dtypes.intensity_dtype).itemsize),
         similarity_itemsize=int(np.dtype(config.dtypes.similarity_dtype).itemsize),
+        upper_mass_bound=float(config.upper_mass_bound),
+        bin_size=float(config.bin_size),
+        ms2_tolerance_ppm=float(config.ms2_tolerance_ppm),
     )
     if config.batching.max_peaks_per_batch is not None:
         max_peaks = min(int(max_peaks), int(config.batching.max_peaks_per_batch))
@@ -679,7 +757,13 @@ def compute_gpu_batched_approximate_similarity_pairs(
     nbins = int(np.floor(float(config.upper_mass_bound) / float(config.bin_size))) + 1
 
     # Outer loop: right batches (normalize + expand once, reuse for all left batches).
-    for _, _, right_batch_csr, right_batch_ids in right_batches:
+    n_right = len(right_batches)
+    n_left = len(left_batches)
+    for i_r, (_, _, right_batch_csr, right_batch_ids) in enumerate(right_batches):
+        _log(
+            logger,
+            f"Outer loop (right batch): {i_r + 1}/{n_right} (size={right_batch_csr.shape[0]})",
+        )
         # Match experiments transfer/CSR construction semantics:
         # explicitly allocate device buffers and avoid mutating the host CSR.
         r_data_gpu = cp.asarray(
@@ -709,7 +793,13 @@ def compute_gpu_batched_approximate_similarity_pairs(
         )
 
         # Inner loop: left batches
-        for _, _, left_batch_csr, left_batch_ids in left_batches:
+        for i_l, (_, _, left_batch_csr, left_batch_ids) in enumerate(left_batches):
+            # if i_l % 10 == 0 or i_l == n_left - 1:
+            #     _log(
+            #         logger,
+            #         f"  Inner loop (left batch): {i_l + 1}/{n_left} (vs right {i_r + 1}/{n_right})",
+            #     )
+
             l_data_gpu = cp.asarray(
                 np.asarray(left_batch_csr.data).astype(
                     config.dtypes.intensity_dtype, copy=False
@@ -745,6 +835,7 @@ def compute_gpu_batched_approximate_similarity_pairs(
                 assert writer is not None, (
                     "writer must be initialized when should_write is True"
                 )
+                _log(logger, f"    Flushing partition {part_index} to disk...")
                 writer.write_partition(
                     pl.concat(buffer_parts), partition_index=part_index
                 )

@@ -122,6 +122,7 @@ def run_reference_cosine_greedy(
     tolerance_ppm: float,
     intensity_power: float = 0.5,
     mz_power: float = 0.0,
+    apply_centroiding: bool = True,
 ) -> dict[tuple[int, int], float]:
     """
     Run reference greedy cosine on spectrum pairs.
@@ -131,9 +132,14 @@ def run_reference_cosine_greedy(
         tolerance_ppm: MS2 tolerance in ppm
         intensity_power: power to raise intensities to before similarity
         mz_power: power to raise m/z to in score calculation (default: 0.0)
+        apply_centroiding: if True, centroid spectra before matching (default: True)
 
     Returns:
         dict mapping (idx_left, idx_right) -> similarity_score
+        
+    Why centroiding by default:
+        Both reference and GPU implementations should see the same centroided data
+        for fair comparison. Centroiding prevents one-to-many matching.
     """
     results = {}
 
@@ -146,6 +152,7 @@ def run_reference_cosine_greedy(
             tolerance_ppm=tolerance_ppm,
             intensity_power=intensity_power,
             mz_power=mz_power,
+            apply_centroiding=apply_centroiding,
         )
 
         results[(pair.idx_left, pair.idx_right)] = float(score)

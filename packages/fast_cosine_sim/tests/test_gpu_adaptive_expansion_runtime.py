@@ -129,8 +129,12 @@ def test_gpu_adaptive_expansion_enables_adjacent_bin_match() -> None:
     )
 
     row = out.row(0, named=True)
-    assert int(row["idx_left"]) == 1
-    assert int(row["idx_right"]) == 2
+    assert int(row["idx_left"]) == 1, (
+        f"Expected idx_left=1 for left spectrum, got {row['idx_left']}"
+    )
+    assert int(row["idx_right"]) == 2, (
+        f"Expected idx_right=2 for right spectrum, got {row['idx_right']}"
+    )
     assert np.isclose(float(row["approx_similarity"]), 1.0, atol=1e-6), (
         "Expected similarity ~1.0 for single-peak match after normalization/expansion, "
         f"got {row['approx_similarity']}"

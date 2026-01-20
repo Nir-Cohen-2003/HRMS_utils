@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Literal
+from typing import Literal, Optional
 
 import numpy as np
 
@@ -114,6 +114,44 @@ class LoggingConfig:
 
 
 @dataclass(frozen=True, slots=True)
+class CentroidingConfig:
+    """
+    Controls centroiding (peak merging) preprocessing.
+    
+    What is centroiding:
+        Standard MS data processing that merges consecutive peaks within
+        a tolerance window into a single centroid peak. This converts
+        profile-mode data to centroid-mode data.
+    
+    Why we apply it:
+        1. Prevents one-to-many peak matching (causes similarities > 1.0)
+        2. Matches how most MS instruments work (many output centroided data)
+        3. Reduces data size and improves performance
+    
+    Algorithm:
+        Single-linkage clustering along m/z axis. Walk through sorted peaks
+        and merge consecutive peaks whose m/z gap is below tolerance.
+        For each cluster:
+        - m/z: intensity-weighted mean (approximates peak center)
+        - intensity: sum (preserves total signal energy)
+    
+    Tolerance:
+        Uses the same ms2_tolerance_ppm as the similarity computation.
+        This ensures peaks that could match multiple times are merged first.
+        
+    enabled: 
+        - True (default): apply centroiding before binning (recommended)
+        - False: use raw peaks (may cause similarities > 1.0 in edge cases)
+    """
+    enabled: bool = True
+    
+    def __post_init__(self) -> None:
+        assert isinstance(self.enabled, bool), (
+            f"enabled must be bool, got {type(self.enabled)}"
+        )
+
+
+@dataclass(frozen=True, slots=True)
 class BatchSizingConfig:
     """Controls coarse batching behavior.
 
@@ -178,6 +216,7 @@ class ApproximateGpuBatchedSimilarityConfig:
     # knobs
     dtypes: ApproximateGpuDtypesConfig = ApproximateGpuDtypesConfig()
     intensity: IntensityTransformConfig = IntensityTransformConfig()
+    centroiding: CentroidingConfig = CentroidingConfig()
     batching: BatchSizingConfig = BatchSizingConfig()
     output_parquet: OutputParquetConfig = OutputParquetConfig()
     logging: LoggingConfig = LoggingConfig()

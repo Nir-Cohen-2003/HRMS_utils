@@ -215,6 +215,7 @@ def cosine_greedy_ppm(
     tolerance_ppm: float,
     mz_power: float = 0.0,
     intensity_power: float = 1.0,
+    apply_centroiding: bool = True,
 ) -> Tuple[float, int]:
     """
     Compute greedy cosine similarity between two mass spectra using ppm tolerance.
@@ -229,9 +230,15 @@ def cosine_greedy_ppm(
         tolerance_ppm: tolerance in ppm for peak matching
         mz_power: power to raise m/z to in score calculation (default: 0.0)
         intensity_power: power to raise intensities to in score calculation (default: 1.0)
+        apply_centroiding: if True, centroid spectra before matching (default: True)
     
     Returns:
         Tuple of (cosine_score, num_matches)
+        
+    Why centroiding by default:
+        Centroiding prevents one-to-many peak matching (which causes similarities > 1.0).
+        Both reference and GPU implementations should see the same centroided data
+        for fair comparison. Centroiding is enabled by default to match GPU pipeline.
         
     Example:
         >>> mz1 = np.array([100.0, 200.0, 300.0], dtype=np.float64)
@@ -247,6 +254,24 @@ def cosine_greedy_ppm(
     assert mz1.shape[0] == intensity1.shape[0], "mz1 and intensity1 must have same length"
     assert mz2.shape[0] == intensity2.shape[0], "mz2 and intensity2 must have same length"
     assert float(tolerance_ppm) > 0.0, f"tolerance_ppm must be positive, got {tolerance_ppm}"
+    
+    # Apply centroiding if requested (default: True)
+    # Why: ensures both reference and GPU implementations see the same data
+    if apply_centroiding:
+        from fast_cosine_sim.centroiding import centroid_by_neighbor_distance
+        
+        mz1, intensity1 = centroid_by_neighbor_distance(
+            mz1,
+            intensity1,
+            tolerance_ppm=tolerance_ppm,
+            mass_tolerance_cutoff_mz=MASS_TOLERANCE_CUTOFF,
+        )
+        mz2, intensity2 = centroid_by_neighbor_distance(
+            mz2,
+            intensity2,
+            tolerance_ppm=tolerance_ppm,
+            mass_tolerance_cutoff_mz=MASS_TOLERANCE_CUTOFF,
+        )
     
     # Find all matching pairs within tolerance
     matching_pairs = collect_peak_pairs_ppm(
