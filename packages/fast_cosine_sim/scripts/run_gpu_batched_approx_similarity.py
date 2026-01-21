@@ -31,7 +31,6 @@ from __future__ import annotations
 
 import argparse
 import json
-from dataclasses import asdict
 from datetime import datetime, timezone
 from pathlib import Path
 from time import perf_counter
@@ -40,13 +39,8 @@ from typing import Optional
 import polars as pl
 
 from fast_cosine_sim import (
-    ApproximateGpuBatchedSimilarityConfig,
-    ApproximateGpuDtypesConfig,
-    BatchSizingConfig,
-    IntensityTransformConfig,
-    LoggingConfig,
-    OutputParquetConfig,
-    compute_gpu_batched_approximate_similarity_pairs,
+    GPUApproximateConfig,
+    batched_approximate_similarity_gpu,
 )
 
 
@@ -100,6 +94,23 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--bin-size", type=float, default=0.0001)
     parser.add_argument("--approx-threshold", type=float, default=0.8)
     parser.add_argument("--intensity-power", type=float, default=0.5)
+    parser.add_argument(
+        "--ms2-tolerance-ppm",
+        type=float,
+        default=20.0,
+        help="MS2 tolerance in ppm for adaptive expansion (default: 20.0).",
+    )
+    parser.add_argument(
+        "--mass-tolerance-cutoff-mz",
+        type=float,
+        default=200.0,
+        help="Mass cutoff for ppm calculation (default: 200.0 Da).",
+    )
+    parser.add_argument(
+        "--disable-centroiding",
+        action="store_true",
+        help="Disable centroiding preprocessing (enabled by default).",
+    )
 
     # Batching knobs
     parser.add_argument(
@@ -150,12 +161,19 @@ def _parse_args() -> argparse.Namespace:
 
 def _build_config(
     args: argparse.Namespace, *, output_dir: Path, log_path: Path
-) -> ApproximateGpuBatchedSimilarityConfig:
-    intensity_cfg = IntensityTransformConfig(power=float(args.intensity_power))
-    dtypes_cfg = ApproximateGpuDtypesConfig()  # leave defaults (int64 ids, int32 CSR, float32 data)
-
-    batching_cfg = BatchSizingConfig(
-        target_gpu_memory_usage_ratio=float(args.target_gpu_mem_ratio),
+) -> GPUApproximateConfig:
+    """Build simplified GPUApproximateConfig from CLI args."""
+    config = GPUApproximateConfig(
+        upper_mass_bound=float(args.upper_mass_bound),
+        bin_size=float(args.bin_size),
+        approx_threshold=float(args.approx_threshold),
+        ms2_tolerance_ppm=float(args.ms2_tolerance_ppm),
+        intensity_power=float(args.intensity_power),
+        comparison_mode=str(args.comparison_mode),  # Literal enforced in __post_init__
+        spectrum_id_col=str(args.id_column),
+        mz_col=str(args.mz_column),
+        intensity_col=str(args.intensity_column),
+        target_gpu_mem_ratio=float(args.target_gpu_mem_ratio),
         min_spectra_per_batch=int(args.min_spectra_per_batch),
         max_peaks_per_batch=None
         if args.max_peaks_per_batch is None
@@ -163,24 +181,8 @@ def _build_config(
         flush_to_parquet_every_n_batches=int(args.flush_to_parquet_every_n_batches)
         if args.flush_to_parquet_every_n_batches is not None
         else None,
-    )
-
-    output_cfg = OutputParquetConfig(path=output_dir)
-    logging_cfg = LoggingConfig(log_path=log_path)
-
-    config = ApproximateGpuBatchedSimilarityConfig(
-        upper_mass_bound=float(args.upper_mass_bound),
-        bin_size=float(args.bin_size),
-        approx_threshold=float(args.approx_threshold),
-        dtypes=dtypes_cfg,
-        intensity=intensity_cfg,
-        batching=batching_cfg,
-        output_parquet=output_cfg,
-        logging=logging_cfg,
-        comparison_mode=str(args.comparison_mode),  # Literal enforced in __post_init__
-        spectrum_id_column=str(args.id_column),
-        mz_column=str(args.mz_column),
-        intensity_column=str(args.intensity_column),
+        centroiding_enabled=not args.disable_centroiding,
+        mass_tolerance_cutoff_mz=float(args.mass_tolerance_cutoff_mz),
     )
     return config
 
@@ -222,24 +224,11 @@ def main() -> None:
 
     config = _build_config(args, output_dir=output_dir, log_path=log_path)
 
-    # Log config in a stable-ish way (dataclasses nested)
-    config_payload = {
-        "upper_mass_bound": config.upper_mass_bound,
-        "bin_size": config.bin_size,
-        "approx_threshold": config.approx_threshold,
-        "comparison_mode": config.comparison_mode,
-        "spectrum_id_column": config.spectrum_id_column,
-        "mz_column": config.mz_column,
-        "intensity_column": config.intensity_column,
-        "dtypes": asdict(config.dtypes),
-        "intensity": asdict(config.intensity),
-        "batching": asdict(config.batching),
-        "output_parquet": {
-            "path": str(config.output_parquet.path) if config.output_parquet.path else None
-        },
-        "logging": {"log_path": str(config.logging.log_path) if config.logging.log_path else None},
-    }
-    _log_line("config=" + json.dumps(config_payload, indent=2, sort_keys=True), log_path=log_path)
+    # Log config as a simple dict (dataclass with flat fields)
+    from dataclasses import asdict
+    config_payload = asdict(config)
+    # Convert Path to str for JSON serialization
+    _log_line("config=" + json.dumps(config_payload, indent=2, sort_keys=True, default=str), log_path=log_path)
 
     t0 = perf_counter()
     t_load0 = perf_counter()
@@ -256,10 +245,11 @@ def main() -> None:
 
     # Run approximate stage only.
     t_compute0 = perf_counter()
-    result = compute_gpu_batched_approximate_similarity_pairs(
-        left=left_df,
-        right=None if right_path is None else right_df,
+    result = batched_approximate_similarity_gpu(
+        left_df=left_df,
         config=config,
+        right_df=None if right_path is None else right_df,
+        output_path=output_dir if args.flush_to_parquet_every_n_batches is not None else None,
         logger=None,  # file logging is handled here; library logging is optional
     )
     compute_time = perf_counter() - t_compute0

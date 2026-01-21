@@ -8,22 +8,16 @@ the exact similarity computation/refinement.
 
 from __future__ import annotations
 
-from .config import (
-    ApproximateGpuBatchedSimilarityConfig,
-    ApproximateGpuDtypesConfig,
-    BatchSizingConfig,
-    IntensityTransformConfig,
-    LoggingConfig,
-    OutputParquetConfig,
+from .gpu_approximate_similarity import (
+    GPUApproximateConfig,
+    batched_approximate_similarity_gpu,
 )
-from .gpu_batched_approximate import compute_gpu_batched_approximate_similarity_pairs
+
+# Backward compatibility alias for old function name
+compute_gpu_batched_approximate_similarity_pairs = batched_approximate_similarity_gpu
 
 __all__ = [
-    "ApproximateGpuBatchedSimilarityConfig",
-    "ApproximateGpuDtypesConfig",
-    "BatchSizingConfig",
-    "IntensityTransformConfig",
-    "LoggingConfig",
-    "OutputParquetConfig",
+    "GPUApproximateConfig",
+    "batched_approximate_similarity_gpu",
     "compute_gpu_batched_approximate_similarity_pairs",
 ]

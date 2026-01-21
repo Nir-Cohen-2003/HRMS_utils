@@ -54,7 +54,12 @@ def _centroid_single_spectrum_sorted_numba(
         return np.empty(0, dtype=np.float64), np.empty(0, dtype=np.float32)
     
     if n == 1:
-        return mz.copy(), intensity.copy()
+        # Why explicit dtype: numba requires consistent return types across all branches
+        out_mz = np.empty(1, dtype=np.float64)
+        out_intensity = np.empty(1, dtype=np.float32)
+        out_mz[0] = mz[0]
+        out_intensity[0] = intensity[0]
+        return out_mz, out_intensity
     
     # Pre-allocate output (worst case: no merging)
     # Why: numba doesn't support dynamic lists efficiently

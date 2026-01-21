@@ -19,7 +19,6 @@ import numpy as np
 import polars as pl
 import pytest
 from numpy.typing import NDArray
-
 from utils import (
     AgreementStatistics,
     ComparisonResult,
@@ -36,7 +35,7 @@ from utils import (
 def real_spectra_path() -> Path:
     """Fixture providing path to real HRMS spectra data."""
     path = Path(
-        "/home/analytit_admin/Data/spectral_libs/fast_similarity/fraghub_P_100k.parqeut"
+        "/home/analytit_admin/Data/spectral_libs/fast_similarity/fraghub_P_100k.parquet"
     )
     assert path.exists(), f"Real spectra file not found: {path}"
     return path
@@ -61,9 +60,9 @@ def test_real_spectra_self_comparison(
     Test self-comparison on real HRMS data.
 
     Why: Self-comparison (spectrum vs itself) should give similarity ~1.0 and allows
-    us to validate normalization. Only test on selected bin sizes to avoid slow 
+    us to validate normalization. Only test on selected bin sizes to avoid slow
     reference computation.
-    
+
     The number of spectra can be adjusted via --max-spectra CLI argument.
     """
     skip_if_no_gpu()

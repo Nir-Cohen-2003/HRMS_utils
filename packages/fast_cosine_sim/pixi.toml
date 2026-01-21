@@ -28,6 +28,7 @@ build-all = {cmd="python -m build --wheel --sdist --outdir dist",depends-on = ["
 clean_dist = "rm -rf dist || true"
 publish-testpypi = {cmd="twine upload --repository testpypi --skip-existing dist/*", depends-on = ["build-all"]}
 publish-pypi = {cmd="twine upload --repository pypi --skip-existing dist/*", depends-on = ["build-all"]}
+
 # [target.win-64.tasks]
 # build-all = { cmd = "python -m build --wheel --sdist --no-isolation --outdir dist"}
 
@@ -53,8 +54,9 @@ numpy = ">=1.26"
 scipy = ">=1.11"
 polars = ">=1.36"
 pyarrow = "*"
-cupy = ">=12.0.0"
-
+cupy = ">=12.0.0, <13.0.0"
+numba = "*"
+numba-cuda = "*"
 
 [feature.testing.tasks]
 check = "pyrefly check --ignore missing-import"
@@ -63,6 +65,8 @@ test = "python -m pytest tests/ -v -s"
 test-normal = "python -m pytest tests/test_normal_spectra.py -v -s"
 test-problematic = "python -m pytest tests/test_problematic_spectra.py -v -s"
 test-real = "python -m pytest tests/test_real_data.py -v -s"
+profile-gpu = {cmd="python scripts/profile_gpu_detailed.py --input-parquet $INPUT_PARQUET --comparison-mode ${COMPARISON_MODE:-self} --max-spectra ${MAX_SPECTRA:-100000} --output-report ${OUTPUT_REPORT:-gpu_profile_report.txt} --target-gpu-mem-ratio ${GPU_MEM_RATIO:-0.3}"}
+profile-gpu-example = {cmd="./scripts/example_profile_run.sh"}
 [feature.testing.dependencies]
 fast_cosine_sim = {path = "."}
 pytest = "*"

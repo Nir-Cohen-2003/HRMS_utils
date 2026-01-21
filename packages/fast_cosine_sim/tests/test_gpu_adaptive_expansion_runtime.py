@@ -21,9 +21,9 @@ import numpy as np
 import polars as pl
 import pytest
 
-from fast_cosine_sim import ApproximateGpuBatchedSimilarityConfig
-from fast_cosine_sim.gpu_batched_approximate import (
-    compute_gpu_batched_approximate_similarity_pairs,
+from fast_cosine_sim import GPUApproximateConfig
+from fast_cosine_sim.gpu_approximate_similarity import (
+    batched_approximate_similarity_gpu,
 )
 
 
@@ -94,33 +94,28 @@ def test_gpu_adaptive_expansion_enables_adjacent_bin_match() -> None:
     left = _make_single_peak_df(idx=1, mz=500.00, intensity=1.0)
     right = _make_single_peak_df(idx=2, mz=500.001, intensity=1.0)
 
-    # Common base config
+    # Config for adaptive expansion test
     # - upper_mass_bound must exceed the peak m/z
     # - approx_threshold=1.0 because single identical normalized vectors should dot to 1
-    base_kwargs = dict(
-        upper_mass_bound=1000.0,
-        bin_size=0.001,
-        approx_threshold=1.0,
-        comparison_mode="cross",
-        spectrum_id_column="idx",
-        mz_column="mz",
-        intensity_column="intensity",
-    )
-
-    # Expansion is mandatory in the library, so this test validates that a match is produced
-    # for peaks that fall into adjacent bins but are within MS2 tolerance.
+    # - ms2_tolerance_ppm=20.0 enables adaptive expansion across adjacent bins
     #
     # With bin_size=0.001 and m/z~500, 20 ppm => tolerance_da=0.01 which corresponds to a
     # window of ceil(0.01 / 0.001) = 10 bins, easily covering the 1-bin offset between
     # 500.000 and 500.001.
-    config_expand = ApproximateGpuBatchedSimilarityConfig(
-        **base_kwargs,
+    config_expand = GPUApproximateConfig(
+        upper_mass_bound=1000.0,
+        bin_size=0.001,
+        approx_threshold=1.0,
+        comparison_mode="cross",
+        spectrum_id_col="idx",
+        mz_col="mz",
+        intensity_col="intensity",
         ms2_tolerance_ppm=20.0,
-        # Use the experiments cutoff behavior (default is 200.0); keep explicit for test clarity.
         mass_tolerance_cutoff_mz=200.0,
+        centroiding_enabled=True,
     )
-    out = compute_gpu_batched_approximate_similarity_pairs(
-        left, config_expand, right=right
+    out = batched_approximate_similarity_gpu(
+        left, config_expand, right_df=right
     )
 
     assert out.height == 1, (
@@ -135,7 +130,7 @@ def test_gpu_adaptive_expansion_enables_adjacent_bin_match() -> None:
     assert int(row["idx_right"]) == 2, (
         f"Expected idx_right=2 for right spectrum, got {row['idx_right']}"
     )
-    assert np.isclose(float(row["approx_similarity"]), 1.0, atol=1e-6), (
+    assert np.isclose(float(row["similarity"]), 1.0, atol=1e-6), (
         "Expected similarity ~1.0 for single-peak match after normalization/expansion, "
-        f"got {row['approx_similarity']}"
+        f"got {row['similarity']}"
     )

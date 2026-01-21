@@ -25,7 +25,7 @@ from typing import Tuple
 import numpy as np
 from numpy.typing import NDArray
 
-from fast_cosine_sim.config import MASS_TOLERANCE_CUTOFF
+from fast_cosine_sim.gpu_approximate_similarity import MASS_TOLERANCE_CUTOFF
 
 
 def collect_peak_pairs_ppm(

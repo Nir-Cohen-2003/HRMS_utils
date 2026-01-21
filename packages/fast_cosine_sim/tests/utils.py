@@ -16,9 +16,9 @@ import pytest
 from numpy.typing import NDArray
 from reference_cosine_greedy import cosine_greedy_ppm
 
-from fast_cosine_sim import ApproximateGpuBatchedSimilarityConfig
-from fast_cosine_sim.gpu_batched_approximate import (
-    compute_gpu_batched_approximate_similarity_pairs,
+from fast_cosine_sim import GPUApproximateConfig
+from fast_cosine_sim.gpu_approximate_similarity import (
+    batched_approximate_similarity_gpu,
 )
 
 
@@ -212,30 +212,31 @@ def run_fast_cosine_sim(
     left_df = pl.DataFrame(left_data)
     right_df = pl.DataFrame(right_data)
 
-    # Why: always use cross mode to support both self-matches and different matches.
-    # Self mode excludes diagonal, which breaks tests expecting self-similarity scores.
-    config = ApproximateGpuBatchedSimilarityConfig(
+    # Use simple single-dataclass config
+    config = GPUApproximateConfig(
         upper_mass_bound=float(upper_mass_bound),
         bin_size=float(bin_size),
         approx_threshold=0.0,  # Get all pairs, filter later
         ms2_tolerance_ppm=float(tolerance_ppm),
-        comparison_mode="cross",
-        spectrum_id_column="idx",
-        mz_column="mz",
-        intensity_column="intensity",
+        intensity_power=float(intensity_power),
+        comparison_mode="cross",  # Always cross for test framework
+        spectrum_id_col="idx",
+        mz_col="mz",
+        intensity_col="intensity",
+        centroiding_enabled=True,  # Default, explicit here
     )
 
-    # Override intensity power
-    config = replace(
-        config,
-        intensity=replace(config.intensity, power=float(intensity_power)),
-    )
-
-    result_df = compute_gpu_batched_approximate_similarity_pairs(
-        left=left_df,
-        right=right_df,
+    result_df = batched_approximate_similarity_gpu(
+        left_df=left_df,
         config=config,
+        right_df=right_df,
+        output_path=None,
+        logger=None,
     )
+    
+    # Handle LazyFrame return (shouldn't happen with output_path=None, but be safe)
+    if isinstance(result_df, pl.LazyFrame):
+        result_df = result_df.collect()
 
     # Convert to dict
     # Why: Extract only diagonal pairs (i, i) from the full cross-product.
@@ -253,7 +254,7 @@ def run_fast_cosine_sim(
             if pair_idx < len(spectra_pairs):
                 pair = spectra_pairs[pair_idx]
                 key = (int(pair.idx_left), int(pair.idx_right))
-                results[key] = float(row["approx_similarity"])
+                results[key] = float(row["similarity"])
 
     return results
 
