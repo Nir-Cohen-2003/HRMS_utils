@@ -65,10 +65,16 @@ test = "python -m pytest tests/ -v -s"
 test-normal = "python -m pytest tests/test_normal_spectra.py -v -s"
 test-problematic = "python -m pytest tests/test_problematic_spectra.py -v -s"
 test-real = "python -m pytest tests/test_real_data.py -v -s"
-profile-gpu = {cmd="python scripts/profile_gpu_detailed.py --input-parquet $INPUT_PARQUET --comparison-mode ${COMPARISON_MODE:-self} --max-spectra ${MAX_SPECTRA:-100000} --output-report ${OUTPUT_REPORT:-gpu_profile_report.txt} --target-gpu-mem-ratio ${GPU_MEM_RATIO:-0.3}"}
-profile-gpu-example = {cmd="./scripts/example_profile_run.sh"}
+# profile-gpu = {cmd="python scripts/profile_gpu_detailed.py --input-parquet $INPUT_PARQUET --comparison-mode ${COMPARISON_MODE:-self} --max-spectra ${MAX_SPECTRA:-100000} --output-report ${OUTPUT_REPORT:-gpu_profile_report.txt} --target-gpu-mem-ratio ${GPU_MEM_RATIO:-0.3}"}
+# profile-gpu-example = {cmd="./scripts/example_profile_run.sh"}
+profile-gpu-example = {cmd = "python scripts/optimize_gpu_kernel.py --n-spectra 5000 --n-peaks-per-spectrum 50 --output-dir ./quick_test --batch-configs \"100,500,1000\" --skip-dtype-comparison"}
+profile-gpu = {cmd = "python scripts/optimize_gpu_kernel.py --n-spectra 200000 --n-peaks-per-spectrum 50 --output-dir ./full_test --batch-configs \"10000,20000,40000\""}
+benchmark-expansion-algorithms = {cmd = "python benchmarks/benchmark_expansion_algorithms.py --batch-sizes 1000,5000,10000"}
+benchmark-tolerance-fusion = {cmd = "python benchmarks/benchmark_tolerance_lookup_fusion.py --batch-sizes 1000,5000,10000"}
 [feature.testing.dependencies]
 fast_cosine_sim = {path = "."}
 pytest = "*"
 pyrefly = "*"
 cupy = ">=12.0.0,<13.0.0"
+matplotlib = "*"
+seaborn= "*"
