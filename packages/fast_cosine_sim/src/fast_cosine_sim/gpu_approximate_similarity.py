@@ -828,6 +828,153 @@ def _normalize_and_expand_csr_gpu(
 
 
 # =============================================================================
+# SpMM Expansion Matrix Construction
+# =============================================================================
+
+
+@numba.njit(parallel=True, cache=True)
+def _expansion_matrix_get_row_lengths(
+    nbins: int,
+    bin_size: float,
+    ms2_tolerance_ppm: float,
+    mass_tol_cutoff: float,
+) -> NDArray[np.int32]:
+    """Compute number of non-zeros per row for expansion matrix."""
+    row_lengths = np.zeros(nbins, dtype=np.int32)
+    for i in numba.prange(nbins):
+        mz = float(i) * bin_size
+        eff_mz = max(mz, mass_tol_cutoff)
+        tol_da = eff_mz * ms2_tolerance_ppm * 1e-6
+        window = int(np.ceil(tol_da / bin_size))
+
+        start = max(0, i - window)
+        end = min(nbins - 1, i + window)
+        row_lengths[i] = end - start + 1
+    return row_lengths
+
+
+@cuda.jit
+def _expansion_matrix_fill_indices_cuda(
+    indptr: NDArray[np.int64],
+    indices: NDArray[np.int32],
+    nbins: int,
+    bin_size: float,
+    ms2_tolerance_ppm: float,
+    mass_tol_cutoff: float,
+) -> None:
+    """CUDA kernel to fill expansion matrix indices."""
+    row = cuda.grid(1)
+    if row >= nbins:
+        return
+
+    start_idx = indptr[row]
+
+    mz = float(row) * bin_size
+    eff_mz = max(mz, mass_tol_cutoff)
+    tol_da = eff_mz * ms2_tolerance_ppm * 1e-6
+    window = int(cuda.libdevice.ceil(tol_da / bin_size))
+
+    col_start = max(0, row - window)
+    col_end = min(nbins - 1, row + window)
+    count = col_end - col_start + 1
+
+    for k in range(count):
+        indices[start_idx + k] = col_start + k
+
+
+def construct_expansion_matrix_gpu(
+    bin_size: float,
+    ms2_tolerance_ppm: float,
+    nbins: int,
+    upper_mass_bound: float,
+    logger: Optional[logging.Logger] = None,
+) -> Optional[cps.csr_matrix]:
+    """
+    Construct the sparse expansion matrix on GPU.
+
+    Returns:
+        Square CuPy CSR matrix (nbins, nbins) or None if OOM predicted.
+    """
+    try:
+        # Calculate lengths on CPU (fast and low memory)
+        lengths_cpu = _expansion_matrix_get_row_lengths(
+            nbins, bin_size, ms2_tolerance_ppm, MASS_TOLERANCE_CUTOFF
+        )
+        total_nnz = int(np.sum(lengths_cpu))
+
+        # Estimate size: nnz*(4+4) + (nbins+1)*8 bytes
+        # float32 data + int32 indices + int64 indptr
+        size_bytes = total_nnz * 8 + (nbins + 1) * 8
+        size_gb = size_bytes / 1e9
+
+        free_mem, _ = cp.cuda.Device(0).mem_info
+        free_mem_gb = free_mem / 1e9
+        
+        # Debug print (always print for diagnosis)
+        print(f"DEBUG: SpMM Matrix Construction: nbins={nbins}, nnz={total_nnz}, size={size_gb:.4f}GB, free={free_mem_gb:.2f}GB")
+        
+        # Require that matrix leaves at least 2GB of free memory for batches
+        # AND consumes no more than 85% of available memory (relaxed from 60%)
+        # This allows running on 16GB cards with 0.0001 bin size (req ~9.7GB)
+        remaining_mem_gb = free_mem_gb - size_gb
+        if size_bytes > free_mem * 0.85 or remaining_mem_gb < 2.0:
+            # Rough estimates for user guidance
+            est_500_gb = size_gb * (500 / upper_mass_bound) ** 2 
+            est_coarse_gb = size_gb / 100.0 if bin_size < 0.001 else size_gb / 10.0
+            
+            msg = (
+                f"Expansion matrix (~{size_gb:.2f} GB) too large for available GPU memory ({free_mem_gb:.2f} GB). "
+                "Falling back to slower kernel-based expansion. Performance will be reduced.\n"
+                "To enable fast SpMM expansion, consider:\n"
+                f"1. Reducing upper_mass_bound (current: {upper_mass_bound}). E.g., 500 Da requires ~{est_500_gb:.1f} GB.\n"
+                f"2. Increasing bin_size (current: {bin_size}). E.g., 0.001 Da requires ~{est_coarse_gb:.2f} GB."
+            )
+            
+            print(f"DEBUG: Fallback triggered. {msg}")
+            
+            if logger:
+                logger.warning(msg)
+            return None
+
+        lengths_gpu = cp.asarray(lengths_cpu)
+
+        indptr_gpu = cp.zeros(nbins + 1, dtype=cp.int64)
+        indptr_gpu[1:] = cp.cumsum(lengths_gpu)
+
+        indices_gpu = cp.zeros(total_nnz, dtype=cp.int32)
+
+        threads_per_block = 256
+        blocks = (nbins + threads_per_block - 1) // threads_per_block
+
+        _expansion_matrix_fill_indices_cuda[blocks, threads_per_block](
+            indptr_gpu,
+            indices_gpu,
+            nbins,
+            bin_size,
+            ms2_tolerance_ppm,
+            MASS_TOLERANCE_CUTOFF,
+        )
+
+        data_gpu = cp.ones(total_nnz, dtype=cp.float32)
+
+        return cps.csr_matrix(
+            (data_gpu, indices_gpu, indptr_gpu), shape=(nbins, nbins), dtype=cp.float32
+        )
+    except cp.cuda.memory.OutOfMemoryError:
+        if logger:
+            logger.warning(
+                "OOM while constructing expansion matrix. Falling back to kernel expansion."
+            )
+        return None
+    except Exception as e:
+        if logger:
+            logger.warning(
+                f"Failed to construct expansion matrix: {e}. Falling back to kernel expansion."
+            )
+        return None
+
+
+# =============================================================================
 # Batching Logic
 # =============================================================================
 
@@ -1694,6 +1841,7 @@ if __name__ == "__main__":
             pl.col("cleaned_normalized_mz"),
             pl.col("cleaned_normalized_intensity"),
         )
+        .with_row_index("idx")
         .collect()
     )
 
@@ -1701,8 +1849,8 @@ if __name__ == "__main__":
 
     # Configure
     config = GPUApproximateConfig(
-        upper_mass_bound=1000.0,
-        bin_size=0.0001,
+        upper_mass_bound=500.0,
+        bin_size=0.001,
         ms2_tolerance_ppm=10.0,
         approx_threshold=0.5,
         target_gpu_mem_ratio=0.3,

@@ -641,6 +641,203 @@ def profile_single_operation(
     )
 
 
+
+def _profile_single_batch_spmm(
+    df: pl.DataFrame, config: GPUApproximateConfig
+) -> InternalKernelTimings:
+    """
+    Profile internal kernel operations using SpMM expansion strategy.
+    
+    Why: Measure performance of the new SpMM-based expansion (Right @ Expansion).
+    
+    Args:
+        df: Input DataFrame with spectra
+        config: Configuration for similarity computation
+        
+    Returns:
+        InternalKernelTimings with detailed operation timings
+    """
+    from fast_cosine_sim.gpu_approximate_similarity import (
+        APPROX_INTENSITY_DTYPE_NP,
+        INDEX_DTYPE_NP,
+        _normalize_csr_rows_inplace_gpu,
+        _sparse_bin_spectra_df_to_csr,
+        construct_expansion_matrix_gpu,
+        _expand_csr_horizontal_adaptive_gpu,
+    )
+
+    # Add indices if needed
+    if config.spectrum_id_col not in df.columns:
+        df = df.with_row_index(config.spectrum_id_col).with_columns(
+            pl.col(config.spectrum_id_col).cast(pl.Int32)
+        )
+    else:
+        df = df.with_columns(pl.col(config.spectrum_id_col).cast(pl.Int32))
+
+    # Convert to CSR (CPU operation, not timed here)
+    csr_matrix = _sparse_bin_spectra_df_to_csr(
+        df,
+        config.mz_col,
+        config.intensity_col,
+        upper_bound=config.upper_mass_bound,
+        intensity_power=config.intensity_power,
+        bin_size=config.bin_size,
+        apply_centroiding=config.centroiding_enabled,
+        tolerance_ppm=config.ms2_tolerance_ppm,
+        mass_tolerance_cutoff_mz=config.mass_tolerance_cutoff_mz,
+    )
+
+    # Take a representative batch (use first N rows for single batch test)
+    batch_size = min(1000, csr_matrix.shape[0])
+    left_csr = csr_matrix[:batch_size]
+    right_csr = csr_matrix[:batch_size]
+    
+    # Construct expansion matrix
+    nbins = int(config.upper_mass_bound / config.bin_size) + 1
+    expansion_matrix = construct_expansion_matrix_gpu(
+        config.bin_size, config.ms2_tolerance_ppm, nbins, config.upper_mass_bound, logger=MockLogger()
+    )
+    if expansion_matrix is None:
+        print("[WARNING] SpMM expansion matrix construction failed in single batch profiling. Using kernel fallback.")
+
+    # Create timing events
+    events = {}
+    for name in [
+        "start",
+        "left_xfer",
+        "norm_left",
+        "right_xfer",
+        "norm_right",
+        "expand",
+        "spmm_start",
+        "spmm_end",
+        "thresh_start",
+        "thresh_end",
+        "cpu_xfer",
+        "end",
+    ]:
+        events[name] = cp.cuda.Event()
+
+    # Start profiling
+    events["start"].record()
+
+    # 1. Transfer LEFT to GPU
+    l_data_gpu = cp.asarray(
+        np.asarray(left_csr.data).astype(APPROX_INTENSITY_DTYPE_NP, copy=False)
+    )
+    l_indices_gpu = cp.asarray(np.asarray(left_csr.indices))
+    l_indptr_gpu = cp.asarray(np.asarray(left_csr.indptr))
+    L_gpu = cps.csr_matrix(
+        (l_data_gpu, l_indices_gpu, l_indptr_gpu), shape=left_csr.shape
+    )
+    del l_data_gpu, l_indices_gpu, l_indptr_gpu
+    events["left_xfer"].record()
+
+    # 2. Normalize LEFT
+    _ = _normalize_csr_rows_inplace_gpu(L_gpu)
+    events["norm_left"].record()
+
+    # 3. Transfer RIGHT to GPU
+    r_data_gpu = cp.asarray(
+        np.asarray(right_csr.data).astype(APPROX_INTENSITY_DTYPE_NP, copy=False)
+    )
+    r_indices_gpu = cp.asarray(np.asarray(right_csr.indices))
+    r_indptr_gpu = cp.asarray(np.asarray(right_csr.indptr))
+    R_gpu = cps.csr_matrix(
+        (r_data_gpu, r_indices_gpu, r_indptr_gpu), shape=right_csr.shape
+    )
+    del r_data_gpu, r_indices_gpu, r_indptr_gpu
+    events["right_xfer"].record()
+
+    # 4. Normalize RIGHT
+    _ = _normalize_csr_rows_inplace_gpu(R_gpu)
+    events["norm_right"].record()
+
+    # 5. Expand RIGHT
+    if expansion_matrix is not None:
+        R_expanded = R_gpu.dot(expansion_matrix)
+    else:
+        R_expanded = _expand_csr_horizontal_adaptive_gpu(
+            R_gpu,
+            config.bin_size,
+            config.ms2_tolerance_ppm,
+            nbins,
+        )
+    events["expand"].record()
+
+    # 6. SpMM: L @ R_exp.T
+    events["spmm_start"].record()
+    sim = L_gpu.dot(R_expanded.T)
+    events["spmm_end"].record()
+
+    # 7. Thresholding & extraction
+    events["thresh_start"].record()
+    mask = sim.data >= config.approx_threshold
+
+    out_rows = None
+    out_cols = None
+    out_data = None
+    if int(mask.sum()) > 0:
+        out_data = sim.data[mask]
+        out_cols = sim.indices[mask]
+        indices_in_data = cp.nonzero(mask)[0]
+        out_rows = cp.searchsorted(sim.indptr, indices_in_data, side="right") - 1
+    events["thresh_end"].record()
+
+    # 8. Transfer results to CPU
+    if out_rows is not None and out_cols is not None and out_data is not None:
+        _ = cp.asnumpy(out_rows)
+        _ = cp.asnumpy(out_cols)
+        _ = cp.asnumpy(out_data)
+    events["cpu_xfer"].record()
+
+    events["end"].record()
+
+    # Synchronize all events
+    events["end"].synchronize()
+    
+    # Cleanup
+    if expansion_matrix is not None:
+        del expansion_matrix
+
+    # Calculate timings
+    transfer_to_gpu_ms = cp.cuda.get_elapsed_time(
+        events["start"], events["left_xfer"]
+    ) + cp.cuda.get_elapsed_time(events["norm_left"], events["right_xfer"])
+
+    normalize_left_ms = cp.cuda.get_elapsed_time(
+        events["left_xfer"], events["norm_left"]
+    )
+    normalize_right_ms = cp.cuda.get_elapsed_time(
+        events["right_xfer"], events["norm_right"]
+    )
+
+    expand_right_ms = cp.cuda.get_elapsed_time(events["norm_right"], events["expand"])
+
+    spmm_ms = cp.cuda.get_elapsed_time(events["spmm_start"], events["spmm_end"])
+
+    threshold_and_extract_ms = cp.cuda.get_elapsed_time(
+        events["thresh_start"], events["thresh_end"]
+    )
+
+    transfer_to_cpu_ms = cp.cuda.get_elapsed_time(
+        events["thresh_end"], events["cpu_xfer"]
+    )
+
+    total_batch_ms = cp.cuda.get_elapsed_time(events["start"], events["end"])
+
+    return InternalKernelTimings(
+        transfer_to_gpu_ms=transfer_to_gpu_ms,
+        normalize_left_ms=normalize_left_ms,
+        normalize_right_ms=normalize_right_ms,
+        expand_right_ms=expand_right_ms,
+        spmm_ms=spmm_ms,
+        threshold_and_extract_ms=threshold_and_extract_ms,
+        transfer_to_cpu_ms=transfer_to_cpu_ms,
+        total_batch_ms=total_batch_ms,
+    )
+
+
 def profile_internal_kernel_operations(
     df: pl.DataFrame, config: GPUApproximateConfig, use_fused: bool = False
 ) -> InternalKernelTimings:
@@ -660,6 +857,9 @@ def profile_internal_kernel_operations(
     Returns:
         InternalKernelTimings with detailed operation timings
     """
+    if config.ms2_tolerance_ppm > 0:
+        return _profile_single_batch_spmm(df, config)
+        
     if use_fused:
         return _profile_single_batch_fused(df, config)
     else:
@@ -1192,6 +1392,11 @@ def estimate_spmm_metrics(
 # =============================================================================
 
 
+class MockLogger:
+    def info(self, msg): print(f"[INFO] {msg}")
+    def warning(self, msg): print(f"[WARNING] {msg}")
+    def error(self, msg): print(f"[ERROR] {msg}")
+
 def profile_batched_similarity_operations(
     df: pl.DataFrame, config: GPUApproximateConfig, batch_size: int
 ) -> AggregatedKernelTimings:
@@ -1213,6 +1418,8 @@ def profile_batched_similarity_operations(
         _normalize_csr_rows_inplace_gpu,
         _normalize_and_expand_csr_gpu,
         _sparse_bin_spectra_df_to_csr,
+        construct_expansion_matrix_gpu,
+        _expand_csr_horizontal_adaptive_gpu,
     )
     
     aggregated = AggregatedKernelTimings()
@@ -1240,7 +1447,16 @@ def profile_batched_similarity_operations(
     )
     
     n_rows = csr_matrix.shape[0]
-    nbins = int(config.upper_mass_bound / config.bin_size)
+    nbins = int(config.upper_mass_bound / config.bin_size) + 1
+    
+    # Attempt to construct expansion matrix if tolerance is used
+    expansion_matrix = None
+    if config.ms2_tolerance_ppm > 0:
+        expansion_matrix = construct_expansion_matrix_gpu(
+            config.bin_size, config.ms2_tolerance_ppm, nbins, config.upper_mass_bound, logger=MockLogger()
+        )
+        if expansion_matrix is None:
+            print("[WARNING] SpMM expansion matrix construction failed in profiling. Using kernel fallback.")
     
     # Profile EVERY batch to get complete accounting of all time spent
     for i in range(0, n_rows, batch_size):
@@ -1285,20 +1501,33 @@ def profile_batched_similarity_operations(
         )
         events["right_xfer"].record()
         
-        # Use fused normalize+expand if available, otherwise separate operations
-        if config.use_fused_kernel:
+        if expansion_matrix is not None:
+            # SpMM path
+            _normalize_csr_rows_inplace_gpu(right_csr_gpu)
+            events["norm_right"].record()
+            
+            # Expand using SpMM
+            right_expanded = right_csr_gpu.dot(expansion_matrix)
+            events["expand_right"].record()
+            
+        elif config.use_fused_kernel:
+            # Fused kernel path
             right_expanded = _normalize_and_expand_csr_gpu(
                 right_csr_gpu, 
                 bin_size=config.bin_size, 
                 ms2_tolerance_ppm=config.ms2_tolerance_ppm, 
                 nbins=nbins
             )
+            # Fused kernel combines normalize and expand, so we attribute time to expand
+            # and set norm_right time to zero effectively
+            events["norm_right"].record() # Instantaneous marker
             events["expand_right"].record()
+            
         else:
+            # Standard path
             _normalize_csr_rows_inplace_gpu(right_csr_gpu)
             events["norm_right"].record()
             
-            from fast_cosine_sim.gpu_approximate_similarity import _expand_csr_horizontal_adaptive_gpu
             right_expanded = _expand_csr_horizontal_adaptive_gpu(
                 right_csr_gpu, 
                 bin_size=config.bin_size, 
@@ -1328,7 +1557,12 @@ def profile_batched_similarity_operations(
         transfer_to_gpu = cp.cuda.get_elapsed_time(events["start"], events["left_xfer"])
         normalize_left = cp.cuda.get_elapsed_time(events["left_xfer"], events["norm_left"])
         
-        if config.use_fused_kernel:
+        # Handle different expansion paths
+        if expansion_matrix is not None:
+            normalize_right = cp.cuda.get_elapsed_time(events["right_xfer"], events["norm_right"])
+            expand_right = cp.cuda.get_elapsed_time(events["norm_right"], events["expand_right"])
+            transfer_to_cpu_start = events["expand_right"]
+        elif config.use_fused_kernel:
             normalize_right = 0.0
             expand_right = cp.cuda.get_elapsed_time(events["norm_left"], events["expand_right"])
             transfer_to_cpu_start = events["expand_right"]
@@ -1352,6 +1586,11 @@ def profile_batched_similarity_operations(
         aggregated.transfer_to_cpu_ms += transfer_to_cpu
         aggregated.total_ms += total_batch
         aggregated.num_batches_sampled += 1
+        
+    # Clean up expansion matrix
+    if expansion_matrix is not None:
+        del expansion_matrix
+        cp.get_default_memory_pool().free_all_blocks()
     
     # Compute percentages (handles division by zero)
     aggregated.compute_percentages()
@@ -2151,6 +2390,13 @@ def parse_args() -> argparse.Namespace:
     )
 
     parser.add_argument(
+        "--bin-size",
+        type=float,
+        default=0.0001,
+        help="Bin size in Da (default: 0.0001)",
+    )
+
+    parser.add_argument(
         "--output-dir",
         type=str,
         default="optimization_results",
@@ -2263,7 +2509,7 @@ def main() -> None:
     # Base configuration
     config_base = GPUApproximateConfig(
         upper_mass_bound=1000.0,
-        bin_size=0.0001,
+        bin_size=args.bin_size,
         approx_threshold=args.approx_threshold,
         ms2_tolerance_ppm=args.ms2_tolerance_ppm,
         intensity_power=0.5,

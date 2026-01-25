@@ -71,6 +71,7 @@ profile-gpu-example = {cmd = "python scripts/optimize_gpu_kernel.py --n-spectra 
 profile-gpu = {cmd = "python scripts/optimize_gpu_kernel.py --n-spectra 200000 --n-peaks-per-spectrum 50 --output-dir ./full_test --batch-configs \"10000,20000,40000\""}
 benchmark-expansion-algorithms = {cmd = "python benchmarks/benchmark_expansion_algorithms.py --batch-sizes 1000,5000,10000"}
 benchmark-tolerance-fusion = {cmd = "python benchmarks/benchmark_tolerance_lookup_fusion.py --batch-sizes 1000,5000,10000"}
+simple = "python -m src.fast_cosine_sim.gpu_approximate_similarity"
 [feature.testing.dependencies]
 fast_cosine_sim = {path = "."}
 pytest = "*"
