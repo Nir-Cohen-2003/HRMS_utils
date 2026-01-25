@@ -43,7 +43,7 @@ build-all = { cmd = "python -m build --wheel --sdist --no-isolation --outdir dis
 default = {features = [], solve-group = "default"}
 testing = {features = ["testing"], solve-group = "testing"}
 experiments = {features = ["experiments"], solve-group = "experiments",no-default-feature = true}
-
+docs = {features = ["docs"], solve-group = "docs"}
 [package.build]
 backend = { name = "pixi-build-python", version = "*",channels = [
   "https://prefix.dev/pixi-build-backends",
@@ -164,3 +164,12 @@ isotope_fit = "python experiments/find_optimal_isotopic_parameters.py"
 # and run `mprof plot` on it. If arguments are provided they are forwarded to `mprof plot`.
 # The task exits with an error if no `mprofile*` files are found.
 # plot-profile = "sh -lc 'if [ \"$#\" -eq 0 ]; then file=$(ls -t mprofile* 2>/dev/null | head -n1); if [ -z \"$file\" ]; then echo \"No mprofile file found\"; exit 1; fi; mprof plot \"$file\"; else mprof plot \"$@\"; fi' --"
+
+[feature.docs.tasks]
+docs-serve ="mkdocs serve"
+[feature.docs.dependencies]
+mkdocs="*"
+mkdocstrings-python="*"
+pymdown-extensions="*"
+mkdocstrings ="*"
+mkdocs-material= "*"

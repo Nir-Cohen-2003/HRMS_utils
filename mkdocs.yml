@@ -1,0 +1,132 @@
+site_name: HRMS Utils Documentation
+site_description: High-resolution mass spectrometry utilities for Python
+site_url: https://nir-cohen-2003.github.io/HRMS_utils/
+repo_url: https://github.com/Nir-Cohen-2003/HRMS_utils
+repo_name: HRMS_utils
+edit_uri: edit/main/docs/
+
+theme:
+  name: material
+  palette:
+    - scheme: default
+      primary: deep purple
+      accent: purple
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: deep purple
+      accent: purple
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - navigation.tracking
+    - search.suggest
+    - search.highlight
+    - search.share
+    - content.tabs.link
+    - content.code.annotation
+    - content.code.copy
+    - toc.follow
+
+plugins:
+  - search:
+      separator: '[\s\-,:!=\[\]()"/]+|(?!\b)(?=[A-Z][a-z])|\.(?!\d)|&[lg]t;'
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: [src]
+          options:
+            docstring_style: google
+            show_source: true
+            show_root_heading: true
+            show_root_full_path: false
+            show_symbol_type_heading: true
+            show_symbol_type_toc: true
+            signature_crossrefs: true
+            merge_init_into_class: true
+            show_if_no_docstring: false
+            inherited_members: false
+            members_order: source
+            separate_signature: true
+            unwrap_annotated: true
+            filters: ["!^_"]
+            heading_level: 2
+
+markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets:
+      check_paths: true
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - admonition
+  - pymdownx.details
+  - pymdownx.arithmatex:
+      generic: true
+  - attr_list
+  - md_in_html
+  - def_list
+  - footnotes
+  - tables
+  - toc:
+      permalink: true
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/Nir-Cohen-2003/HRMS_utils
+
+extra_javascript:
+  - javascripts/mathjax.js
+  - https://polyfill.io/v3/polyfill.min.js?features=es6
+  - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js
+
+nav:
+  - Home: index.md
+  - Getting Started:
+      - Installation: getting-started/installation.md
+      - Quickstart: getting-started/quickstart.md
+  - Tutorials:
+      - 1. MSDIAL Chromatogram Annotation: tutorials/01-msdial-chromatogram-annotation.md
+      - 2. MSP Library Processing: tutorials/02-msp-library-processing.md
+      - 3. Spectral Similarity Search: tutorials/03-spectral-similarity-search.md
+      - 4. Mass Decomposition: tutorials/04-mass-decomposition.md
+      - 5. Isotopic Pattern Analysis: tutorials/05-isotopic-pattern-analysis.md
+  - How-To Guides:
+      - Custom Tolerances: how-to/custom-tolerances.md
+      - Blank Subtraction: how-to/blank-subtraction.md
+      - Batch Processing: how-to/batch-processing.md
+      - Export Results: how-to/export-results.md
+      - GPU Acceleration: how-to/gpu-acceleration.md
+  - API Reference:
+      - Overview: reference/index.md
+      - HRMS Core: reference/api/hrms_core.md
+      - Formats: reference/api/formats.md
+      - Formula Annotation: reference/api/formula_annotation.md
+      - RDKit Utilities: reference/api/rdkit.md
+      - Data Structures: reference/data-structures.md
+  - Explanation:
+      - Architecture: explanation/architecture.md
+      - Mass Decomposition Algorithm: explanation/mass-decomposition-algorithm.md
+      - Spectral Entropy: explanation/spectral-entropy.md
+      - Isotopic Patterns: explanation/isotopic-patterns.md
+      - Polars Plugins: explanation/polars-plugins.md
+  - Contributing:
+      - Development Guide: contributing/development.md
+      - Writing Plugins: contributing/writing-plugins.md
