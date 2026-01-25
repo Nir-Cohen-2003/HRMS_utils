@@ -1097,15 +1097,15 @@ def build_and_write_pairs_parquet_gpu_batched(
 if __name__ == "__main__":
     # Example usage
     example_parquet_paths = [
-        # Path(
-        #     "/home/analytit_admin/Data/spectral_libs/fast_similarity/fraghub_P_100k.parqeut"
-        # ),
         Path(
-            "/home/analytit_admin/Data/spectral_libs/fast_similarity/fraghub_P_300k.parqeut"
+            "/home/analytit_admin/Data/spectral_libs/fast_similarity/fraghub_P_100k.parquet"
         ),
-        # Path("/home/analytit_admin/Data/spectral_libs/fast_similarity/fraghub_P_500k.parqeut"),
         # Path(
-        #     "/home/analytit_admin/Data/spectral_libs/fast_similarity/fraghub_P.parqeut"
+        #     "/home/analytit_admin/Data/spectral_libs/fast_similarity/fraghub_P_300k.parquet"
+        # ),
+        # Path("/home/analytit_admin/Data/spectral_libs/fast_similarity/fraghub_P_500k.parquet"),
+        # Path(
+        #     "/home/analytit_admin/Data/spectral_libs/fast_similarity/fraghub_P.parquet"
         # ),
     ]
     output_parquet_path = Path("output_similarity_pairs.parquet")
@@ -1115,8 +1115,8 @@ if __name__ == "__main__":
         bin_size=0.0001,
         ms2_tolerance_ppm=10.0,
         intensity_power=0.5,
-        threshold=0.8,
-        use_gpu_exact_cosine=True,
+        threshold=0.65,
+        use_gpu_exact_cosine=False,
     )
 
     # Construct the BatchedGPUConfig here (non-optional) and pass it to the

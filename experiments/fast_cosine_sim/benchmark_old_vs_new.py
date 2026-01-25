@@ -31,6 +31,7 @@ from pathlib import Path
 from time import perf_counter
 from typing import NamedTuple
 
+import numpy as np
 import polars as pl
 
 # Add experiments directory to path for imports
@@ -42,7 +43,9 @@ from batched_gpu import build_and_write_pairs_parquet_gpu_batched
 from batched_utils import BatchedGPUConfig
 
 # Add packages to path for new implementation
-sys.path.insert(0, str(Path(__file__).parent.parent.parent / "packages" / "fast_cosine_sim" / "src"))
+sys.path.insert(
+    0, str(Path(__file__).parent.parent.parent / "packages" / "fast_cosine_sim" / "src")
+)
 
 # New implementation imports
 from fast_cosine_sim import (
@@ -57,6 +60,7 @@ from fast_cosine_sim import (
 
 class BenchmarkResult(NamedTuple):
     """Results from a single benchmark run."""
+
     dataset_name: str
     implementation: str
     run_number: int
@@ -73,6 +77,7 @@ class BenchmarkResult(NamedTuple):
 
 class DatasetConfig(NamedTuple):
     """Configuration for a test dataset."""
+
     name: str
     path: Path
     num_spectra: int | None  # None = all spectra
@@ -82,17 +87,23 @@ class DatasetConfig(NamedTuple):
 DATASETS = {
     "fraghub_100k": DatasetConfig(
         name="fraghub_100k",
-        path=Path("/home/analytit_admin/Data/spectral_libs/fast_similarity/fraghub_P_100k.parqeut"),
+        path=Path(
+            "/home/analytit_admin/Data/spectral_libs/fast_similarity/fraghub_P_100k.parquet"
+        ),
         num_spectra=None,  # Use all in file (already 100k)
     ),
     "fraghub_300k": DatasetConfig(
         name="fraghub_300k",
-        path=Path("/home/analytit_admin/Data/spectral_libs/fast_similarity/fraghub_P_300k.parqeut"),
+        path=Path(
+            "/home/analytit_admin/Data/spectral_libs/fast_similarity/fraghub_P_300k.parquet"
+        ),
         num_spectra=None,
     ),
     "fraghub_all": DatasetConfig(
         name="fraghub_all",
-        path=Path("/home/analytit_admin/Data/spectral_libs/fast_similarity/fraghub_P.parqeut"),
+        path=Path(
+            "/home/analytit_admin/Data/spectral_libs/fast_similarity/fraghub_P.parquet"
+        ),
         num_spectra=None,
     ),
 }
@@ -107,7 +118,7 @@ SIMILARITY_PARAMS = {
     "ms2_tolerance_ppm": 10.0,
     "intensity_power": 0.5,
     "approx_threshold": 0.65,  # Actual threshold used for approximate stage
-    "exact_threshold": 0.8,     # Would be used for exact stage (not relevant here)
+    "exact_threshold": 0.8,  # Would be used for exact stage (not relevant here)
     "target_gpu_mem_ratio": 0.3,
 }
 
@@ -116,6 +127,7 @@ def cleanup_gpu_memory() -> None:
     """Clear GPU memory between tests."""
     try:
         import cupy as cp
+
         cp.get_default_memory_pool().free_all_blocks()
         cp.get_default_pinned_memory_pool().free_all_blocks()
     except Exception:
@@ -170,8 +182,12 @@ def run_old_implementation(
         bin_size=float(SIMILARITY_PARAMS["bin_size"]),
         ms2_tolerance_ppm=float(SIMILARITY_PARAMS["ms2_tolerance_ppm"]),
         intensity_power=float(SIMILARITY_PARAMS["intensity_power"]),
-        threshold=float(SIMILARITY_PARAMS["exact_threshold"]),  # For exact stage (not used here)
-        approx_threshold=float(SIMILARITY_PARAMS["approx_threshold"]),  # Explicitly set to match new impl
+        threshold=float(
+            SIMILARITY_PARAMS["exact_threshold"]
+        ),  # For exact stage (not used here)
+        approx_threshold=float(
+            SIMILARITY_PARAMS["approx_threshold"]
+        ),  # Explicitly set to match new impl
         use_gpu_exact_cosine=False,  # We only care about approximate stage
     )
 
@@ -209,19 +225,19 @@ def run_old_implementation(
 def parse_new_timing_log(log_text: str) -> dict[str, float] | None:
     """
     Extract detailed timing breakdown from new implementation log.
-    
+
     Why: The new implementation logs detailed timing breakdown:
     "Timing breakdown: total=X.XXs | flatten=X.XXs | centroid=X.XXs | binning=X.XXs | gpu_compute=X.XXs | write=X.XXs"
-    
+
     Returns: dict with timing components, or None if not found
     """
     # Look for timing breakdown line
     pattern = r"Timing breakdown: total=(\d+\.\d+)s \| flatten=(\d+\.\d+)s \| centroid=(\d+\.\d+)s \| binning=(\d+\.\d+)s \| gpu_compute=(\d+\.\d+)s(?:\s*\|\s*write=(\d+\.\d+)s)?"
     match = re.search(pattern, log_text)
-    
+
     if match is None:
         return None
-    
+
     return {
         "total": float(match.group(1)),
         "flatten": float(match.group(2)),
@@ -249,10 +265,12 @@ def run_new_implementation(
 
     # Map old column names to new expected names if needed
     if "cleaned_normalized_mz" in df.columns:
-        df = df.rename({
-            "cleaned_normalized_mz": "mz",
-            "cleaned_normalized_intensity": "intensity",
-        })
+        df = df.rename(
+            {
+                "cleaned_normalized_mz": "mz",
+                "cleaned_normalized_intensity": "intensity",
+            }
+        )
 
     # Ensure idx column exists
     if "idx" not in df.columns:
@@ -264,11 +282,15 @@ def run_new_implementation(
         bin_size=float(SIMILARITY_PARAMS["bin_size"]),
         approx_threshold=float(SIMILARITY_PARAMS["approx_threshold"]),
         ms2_tolerance_ppm=float(SIMILARITY_PARAMS["ms2_tolerance_ppm"]),
-        dtypes=ApproximateGpuDtypesConfig(),
-        intensity=IntensityTransformConfig(power=float(SIMILARITY_PARAMS["intensity_power"])),
+        dtypes=ApproximateGpuDtypesConfig(index_dtype=np.dtype(np.int32)),
+        intensity=IntensityTransformConfig(
+            power=float(SIMILARITY_PARAMS["intensity_power"])
+        ),
         batching=BatchSizingConfig(
-            target_gpu_memory_usage_ratio=float(SIMILARITY_PARAMS["target_gpu_mem_ratio"]),
-            min_spectra_per_batch=256,
+            target_gpu_memory_usage_ratio=float(
+                SIMILARITY_PARAMS["target_gpu_mem_ratio"]
+            ),
+            min_spectra_per_batch=10000,
             flush_to_parquet_every_n_batches=100,
         ),
         output_parquet=OutputParquetConfig(path=output_dir),
@@ -331,10 +353,14 @@ def run_benchmark(
     temp_dir = Path(tempfile.mkdtemp(prefix=f"benchmark_{implementation}_"))
 
     try:
-        print(f"  Run {run_number}: {implementation} implementation...", end=" ", flush=True)
+        print(
+            f"  Run {run_number}: {implementation} implementation...",
+            end=" ",
+            flush=True,
+        )
 
         timing_breakdown = None
-        
+
         if implementation == "old":
             output_dir = temp_dir / "output"
             output_dir.mkdir()
@@ -352,13 +378,16 @@ def run_benchmark(
                 dataset=dataset,
                 output_dir=output_dir,
             )
-            
+
             # Print timing breakdown if available
             if timing_breakdown:
                 breakdown_str = " | ".join(
                     f"{k}={v:.2f}s" for k, v in timing_breakdown.items() if k != "total"
                 )
-                print(f"{time_seconds:.3f}s ({num_pairs:,} pairs) [{breakdown_str}]", flush=True)
+                print(
+                    f"{time_seconds:.3f}s ({num_pairs:,} pairs) [{breakdown_str}]",
+                    flush=True,
+                )
             else:
                 print(f"{time_seconds:.3f}s ({num_pairs:,} pairs)", flush=True)
         else:
@@ -381,7 +410,9 @@ def run_benchmark(
             t_flatten=timing_breakdown.get("flatten") if timing_breakdown else None,
             t_centroid=timing_breakdown.get("centroid") if timing_breakdown else None,
             t_binning=timing_breakdown.get("binning") if timing_breakdown else None,
-            t_gpu_compute=timing_breakdown.get("gpu_compute") if timing_breakdown else None,
+            t_gpu_compute=timing_breakdown.get("gpu_compute")
+            if timing_breakdown
+            else None,
             t_write=timing_breakdown.get("write") if timing_breakdown else None,
         )
 
@@ -409,7 +440,7 @@ def format_results_table(results: list[BenchmarkResult]) -> str:
         avg_time = sum(r.time_seconds for r in runs) / len(runs)
         num_pairs = runs[0].approx_pairs  # Should be same for all runs
         dataset_size = runs[0].dataset_size
-        
+
         # For new implementation, get timing breakdown from min-time run
         timing_breakdown = None
         if impl == "new":
@@ -423,15 +454,17 @@ def format_results_table(results: list[BenchmarkResult]) -> str:
                     "write": min_run.t_write,
                 }
 
-        summary.append({
-            "dataset": dataset_name,
-            "implementation": impl,
-            "min_time": min_time,
-            "avg_time": avg_time,
-            "num_pairs": num_pairs,
-            "dataset_size": dataset_size,
-            "timing_breakdown": timing_breakdown,
-        })
+        summary.append(
+            {
+                "dataset": dataset_name,
+                "implementation": impl,
+                "min_time": min_time,
+                "avg_time": avg_time,
+                "num_pairs": num_pairs,
+                "dataset_size": dataset_size,
+                "timing_breakdown": timing_breakdown,
+            }
+        )
 
     # Build table
     lines = []
@@ -447,8 +480,12 @@ def format_results_table(results: list[BenchmarkResult]) -> str:
     for dataset in datasets:
         dataset_summary = [s for s in summary if s["dataset"] == dataset]
 
-        old_data = next((s for s in dataset_summary if s["implementation"] == "old"), None)
-        new_data = next((s for s in dataset_summary if s["implementation"] == "new"), None)
+        old_data = next(
+            (s for s in dataset_summary if s["implementation"] == "old"), None
+        )
+        new_data = next(
+            (s for s in dataset_summary if s["implementation"] == "new"), None
+        )
 
         lines.append(f"\nDataset: {dataset}")
         lines.append(f"  Size: {dataset_summary[0]['dataset_size']:,} spectra")
@@ -457,30 +494,50 @@ def format_results_table(results: list[BenchmarkResult]) -> str:
 
         if old_data and new_data:
             speedup = old_data["min_time"] / new_data["min_time"]
-            lines.append(f"  OLD implementation (min): {old_data['min_time']:>8.3f}s  (avg: {old_data['avg_time']:.3f}s)")
-            lines.append(f"  NEW implementation (min): {new_data['min_time']:>8.3f}s  (avg: {new_data['avg_time']:.3f}s)")
-            lines.append(f"  Speedup: {speedup:.2f}x {'FASTER' if speedup > 1 else 'SLOWER'}")
-            
+            lines.append(
+                f"  OLD implementation (min): {old_data['min_time']:>8.3f}s  (avg: {old_data['avg_time']:.3f}s)"
+            )
+            lines.append(
+                f"  NEW implementation (min): {new_data['min_time']:>8.3f}s  (avg: {new_data['avg_time']:.3f}s)"
+            )
+            lines.append(
+                f"  Speedup: {speedup:.2f}x {'FASTER' if speedup > 1 else 'SLOWER'}"
+            )
+
             # Show timing breakdown for new implementation
             if new_data["timing_breakdown"]:
                 tb = new_data["timing_breakdown"]
                 lines.append("")
                 lines.append("  NEW implementation breakdown (min-time run):")
-                lines.append(f"    flatten:     {tb['flatten']:>6.3f}s ({tb['flatten']/new_data['min_time']*100:>5.1f}%)")
-                lines.append(f"    centroid:    {tb['centroid']:>6.3f}s ({tb['centroid']/new_data['min_time']*100:>5.1f}%)")
-                lines.append(f"    binning:     {tb['binning']:>6.3f}s ({tb['binning']/new_data['min_time']*100:>5.1f}%)")
-                lines.append(f"    gpu_compute: {tb['gpu_compute']:>6.3f}s ({tb['gpu_compute']/new_data['min_time']*100:>5.1f}%)")
-                if tb['write'] > 0:
-                    lines.append(f"    write:       {tb['write']:>6.3f}s ({tb['write']/new_data['min_time']*100:>5.1f}%)")
+                lines.append(
+                    f"    flatten:     {tb['flatten']:>6.3f}s ({tb['flatten'] / new_data['min_time'] * 100:>5.1f}%)"
+                )
+                lines.append(
+                    f"    centroid:    {tb['centroid']:>6.3f}s ({tb['centroid'] / new_data['min_time'] * 100:>5.1f}%)"
+                )
+                lines.append(
+                    f"    binning:     {tb['binning']:>6.3f}s ({tb['binning'] / new_data['min_time'] * 100:>5.1f}%)"
+                )
+                lines.append(
+                    f"    gpu_compute: {tb['gpu_compute']:>6.3f}s ({tb['gpu_compute'] / new_data['min_time'] * 100:>5.1f}%)"
+                )
+                if tb["write"] > 0:
+                    lines.append(
+                        f"    write:       {tb['write']:>6.3f}s ({tb['write'] / new_data['min_time'] * 100:>5.1f}%)"
+                    )
         else:
             for s in dataset_summary:
-                lines.append(f"  {s['implementation'].upper()} (min): {s['min_time']:>8.3f}s  (avg: {s['avg_time']:.3f}s)")
-                
+                lines.append(
+                    f"  {s['implementation'].upper()} (min): {s['min_time']:>8.3f}s  (avg: {s['avg_time']:.3f}s)"
+                )
+
                 # Show breakdown if available
                 if s.get("timing_breakdown"):
                     tb = s["timing_breakdown"]
                     lines.append("    Breakdown:")
-                    lines.append(f"      flatten={tb['flatten']:.3f}s, centroid={tb['centroid']:.3f}s, binning={tb['binning']:.3f}s, gpu_compute={tb['gpu_compute']:.3f}s, write={tb['write']:.3f}s")
+                    lines.append(
+                        f"      flatten={tb['flatten']:.3f}s, centroid={tb['centroid']:.3f}s, binning={tb['binning']:.3f}s, gpu_compute={tb['gpu_compute']:.3f}s, write={tb['write']:.3f}s"
+                    )
 
     lines.append("\n" + "=" * 100)
 
@@ -489,22 +546,24 @@ def format_results_table(results: list[BenchmarkResult]) -> str:
 
 def save_results_csv(results: list[BenchmarkResult], output_path: Path) -> None:
     """Save detailed results to CSV."""
-    df = pl.DataFrame([
-        {
-            "dataset_name": r.dataset_name,
-            "dataset_size": r.dataset_size,
-            "implementation": r.implementation,
-            "run_number": r.run_number,
-            "time_seconds": r.time_seconds,
-            "approx_pairs": r.approx_pairs,
-            "t_flatten": r.t_flatten,
-            "t_centroid": r.t_centroid,
-            "t_binning": r.t_binning,
-            "t_gpu_compute": r.t_gpu_compute,
-            "t_write": r.t_write,
-        }
-        for r in results
-    ])
+    df = pl.DataFrame(
+        [
+            {
+                "dataset_name": r.dataset_name,
+                "dataset_size": r.dataset_size,
+                "implementation": r.implementation,
+                "run_number": r.run_number,
+                "time_seconds": r.time_seconds,
+                "approx_pairs": r.approx_pairs,
+                "t_flatten": r.t_flatten,
+                "t_centroid": r.t_centroid,
+                "t_binning": r.t_binning,
+                "t_gpu_compute": r.t_gpu_compute,
+                "t_write": r.t_write,
+            }
+            for r in results
+        ]
+    )
 
     df.write_csv(output_path)
     print(f"\nDetailed results saved to: {output_path}")
@@ -556,8 +615,12 @@ def main() -> None:
     print(f"Datasets: {', '.join(datasets_to_test)}")
     print(f"Runs per config: {args.num_runs}")
     print(f"Parameters: {SIMILARITY_PARAMS}")
-    print(f"\nIMPORTANT: Both implementations use approx_threshold={SIMILARITY_PARAMS['approx_threshold']}")
-    print(f"           (Old impl auto-reduction disabled by explicit approx_threshold setting)")
+    print(
+        f"\nIMPORTANT: Both implementations use approx_threshold={SIMILARITY_PARAMS['approx_threshold']}"
+    )
+    print(
+        f"           (Old impl auto-reduction disabled by explicit approx_threshold setting)"
+    )
     print("=" * 100)
 
     # Verify all dataset paths exist
