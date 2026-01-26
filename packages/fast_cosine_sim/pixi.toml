@@ -74,8 +74,8 @@ test-normal = "python -m pytest tests/test_normal_spectra.py -v -s"
 test-problematic = "python -m pytest tests/test_problematic_spectra.py -v -s"
 test-real = "python -m pytest tests/test_real_data.py -v -s"
 
-profile-gpu = {cmd = "python scripts/optimize_gpu_kernel.py --n-spectra 200000 --n-peaks-per-spectrum 50 --output-dir ./full_test --batch-configs \"10000,20000,40000\""}
-profile-gpu-short = {cmd = "python scripts/optimize_gpu_kernel.py --n-spectra 50000 --n-peaks-per-spectrum 50 --output-dir ./short_test --batch-configs \"5000,10000,20000\""}
+profile-gpu = {cmd = "python benchmarks/profile.py --n-spectra 200000 --n-peaks-per-spectrum 50 --output-dir ./full_test --batch-configs \"10000,20000,40000\""}
+profile-gpu-short = {cmd = "python benchmarks/profile.py --n-spectra 50000 --n-peaks-per-spectrum 50 --output-dir ./short_test --batch-configs \"5000,10000,20000\""}
 benchmark-expansion-algorithms = {cmd = "python benchmarks/benchmark_expansion_algorithms.py --batch-sizes 1000,5000,10000"}
 benchmark-tolerance-fusion = {cmd = "python benchmarks/benchmark_tolerance_lookup_fusion.py --batch-sizes 1000,5000,10000"}
 benchmark-compare-flash-entropy = {cmd = "python benchmarks/compare_flash_entropy_cosine.py --n-spectra 1000000 --n-queries 1000 --batch-size 2000"}
