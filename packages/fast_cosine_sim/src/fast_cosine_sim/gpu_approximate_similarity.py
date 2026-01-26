@@ -82,6 +82,56 @@ MASS_TOLERANCE_CUTOFF = 200.0
 # =============================================================================
 
 
+
+@dataclass
+class AggregatedKernelTimings:
+    """Aggregated timings for GPU kernel operations."""
+    transfer_to_gpu_ms: float = 0.0
+    normalize_left_ms: float = 0.0
+    normalize_right_ms: float = 0.0
+    expand_ms: float = 0.0
+    spmm_ms: float = 0.0
+    threshold_and_extract_ms: float = 0.0
+    transfer_to_cpu_ms: float = 0.0
+    total_ms: float = 0.0
+    
+    # Percentages (computed by compute_percentages)
+    transfer_to_gpu_pct: float = 0.0
+    normalize_left_pct: float = 0.0
+    normalize_right_pct: float = 0.0
+    expand_pct: float = 0.0
+    expand_right_pct: float = 0.0
+    spmm_pct: float = 0.0
+    threshold_and_extract_pct: float = 0.0
+    transfer_to_cpu_pct: float = 0.0
+    
+    def __add__(self, other: AggregatedKernelTimings) -> AggregatedKernelTimings:
+        return AggregatedKernelTimings(
+            transfer_to_gpu_ms=self.transfer_to_gpu_ms + other.transfer_to_gpu_ms,
+            normalize_left_ms=self.normalize_left_ms + other.normalize_left_ms,
+            normalize_right_ms=self.normalize_right_ms + other.normalize_right_ms,
+            expand_ms=self.expand_ms + other.expand_ms,
+            spmm_ms=self.spmm_ms + other.spmm_ms,
+            threshold_and_extract_ms=self.threshold_and_extract_ms + other.threshold_and_extract_ms,
+            transfer_to_cpu_ms=self.transfer_to_cpu_ms + other.transfer_to_cpu_ms,
+            total_ms=self.total_ms + other.total_ms
+        )
+
+    def compute_percentages(self) -> None:
+        """Compute percentage of total time for each operation."""
+        if self.total_ms <= 0:
+            return
+            
+        self.transfer_to_gpu_pct = (self.transfer_to_gpu_ms / self.total_ms) * 100.0
+        self.normalize_left_pct = (self.normalize_left_ms / self.total_ms) * 100.0
+        self.normalize_right_pct = (self.normalize_right_ms / self.total_ms) * 100.0
+        self.expand_pct = (self.expand_ms / self.total_ms) * 100.0
+        self.expand_right_pct = self.expand_pct
+        self.spmm_pct = (self.spmm_ms / self.total_ms) * 100.0
+        self.threshold_and_extract_pct = (self.threshold_and_extract_ms / self.total_ms) * 100.0
+        self.transfer_to_cpu_pct = (self.transfer_to_cpu_ms / self.total_ms) * 100.0
+
+
 @dataclass
 class GPUApproximateConfig:
     """
@@ -103,7 +153,7 @@ class GPUApproximateConfig:
         mass_tolerance_cutoff_mz: Minimum m/z for ppm tolerance calculation (default: 200 Da)
 
         # Experimental optimization
-        use_fused_kernel: Use fused normalize-expand CUDA kernel for better performance (default: False)
+        enable_spmm_expansion: Use SpMM expansion matrix for better performance (default: True)
 
         # Comparison mode
         comparison_mode: "self" for upper-triangular, "cross" for full NxM
@@ -141,8 +191,8 @@ class GPUApproximateConfig:
     centroiding_enabled: bool = True
     mass_tolerance_cutoff_mz: float = 200.0
 
-    # Experimental: Fused kernel (combines normalize + expand for better performance)
-    use_fused_kernel: bool = False
+    # Experimental: SpMM Expansion (uses precomputed matrix)
+    enable_spmm_expansion: bool = True
 
     # Comparison mode
     comparison_mode: Literal["self", "cross"] = "self"
@@ -542,292 +592,6 @@ def _expand_csr_horizontal_adaptive_gpu(
 
 
 # =============================================================================
-# Fused Normalize + Expand (Numba CUDA Kernel - Element-Level Parallelism)
-# =============================================================================
-
-
-@cuda.jit
-def _count_expanded_elements_per_peak_kernel(
-    indices: cp.ndarray,
-    row_indices: cp.ndarray,
-    nnz: int,
-    bin_size: float,
-    ms2_tolerance_ppm: float,
-    mass_tol_cutoff: float,
-    nbins: int,
-    peak_expansion_counts: cp.ndarray,
-) -> None:
-    """
-    Count expanded elements per peak (element-level parallelism).
-
-    Why: Parallelizes over nnz elements instead of n_rows for 100% GPU utilization.
-    With 50K peaks vs 1K rows, we get 196 blocks instead of 4.
-
-    Args:
-        indices: CSR column indices (nnz,)
-        row_indices: Row index for each element (nnz,) - precomputed
-        nnz: Number of non-zero elements
-        bin_size: Bin width in Da
-        ms2_tolerance_ppm: MS2 tolerance in ppm
-        mass_tol_cutoff: Minimum effective m/z (200.0 Da)
-        nbins: Total number of bins
-        peak_expansion_counts: Output counts per peak (nnz,)
-    """
-    elem_idx = cuda.grid(1)
-    if elem_idx >= nnz:
-        return
-
-    col_idx = indices[elem_idx]
-
-    # Compute m/z and window size for this peak
-    col_mz = float(col_idx) * bin_size
-    eff_mz = max(col_mz, mass_tol_cutoff)
-    tol_da = eff_mz * ms2_tolerance_ppm * 1e-6
-    window = int(cuda.libdevice.ceil(tol_da / bin_size))
-
-    # Count valid expanded elements
-    count = 0
-    for shift in range(-window, window + 1):
-        new_col = col_idx + shift
-        if 0 <= new_col < nbins:
-            count += 1
-
-    peak_expansion_counts[elem_idx] = count
-
-
-@cuda.jit
-def _normalize_and_expand_per_peak_kernel(
-    data: cp.ndarray,
-    indices: cp.ndarray,
-    row_indices: cp.ndarray,
-    nnz: int,
-    norms: cp.ndarray,
-    bin_size: float,
-    ms2_tolerance_ppm: float,
-    mass_tol_cutoff: float,
-    nbins: int,
-    output_offsets: cp.ndarray,
-    out_data: cp.ndarray,
-    out_rows: cp.ndarray,
-    out_cols: cp.ndarray,
-) -> None:
-    """
-    Fused normalize and expand per peak (element-level parallelism).
-
-    Why: Each thread processes exactly 1 peak, achieving perfect load balancing
-    and 100% GPU utilization (196 blocks vs 4).
-
-    Args:
-        data: CSR data array (nnz,)
-        indices: CSR column indices (nnz,)
-        row_indices: Row index for each element (nnz,) - precomputed
-        nnz: Number of non-zero elements
-        norms: L2 norms per row (n_rows,) - precomputed with CuPy
-        bin_size: Bin width in Da
-        ms2_tolerance_ppm: MS2 tolerance in ppm
-        mass_tol_cutoff: Minimum effective m/z (200.0 Da)
-        nbins: Total number of bins
-        output_offsets: Starting position in output for each peak (nnz+1,)
-        out_data: Output data array (pre-allocated)
-        out_rows: Output row indices (pre-allocated)
-        out_cols: Output column indices (pre-allocated)
-    """
-    elem_idx = cuda.grid(1)
-    if elem_idx >= nnz:
-        return
-
-    # Get data for this peak
-    intensity = data[elem_idx]
-    col_idx = indices[elem_idx]
-    row_idx = row_indices[elem_idx]
-
-    # Normalize using precomputed norm
-    norm = norms[row_idx]
-    if norm > 0.0:
-        normalized_intensity = intensity / norm
-    else:
-        normalized_intensity = 0.0
-
-    # Compute window size for expansion
-    col_mz = float(col_idx) * bin_size
-    eff_mz = max(col_mz, mass_tol_cutoff)
-    tol_da = eff_mz * ms2_tolerance_ppm * 1e-6
-    window = int(cuda.libdevice.ceil(tol_da / bin_size))
-
-    # Write expanded copies to pre-allocated output
-    out_idx = output_offsets[elem_idx]
-    for shift in range(-window, window + 1):
-        new_col = col_idx + shift
-        if 0 <= new_col < nbins:
-            out_data[out_idx] = normalized_intensity
-            out_rows[out_idx] = row_idx
-            out_cols[out_idx] = new_col
-            out_idx += 1
-
-
-def _normalize_and_expand_csr_gpu(
-    mat: cps.csr_matrix,
-    bin_size: float,
-    ms2_tolerance_ppm: float,
-    nbins: int,
-) -> cps.csr_matrix:
-    """
-    Fused L2-normalize and expand CSR matrix using element-level parallelism.
-
-    Why: Achieves 100% GPU utilization by parallelizing over non-zero elements
-    (50K threads) instead of rows (1K threads). This eliminates the expansion
-    bottleneck (60% of batch time) and provides 2-3× speedup.
-
-    Algorithm (Hybrid CuPy + Numba):
-        1. Compute row norms using CuPy sparse ops (optimized)
-        2. Map elements to rows using CuPy searchsorted (optimized)
-        3. Count expanded elements per peak with Numba kernel (element-parallel)
-        4. Compute output offsets using CuPy cumsum (optimized)
-        5. Fused normalize + expand with Numba kernel (element-parallel)
-        6. Convert COO → CSR with CuPy (sums duplicates, optimized)
-
-    Key insight: Use CuPy for what it does best (sparse ops, reductions, prefix
-    sums) and Numba only for element-level parallelism where CuPy can't help.
-
-    Performance:
-        - GPU utilization: 5% → 95%+
-        - Blocks launched: 4 → 196 (for 50K peaks)
-        - Expansion time: 65ms → <25ms (target)
-        - Overall speedup: 2×+ minimum
-
-    Args:
-        mat: CuPy CSR matrix (unnormalized)
-        bin_size: Bin width in Da
-        ms2_tolerance_ppm: MS2 tolerance in ppm
-        nbins: Total number of bins
-
-    Returns:
-        Normalized and expanded CuPy CSR matrix
-    """
-    n_rows = mat.shape[0]
-
-    # Handle edge cases
-    if n_rows == 0 or mat.nnz == 0:
-        # Return empty normalized matrix
-        empty = cps.csr_matrix(mat.shape, dtype=cp.float32)
-        return empty
-
-    # Convert to float32 for consistency
-    # Note: CuPy sparse matrices don't support copy=False parameter
-    if mat.dtype != cp.float32:
-        mat = mat.astype(cp.float32)
-
-    # Configure CUDA kernel launch parameters
-    threads_per_block = 256
-    blocks = (n_rows + threads_per_block - 1) // threads_per_block
-
-    # =========================================================================
-    # Stage 1: Compute row norms using CuPy (optimized)
-    # =========================================================================
-    # Why: CuPy's sparse operations are highly optimized for this use case.
-    # Compute row-wise L2 norms: sqrt(sum(data^2)) for each row
-    nnz = mat.nnz
-
-    # Handle empty matrix
-    if nnz == 0:
-        return cps.csr_matrix(mat.shape, dtype=cp.float32)
-
-    # Compute squared data
-    data_sq = mat.data**2
-
-    # Create sparse matrix with squared values and sum per row
-    sq = cps.csr_matrix((data_sq, mat.indices, mat.indptr), shape=mat.shape)
-    row_sums_sq = cp.asarray(sq.sum(axis=1)).ravel()  # shape: (n_rows,)
-    norms = cp.sqrt(row_sums_sq)  # shape: (n_rows,)
-
-    # =========================================================================
-    # Stage 2: Map each element to its row using CuPy searchsorted
-    # =========================================================================
-    # Why: We need to know which row each non-zero element belongs to.
-    # searchsorted(indptr, arange(nnz), side="right") - 1 gives row indices.
-    element_indices = cp.arange(nnz, dtype=cp.int32)
-    row_indices = cp.searchsorted(mat.indptr, element_indices, side="right") - 1
-    row_indices = row_indices.astype(cp.int32)
-
-    # =========================================================================
-    # Stage 3: Count expanded elements per peak (element-level parallelism)
-    # =========================================================================
-    # Why: Each peak expands to multiple bins based on tolerance. We need to
-    # count total output elements before allocating output arrays.
-    peak_expansion_counts = cp.zeros(nnz, dtype=cp.int32)
-
-    threads_per_block = 256
-    blocks = (nnz + threads_per_block - 1) // threads_per_block
-
-    _count_expanded_elements_per_peak_kernel[blocks, threads_per_block](
-        mat.indices,
-        row_indices,
-        nnz,
-        bin_size,
-        ms2_tolerance_ppm,
-        MASS_TOLERANCE_CUTOFF,
-        nbins,
-        peak_expansion_counts,
-    )
-
-    # Compute output offsets using CuPy's optimized cumsum
-    # Why: prefix sum gives us the starting position for each peak's output
-    output_offsets = cp.zeros(nnz + 1, dtype=cp.int32)
-    output_offsets[1:] = cp.cumsum(peak_expansion_counts)
-    total_expanded = int(output_offsets[-1])
-
-    # Handle case where expansion produces no elements
-    if total_expanded == 0:
-        return cps.csr_matrix(mat.shape, dtype=cp.float32)
-
-    # =========================================================================
-    # Stage 4: Fused normalize + expand (element-level parallelism)
-    # =========================================================================
-    # Why: Each thread processes one peak, normalizes it, and expands it to
-    # multiple output bins. This achieves maximum GPU parallelism (50K threads
-    # instead of 1K threads in row-level approach).
-    out_data = cp.zeros(total_expanded, dtype=cp.float32)
-    out_rows = cp.zeros(total_expanded, dtype=cp.int32)
-    out_cols = cp.zeros(total_expanded, dtype=cp.int32)
-
-    _normalize_and_expand_per_peak_kernel[blocks, threads_per_block](
-        mat.data,
-        mat.indices,
-        row_indices,
-        nnz,
-        norms,
-        bin_size,
-        ms2_tolerance_ppm,
-        MASS_TOLERANCE_CUTOFF,
-        nbins,
-        output_offsets,
-        out_data,
-        out_rows,
-        out_cols,
-    )
-
-    # =========================================================================
-    # Stage 5: Convert COO → CSR (sums duplicates automatically)
-    # =========================================================================
-    # Why: tocsr() automatically handles duplicate (row, col) pairs by summing
-    # their values, which is exactly what we want for overlapping bins.
-    out_coo = cps.coo_matrix(
-        (out_data, (out_rows, out_cols)),
-        shape=mat.shape,
-        dtype=cp.float32,
-    )
-    out_csr = out_coo.tocsr()
-
-    # Cleanup intermediate arrays
-    del data_sq, sq, row_sums_sq, norms
-    del element_indices, row_indices
-    del peak_expansion_counts, output_offsets
-    del out_data, out_rows, out_cols, out_coo
-
-    return out_csr
-
-
-# =============================================================================
 # SpMM Expansion Matrix Construction
 # =============================================================================
 
@@ -918,16 +682,29 @@ def construct_expansion_matrix_gpu(
         # This allows running on 16GB cards with 0.0001 bin size (req ~9.7GB)
         remaining_mem_gb = free_mem_gb - size_gb
         if size_bytes > free_mem * 0.85 or remaining_mem_gb < 2.0:
-            # Rough estimates for user guidance
-            est_500_gb = size_gb * (500 / upper_mass_bound) ** 2 
-            est_coarse_gb = size_gb / 100.0 if bin_size < 0.001 else size_gb / 10.0
+            # Calculate hypothetical sizes for recommendations
+            # 1. Reduced mass bound (500 Da)
+            nbins_500 = int(np.floor(500.0 / float(bin_size))) + 1
+            lengths_500 = _expansion_matrix_get_row_lengths(
+                nbins_500, bin_size, ms2_tolerance_ppm, MASS_TOLERANCE_CUTOFF
+            )
+            nnz_500 = int(np.sum(lengths_500))
+            size_500_gb = (nnz_500 * 8 + (nbins_500 + 1) * 8) / 1e9
+
+            # 2. Coarser binning (0.001 Da)
+            nbins_coarse = int(np.floor(upper_mass_bound / 0.001)) + 1
+            lengths_coarse = _expansion_matrix_get_row_lengths(
+                nbins_coarse, 0.001, ms2_tolerance_ppm, MASS_TOLERANCE_CUTOFF
+            )
+            nnz_coarse = int(np.sum(lengths_coarse))
+            size_coarse_gb = (nnz_coarse * 8 + (nbins_coarse + 1) * 8) / 1e9
             
             msg = (
                 f"Expansion matrix (~{size_gb:.2f} GB) too large for available GPU memory ({free_mem_gb:.2f} GB). "
                 "Falling back to slower kernel-based expansion. Performance will be reduced.\n"
                 "To enable fast SpMM expansion, consider:\n"
-                f"1. Reducing upper_mass_bound (current: {upper_mass_bound}). E.g., 500 Da requires ~{est_500_gb:.1f} GB.\n"
-                f"2. Increasing bin_size (current: {bin_size}). E.g., 0.001 Da requires ~{est_coarse_gb:.2f} GB."
+                f"1. Reducing upper_mass_bound (current: {upper_mass_bound}). E.g., 500 Da requires ~{size_500_gb:.2f} GB.\n"
+                f"2. Increasing bin_size (current: {bin_size}). E.g., 0.001 Da requires ~{size_coarse_gb:.2f} GB."
             )
             
             print(f"DEBUG: Fallback triggered. {msg}")
@@ -1310,7 +1087,8 @@ def batched_approximate_similarity_gpu(
     right_df: Optional[pl.DataFrame | pl.LazyFrame] = None,
     output_path: Optional[Path | str] = None,
     logger: Optional[logging.Logger] = None,
-) -> pl.DataFrame | pl.LazyFrame:
+    log_timings: bool = False,
+) -> pl.DataFrame | pl.LazyFrame | tuple[pl.DataFrame | pl.LazyFrame, AggregatedKernelTimings]:
     """
     Compute batched approximate similarity on GPU with optimized memory management.
 
@@ -1350,10 +1128,14 @@ def batched_approximate_similarity_gpu(
         right_df: Optional second library for cross-comparison (None = self-comparison)
         output_path: Optional path for parquet output (None = return DataFrame)
         logger: Optional logger for progress reporting
+        log_timings: If True, return (result, timings) tuple with detailed GPU profiling data
 
     Returns:
-        DataFrame with columns ['idx_left', 'idx_right', 'similarity'] if output_path is None,
-        LazyFrame (scan of written parquet) if output_path is provided
+        If log_timings is False:
+            DataFrame with columns ['idx_left', 'idx_right', 'similarity'] if output_path is None,
+            LazyFrame (scan of written parquet) if output_path is provided
+        If log_timings is True:
+            Tuple of (DataFrame/LazyFrame, AggregatedKernelTimings)
 
     Raises:
         AssertionError: If inputs are invalid (with detailed messages)
@@ -1484,7 +1266,35 @@ def batched_approximate_similarity_gpu(
             logger.info(f"  Library: {n_spectra_left} spectra")
 
     # =========================================================================
-    # 3. Convert to CSR Matrices (with optional centroiding)
+    # 3. Initialize Resources
+    # =========================================================================
+
+    # SpMM Expansion Matrix (initialized lazily if enabled)
+    expansion_matrix: Optional[cps.csr_matrix] = None
+
+    # Construct expansion matrix if enabled and tolerance > 0
+    if config.enable_spmm_expansion and config.ms2_tolerance_ppm > 0.0:
+        if logger:
+            logger.info("Attempting to construct SpMM expansion matrix...")
+        
+        expansion_matrix = construct_expansion_matrix_gpu(
+            bin_size=config.bin_size,
+            ms2_tolerance_ppm=config.ms2_tolerance_ppm,
+            nbins=config.nbins,
+            upper_mass_bound=config.upper_mass_bound,
+            logger=logger
+        )
+        
+        if expansion_matrix is None:
+            # Fallback message already logged by construct_expansion_matrix_gpu
+            if logger:
+                logger.info("Using element-wise adaptive expansion (fallback).")
+        else:
+            if logger:
+                logger.info(f"SpMM expansion matrix constructed successfully ({expansion_matrix.nnz} elements).")
+
+    # =========================================================================
+    # 4. Convert to CSR Matrices (with optional centroiding)
     # =========================================================================
 
     t_bin = perf_counter()
@@ -1548,7 +1358,7 @@ def batched_approximate_similarity_gpu(
         )
 
     # =========================================================================
-    # 4. Dynamic Batching
+    # 5. Dynamic Batching
     # =========================================================================
 
     avg_peaks_left = left_csr_matrix.nnz / max(n_spectra_left, 1)
@@ -1598,7 +1408,7 @@ def batched_approximate_similarity_gpu(
         logger.info(f"  Total batch pairs to process: {total_batch_pairs:_}")
 
     # =========================================================================
-    # 5. Setup Output (Writer or Buffer)
+    # 6. Setup Output (Writer or Buffer)
     # =========================================================================
 
     writer: Optional[AsyncParquetWriter] = None
@@ -1612,11 +1422,12 @@ def batched_approximate_similarity_gpu(
     buffer = ResultBuffer()
 
     # =========================================================================
-    # 6. Batch Processing Loop
+    # 7. Batch Processing Loop
     # =========================================================================
 
     total_pairs = 0
     gpu_batch_count = 0
+    aggregated_timings = AggregatedKernelTimings()
     t_compute_start = perf_counter()
 
     # Outer loop: Left batches (expanded and reused)
@@ -1632,6 +1443,15 @@ def batched_approximate_similarity_gpu(
                 f"{free_before / 1e9:.2f} GB free"
             )
 
+        # Create events for timing
+        evt_start = cp.cuda.Event() if log_timings else None
+        evt_xfer = cp.cuda.Event() if log_timings else None
+        evt_norm = cp.cuda.Event() if log_timings else None
+        evt_expand = cp.cuda.Event() if log_timings else None
+
+        if log_timings:
+            evt_start.record()
+
         # Transfer left batch to GPU
         l_data_gpu = cp.asarray(
             np.asarray(l_csr.data).astype(APPROX_INTENSITY_DTYPE_NP, copy=False)
@@ -1643,25 +1463,22 @@ def batched_approximate_similarity_gpu(
         )
         del l_data_gpu, l_indices_gpu, l_indptr_gpu
 
-        # Normalize and expand (use fused kernel if enabled)
-        if config.use_fused_kernel:
-            # Fused operation: normalize + expand in single kernel
-            if config.ms2_tolerance_ppm > 0:
-                L_gpu = _normalize_and_expand_csr_gpu(
-                    L_gpu,
-                    config.bin_size,
-                    config.ms2_tolerance_ppm,
-                    config.nbins,
-                )
-            else:
-                # No expansion, just normalize
-                _ = _normalize_csr_rows_inplace_gpu(L_gpu)
-        else:
-            # Separate operations (original implementation)
-            _ = _normalize_csr_rows_inplace_gpu(L_gpu)
+        if log_timings:
+            evt_xfer.record()
 
-            # Expand if tolerance configured
-            if config.ms2_tolerance_ppm > 0:
+        # Normalize in-place
+        _ = _normalize_csr_rows_inplace_gpu(L_gpu)
+
+        if log_timings:
+            evt_norm.record()
+
+        # Expand Left (if using tolerance)
+        if config.ms2_tolerance_ppm > 0.0:
+            if expansion_matrix is not None:
+                # Use fast SpMM expansion
+                L_gpu = L_gpu.dot(expansion_matrix)
+            else:
+                # Fallback to element-wise expansion
                 L_gpu = _expand_csr_horizontal_adaptive_gpu(
                     L_gpu,
                     config.bin_size,
@@ -1669,11 +1486,34 @@ def batched_approximate_similarity_gpu(
                     config.nbins,
                 )
 
+        if log_timings:
+            evt_expand.record()
+            evt_expand.synchronize()
+            # Accumulate outer loop timings immediately (will happen once per outer loop)
+            # Note: We multiply by number of inner loop iterations later? 
+            # No, these are one-time costs per left batch. 
+            # BUT, we need to be careful. The aggregation is global.
+            aggregated_timings.transfer_to_gpu_ms += cp.cuda.get_elapsed_time(evt_start, evt_xfer)
+            aggregated_timings.normalize_left_ms += cp.cuda.get_elapsed_time(evt_xfer, evt_norm)
+            aggregated_timings.expand_ms += cp.cuda.get_elapsed_time(evt_norm, evt_expand)
+            aggregated_timings.total_ms += cp.cuda.get_elapsed_time(evt_start, evt_expand)
+
         # Inner loop: Right batches
         for j, (r_start, r_end, r_csr, r_idxs) in enumerate(batches_right):
             # Triangular check for self-comparison
             if not is_cross_library and j > i:
                 continue
+
+            # Timing events for inner loop
+            evt_inner_start = cp.cuda.Event() if log_timings else None
+            evt_r_xfer = cp.cuda.Event() if log_timings else None
+            evt_r_norm = cp.cuda.Event() if log_timings else None
+            evt_spmm = cp.cuda.Event() if log_timings else None
+            evt_thresh = cp.cuda.Event() if log_timings else None
+            evt_cpu = cp.cuda.Event() if log_timings else None
+
+            if log_timings:
+                evt_inner_start.record()
 
             # Transfer right batch to GPU
             r_data_gpu = cp.asarray(
@@ -1686,11 +1526,20 @@ def batched_approximate_similarity_gpu(
             )
             del r_data_gpu, r_indices_gpu, r_indptr_gpu
 
+            if log_timings:
+                evt_r_xfer.record()
+
             # Normalize
             _ = _normalize_csr_rows_inplace_gpu(R_gpu)
 
+            if log_timings:
+                evt_r_norm.record()
+
             # Matmul: L @ R.T (expanded_left @ normalized_right)
-            sim = L_gpu @ R_gpu.T
+            sim = L_gpu.dot(R_gpu.T)
+
+            if log_timings:
+                evt_spmm.record()
 
             # 3. Apply Threshold In-Place
             # We mask the data array directly. This effectively turns low values into explicit zeros.
@@ -1699,6 +1548,9 @@ def batched_approximate_similarity_gpu(
             # 4. Prune Zeros
             # This shrinks the underlying data/indices arrays on the GPU, freeing memory.
             sim.eliminate_zeros()
+            
+            if log_timings:
+                evt_thresh.record()
 
             if sim.nnz > 0:
                 # 5. Convert to COO
@@ -1706,217 +1558,98 @@ def batched_approximate_similarity_gpu(
                 sim_coo = sim.tocoo()
 
                 # Transfer to CPU
-                l_idxs_np = np.asarray(l_idxs, dtype=np.int32)
-                r_idxs_np = np.asarray(r_idxs, dtype=np.int32)
+                # Using copy=False is safe if we consume immediately
+                rows_cpu = cp.asnumpy(sim_coo.row)
+                cols_cpu = cp.asnumpy(sim_coo.col)
+                data_cpu = cp.asnumpy(sim_coo.data)
+                
+                if log_timings:
+                    evt_cpu.record()
 
-                li = cp.asnumpy(sim_coo.row).astype(np.int32)
-                ri = cp.asnumpy(sim_coo.col).astype(np.int32)
-                prox_sims_out = cp.asnumpy(sim_coo.data).astype(np.float32)
+                # Map local indices to global indices
+                # Note: rows are indices into L_gpu (0..batch_size), cols are indices into R_gpu
+                global_left = l_idxs[rows_cpu]
+                global_right = r_idxs[cols_cpu]
 
-                del sim_coo
+                # Accumulate
+                buffer.add(global_left, global_right, data_cpu)
+                total_pairs += len(data_cpu)
 
-                left_pairs = l_idxs_np[li].astype(np.int32, copy=False)
-                right_pairs = r_idxs_np[ri].astype(np.int32, copy=False)
+                del rows_cpu, cols_cpu, data_cpu, global_left, global_right, sim_coo
+            else:
+                if log_timings:
+                    evt_cpu.record()
 
-                # Filter diagonal block for self-comparison
-                if not is_cross_library and i == j:
-                    # Remove self-matches (same spectrum)
-                    mask_diag = left_pairs != right_pairs
-                    left_pairs = left_pairs[mask_diag]
-                    right_pairs = right_pairs[mask_diag]
-                    prox_sims_out = prox_sims_out[mask_diag]
-
-                    # Keep upper triangle only (left < right)
-                    upper_mask = left_pairs < right_pairs
-                    left_pairs = left_pairs[upper_mask]
-                    right_pairs = right_pairs[upper_mask]
-                    prox_sims_out = prox_sims_out[upper_mask]
-
-                if len(left_pairs) > 0:
-                    buffer.add(left_pairs, right_pairs, prox_sims_out)
-                    total_pairs += len(left_pairs)
-
+            del sim, R_gpu
             gpu_batch_count += 1
+            
+            if log_timings:
+                evt_cpu.synchronize()
+                aggregated_timings.transfer_to_gpu_ms += cp.cuda.get_elapsed_time(evt_inner_start, evt_r_xfer)
+                aggregated_timings.normalize_right_ms += cp.cuda.get_elapsed_time(evt_r_xfer, evt_r_norm)
+                aggregated_timings.spmm_ms += cp.cuda.get_elapsed_time(evt_r_norm, evt_spmm)
+                aggregated_timings.threshold_and_extract_ms += cp.cuda.get_elapsed_time(evt_spmm, evt_thresh)
+                aggregated_timings.transfer_to_cpu_ms += cp.cuda.get_elapsed_time(evt_thresh, evt_cpu)
+                aggregated_timings.total_ms += cp.cuda.get_elapsed_time(evt_inner_start, evt_cpu)
 
-            # Periodic flush to writer (only when writing to file)
-            if (
-                writer is not None
-                and gpu_batch_count % config.write_buffer_batches == 0
-                and not buffer.is_empty()
-            ):
-                data = buffer.flush()
-                if data is not None:
-                    writer.write_batch(data)
+            # Flush buffer to writer periodically
+            if writer and not buffer.is_empty():
+                if gpu_batch_count % config.write_buffer_batches == 0:
+                    data = buffer.flush()
+                    if data:
+                        writer.write_batch(data)
 
-            # Free GPU memory
-            del R_gpu, sim
-            cp.get_default_memory_pool().free_all_blocks()
-
-        # Free left batch memory
+        # Cleanup left batch
         del L_gpu
+        # Force garbage collection to prevent fragmentation
+        # (cp.get_default_memory_pool().free_all_blocks() is faster than gc.collect())
         cp.get_default_memory_pool().free_all_blocks()
 
-        # Log GPU memory after processing and freeing
         if logger:
-            free_after, total = cp.cuda.Device(0).mem_info
-            left_batch_time = perf_counter() - t_left_batch
+            elapsed = perf_counter() - t_left_batch
+            rate = l_csr.shape[0] / elapsed
             logger.info(
-                f"  [Left batch {i + 1}/{num_batches_left}] Complete in {left_batch_time:.3f}s. "
-                f"Pairs so far: {total_pairs:_}"
-            )
-            logger.info(
-                f"  [Left batch {i + 1}/{num_batches_left}] GPU mem after free: "
-                f"{free_after / 1e9:.2f} GB free (freed {(free_after - free_before) / 1e9:.2f} GB)"
+                f"  [Left batch {i + 1}/{num_batches_left}] Done in {elapsed:.2f}s "
+                f"({rate:.1f} spectra/s)"
             )
 
-    compute_time = perf_counter() - t_compute_start
+    t_compute = perf_counter() - t_compute_start
+
+    # =========================================================================
+    # 8. Finalize Output
+    # =========================================================================
 
     if logger:
-        logger.info(f"  GPU computation complete in {compute_time:.3f}s")
-        logger.info(f"  Total pairs found: {total_pairs:_}")
+        logger.info(f"Computation complete in {t_compute:.2f}s")
+        logger.info(f"Total matching pairs found: {total_pairs:_}")
 
-    # =========================================================================
-    # 7. Finalize Results
-    # =========================================================================
+    # Flush remaining buffer
+    final_data = buffer.flush()
 
-    # Stop writer if used
-    if writer is not None:
-        # Flush remaining buffer to writer
-        if not buffer.is_empty():
-            data = buffer.flush()
-            if data is not None:
-                writer.write_batch(data)
+    if writer:
+        if final_data:
+            writer.write_batch(final_data)
         writer.stop()
         if logger:
-            logger.info(f"  Results written to {output_path}")
-            logger.info(f"  Total pairs written: {writer.pairs_written:_}")
-        # Return LazyFrame scan of written parquet
-        return pl.scan_parquet(str(output_path))
+            logger.info("Writer stopped.")
+        
+        # Return LazyFrame scan
+        result = pl.scan_parquet(output_path)
     else:
-        # Return as DataFrame - buffer contains all accumulated data
-        data = buffer.flush()
-        if data is None or len(data["idx_left"]) == 0:
-            if logger:
-                logger.info("  No pairs found above threshold")
-            return pl.DataFrame(
+        # Return in-memory DataFrame
+        if final_data:
+            result = pl.DataFrame(final_data)
+        else:
+            # Empty result
+            result = pl.DataFrame(
                 {
-                    "idx_left": [],
-                    "idx_right": [],
-                    "similarity": [],
+                    "idx_left": pl.Series([], dtype=pl.Int32),
+                    "idx_right": pl.Series([], dtype=pl.Int32),
+                    "similarity": pl.Series([], dtype=pl.Float32),
                 }
             )
-
-        result_df = pl.DataFrame(data)
-        result_df = result_df.with_columns(
-            [
-                pl.col("idx_left").cast(pl.Int32),
-                pl.col("idx_right").cast(pl.Int32),
-                pl.col("similarity").cast(pl.Float32),
-            ]
-        )
-
-        if logger:
-            logger.info(f"  Returning DataFrame with {len(result_df)} pairs")
-
-        return result_df
-
-
-# =============================================================================
-# Example Usage
-# =============================================================================
-
-if __name__ == "__main__":
-    # Setup logging
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    )
-    logger = logging.getLogger(__name__)
-
-    test_df = (
-        pl.scan_parquet(
-            "/home/analytit_admin/Data/spectral_libs/fast_similarity/fraghub_P_100k.parquet"
-        )
-        .select(
-            pl.col("cleaned_normalized_mz"),
-            pl.col("cleaned_normalized_intensity"),
-        )
-        .with_row_index("idx")
-        .collect()
-    )
-
-    logger.info(f"Test data: {len(test_df)} spectra")
-
-    # Configure
-    config = GPUApproximateConfig(
-        upper_mass_bound=500.0,
-        bin_size=0.001,
-        ms2_tolerance_ppm=10.0,
-        approx_threshold=0.5,
-        target_gpu_mem_ratio=0.3,
-        safety_factor=0.5,
-        mz_col="cleaned_normalized_mz",
-        intensity_col="cleaned_normalized_intensity",
-    )
-
-    # Example 1: Self-comparison, return DataFrame
-    logger.info("\n" + "=" * 80)
-    logger.info("Example 1: Self-comparison (upper triangular)")
-    logger.info("=" * 80)
-
-    result_df = batched_approximate_similarity_gpu(
-        test_df,
-        config,
-        logger=logger,
-    )
-
-    if result_df is not None:
-        logger.info(f"\nResult shape: {result_df.shape}")
-        logger.info(f"Result columns: {result_df.columns}")
-        if len(result_df) > 0:
-            logger.info(f"First few pairs:\n{result_df.head()}")
-            logger.info(
-                f"Similarity range: [{result_df['similarity'].min():.4f}, {result_df['similarity'].max():.4f}]"
-            )
-        else:
-            logger.info("No pairs found above threshold")
-
-    # Example 2: Self-comparison, write to file
-    logger.info("\n" + "=" * 80)
-    logger.info("Example 2: Self-comparison, write to parquet")
-    logger.info("=" * 80)
-
-    output_file = Path("test_output_self.parquet")
-    if output_file.exists():
-        output_file.unlink()
-
-    batched_approximate_similarity_gpu(
-        test_df,
-        config,
-        output_path=output_file,
-        logger=logger,
-    )
-
-    # Verify file
-    if output_file.exists():
-        written_df = pl.read_parquet(output_file)
-        logger.info(f"\nWritten file has {len(written_df)} pairs")
-        output_file.unlink()  # Cleanup
-
-    result_cross = batched_approximate_similarity_gpu(
-        test_df,
-        config,
-        right_df=test_df,
-        logger=logger,
-    )
-
-    if result_cross is not None:
-        logger.info(f"\nCross result shape: {result_cross.shape}")
-        if len(result_cross) > 0:
-            logger.info(f"First few pairs:\n{result_cross.head()}")
-        else:
-            logger.info("No pairs found above threshold")
-
-    logger.info("\n" + "=" * 80)
-    logger.info("All examples complete!")
-    logger.info("=" * 80)
+            
+    if log_timings:
+        return result, aggregated_timings
+    else:
+        return result

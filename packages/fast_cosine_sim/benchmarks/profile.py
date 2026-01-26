@@ -37,6 +37,7 @@ Requirements:
 from __future__ import annotations
 
 import argparse
+import gc
 import json
 import subprocess
 import threading
@@ -59,6 +60,7 @@ from fast_cosine_sim import (
     GPUApproximateConfig,
     batched_approximate_similarity_gpu,
 )
+from fast_cosine_sim.gpu_approximate_similarity import AggregatedKernelTimings
 
 # Set plotting style
 sns.set_style("whitegrid")
@@ -83,99 +85,7 @@ class OperationProfile:
     percentage_of_total: float = 0.0
 
 
-@dataclass
-class InternalKernelTimings:
-    """
-    Detailed internal timings for kernel operations.
 
-    Why: Identifies which specific operation (SpMM, expansion, thresholding, etc.)
-    is the bottleneck within the GPU kernel.
-    """
-
-    transfer_to_gpu_ms: float
-    normalize_left_ms: float
-    normalize_right_ms: float
-    expand_right_ms: float
-    spmm_ms: float
-    threshold_and_extract_ms: float
-    transfer_to_cpu_ms: float
-    total_batch_ms: float
-
-
-@dataclass
-class AggregatedKernelTimings:
-    """Aggregated kernel operation timings across all batches at a given batch size.
-    
-    Why: Track cumulative time spent in each operation across all batches
-    to identify overall bottlenecks. Sum of all iterations' timings per operation.
-    Every millisecond should be accounted for - if breakdown < total, "other" captures overhead.
-    """
-    
-    # Aggregated times across all batches (in milliseconds)
-    transfer_to_gpu_ms: float = 0.0
-    normalize_left_ms: float = 0.0
-    normalize_right_ms: float = 0.0
-    expand_right_ms: float = 0.0
-    spmm_ms: float = 0.0
-    threshold_and_extract_ms: float = 0.0
-    transfer_to_cpu_ms: float = 0.0
-    total_ms: float = 0.0
-    other_ms: float = 0.0  # GPU synchronization overhead, allocations, etc.
-    num_batches_sampled: int = 0
-    
-    # Percentages (calculated after aggregation)
-    transfer_to_gpu_pct: float = 0.0
-    normalize_left_pct: float = 0.0
-    normalize_right_pct: float = 0.0
-    expand_right_pct: float = 0.0
-    spmm_pct: float = 0.0
-    threshold_and_extract_pct: float = 0.0
-    transfer_to_cpu_pct: float = 0.0
-    other_pct: float = 0.0
-    
-    def compute_percentages(self) -> None:
-        """Compute percentages for each operation. Ensures sum = 100%."""
-        if self.total_ms <= 0:
-            return
-        
-        # Calculate other as difference to ensure sum = 100%
-        measured_total = (self.transfer_to_gpu_ms + self.normalize_left_ms + 
-                         self.normalize_right_ms + self.expand_right_ms + 
-                         self.spmm_ms + self.threshold_and_extract_ms + 
-                         self.transfer_to_cpu_ms)
-        self.other_ms = max(0.0, self.total_ms - measured_total)
-        
-        # Calculate percentages
-        self.transfer_to_gpu_pct = (self.transfer_to_gpu_ms / self.total_ms) * 100
-        self.normalize_left_pct = (self.normalize_left_ms / self.total_ms) * 100
-        self.normalize_right_pct = (self.normalize_right_ms / self.total_ms) * 100
-        self.expand_right_pct = (self.expand_right_ms / self.total_ms) * 100
-        self.spmm_pct = (self.spmm_ms / self.total_ms) * 100
-        self.threshold_and_extract_pct = (self.threshold_and_extract_ms / self.total_ms) * 100
-        self.transfer_to_cpu_pct = (self.transfer_to_cpu_ms / self.total_ms) * 100
-        self.other_pct = (self.other_ms / self.total_ms) * 100
-
-
-@dataclass
-class SpMMMetrics:
-    """
-    Sparse matrix multiply performance metrics.
-
-    Why: SpMM (sparse matrix-matrix multiply) should dominate compute time.
-    If it doesn't, other operations are bottlenecks that need optimization.
-    """
-
-    duration_ms: float
-    left_shape: tuple[int, int]
-    right_shape: tuple[int, int]
-    left_nnz: int
-    right_nnz: int
-    output_nnz: int
-    estimated_flops: int
-    achieved_gflops: float
-    memory_bandwidth_gb_s: float
-    sparsity_factor: float
-    efficiency_vs_peak_pct: float
 
 
 @dataclass
@@ -230,9 +140,6 @@ class OptimizationSession:
     match_rate: float = 0.001
 
     # Profiling results
-    operation_profiles: dict[str, OperationProfile] = field(default_factory=dict)
-    internal_kernel_timings: Optional[InternalKernelTimings] = None
-    spmm_metrics: Optional[SpMMMetrics] = None
     batch_benchmark_results: list[BatchBenchmarkResult] = field(default_factory=list)
     dtype_comparison: Optional[DTypeComparison] = None
 
@@ -590,658 +497,9 @@ class GPUMonitor:
 # =============================================================================
 
 
-def profile_single_operation(
-    operation_name: str,
-    operation_func: callable,
-    memory_pool: cp.cuda.MemoryPool,
-) -> OperationProfile:
-    """
-    Profile a single GPU operation with precise timing and memory tracking.
-
-    Why: CUDA events provide microsecond-precision timing that's more
-    accurate than CPU-side perf_counter for GPU operations.
-
-    Args:
-        operation_name: Human-readable operation name
-        operation_func: Callable that performs the operation (no args)
-        memory_pool: CuPy memory pool for tracking allocations
-
-    Returns:
-        OperationProfile with timing and memory data
-    """
-    # Capture memory before
-    mem_before = memory_pool.used_bytes()
-
-    # Create CUDA events for precise timing
-    start_event = cp.cuda.Event()
-    end_event = cp.cuda.Event()
-
-    # Record start
-    start_event.record()
-
-    # Execute operation
-    operation_func()
-
-    # Record end and synchronize
-    end_event.record()
-    end_event.synchronize()
-
-    # Capture memory after
-    mem_after = memory_pool.used_bytes()
-
-    # Compute elapsed time
-    duration_ms = cp.cuda.get_elapsed_time(start_event, end_event)
-
-    return OperationProfile(
-        name=operation_name,
-        duration_ms=duration_ms,
-        memory_before_bytes=mem_before,
-        memory_after_bytes=mem_after,
-        memory_delta_bytes=mem_after - mem_before,
-    )
-
-
-
-def _profile_single_batch_spmm(
-    df: pl.DataFrame, config: GPUApproximateConfig
-) -> InternalKernelTimings:
-    """
-    Profile internal kernel operations using SpMM expansion strategy.
-    
-    Why: Measure performance of the new SpMM-based expansion (Right @ Expansion).
-    
-    Args:
-        df: Input DataFrame with spectra
-        config: Configuration for similarity computation
-        
-    Returns:
-        InternalKernelTimings with detailed operation timings
-    """
-    from fast_cosine_sim.gpu_approximate_similarity import (
-        APPROX_INTENSITY_DTYPE_NP,
-        INDEX_DTYPE_NP,
-        _normalize_csr_rows_inplace_gpu,
-        _sparse_bin_spectra_df_to_csr,
-        construct_expansion_matrix_gpu,
-        _expand_csr_horizontal_adaptive_gpu,
-    )
-
-    # Add indices if needed
-    if config.spectrum_id_col not in df.columns:
-        df = df.with_row_index(config.spectrum_id_col).with_columns(
-            pl.col(config.spectrum_id_col).cast(pl.Int32)
-        )
-    else:
-        df = df.with_columns(pl.col(config.spectrum_id_col).cast(pl.Int32))
-
-    # Convert to CSR (CPU operation, not timed here)
-    csr_matrix = _sparse_bin_spectra_df_to_csr(
-        df,
-        config.mz_col,
-        config.intensity_col,
-        upper_bound=config.upper_mass_bound,
-        intensity_power=config.intensity_power,
-        bin_size=config.bin_size,
-        apply_centroiding=config.centroiding_enabled,
-        tolerance_ppm=config.ms2_tolerance_ppm,
-        mass_tolerance_cutoff_mz=config.mass_tolerance_cutoff_mz,
-    )
-
-    # Take a representative batch (use first N rows for single batch test)
-    batch_size = min(1000, csr_matrix.shape[0])
-    left_csr = csr_matrix[:batch_size]
-    right_csr = csr_matrix[:batch_size]
-    
-    # Construct expansion matrix
-    nbins = int(config.upper_mass_bound / config.bin_size) + 1
-    expansion_matrix = construct_expansion_matrix_gpu(
-        config.bin_size, config.ms2_tolerance_ppm, nbins, config.upper_mass_bound, logger=MockLogger()
-    )
-    if expansion_matrix is None:
-        print("[WARNING] SpMM expansion matrix construction failed in single batch profiling. Using kernel fallback.")
-
-    # Create timing events
-    events = {}
-    for name in [
-        "start",
-        "left_xfer",
-        "norm_left",
-        "right_xfer",
-        "norm_right",
-        "expand",
-        "spmm_start",
-        "spmm_end",
-        "thresh_start",
-        "thresh_end",
-        "cpu_xfer",
-        "end",
-    ]:
-        events[name] = cp.cuda.Event()
-
-    # Start profiling
-    events["start"].record()
-
-    # 1. Transfer LEFT to GPU
-    l_data_gpu = cp.asarray(
-        np.asarray(left_csr.data).astype(APPROX_INTENSITY_DTYPE_NP, copy=False)
-    )
-    l_indices_gpu = cp.asarray(np.asarray(left_csr.indices))
-    l_indptr_gpu = cp.asarray(np.asarray(left_csr.indptr))
-    L_gpu = cps.csr_matrix(
-        (l_data_gpu, l_indices_gpu, l_indptr_gpu), shape=left_csr.shape
-    )
-    del l_data_gpu, l_indices_gpu, l_indptr_gpu
-    events["left_xfer"].record()
-
-    # 2. Normalize LEFT
-    _ = _normalize_csr_rows_inplace_gpu(L_gpu)
-    events["norm_left"].record()
-
-    # 3. Transfer RIGHT to GPU
-    r_data_gpu = cp.asarray(
-        np.asarray(right_csr.data).astype(APPROX_INTENSITY_DTYPE_NP, copy=False)
-    )
-    r_indices_gpu = cp.asarray(np.asarray(right_csr.indices))
-    r_indptr_gpu = cp.asarray(np.asarray(right_csr.indptr))
-    R_gpu = cps.csr_matrix(
-        (r_data_gpu, r_indices_gpu, r_indptr_gpu), shape=right_csr.shape
-    )
-    del r_data_gpu, r_indices_gpu, r_indptr_gpu
-    events["right_xfer"].record()
-
-    # 4. Normalize RIGHT
-    _ = _normalize_csr_rows_inplace_gpu(R_gpu)
-    events["norm_right"].record()
-
-    # 5. Expand RIGHT
-    if expansion_matrix is not None:
-        R_expanded = R_gpu.dot(expansion_matrix)
-    else:
-        R_expanded = _expand_csr_horizontal_adaptive_gpu(
-            R_gpu,
-            config.bin_size,
-            config.ms2_tolerance_ppm,
-            nbins,
-        )
-    events["expand"].record()
-
-    # 6. SpMM: L @ R_exp.T
-    events["spmm_start"].record()
-    sim = L_gpu.dot(R_expanded.T)
-    events["spmm_end"].record()
-
-    # 7. Thresholding & extraction
-    events["thresh_start"].record()
-    mask = sim.data >= config.approx_threshold
-
-    out_rows = None
-    out_cols = None
-    out_data = None
-    if int(mask.sum()) > 0:
-        out_data = sim.data[mask]
-        out_cols = sim.indices[mask]
-        indices_in_data = cp.nonzero(mask)[0]
-        out_rows = cp.searchsorted(sim.indptr, indices_in_data, side="right") - 1
-    events["thresh_end"].record()
-
-    # 8. Transfer results to CPU
-    if out_rows is not None and out_cols is not None and out_data is not None:
-        _ = cp.asnumpy(out_rows)
-        _ = cp.asnumpy(out_cols)
-        _ = cp.asnumpy(out_data)
-    events["cpu_xfer"].record()
-
-    events["end"].record()
-
-    # Synchronize all events
-    events["end"].synchronize()
-    
-    # Cleanup
-    if expansion_matrix is not None:
-        del expansion_matrix
-
-    # Calculate timings
-    transfer_to_gpu_ms = cp.cuda.get_elapsed_time(
-        events["start"], events["left_xfer"]
-    ) + cp.cuda.get_elapsed_time(events["norm_left"], events["right_xfer"])
-
-    normalize_left_ms = cp.cuda.get_elapsed_time(
-        events["left_xfer"], events["norm_left"]
-    )
-    normalize_right_ms = cp.cuda.get_elapsed_time(
-        events["right_xfer"], events["norm_right"]
-    )
-
-    expand_right_ms = cp.cuda.get_elapsed_time(events["norm_right"], events["expand"])
-
-    spmm_ms = cp.cuda.get_elapsed_time(events["spmm_start"], events["spmm_end"])
-
-    threshold_and_extract_ms = cp.cuda.get_elapsed_time(
-        events["thresh_start"], events["thresh_end"]
-    )
-
-    transfer_to_cpu_ms = cp.cuda.get_elapsed_time(
-        events["thresh_end"], events["cpu_xfer"]
-    )
-
-    total_batch_ms = cp.cuda.get_elapsed_time(events["start"], events["end"])
-
-    return InternalKernelTimings(
-        transfer_to_gpu_ms=transfer_to_gpu_ms,
-        normalize_left_ms=normalize_left_ms,
-        normalize_right_ms=normalize_right_ms,
-        expand_right_ms=expand_right_ms,
-        spmm_ms=spmm_ms,
-        threshold_and_extract_ms=threshold_and_extract_ms,
-        transfer_to_cpu_ms=transfer_to_cpu_ms,
-        total_batch_ms=total_batch_ms,
-    )
-
-
-def profile_internal_kernel_operations(
-    df: pl.DataFrame, config: GPUApproximateConfig, use_fused: bool = False
-) -> InternalKernelTimings:
-    """
-    Profile internal kernel operations with detailed timing.
-
-    Why: To identify whether SpMM dominates or if other operations
-    (conversion, expansion, thresholding) are bottlenecks.
-
-    This function manually executes one batch iteration and times each step.
-
-    Args:
-        df: Input DataFrame with spectra
-        config: Configuration for similarity computation
-        use_fused: If True, use fused normalize-expand kernel
-
-    Returns:
-        InternalKernelTimings with detailed operation timings
-    """
-    if config.ms2_tolerance_ppm > 0:
-        return _profile_single_batch_spmm(df, config)
-        
-    if use_fused:
-        return _profile_single_batch_fused(df, config)
-    else:
-        return _profile_single_batch(df, config)
-
-
-def _profile_single_batch(
-    df: pl.DataFrame, config: GPUApproximateConfig
-) -> InternalKernelTimings:
-    """
-    Profile internal kernel operations with detailed timing (OLD implementation).
-
-    Why: To identify whether SpMM dominates or if other operations
-    (conversion, expansion, thresholding) are bottlenecks.
-
-    This function manually executes one batch iteration and times each step.
-
-    Args:
-        df: Input DataFrame with spectra
-        config: Configuration for similarity computation
-
-    Returns:
-        InternalKernelTimings with detailed operation timings
-    """
-    from fast_cosine_sim.gpu_approximate_similarity import (
-        APPROX_INTENSITY_DTYPE_NP,
-        INDEX_DTYPE_NP,
-        _expand_csr_horizontal_adaptive_gpu,
-        _normalize_and_expand_csr_gpu,
-        _normalize_csr_rows_inplace_gpu,
-        _sparse_bin_spectra_df_to_csr,
-    )
-
-    # Add indices if needed
-    if config.spectrum_id_col not in df.columns:
-        df = df.with_row_index(config.spectrum_id_col).with_columns(
-            pl.col(config.spectrum_id_col).cast(pl.Int32)
-        )
-    else:
-        df = df.with_columns(pl.col(config.spectrum_id_col).cast(pl.Int32))
-
-    # Convert to CSR (CPU operation, not timed here)
-    csr_matrix = _sparse_bin_spectra_df_to_csr(
-        df,
-        config.mz_col,
-        config.intensity_col,
-        upper_bound=config.upper_mass_bound,
-        intensity_power=config.intensity_power,
-        bin_size=config.bin_size,
-        apply_centroiding=config.centroiding_enabled,
-        tolerance_ppm=config.ms2_tolerance_ppm,
-        mass_tolerance_cutoff_mz=config.mass_tolerance_cutoff_mz,
-    )
-
-    # Take a representative batch (use first N rows for single batch test)
-    batch_size = min(1000, csr_matrix.shape[0])
-    left_csr = csr_matrix[:batch_size]
-    right_csr = csr_matrix[:batch_size]
-
-    # Create timing events
-    events = {}
-    for name in [
-        "start",
-        "left_xfer",
-        "norm_left",
-        "right_xfer",
-        "norm_right",
-        "expand",
-        "spmm_start",
-        "spmm_end",
-        "thresh_start",
-        "thresh_end",
-        "cpu_xfer",
-        "end",
-    ]:
-        events[name] = cp.cuda.Event()
-
-    # Start profiling
-    events["start"].record()
-
-    # 1. Transfer LEFT to GPU
-    l_data_gpu = cp.asarray(
-        np.asarray(left_csr.data).astype(APPROX_INTENSITY_DTYPE_NP, copy=False)
-    )
-    l_indices_gpu = cp.asarray(np.asarray(left_csr.indices))
-    l_indptr_gpu = cp.asarray(np.asarray(left_csr.indptr))
-    L_gpu = cps.csr_matrix(
-        (l_data_gpu, l_indices_gpu, l_indptr_gpu), shape=left_csr.shape
-    )
-    del l_data_gpu, l_indices_gpu, l_indptr_gpu
-    events["left_xfer"].record()
-
-    # 2. Normalize LEFT
-    _ = _normalize_csr_rows_inplace_gpu(L_gpu)
-    events["norm_left"].record()
-
-    # 3. Transfer RIGHT to GPU
-    r_data_gpu = cp.asarray(
-        np.asarray(right_csr.data).astype(APPROX_INTENSITY_DTYPE_NP, copy=False)
-    )
-    r_indices_gpu = cp.asarray(np.asarray(right_csr.indices))
-    r_indptr_gpu = cp.asarray(np.asarray(right_csr.indptr))
-    R_gpu = cps.csr_matrix(
-        (r_data_gpu, r_indices_gpu, r_indptr_gpu), shape=right_csr.shape
-    )
-    del r_data_gpu, r_indices_gpu, r_indptr_gpu
-    events["right_xfer"].record()
-
-    # 4. Normalize RIGHT
-    _ = _normalize_csr_rows_inplace_gpu(R_gpu)
-    events["norm_right"].record()
-
-    # 5. Expand RIGHT (if tolerance configured)
-    if config.ms2_tolerance_ppm > 0:
-        nbins = int(config.upper_mass_bound / config.bin_size)
-        R_gpu = _expand_csr_horizontal_adaptive_gpu(
-            R_gpu,
-            config.bin_size,
-            config.ms2_tolerance_ppm,
-            nbins,
-        )
-    events["expand"].record()
-
-    # 6. SpMM: L @ R.T
-    events["spmm_start"].record()
-    sim = L_gpu.dot(R_gpu.T)
-    events["spmm_end"].record()
-
-    # 7. Thresholding & extraction
-    events["thresh_start"].record()
-    mask = sim.data >= config.approx_threshold
-
-    out_rows = None
-    out_cols = None
-    out_data = None
-    if int(mask.sum()) > 0:
-        out_data = sim.data[mask]
-        out_cols = sim.indices[mask]
-        indices_in_data = cp.nonzero(mask)[0]
-        out_rows = cp.searchsorted(sim.indptr, indices_in_data, side="right") - 1
-    events["thresh_end"].record()
-
-    # 8. Transfer results to CPU
-    if out_rows is not None and out_cols is not None and out_data is not None:
-        _ = cp.asnumpy(out_rows)
-        _ = cp.asnumpy(out_cols)
-        _ = cp.asnumpy(out_data)
-    events["cpu_xfer"].record()
-
-    events["end"].record()
-
-    # Synchronize all events
-    events["end"].synchronize()
-
-    # Calculate timings
-    transfer_to_gpu_ms = cp.cuda.get_elapsed_time(
-        events["start"], events["left_xfer"]
-    ) + cp.cuda.get_elapsed_time(events["norm_left"], events["right_xfer"])
-
-    normalize_left_ms = cp.cuda.get_elapsed_time(
-        events["left_xfer"], events["norm_left"]
-    )
-    normalize_right_ms = cp.cuda.get_elapsed_time(
-        events["right_xfer"], events["norm_right"]
-    )
-
-    expand_right_ms = cp.cuda.get_elapsed_time(events["norm_right"], events["expand"])
-
-    spmm_ms = cp.cuda.get_elapsed_time(events["spmm_start"], events["spmm_end"])
-
-    threshold_and_extract_ms = cp.cuda.get_elapsed_time(
-        events["thresh_start"], events["thresh_end"]
-    )
-
-    transfer_to_cpu_ms = cp.cuda.get_elapsed_time(
-        events["thresh_end"], events["cpu_xfer"]
-    )
-
-    total_batch_ms = cp.cuda.get_elapsed_time(events["start"], events["end"])
-
-    return InternalKernelTimings(
-        transfer_to_gpu_ms=transfer_to_gpu_ms,
-        normalize_left_ms=normalize_left_ms,
-        normalize_right_ms=normalize_right_ms,
-        expand_right_ms=expand_right_ms,
-        spmm_ms=spmm_ms,
-        threshold_and_extract_ms=threshold_and_extract_ms,
-        transfer_to_cpu_ms=transfer_to_cpu_ms,
-        total_batch_ms=total_batch_ms,
-    )
-
-
-def _profile_single_batch_fused(
-    df: pl.DataFrame, config: GPUApproximateConfig
-) -> InternalKernelTimings:
-    """
-    Profile internal kernel operations using FUSED normalize-expand kernel.
-
-    Why: Test performance of new fused Numba CUDA kernel that combines
-    normalization + expansion to eliminate intermediate allocations and
-    reduce memory traffic. Expected speedup: 3-5x on expansion phase.
-
-    This function is identical to _profile_single_batch but uses
-    _normalize_and_expand_csr_gpu instead of separate normalize + expand.
-
-    Args:
-        df: Input DataFrame with spectra
-        config: Configuration for similarity computation
-
-    Returns:
-        InternalKernelTimings with detailed operation timings
-    """
-    from fast_cosine_sim.gpu_approximate_similarity import (
-        APPROX_INTENSITY_DTYPE_NP,
-        INDEX_DTYPE_NP,
-        _normalize_and_expand_csr_gpu,
-        _normalize_csr_rows_inplace_gpu,
-        _sparse_bin_spectra_df_to_csr,
-    )
-
-    # Add indices if needed
-    if config.spectrum_id_col not in df.columns:
-        df = df.with_row_index(config.spectrum_id_col).with_columns(
-            pl.col(config.spectrum_id_col).cast(pl.Int32)
-        )
-    else:
-        df = df.with_columns(pl.col(config.spectrum_id_col).cast(pl.Int32))
-
-    # Convert to CSR (CPU operation, not timed here)
-    csr_matrix = _sparse_bin_spectra_df_to_csr(
-        df,
-        config.mz_col,
-        config.intensity_col,
-        upper_bound=config.upper_mass_bound,
-        intensity_power=config.intensity_power,
-        bin_size=config.bin_size,
-        apply_centroiding=config.centroiding_enabled,
-        tolerance_ppm=config.ms2_tolerance_ppm,
-        mass_tolerance_cutoff_mz=config.mass_tolerance_cutoff_mz,
-    )
-
-    # Take a representative batch (use first N rows for single batch test)
-    batch_size = min(1000, csr_matrix.shape[0])
-    left_csr = csr_matrix[:batch_size]
-    right_csr = csr_matrix[:batch_size]
-
-    # Create timing events (fused version combines norm_right + expand)
-    events = {}
-    for name in [
-        "start",
-        "left_xfer",
-        "norm_left",
-        "right_xfer",
-        "fused_norm_expand",
-        "spmm_start",
-        "spmm_end",
-        "thresh_start",
-        "thresh_end",
-        "cpu_xfer",
-        "end",
-    ]:
-        events[name] = cp.cuda.Event()
-
-    # Start profiling
-    events["start"].record()
-
-    # 1. Transfer LEFT to GPU
-    l_data_gpu = cp.asarray(
-        np.asarray(left_csr.data).astype(APPROX_INTENSITY_DTYPE_NP, copy=False)
-    )
-    l_indices_gpu = cp.asarray(np.asarray(left_csr.indices))
-    l_indptr_gpu = cp.asarray(np.asarray(left_csr.indptr))
-    L_gpu = cps.csr_matrix(
-        (l_data_gpu, l_indices_gpu, l_indptr_gpu), shape=left_csr.shape
-    )
-    del l_data_gpu, l_indices_gpu, l_indptr_gpu
-    events["left_xfer"].record()
-
-    # 2. Normalize LEFT
-    _ = _normalize_csr_rows_inplace_gpu(L_gpu)
-    events["norm_left"].record()
-
-    # 3. Transfer RIGHT to GPU (unnormalized)
-    r_data_gpu = cp.asarray(
-        np.asarray(right_csr.data).astype(APPROX_INTENSITY_DTYPE_NP, copy=False)
-    )
-    r_indices_gpu = cp.asarray(np.asarray(right_csr.indices))
-    r_indptr_gpu = cp.asarray(np.asarray(right_csr.indptr))
-    R_gpu = cps.csr_matrix(
-        (r_data_gpu, r_indices_gpu, r_indptr_gpu), shape=right_csr.shape
-    )
-    del r_data_gpu, r_indices_gpu, r_indptr_gpu
-    events["right_xfer"].record()
-
-    # 4. FUSED Normalize + Expand RIGHT (if tolerance configured)
-    if config.ms2_tolerance_ppm > 0:
-        nbins = int(config.upper_mass_bound / config.bin_size)
-        R_gpu = _normalize_and_expand_csr_gpu(
-            R_gpu,
-            config.bin_size,
-            config.ms2_tolerance_ppm,
-            nbins,
-        )
-    else:
-        # No expansion, just normalize
-        _ = _normalize_csr_rows_inplace_gpu(R_gpu)
-    events["fused_norm_expand"].record()
-
-    # 5. SpMM: L @ R.T
-    events["spmm_start"].record()
-    sim = L_gpu.dot(R_gpu.T)
-    events["spmm_end"].record()
-
-    # 6. Thresholding & extraction
-    events["thresh_start"].record()
-    mask = sim.data >= config.approx_threshold
-
-    out_rows = None
-    out_cols = None
-    out_data = None
-    if int(mask.sum()) > 0:
-        out_data = sim.data[mask]
-        out_cols = sim.indices[mask]
-        indices_in_data = cp.nonzero(mask)[0]
-        out_rows = cp.searchsorted(sim.indptr, indices_in_data, side="right") - 1
-    events["thresh_end"].record()
-
-    # 7. Transfer results to CPU
-    if out_rows is not None and out_cols is not None and out_data is not None:
-        _ = cp.asnumpy(out_rows)
-        _ = cp.asnumpy(out_cols)
-        _ = cp.asnumpy(out_data)
-    events["cpu_xfer"].record()
-
-    events["end"].record()
-
-    # Synchronize all events
-    events["end"].synchronize()
-
-    # Calculate timings
-    transfer_to_gpu_ms = cp.cuda.get_elapsed_time(
-        events["start"], events["left_xfer"]
-    ) + cp.cuda.get_elapsed_time(events["norm_left"], events["right_xfer"])
-
-    normalize_left_ms = cp.cuda.get_elapsed_time(
-        events["left_xfer"], events["norm_left"]
-    )
-
-    # Fused operation time (replaces separate normalize_right + expand_right)
-    fused_norm_expand_ms = cp.cuda.get_elapsed_time(
-        events["right_xfer"], events["fused_norm_expand"]
-    )
-
-    spmm_ms = cp.cuda.get_elapsed_time(events["spmm_start"], events["spmm_end"])
-
-    threshold_and_extract_ms = cp.cuda.get_elapsed_time(
-        events["thresh_start"], events["thresh_end"]
-    )
-
-    transfer_to_cpu_ms = cp.cuda.get_elapsed_time(
-        events["thresh_end"], events["cpu_xfer"]
-    )
-
-    total_batch_ms = cp.cuda.get_elapsed_time(events["start"], events["end"])
-
-    # Return with fused time split across normalize_right and expand_right for comparison
-    # (for reporting purposes, we'll attribute it all to expand_right and set normalize_right to 0)
-    return InternalKernelTimings(
-        transfer_to_gpu_ms=transfer_to_gpu_ms,
-        normalize_left_ms=normalize_left_ms,
-        normalize_right_ms=0.0,  # Fused with expand
-        expand_right_ms=fused_norm_expand_ms,  # Combined time
-        spmm_ms=spmm_ms,
-        threshold_and_extract_ms=threshold_and_extract_ms,
-        transfer_to_cpu_ms=transfer_to_cpu_ms,
-        total_batch_ms=total_batch_ms,
-    )
-
-
 def run_profiled_similarity_detailed(
     df: pl.DataFrame, config: GPUApproximateConfig, gpu_monitor: GPUMonitor
-) -> tuple[pl.DataFrame, dict[str, OperationProfile]]:
+) -> tuple[pl.DataFrame, dict[str, OperationProfile], Optional[AggregatedKernelTimings]]:
     """
     Run similarity computation with detailed operation profiling.
 
@@ -1257,9 +515,10 @@ def run_profiled_similarity_detailed(
         gpu_monitor: GPU monitoring thread
 
     Returns:
-        (result_df, operation_profiles)
+        (result_df, operation_profiles, kernel_timings)
             result_df: Similarity pairs DataFrame
             operation_profiles: Dict mapping operation name to profile
+            kernel_timings: Detailed internal kernel timings (if enabled)
     """
     memory_pool = cp.get_default_memory_pool()
     profiles = {}
@@ -1268,21 +527,20 @@ def run_profiled_similarity_detailed(
     gpu_monitor.start()
 
     # Profile the full operation
-    # Note: This is a high-level profile. For detailed operation breakdown,
-    # we'd need to modify the library code or use cupyx.profiler
     start_event = cp.cuda.Event()
     end_event = cp.cuda.Event()
 
     mem_before = memory_pool.used_bytes()
     start_event.record()
 
-    # Run computation
-    result = batched_approximate_similarity_gpu(
+    # Run computation with internal timing logging enabled
+    result, kernel_timings = batched_approximate_similarity_gpu(
         left_df=df,
         config=config,
         right_df=None,
         output_path=None,
         logger=None,
+        log_timings=True,
     )
 
     # Synchronize
@@ -1307,8 +565,13 @@ def run_profiled_similarity_detailed(
     # Collect result
     if isinstance(result, pl.LazyFrame):
         result = result.collect()
+    
+    # Compute percentages for kernel timings
+    if kernel_timings:
+        kernel_timings.compute_percentages()
 
-    return result, profiles
+    return result, profiles, kernel_timings
+
 
 
 # =============================================================================
@@ -1316,75 +579,7 @@ def run_profiled_similarity_detailed(
 # =============================================================================
 
 
-def estimate_spmm_metrics(
-    operation_profile: OperationProfile,
-    n_spectra: int,
-    avg_peaks: int,
-    expansion_factor: float,
-    peak_gpu_gflops: float,
-) -> SpMMMetrics:
-    """
-    Estimate SpMM (sparse matrix multiply) performance metrics.
 
-    Why: SpMM is the dominant operation in approximate similarity. Understanding
-    its efficiency helps determine if we're compute-bound or memory-bound.
-
-    Args:
-        operation_profile: Profile of the full computation
-        n_spectra: Number of spectra processed
-        avg_peaks: Average peaks per spectrum
-        expansion_factor: Expansion from tolerance window (e.g., 2.0 = 2x density)
-        peak_gpu_gflops: Peak GPU GFLOPS from hardware specs
-
-    Returns:
-        SpMMMetrics with performance analysis
-    """
-    # Estimate matrix dimensions
-    left_shape = (n_spectra, 10_000_000)  # Approximate bin count
-    right_shape = left_shape
-
-    # Estimate non-zero counts
-    left_nnz = n_spectra * avg_peaks
-    right_nnz_expanded = int(left_nnz * expansion_factor)
-
-    # Estimate FLOPs for sparse dot product
-    # For each left row, we do dot product with each right row
-    # FLOP count ≈ 2 * (avg_nnz_left * avg_nnz_right_per_row)
-    avg_nnz_per_row = avg_peaks
-    avg_nnz_per_row_expanded = int(avg_peaks * expansion_factor)
-    flops_per_dot = 2 * avg_nnz_per_row * avg_nnz_per_row_expanded
-    total_flops = flops_per_dot * n_spectra * n_spectra
-
-    # Compute achieved GFLOPS
-    # Note: This is a rough estimate since we're profiling the full pipeline
-    duration_s = operation_profile.duration_ms / 1000.0
-    achieved_gflops = (total_flops / duration_s) / 1e9
-
-    # Estimate memory bandwidth
-    # Data transferred: matrix elements (4 bytes each) * nnz
-    data_volume_bytes = (left_nnz + right_nnz_expanded) * 4  # float32
-    bandwidth_gb_s = (data_volume_bytes / duration_s) / 1e9
-
-    # Compute efficiency
-    efficiency_pct = (achieved_gflops / peak_gpu_gflops) * 100.0
-
-    # Sparsity factor
-    total_elements = left_shape[0] * left_shape[1]
-    sparsity_factor = 1.0 - (left_nnz / total_elements) if total_elements > 0 else 1.0
-
-    return SpMMMetrics(
-        duration_ms=operation_profile.duration_ms,
-        left_shape=left_shape,
-        right_shape=right_shape,
-        left_nnz=left_nnz,
-        right_nnz=right_nnz_expanded,
-        output_nnz=0,  # Unknown without running
-        estimated_flops=total_flops,
-        achieved_gflops=achieved_gflops,
-        memory_bandwidth_gb_s=bandwidth_gb_s,
-        sparsity_factor=sparsity_factor,
-        efficiency_vs_peak_pct=efficiency_pct,
-    )
 
 
 # =============================================================================
@@ -1396,207 +591,6 @@ class MockLogger:
     def info(self, msg): print(f"[INFO] {msg}")
     def warning(self, msg): print(f"[WARNING] {msg}")
     def error(self, msg): print(f"[ERROR] {msg}")
-
-def profile_batched_similarity_operations(
-    df: pl.DataFrame, config: GPUApproximateConfig, batch_size: int
-) -> AggregatedKernelTimings:
-    """
-    Profile internal kernel operations during batch similarity computation.
-    
-    Why: Collect per-batch-size kernel timings so we can see how operation costs
-    change with batch size. Aggregates timing data across ALL batches processed.
-    
-    Args:
-        df: Input DataFrame with spectra
-        config: Configuration for similarity computation
-        batch_size: Current batch size being tested
-    
-    Returns:
-        AggregatedKernelTimings with aggregated times across all batches
-    """
-    from fast_cosine_sim.gpu_approximate_similarity import (
-        _normalize_csr_rows_inplace_gpu,
-        _normalize_and_expand_csr_gpu,
-        _sparse_bin_spectra_df_to_csr,
-        construct_expansion_matrix_gpu,
-        _expand_csr_horizontal_adaptive_gpu,
-    )
-    
-    aggregated = AggregatedKernelTimings()
-    
-    # Add indices if needed
-    df_indexed = df.clone()
-    if config.spectrum_id_col not in df_indexed.columns:
-        df_indexed = df_indexed.with_row_index(config.spectrum_id_col).with_columns(
-            pl.col(config.spectrum_id_col).cast(pl.Int32)
-        )
-    else:
-        df_indexed = df_indexed.with_columns(pl.col(config.spectrum_id_col).cast(pl.Int32))
-    
-    # Convert to CSR (CPU operation, not timed here)
-    csr_matrix = _sparse_bin_spectra_df_to_csr(
-        df_indexed,
-        config.mz_col,
-        config.intensity_col,
-        upper_bound=config.upper_mass_bound,
-        intensity_power=config.intensity_power,
-        bin_size=config.bin_size,
-        apply_centroiding=config.centroiding_enabled,
-        tolerance_ppm=config.ms2_tolerance_ppm,
-        mass_tolerance_cutoff_mz=config.mass_tolerance_cutoff_mz,
-    )
-    
-    n_rows = csr_matrix.shape[0]
-    nbins = int(config.upper_mass_bound / config.bin_size) + 1
-    
-    # Attempt to construct expansion matrix if tolerance is used
-    expansion_matrix = None
-    if config.ms2_tolerance_ppm > 0:
-        expansion_matrix = construct_expansion_matrix_gpu(
-            config.bin_size, config.ms2_tolerance_ppm, nbins, config.upper_mass_bound, logger=MockLogger()
-        )
-        if expansion_matrix is None:
-            print("[WARNING] SpMM expansion matrix construction failed in profiling. Using kernel fallback.")
-    
-    # Profile EVERY batch to get complete accounting of all time spent
-    for i in range(0, n_rows, batch_size):
-        end_idx = min(i + batch_size, n_rows)
-        left_csr_cpu = csr_matrix[i:end_idx]
-        right_csr_cpu = csr_matrix[i:end_idx]
-        
-        if left_csr_cpu.shape[0] == 0:
-            continue
-        
-        # Create timing events for fine-grained profiling
-        events = {}
-        event_names = [
-            "start", "left_xfer", "norm_left", "right_xfer", "norm_right", 
-            "expand_right", "spmm_start", "spmm_end", "thresh_start", 
-            "thresh_end", "cpu_xfer", "end"
-        ]
-        for name in event_names:
-            events[name] = cp.cuda.Event()
-        
-        # Start profiling
-        events["start"].record()
-        
-        # 1. Transfer LEFT to GPU and normalize
-        left_csr_gpu = cps.csr_matrix(
-            (cp.asarray(left_csr_cpu.data), 
-             cp.asarray(left_csr_cpu.indices), 
-             cp.asarray(left_csr_cpu.indptr)), 
-            shape=left_csr_cpu.shape
-        )
-        events["left_xfer"].record()
-        
-        _normalize_csr_rows_inplace_gpu(left_csr_gpu)
-        events["norm_left"].record()
-        
-        # 2. Transfer RIGHT to GPU, normalize, and expand
-        right_csr_gpu = cps.csr_matrix(
-            (cp.asarray(right_csr_cpu.data), 
-             cp.asarray(right_csr_cpu.indices), 
-             cp.asarray(right_csr_cpu.indptr)), 
-            shape=right_csr_cpu.shape
-        )
-        events["right_xfer"].record()
-        
-        if expansion_matrix is not None:
-            # SpMM path
-            _normalize_csr_rows_inplace_gpu(right_csr_gpu)
-            events["norm_right"].record()
-            
-            # Expand using SpMM
-            right_expanded = right_csr_gpu.dot(expansion_matrix)
-            events["expand_right"].record()
-            
-        elif config.use_fused_kernel:
-            # Fused kernel path
-            right_expanded = _normalize_and_expand_csr_gpu(
-                right_csr_gpu, 
-                bin_size=config.bin_size, 
-                ms2_tolerance_ppm=config.ms2_tolerance_ppm, 
-                nbins=nbins
-            )
-            # Fused kernel combines normalize and expand, so we attribute time to expand
-            # and set norm_right time to zero effectively
-            events["norm_right"].record() # Instantaneous marker
-            events["expand_right"].record()
-            
-        else:
-            # Standard path
-            _normalize_csr_rows_inplace_gpu(right_csr_gpu)
-            events["norm_right"].record()
-            
-            right_expanded = _expand_csr_horizontal_adaptive_gpu(
-                right_csr_gpu, 
-                bin_size=config.bin_size, 
-                ms2_tolerance_ppm=config.ms2_tolerance_ppm, 
-                nbins=nbins
-            )
-            events["expand_right"].record()
-        
-        # 3. SpMM
-        events["spmm_start"].record()
-        result = left_csr_gpu @ right_expanded.T
-        events["spmm_end"].record()
-        
-        # 4. Threshold and extract
-        events["thresh_start"].record()
-        mask = result.data >= config.approx_threshold
-        if int(mask.sum()) > 0:
-            _ = result.data[mask]
-        events["thresh_end"].record()
-        
-        # 5. Transfer results back to CPU
-        events["cpu_xfer"].record()
-        events["end"].record()
-        events["end"].synchronize()
-        
-        # Calculate timings
-        transfer_to_gpu = cp.cuda.get_elapsed_time(events["start"], events["left_xfer"])
-        normalize_left = cp.cuda.get_elapsed_time(events["left_xfer"], events["norm_left"])
-        
-        # Handle different expansion paths
-        if expansion_matrix is not None:
-            normalize_right = cp.cuda.get_elapsed_time(events["right_xfer"], events["norm_right"])
-            expand_right = cp.cuda.get_elapsed_time(events["norm_right"], events["expand_right"])
-            transfer_to_cpu_start = events["expand_right"]
-        elif config.use_fused_kernel:
-            normalize_right = 0.0
-            expand_right = cp.cuda.get_elapsed_time(events["norm_left"], events["expand_right"])
-            transfer_to_cpu_start = events["expand_right"]
-        else:
-            normalize_right = cp.cuda.get_elapsed_time(events["right_xfer"], events["norm_right"])
-            expand_right = cp.cuda.get_elapsed_time(events["norm_right"], events["expand_right"])
-            transfer_to_cpu_start = events["expand_right"]
-        
-        spmm = cp.cuda.get_elapsed_time(events["spmm_start"], events["spmm_end"])
-        threshold_extract = cp.cuda.get_elapsed_time(events["thresh_start"], events["thresh_end"])
-        transfer_to_cpu = cp.cuda.get_elapsed_time(transfer_to_cpu_start, events["cpu_xfer"])
-        total_batch = cp.cuda.get_elapsed_time(events["start"], events["end"])
-        
-        # Aggregate
-        aggregated.transfer_to_gpu_ms += transfer_to_gpu
-        aggregated.normalize_left_ms += normalize_left
-        aggregated.normalize_right_ms += normalize_right
-        aggregated.expand_right_ms += expand_right
-        aggregated.spmm_ms += spmm
-        aggregated.threshold_and_extract_ms += threshold_extract
-        aggregated.transfer_to_cpu_ms += transfer_to_cpu
-        aggregated.total_ms += total_batch
-        aggregated.num_batches_sampled += 1
-        
-    # Clean up expansion matrix
-    if expansion_matrix is not None:
-        del expansion_matrix
-        cp.get_default_memory_pool().free_all_blocks()
-    
-    # Compute percentages (handles division by zero)
-    aggregated.compute_percentages()
-    
-    return aggregated
-
 
 def benchmark_batch_sizes(
     template_spectrum: tuple[NDArray[np.float64], NDArray[np.float32]],
@@ -1661,7 +655,7 @@ def benchmark_batch_sizes(
             spectrum_id_col="idx",
             mz_col="mz",
             intensity_col="intensity",
-            use_fused_kernel=config_base.use_fused_kernel,
+            enable_spmm_expansion=config_base.enable_spmm_expansion,
         )
 
         # Clear GPU memory before test
@@ -1673,7 +667,8 @@ def benchmark_batch_sizes(
         mem_pool = cp.get_default_memory_pool()
         mem_before = mem_pool.used_bytes()
 
-        result, profiles = run_profiled_similarity_detailed(df, config_test, gpu_monitor)
+        # Using library's built-in profiling
+        result, profiles, kernel_timings = run_profiled_similarity_detailed(df, config_test, gpu_monitor)
 
         t_end = perf_counter()
         mem_after = mem_pool.used_bytes()
@@ -1713,25 +708,24 @@ def benchmark_batch_sizes(
                   f"This indicates a timing measurement issue.")
             cpu_overhead_ms = 0.0
         
-        # Profile internal kernel operations for this batch size
-        kernel_timings = None
-        try:
-            t_profile_start = perf_counter()
-            kernel_timings = profile_batched_similarity_operations(df, config_test, batch_size)
-            t_profile_end = perf_counter()
-            profile_overhead_ms = (t_profile_end - t_profile_start) * 1000.0
-        except Exception as e:
-            print(f"  ⚠ Kernel profiling failed: {e}")
-            profile_overhead_ms = 0.0
+        # Free memory from full run before profiling kernels
+        del result
+        gc.collect()
+        cp.get_default_memory_pool().free_all_blocks()
         
         # Print time breakdown for this batch size
         print(f"    Time breakdown: GPU={gpu_measured_ms:.1f}ms, CPU OH={cpu_overhead_ms:.1f}ms")
         if kernel_timings:
-            print(f"    Kernel breakdown (all {kernel_timings.num_batches_sampled} batches):")
-            print(f"      - Expand:        {kernel_timings.expand_right_ms:8.2f}ms ({kernel_timings.expand_right_pct:5.1f}%)")
+            # Note: kernel_timings are already aggregated and percentages computed in library
+            print(f"    Kernel breakdown:")
+            print(f"      - Expand:        {kernel_timings.expand_ms:8.2f}ms ({kernel_timings.expand_right_pct if hasattr(kernel_timings, 'expand_right_pct') else 0.0:5.1f}%)") # Mapping library names to script expectations
             print(f"      - SpMM:          {kernel_timings.spmm_ms:8.2f}ms ({kernel_timings.spmm_pct:5.1f}%)")
             print(f"      - Normalization: {kernel_timings.normalize_left_ms + kernel_timings.normalize_right_ms:8.2f}ms ({kernel_timings.normalize_left_pct + kernel_timings.normalize_right_pct:5.1f}%)")
-            print(f"      - Other ops:     {kernel_timings.threshold_and_extract_ms + kernel_timings.transfer_to_gpu_ms + kernel_timings.transfer_to_cpu_ms + kernel_timings.other_ms:8.2f}ms ({kernel_timings.threshold_and_extract_pct + kernel_timings.transfer_to_gpu_pct + kernel_timings.transfer_to_cpu_pct + kernel_timings.other_pct:5.1f}%)")
+            # For other ops, we sum the rest. Note: library dataclass might have different field names than script's old AggregatedKernelTimings
+            # Library has: threshold_and_extract_ms, transfer_to_gpu_ms, transfer_to_cpu_ms
+            other_ms = kernel_timings.threshold_and_extract_ms + kernel_timings.transfer_to_gpu_ms + kernel_timings.transfer_to_cpu_ms
+            other_pct = kernel_timings.threshold_and_extract_pct + kernel_timings.transfer_to_gpu_pct + kernel_timings.transfer_to_cpu_pct
+            print(f"      - Other ops:     {other_ms:8.2f}ms ({other_pct:5.1f}%)")
 
         result_obj = BatchBenchmarkResult(
             dataset_size=dataset_size,
@@ -1757,7 +751,9 @@ def benchmark_batch_sizes(
         )
 
         # Clean up
-        del df, result
+        del result_obj
+        # del df # Do not delete df, it is reused for next batch configs
+        gc.collect()
         cp.get_default_memory_pool().free_all_blocks()
 
     return results
@@ -1826,7 +822,7 @@ def benchmark_dtypes(
             intensity_col="intensity",
             csr_data_dtype=np.dtype(np_dtype),
             similarity_dtype=np.dtype(np_dtype),
-            use_fused_kernel=config_base.use_fused_kernel,
+            
         )
 
         # Clear memory
@@ -1837,7 +833,8 @@ def benchmark_dtypes(
         t_start = perf_counter()
         mem_pool = cp.get_default_memory_pool()
 
-        result, profiles = run_profiled_similarity_detailed(df, config_test, gpu_monitor)
+        # Using library's built-in profiling
+        result, profiles, _ = run_profiled_similarity_detailed(df, config_test, gpu_monitor)
 
         t_end = perf_counter()
         peak_mem = mem_pool.total_bytes()
@@ -1990,89 +987,7 @@ def plot_dtype_comparison(comparison: DTypeComparison, output_path: Path) -> Non
     plt.close()
 
 
-def plot_internal_kernel_timings(
-    timings: InternalKernelTimings, output_path: Path
-) -> None:
-    """
-    Plot breakdown of internal kernel operation timings.
 
-    Why: Visual identification of which operation is the bottleneck.
-    """
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 6))
-
-    # Operation names and timings
-    operations = [
-        ("GPU Transfer", timings.transfer_to_gpu_ms),
-        ("Normalize Left", timings.normalize_left_ms),
-        ("Normalize Right", timings.normalize_right_ms),
-        ("Expand Right", timings.expand_right_ms),
-        ("SpMM (L @ R.T)", timings.spmm_ms),
-        ("Threshold & Extract", timings.threshold_and_extract_ms),
-        ("CPU Transfer", timings.transfer_to_cpu_ms),
-    ]
-
-    op_names = [op[0] for op in operations]
-    op_times = [op[1] for op in operations]
-
-    # Calculate percentages
-    op_percentages = [100.0 * t / timings.total_batch_ms for t in op_times]
-
-    # Bar chart
-    from matplotlib.colors import to_rgba
-
-    colors_bar = [
-        "#1f77b4",
-        "#ff7f0e",
-        "#2ca02c",
-        "#d62728",
-        "#9467bd",
-        "#8c564b",
-        "#e377c2",
-    ]
-    bars = ax1.barh(
-        op_names,
-        op_times,
-        color=colors_bar[: len(op_names)],
-        alpha=0.8,
-        edgecolor="black",
-        linewidth=1.2,
-    )
-    ax1.set_xlabel("Time (ms)", fontsize=12)
-    ax1.set_title("Internal Kernel Operation Timings", fontsize=14, fontweight="bold")
-    ax1.grid(axis="x", alpha=0.3)
-
-    # Add value labels
-    for bar, time_val in zip(bars, op_times):
-        width = bar.get_width()
-        ax1.text(
-            width,
-            bar.get_y() + bar.get_height() / 2,
-            f" {time_val:.2f} ms",
-            ha="left",
-            va="center",
-            fontsize=10,
-        )
-
-    # Pie chart with percentages
-    colors_pie = colors_bar[: len(op_names)]
-    wedges, texts, autotexts = ax2.pie(
-        op_times,
-        labels=op_names,
-        autopct="%1.1f%%",
-        colors=colors_pie,
-        startangle=90,
-        textprops={"fontsize": 10},
-    )
-    ax2.set_title("Time Distribution", fontsize=14, fontweight="bold")
-
-    # Make percentage text bold
-    for autotext in autotexts:
-        autotext.set_color("white")
-        autotext.set_fontweight("bold")
-
-    plt.tight_layout()
-    plt.savefig(output_path, dpi=150, bbox_inches="tight")
-    plt.close()
 
 
 # =============================================================================
@@ -2196,78 +1111,7 @@ def generate_optimization_report(
         add_line(f"- **Accuracy Difference**: {comp.accuracy_difference:.2e}")
         add_line()
 
-    # Internal Kernel Timings
-    if session.internal_kernel_timings:
-        add_section("Internal Kernel Operation Breakdown", 2)
-        timings = session.internal_kernel_timings
-
-        add_line("**Single Batch Operation Timings (1000 spectra sample):**")
-        add_line()
-        add_line(f"- **GPU Transfer**: {timings.transfer_to_gpu_ms:.3f} ms")
-        add_line(f"- **Normalize Left**: {timings.normalize_left_ms:.3f} ms")
-        add_line(f"- **Normalize Right**: {timings.normalize_right_ms:.3f} ms")
-        add_line(f"- **Expand Right**: {timings.expand_right_ms:.3f} ms")
-        add_line(f"- **SpMM (L @ R.T)**: {timings.spmm_ms:.3f} ms ⭐")
-        add_line(
-            f"- **Threshold & Extract**: {timings.threshold_and_extract_ms:.3f} ms"
-        )
-        add_line(f"- **CPU Transfer**: {timings.transfer_to_cpu_ms:.3f} ms")
-        add_line(f"- **Total Batch Time**: {timings.total_batch_ms:.3f} ms")
-        add_line()
-
-        # Calculate percentages
-        total = timings.total_batch_ms
-        if total > 0:
-            add_line("**Percentage Breakdown:**")
-            add_line()
-            add_line(f"- GPU Transfer: {100 * timings.transfer_to_gpu_ms / total:.1f}%")
-            add_line(
-                f"- Normalize Left: {100 * timings.normalize_left_ms / total:.1f}%"
-            )
-            add_line(
-                f"- Normalize Right: {100 * timings.normalize_right_ms / total:.1f}%"
-            )
-            add_line(f"- Expand Right: {100 * timings.expand_right_ms / total:.1f}%")
-            add_line(f"- **SpMM (L @ R.T): {100 * timings.spmm_ms / total:.1f}%** ⭐")
-            add_line(
-                f"- Threshold & Extract: {100 * timings.threshold_and_extract_ms / total:.1f}%"
-            )
-            add_line(f"- CPU Transfer: {100 * timings.transfer_to_cpu_ms / total:.1f}%")
-            add_line()
-
-            # Identify bottleneck
-            ops = [
-                ("GPU Transfer", timings.transfer_to_gpu_ms),
-                (
-                    "Normalization",
-                    timings.normalize_left_ms + timings.normalize_right_ms,
-                ),
-                ("Expansion", timings.expand_right_ms),
-                ("SpMM", timings.spmm_ms),
-                ("Threshold & Extract", timings.threshold_and_extract_ms),
-                ("CPU Transfer", timings.transfer_to_cpu_ms),
-            ]
-            bottleneck = max(ops, key=lambda x: x[1])
-            add_line(
-                f"**Primary Bottleneck**: {bottleneck[0]} ({100 * bottleneck[1] / total:.1f}% of time)"
-            )
-            add_line()
-
-    # SpMM Analysis
-    if session.spmm_metrics:
-        add_section("SpMM Kernel Analysis", 2)
-        spmm = session.spmm_metrics
-
-        add_line(f"**Duration**: {spmm.duration_ms:.2f} ms")
-        add_line(f"**Estimated FLOPS**: {spmm.estimated_flops:,.0f}")
-        add_line(f"**Achieved Performance**: {spmm.achieved_gflops:.2f} GFLOPS")
-        add_line(
-            f"**Efficiency vs Peak**: {spmm.efficiency_vs_peak_pct:.1f}% "
-            f"(Peak: {session.peak_gpu_gflops:,.0f} GFLOPS)"
-        )
-        add_line(f"**Memory Bandwidth**: {spmm.memory_bandwidth_gb_s:.2f} GB/s")
-        add_line(f"**Sparsity Factor**: {spmm.sparsity_factor:.6f}")
-        add_line()
+    
 
     # Recommendations
     add_section("Optimization Recommendations", 2)
@@ -2291,20 +1135,7 @@ def generate_optimization_report(
                 f"accuracy loss ({session.dtype_comparison.accuracy_difference:.2e})."
             )
 
-    # SpMM efficiency recommendation
-    if session.spmm_metrics:
-        if session.spmm_metrics.efficiency_vs_peak_pct < 20:
-            recommendations.append(
-                f"**Low SpMM Efficiency**: Only {session.spmm_metrics.efficiency_vs_peak_pct:.1f}% "
-                f"of peak performance. This is typical for sparse operations and indicates "
-                f"memory-bandwidth bound computation. Consider: (1) Increasing batch size to "
-                f"amortize memory transfer costs, (2) Reducing expansion factor if possible."
-            )
-        elif session.spmm_metrics.efficiency_vs_peak_pct > 50:
-            recommendations.append(
-                f"**Excellent SpMM Efficiency**: Achieving {session.spmm_metrics.efficiency_vs_peak_pct:.1f}% "
-                f"of peak performance. This is exceptional for sparse operations. Limited optimization headroom."
-            )
+    
 
     # GPU utilization recommendation
     if session.batch_benchmark_results:
@@ -2345,14 +1176,10 @@ def generate_optimization_report(
             "ms2_tolerance_ppm": session.ms2_tolerance_ppm,
             "match_rate": session.match_rate,
         },
-        "internal_kernel_timings": asdict(session.internal_kernel_timings)
-        if session.internal_kernel_timings
-        else None,
         "batch_benchmark_results": [asdict(r) for r in session.batch_benchmark_results],
         "dtype_comparison": asdict(session.dtype_comparison)
         if session.dtype_comparison
         else None,
-        "spmm_metrics": asdict(session.spmm_metrics) if session.spmm_metrics else None,
         "recommendations": recommendations,
     }
 
@@ -2468,10 +1295,7 @@ def main() -> None:
     print("=" * 80)
     print()
 
-    if args.use_fused_kernel:
-        print("⚡ USING FUSED NORMALIZE-EXPAND KERNEL (EXPERIMENTAL)")
-        print("   Expected: 3-5× speedup on expansion, 1.5-2× overall improvement")
-        print()
+    
 
     # Initialize session
     session = OptimizationSession(
@@ -2518,7 +1342,7 @@ def main() -> None:
         spectrum_id_col="idx",
         mz_col="mz",
         intensity_col="intensity",
-        use_fused_kernel=args.use_fused_kernel,
+        enable_spmm_expansion=True, # Default to True
     )
 
     # GPU monitor
@@ -2552,68 +1376,31 @@ def main() -> None:
             # Small GPU: conservative batches
             batch_configs = [100, 250, 500, 1_000, 2_500, 5_000, 7_500]
 
-    # Profile internal kernel operations first (single batch for detailed timing)
-    print(f"Step 1/4: Internal Kernel Operation Profiling")
-    print(f"  Profiling single batch (1000 spectra) to identify bottlenecks...")
-
-    template_mz, template_intensity = template_spectrum
-    profile_df = generate_batch_with_mass_shifts(
-        template_mz,
-        template_intensity,
-        n_spectra=min(5000, args.n_spectra),  # Use smaller dataset for profiling
-        seed=args.seed,
-        match_rate=args.match_rate,
-    )
-
-    try:
-        session.internal_kernel_timings = profile_internal_kernel_operations(
-            profile_df, config_base, use_fused=args.use_fused_kernel
+    # Run batch size benchmarking (Comparison)
+    print(f"Step 1/3: Batch Size & Expansion Strategy Optimization")
+    
+    strategies = [("SpMM", True), ("Element-wise", False)]
+    all_results = []
+    
+    for name, use_spmm in strategies:
+        print(f"\n>>> Testing Strategy: {name} <<<")
+        # Update config base
+        config_base.enable_spmm_expansion = use_spmm
+        
+        # Clear GPU memory
+        cp.get_default_memory_pool().free_all_blocks()
+        
+        results = benchmark_batch_sizes(
+            template_spectrum=template_spectrum,
+            dataset_size=args.n_spectra,
+            batch_size_configs=batch_configs,
+            config_base=config_base,
+            gpu_monitor=gpu_monitor,
+            match_rate=args.match_rate,
         )
-
-        kernel_type = "FUSED" if args.use_fused_kernel else "STANDARD"
-        print(f"  ✓ Internal profiling complete ({kernel_type} kernel)")
-        print(
-            f"    - SpMM: {session.internal_kernel_timings.spmm_ms:.2f} ms "
-            f"({100 * session.internal_kernel_timings.spmm_ms / session.internal_kernel_timings.total_batch_ms:.1f}%)"
-        )
-        print(
-            f"    - Expansion: {session.internal_kernel_timings.expand_right_ms:.2f} ms "
-            f"({100 * session.internal_kernel_timings.expand_right_ms / session.internal_kernel_timings.total_batch_ms:.1f}%)"
-        )
-        if not args.use_fused_kernel:
-            print(
-                f"    - Normalize Right: {session.internal_kernel_timings.normalize_right_ms:.2f} ms "
-                f"({100 * session.internal_kernel_timings.normalize_right_ms / session.internal_kernel_timings.total_batch_ms:.1f}%)"
-            )
-        print(
-            f"    - Thresholding: {session.internal_kernel_timings.threshold_and_extract_ms:.2f} ms "
-            f"({100 * session.internal_kernel_timings.threshold_and_extract_ms / session.internal_kernel_timings.total_batch_ms:.1f}%)"
-        )
-        print(f"    - Total: {session.internal_kernel_timings.total_batch_ms:.2f} ms\n")
-
-        # Plot internal timings
-        plot_internal_kernel_timings(
-            session.internal_kernel_timings, plots_dir / "internal_kernel_timings.png"
-        )
-        print(f"  ✓ Plot saved: {plots_dir / 'internal_kernel_timings.png'}\n")
-    except Exception as e:
-        print(f"  ⚠ Internal profiling failed: {e}")
-        print(f"    Continuing with other benchmarks...\n")
-
-    # Clean up
-    del profile_df
-    cp.get_default_memory_pool().free_all_blocks()
-
-    # Run batch size benchmarking
-    print(f"Step 2/4: Batch Size Optimization")
-    session.batch_benchmark_results = benchmark_batch_sizes(
-        template_spectrum=template_spectrum,
-        dataset_size=args.n_spectra,
-        batch_size_configs=batch_configs,
-        config_base=config_base,
-        gpu_monitor=gpu_monitor,
-        match_rate=args.match_rate,
-    )
+        all_results.extend(results)
+    
+    session.batch_benchmark_results = all_results
 
     # Plot batch optimization results
     plot_batch_optimization(
@@ -2623,7 +1410,7 @@ def main() -> None:
 
     # Run dtype comparison
     if not args.skip_dtype_comparison:
-        print(f"Step 3/4: Data Type Comparison (float32 vs float64)")
+        print(f"Step 2/3: Data Type Comparison (float32 vs float64)")
         session.dtype_comparison = benchmark_dtypes(
             template_spectrum=template_spectrum,
             n_spectra=min(args.n_spectra, 25_000),  # Use smaller dataset for speed
@@ -2638,40 +1425,7 @@ def main() -> None:
         )
         print(f"  ✓ Plot saved: {plots_dir / 'dtype_comparison.png'}\n")
     else:
-        print(f"Step 3/4: Data Type Comparison - SKIPPED\n")
-
-    # Estimate SpMM metrics
-    print(f"Step 4/4: SpMM Kernel Analysis")
-    if session.batch_benchmark_results:
-        # Use optimal result for SpMM analysis
-        optimal_result = max(
-            session.batch_benchmark_results, key=lambda r: r.throughput_pairs_per_sec
-        )
-
-        # Create a pseudo operation profile for SpMM analysis
-        operation_profile = OperationProfile(
-            name="spmm_estimate",
-            duration_ms=optimal_result.total_time_s * 1000.0,
-            memory_before_bytes=0,
-            memory_after_bytes=int(optimal_result.peak_memory_gb * (1024**3)),
-            memory_delta_bytes=int(optimal_result.peak_memory_gb * (1024**3)),
-        )
-
-        # Estimate expansion factor from tolerance
-        expansion_factor = 1.0 + (args.ms2_tolerance_ppm / 1e6) * 10.0
-
-        session.spmm_metrics = estimate_spmm_metrics(
-            operation_profile=operation_profile,
-            n_spectra=args.n_spectra,
-            avg_peaks=args.n_peaks_per_spectrum,
-            expansion_factor=expansion_factor,
-            peak_gpu_gflops=session.peak_gpu_gflops,
-        )
-
-        print(
-            f"  SpMM Efficiency: {session.spmm_metrics.efficiency_vs_peak_pct:.1f}% of peak"
-        )
-        print(f"  Achieved: {session.spmm_metrics.achieved_gflops:.2f} GFLOPS\n")
+        print(f"Step 2/3: Data Type Comparison - SKIPPED\n")
 
     # Generate comprehensive report
     print("Generating optimization report...")
@@ -2691,10 +1445,7 @@ def main() -> None:
         print(f"  Speedup: {session.dtype_comparison.speedup_factor:.2f}x")
         print(f"  Memory Savings: {session.dtype_comparison.memory_reduction_pct:.1f}%")
 
-    if session.spmm_metrics:
-        print(
-            f"\nSpMM Efficiency: {session.spmm_metrics.efficiency_vs_peak_pct:.1f}% of peak"
-        )
+    
 
     print(f"\nTotal Runtime: {session.total_time:.1f}s")
     print("=" * 80)
