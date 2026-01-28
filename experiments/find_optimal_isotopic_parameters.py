@@ -5,6 +5,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 import polars as pl
+from scipy.interpolate import interp1d
 from scipy.optimize import curve_fit
 
 from hrms_utils.formats import get_chromatogram
@@ -19,7 +20,7 @@ BROMINE_INDEX = ELEMENT_INDEX["Br"]
 
 
 @dataclass
-class Config:
+class isotopic_config:
     # File I/O (defaults intentionally empty; set in __main__)
     chromatogram_dir: Path | None = None
     chromatogram_glob: str = "**/*.mdpeak"
@@ -50,12 +51,52 @@ class Config:
     min_dbe: float = -0.5
     max_dbe: float = 30.0
 
+    # Element Selection
+    # Why: Allow selecting which elements to use for calibration. By default, only carbon is used.
+    use_carbon: bool = True
+    use_sulfur: bool = False
+    use_chlorine: bool = False
+    use_bromine: bool = False
+
     # Optimization Parameters
     ms1_mass_tolerance_ppm: float = 5.0
+    rt_tolerance_seconds: float = 30.0
     isotopic_mass_tolerance_ppm: float = 2.0
     minimum_isotopic_peak_intensity: float = 1e4
     target_success_rate: float = 0.99
     mass_accuracy_threshold_da: float = 200.0
+
+    # Plotting Parameters
+    moving_average_window_log_units: float = 0.5
+    plot_carbon_count_weighted_error: bool = False
+    error_percentiles: tuple[float, ...] = (10.0, 50.0, 90.0)
+    plot_percentile_relative_error: bool = True
+    plot_percentile_carbon_count_error: bool = True
+
+    # Output Parameters
+    emit_pairs: bool = False
+    pairs_output_file: Path = Path("experiments/isotopic_fitting_pairs.xlsx")
+
+
+@dataclass
+class FittingPair:
+    peak_id: int
+    source_file: str
+    precursor_mz: float
+    peak_height: float
+    spectral_info_score: float
+    dotprod_similarity: float
+    library_name: str
+    library_formula: str
+    inchikey: str
+    smiles: str | None
+    element_label: str
+    observed_intensity: float
+    expected_intensity: float
+    query_mz_list: list[float]
+    query_intensity_list: list[float]
+    library_mz_list: list[float]
+    library_intensity_list: list[float]
 
 
 @dataclass
@@ -109,6 +150,11 @@ def fit_isotopic_tolerance_parameters(
     minimum_isotopic_peak_intensity: float = 5e4,
     target_success_rate: float = 0.99,
     mass_accuracy_threshold_da: float = 200.0,
+    moving_average_window_log_units: float = 0.5,
+    plot_carbon_count_weighted_error: bool = False,
+    error_percentiles: tuple[float, ...] = (10.0, 50.0, 90.0),
+    plot_percentile_relative_error: bool = True,
+    plot_percentile_carbon_count_error: bool = True,
     precursor_mz_column: str = "Precursor_mz_MSDIAL",
     ms1_mz_column: str = "ms1_isotopes_m/z",
     ms1_intensity_column: str = "ms1_isotopes_intensity",
@@ -117,6 +163,11 @@ def fit_isotopic_tolerance_parameters(
     true_sulfur_count_column: str = "true_sulfur_count",
     true_chlorine_count_column: str = "true_chlorine_count",
     true_bromine_count_column: str = "true_bromine_count",
+    use_carbon: bool = True,
+    use_sulfur: bool = False,
+    use_chlorine: bool = False,
+    use_bromine: bool = False,
+    emit_pairs: bool = False,
 ) -> IsotopicToleranceModel:
     """
     Fit an inverse calibration model to bound expected isotopic-peak intensity from observed isotopic-peak intensity.
@@ -155,9 +206,18 @@ def fit_isotopic_tolerance_parameters(
             wU(observed) = aU * (observed + offset) ** bU
          and parameters fit to empirical per-bin quantile residuals.
     """
+    # Why: Ensure at least one element is selected for calibration.
+    assert use_carbon or use_sulfur or use_chlorine or use_bromine, (
+        "At least one element must be selected for calibration. "
+        "Set use_carbon=True, use_sulfur=True, use_chlorine=True, or use_bromine=True."
+    )
+
     # Why: Extract true carbon count and filter for valid data.
     # Ground-truth can come either from a formula array (library search) or from an explicit
     # integer carbon count column (mass-list CSV mode).
+    # 
+    # IMPORTANT: If library metadata is present, we filter out entries missing inchikey since
+    # we don't trust their formula accuracy.
     if true_carbon_count_column in library_hits.columns:
         data = library_hits.with_columns(
             pl.col(true_carbon_count_column).cast(pl.Int64).alias("_true_carbon_count"),
@@ -194,9 +254,20 @@ def fit_isotopic_tolerance_parameters(
             pl.col(ms1_mz_column).is_not_null(),
             pl.col(ms1_intensity_column).is_not_null(),
         )
+    
+    # Why: Filter out library entries missing inchikey since we don't trust their formula accuracy.
+    # This applies only to library-search data; mass-list data doesn't have inchikey column.
+    if "inchikey" in data.columns:
+        data_before_inchikey_filter = data.height
+        data = data.filter(pl.col("inchikey").is_not_null())
+        data_after_inchikey_filter = data.height
+        entries_filtered_for_missing_inchikey = data_before_inchikey_filter - data_after_inchikey_filter
+    else:
+        entries_filtered_for_missing_inchikey = 0
 
     assert data.height > 0, (
-        "No valid compounds with carbon count and MS1 isotope data found"
+        "No valid compounds with carbon count and MS1 isotope data found. "
+        f"Entries filtered for missing inchikey: {entries_filtered_for_missing_inchikey}"
     )
 
     # Why: Build a small set of diagnostic isotopic peaks, mirroring the Rust logic in
@@ -214,129 +285,152 @@ def fit_isotopic_tolerance_parameters(
     isotopic_targets: list[dict[str, object]] = []
 
     # Carbon: 12C/13C is typically stored as [12C, 13C] with mass_differences[0] ~= +1.003355
-    carbon_info = ELEMENTS[ELEMENT_INDEX["C"]]
-    c_iso_dist = carbon_info.isotopic_distribution
-    assert c_iso_dist is not None, (
-        "Carbon isotopic distribution is missing in the element table; "
-        "cannot compute expected 13C intensity. Ensure the element table is initialized correctly."
-    )
-    isotopic_targets.append(
-        {
-            "label": "13C (M+1)",
-            "element_index": CARBON_INDEX,
-            "prob_light": float(c_iso_dist.abundances[0]),
-            "prob_heavy": float(c_iso_dist.abundances[1]),
-            "mass_diff": float(c_iso_dist.mass_differences[0]),
-        }
-    )
+    if use_carbon:
+        carbon_info = ELEMENTS[ELEMENT_INDEX["C"]]
+        c_iso_dist = carbon_info.isotopic_distribution
+        assert c_iso_dist is not None, (
+            "Carbon isotopic distribution is missing in the element table; "
+            "cannot compute expected 13C intensity. Ensure the element table is initialized correctly."
+        )
+        isotopic_targets.append(
+            {
+                "label": "13C (M+1)",
+                "element_index": CARBON_INDEX,
+                "prob_light": float(c_iso_dist.abundances[0]),
+                "prob_heavy": float(c_iso_dist.abundances[1]),
+                "mass_diff": float(c_iso_dist.mass_differences[0]),
+            }
+        )
 
     # Sulfur: use the exact element-table +2 mass shift (34S relative to 32S).
     #
     # Why: `element_table.py` defines an exact sulfur isotopic distribution:
     #   mass_differences=(1.995796,), abundances=(0.9493, 0.0429)
     # so we should use that directly instead of heuristics.
-    sulfur_info = ELEMENTS[ELEMENT_INDEX["S"]]
-    s_iso_dist = sulfur_info.isotopic_distribution
-    assert s_iso_dist is not None, (
-        "Sulfur isotopic distribution is missing in the element table; "
-        "cannot compute expected sulfur isotopic peak intensity. Ensure the element table is initialized correctly."
-    )
+    if use_sulfur:
+        sulfur_info = ELEMENTS[ELEMENT_INDEX["S"]]
+        s_iso_dist = sulfur_info.isotopic_distribution
+        assert s_iso_dist is not None, (
+            "Sulfur isotopic distribution is missing in the element table; "
+            "cannot compute expected sulfur isotopic peak intensity. Ensure the element table is initialized correctly."
+        )
 
-    s_mass_diffs = np.asarray(s_iso_dist.mass_differences, dtype=float)
-    s_abundances = np.asarray(s_iso_dist.abundances, dtype=float)
+        s_mass_diffs = np.asarray(s_iso_dist.mass_differences, dtype=float)
+        s_abundances = np.asarray(s_iso_dist.abundances, dtype=float)
 
-    assert s_abundances.size >= 2, (
-        f"Sulfur isotopic distribution must contain at least two isotopes (light + heavy). "
-        f"Got abundances.size={int(s_abundances.size)}."
-    )
-    assert s_mass_diffs.size >= 1, (
-        f"Sulfur isotopic distribution must contain at least one mass difference entry. "
-        f"Got mass_differences.size={int(s_mass_diffs.size)}."
-    )
-    assert s_abundances.size == s_mass_diffs.size + 1, (
-        "Sulfur isotopic distribution must satisfy: len(abundances) == len(mass_differences) + 1. "
-        f"Got abundances.size={int(s_abundances.size)}, mass_differences.size={int(s_mass_diffs.size)}."
-    )
+        assert s_abundances.size >= 2, (
+            f"Sulfur isotopic distribution must contain at least two isotopes (light + heavy). "
+            f"Got abundances.size={int(s_abundances.size)}."
+        )
+        assert s_mass_diffs.size >= 1, (
+            f"Sulfur isotopic distribution must contain at least one mass difference entry. "
+            f"Got mass_differences.size={int(s_mass_diffs.size)}."
+        )
+        assert s_abundances.size == s_mass_diffs.size + 1, (
+            "Sulfur isotopic distribution must satisfy: len(abundances) == len(mass_differences) + 1. "
+            f"Got abundances.size={int(s_abundances.size)}, mass_differences.size={int(s_mass_diffs.size)}."
+        )
 
-    # Element table contract for S in this repo: exactly one heavy isotope (34S) with a single mass_diff entry.
-    # Fail fast if that ever changes, since downstream interpretations would need review.
-    assert s_mass_diffs.size == 1, (
-        "Expected sulfur isotopic distribution to provide exactly one mass difference (32S->34S). "
-        f"Got mass_differences={s_iso_dist.mass_differences}"
-    )
+        # Element table contract for S in this repo: exactly one heavy isotope (34S) with a single mass_diff entry.
+        # Fail fast if that ever changes, since downstream interpretations would need review.
+        assert s_mass_diffs.size == 1, (
+            "Expected sulfur isotopic distribution to provide exactly one mass difference (32S->34S). "
+            f"Got mass_differences={s_iso_dist.mass_differences}"
+        )
 
-    isotopic_targets.append(
-        {
-            "label": "34S (M+2)",
-            "element_index": SULFUR_INDEX,
-            "prob_light": float(s_abundances[0]),
-            "prob_heavy": float(s_abundances[1]),
-            "mass_diff": float(s_mass_diffs[0]),
-        }
-    )
+        isotopic_targets.append(
+            {
+                "label": "34S (M+2)",
+                "element_index": SULFUR_INDEX,
+                "prob_light": float(s_abundances[0]),
+                "prob_heavy": float(s_abundances[1]),
+                "mass_diff": float(s_mass_diffs[0]),
+            }
+        )
 
     # Chlorine: use the +-2 isotope (37Cl) relative to 35Cl
-    chlorine_info = ELEMENTS[ELEMENT_INDEX["Cl"]]
-    cl_iso_dist = chlorine_info.isotopic_distribution
-    assert cl_iso_dist is not None, (
-        "Chlorine isotopic distribution is missing in the element table; "
-        "cannot compute expected 37Cl intensity. Ensure the element table is initialized correctly."
-    )
-    isotopic_targets.append(
-        {
-            "label": "37Cl (M+2)",
-            "element_index": CHLORINE_INDEX,
-            "prob_light": float(cl_iso_dist.abundances[0]),
-            "prob_heavy": float(cl_iso_dist.abundances[1]),
-            "mass_diff": float(cl_iso_dist.mass_differences[0]),
-        }
-    )
+    if use_chlorine:
+        chlorine_info = ELEMENTS[ELEMENT_INDEX["Cl"]]
+        cl_iso_dist = chlorine_info.isotopic_distribution
+        assert cl_iso_dist is not None, (
+            "Chlorine isotopic distribution is missing in the element table; "
+            "cannot compute expected 37Cl intensity. Ensure the element table is initialized correctly."
+        )
+        isotopic_targets.append(
+            {
+                "label": "37Cl (M+2)",
+                "element_index": CHLORINE_INDEX,
+                "prob_light": float(cl_iso_dist.abundances[0]),
+                "prob_heavy": float(cl_iso_dist.abundances[1]),
+                "mass_diff": float(cl_iso_dist.mass_differences[0]),
+            }
+        )
 
-    # Double chlorine: special M+4 peak from two 37Cl substitutions.
-    #
-    # Why: Mirror the Rust `deduce_isotopic_pattern_inner` "Cl second peak (M+4)" logic by
-    # introducing this as an additional pair source. For the mass shift, use 2× the chlorine
-    # mass_diff.
-    #
-    # NOTE: Expected intensity for M+4 due to two 37Cl is not `n * p_heavy/p_light * I0`.
-    # The correct expected value uses a combinatorial factor for choosing 2 Cl atoms:
-    #    expected(M+4) = C(n, 2) * (p_heavy^2 / p_light^2) * I0
-    isotopic_targets.append(
-        {
-            "label": "37Cl2 (M+4)",
-            "element_index": CHLORINE_INDEX,
-            "prob_light": float(cl_iso_dist.abundances[0]),
-            "prob_heavy": float(cl_iso_dist.abundances[1]),
-            "mass_diff": float(cl_iso_dist.mass_differences[0]) * 2.0,
-            "secondary_pair_source": "double_chlorine",
-        }
-    )
+        # Double chlorine: special M+4 peak from two 37Cl substitutions.
+        #
+        # Why: Mirror the Rust `deduce_isotopic_pattern_inner` "Cl second peak (M+4)" logic by
+        # introducing this as an additional pair source. For the mass shift, use 2× the chlorine
+        # mass_diff.
+        #
+        # NOTE: Expected intensity for M+4 due to two 37Cl is not `n * p_heavy/p_light * I0`.
+        # The correct expected value uses a combinatorial factor for choosing 2 Cl atoms:
+        #    expected(M+4) = C(n, 2) * (p_heavy^2 / p_light^2) * I0
+        isotopic_targets.append(
+            {
+                "label": "37Cl2 (M+4)",
+                "element_index": CHLORINE_INDEX,
+                "prob_light": float(cl_iso_dist.abundances[0]),
+                "prob_heavy": float(cl_iso_dist.abundances[1]),
+                "mass_diff": float(cl_iso_dist.mass_differences[0]) * 2.0,
+                "secondary_pair_source": "double_chlorine",
+            }
+        )
 
     # Bromine: use the +-2 isotope (81Br) relative to 79Br
-    bromine_info = ELEMENTS[ELEMENT_INDEX["Br"]]
-    br_iso_dist = bromine_info.isotopic_distribution
-    assert br_iso_dist is not None, (
-        "Bromine isotopic distribution is missing in the element table; "
-        "cannot compute expected 81Br intensity. Ensure the element table is initialized correctly."
-    )
-    isotopic_targets.append(
-        {
-            "label": "81Br (M+2)",
-            "element_index": BROMINE_INDEX,
-            "prob_light": float(br_iso_dist.abundances[0]),
-            "prob_heavy": float(br_iso_dist.abundances[1]),
-            "mass_diff": float(br_iso_dist.mass_differences[0]),
-        }
-    )
+    if use_bromine:
+        bromine_info = ELEMENTS[ELEMENT_INDEX["Br"]]
+        br_iso_dist = bromine_info.isotopic_distribution
+        assert br_iso_dist is not None, (
+            "Bromine isotopic distribution is missing in the element table; "
+            "cannot compute expected 81Br intensity. Ensure the element table is initialized correctly."
+        )
+        isotopic_targets.append(
+            {
+                "label": "81Br (M+2)",
+                "element_index": BROMINE_INDEX,
+                "prob_light": float(br_iso_dist.abundances[0]),
+                "prob_heavy": float(br_iso_dist.abundances[1]),
+                "mass_diff": float(br_iso_dist.mass_differences[0]),
+            }
+        )
 
     # Why: Build paired calibration data:
     #   - observed_isotopic_peak_intensity: what you have at inference (input)
     #   - expected_isotopic_peak_intensity: computed from known formula element count + observed precursor (output)
     observed_isotopic_peak_intensities: list[float] = []
     expected_isotopic_peak_intensities: list[float] = []
+    carbon_counts_for_pairs: list[int] = []
     per_element_pair_counts: Counter[str] = Counter()
+    fitting_pairs: list[FittingPair] = []
+    skipped_for_missing_name: int = 0
+    
+    # Track which (peak_id, source_file) combinations have already been used for fitting.
+    # Why: Each peak should contribute only one calibration pair, even if it has multiple
+    # isotopic targets (13C, 34S, etc.). This prevents overfitting to peaks that happen
+    # to have multiple observable isotopes.
+    used_peaks: set[tuple[int, str]] = set()
 
     for row in data.iter_rows(named=True):
+        # Check if this peak has already been used for fitting.
+        # Why: Each peak should contribute only one calibration pair to avoid overweighting
+        # peaks with multiple observable isotopes.
+        peak_id = int(row.get("Peak ID", 0))
+        source_file = str(row.get("source_file", ""))
+        peak_key = (peak_id, source_file)
+        
+        if peak_key in used_peaks:
+            continue
+        
         precursor_mz = row[precursor_mz_column]
         ms1_mzs = np.atleast_1d(np.array(row[ms1_mz_column]))
         ms1_intensities = np.atleast_1d(np.array(row[ms1_intensity_column]))
@@ -365,6 +459,8 @@ def fit_isotopic_tolerance_parameters(
 
         # Why: Generate calibration pairs across multiple elements and their diagnostic isotopic peaks.
         # We always scale by the monoisotopic peak intensity (I0) observed at the precursor MS1 m/z.
+        # However, we only use the FIRST valid isotopic target for each peak to ensure each peak
+        # contributes exactly one calibration pair.
         for target in isotopic_targets:
             element_index = int(target["element_index"])  # type: ignore[arg-type]
             element_label = str(target["label"])  # type: ignore[arg-type]
@@ -436,7 +532,80 @@ def fit_isotopic_tolerance_parameters(
 
             observed_isotopic_peak_intensities.append(observed_isotopic_peak_intensity)
             expected_isotopic_peak_intensities.append(expected_isotopic_peak_intensity)
+            carbon_counts_for_pairs.append(int(row["_true_carbon_count"]))
             per_element_pair_counts[element_label] += 1
+
+            if emit_pairs:
+                # Skip entries that don't have name (inchikey is already guaranteed by earlier filter)
+                # Why: Some library entries may be missing name, and we need it for the pairs output.
+                # These entries are still used for calibration but won't appear in the pairs output.
+                if "name" not in row or row["name"] is None:
+                    skipped_for_missing_name += 1
+                    # Mark peak as used even if we skip pairs output
+                    used_peaks.add(peak_key)
+                    break
+                
+                library_name = str(row["name"])
+                inchikey = str(row["inchikey"])
+                smiles = str(row["smiles"]) if "smiles" in row and row["smiles"] is not None else None
+                
+                # Convert formula array to string
+                formula_array = row.get("formula_array")
+                if formula_array is not None:
+                    # Build formula string from array
+                    formula_parts = []
+                    for elem_idx, elem_info in enumerate(ELEMENTS):
+                        count = int(formula_array[elem_idx])
+                        if count > 0:
+                            if count == 1:
+                                formula_parts.append(elem_info.symbol)
+                            else:
+                                formula_parts.append(f"{elem_info.symbol}{count}")
+                    library_formula = "".join(formula_parts)
+                else:
+                    library_formula = "Unknown"
+                
+                # Get MS2 spectra
+                query_ms2_mz = row.get("query_ms2_mz", [])
+                query_ms2_intensity = row.get("query_ms2_intensity", [])
+                library_ms2_mz = row.get("library_ms2_mz", [])
+                library_ms2_intensity = row.get("library_ms2_intensity", [])
+                
+                if query_ms2_mz is None:
+                    query_ms2_mz = []
+                if query_ms2_intensity is None:
+                    query_ms2_intensity = []
+                if library_ms2_mz is None:
+                    library_ms2_mz = []
+                if library_ms2_intensity is None:
+                    library_ms2_intensity = []
+                
+                fitting_pair = FittingPair(
+                    peak_id=int(row.get("Peak ID", 0)),
+                    source_file=str(row.get("source_file", "")),
+                    precursor_mz=precursor_mz,
+                    peak_height=float(row.get("Height", 0.0)),
+                    spectral_info_score=float(row.get("spectral_info_score", 0.0)) if row.get("spectral_info_score") is not None else 0.0,
+                    dotprod_similarity=float(row.get("dotprod_similarity", 0.0)) if row.get("dotprod_similarity") is not None else 0.0,
+                    library_name=library_name,
+                    library_formula=library_formula,
+                    inchikey=inchikey,
+                    smiles=smiles,
+                    element_label=element_label,
+                    observed_intensity=observed_isotopic_peak_intensity,
+                    expected_intensity=expected_isotopic_peak_intensity,
+                    query_mz_list=query_ms2_mz if isinstance(query_ms2_mz, list) else list(query_ms2_mz),
+                    query_intensity_list=query_ms2_intensity if isinstance(query_ms2_intensity, list) else list(query_ms2_intensity),
+                    library_mz_list=library_ms2_mz if isinstance(library_ms2_mz, list) else list(library_ms2_mz),
+                    library_intensity_list=library_ms2_intensity if isinstance(library_ms2_intensity, list) else list(library_ms2_intensity),
+                )
+                fitting_pairs.append(fitting_pair)
+            
+            # Mark this peak as used and break from isotopic targets loop.
+            # Why: Each peak should contribute exactly one calibration pair to prevent
+            # overweighting peaks with multiple observable isotopes.
+            used_peaks.add(peak_key)
+            break
 
     assert len(observed_isotopic_peak_intensities) > 0, (
         "No valid (observed_isotopic_peak, expected_isotopic_peak) calibration pairs could be formed. "
@@ -445,6 +614,7 @@ def fit_isotopic_tolerance_parameters(
 
     observed_arr = np.asarray(observed_isotopic_peak_intensities, dtype=float)
     expected_arr = np.asarray(expected_isotopic_peak_intensities, dtype=float)
+    carbon_counts_arr = np.asarray(carbon_counts_for_pairs, dtype=int)
 
     # -----------------------------
     # Fit inverse calibration: expected = alpha * (observed + offset) ** beta
@@ -680,10 +850,10 @@ def fit_isotopic_tolerance_parameters(
             )
 
     # -----------------------------
-    # Visualization: expected vs observed with multiple fits/bounds
+    # Visualization 1: Calibration pairs and heteroscedastic bounds
     # -----------------------------
-    fig, ax = plt.subplots(figsize=(10, 6))
-    ax.scatter(
+    fig1, ax1 = plt.subplots(figsize=(12, 6))
+    ax1.scatter(
         observed_arr,
         expected_arr,
         alpha=0.35,
@@ -698,58 +868,284 @@ def fit_isotopic_tolerance_parameters(
 
     y_center = expected_from_observed_model(x_range, alpha_hat, beta_hat, offset_hat)
 
-    # Asymmetric constant bounds
-    y_lower_const = y_center * np.exp(-wL_const)
-    y_upper_const = y_center * np.exp(+wU_const)
-
     # Heteroscedastic bounds
     wL_x = wL_hetero(x_range)
     wU_x = wU_hetero(x_range)
     y_lower_hetero = y_center * np.exp(-wL_x)
     y_upper_hetero = y_center * np.exp(+wU_x)
 
-    ax.plot(
+    # Add y=x line
+    ax1.plot(
         x_range,
-        y_center,
+        x_range,
         color="black",
-        linewidth=2.2,
-        label="Center: expected_hat(observed)",
-    )
-
-    ax.plot(
-        x_range,
-        y_lower_const,
-        color="blue",
         linestyle="--",
-        linewidth=1.8,
-        label=f"Const bounds (asym), cov={coverage_const:.2%}",
+        linewidth=1.5,
+        label="y=x (perfect agreement)",
     )
-    ax.plot(x_range, y_upper_const, color="blue", linestyle="--", linewidth=1.8)
 
-    ax.plot(
+    ax1.plot(
         x_range,
         y_lower_hetero,
         color="green",
-        linestyle="--",
+        linestyle="-",
         linewidth=1.8,
         label=f"Hetero bounds (asym), cov={coverage_hetero:.2%}",
     )
-    ax.plot(x_range, y_upper_hetero, color="green", linestyle="--", linewidth=1.8)
+    ax1.plot(x_range, y_upper_hetero, color="green", linestyle="-", linewidth=1.8)
 
-    ax.set_xscale("log")
-    ax.set_yscale("log")
-    ax.set_xlabel("Observed isotopic peak intensity (input)")
-    ax.set_ylabel("Expected isotopic peak intensity (output, from formula)")
-    ax.set_title(
+    ax1.set_xscale("log")
+    ax1.set_yscale("log")
+    ax1.set_xlabel("Observed isotopic peak intensity (input)")
+    ax1.set_ylabel("Expected isotopic peak intensity (output, from formula)")
+    ax1.legend(loc="upper left")
+    ax1.set_title(
         "Inverse isotopic calibration: expected isotopic-peak bounds from observed isotopic peak\n"
-        f"Target coverage={target_success_rate:.1%} | const={coverage_const:.1%} | hetero={coverage_hetero:.1%}"
+        f"Target coverage={target_success_rate:.1%} | hetero={coverage_hetero:.1%}"
     )
-    ax.legend()
     plt.tight_layout()
 
-    plot_path = output_path.with_suffix(".png")
-    plt.savefig(plot_path)
+    plot_path_1 = output_path.with_name(output_path.stem + "_calibration_bounds.png")
+    plt.savefig(plot_path_1)
     plt.close()
+
+    # -----------------------------
+    # Visualization 2: Percentile-based error curves
+    # -----------------------------
+    # Validate that at least one error type is enabled
+    if not plot_percentile_relative_error and not plot_percentile_carbon_count_error:
+        print(
+            "WARNING: Both plot_percentile_relative_error and plot_percentile_carbon_count_error are False."
+        )
+        print("         Skipping percentile error plot.")
+        plot_path_2 = None
+    else:
+        # Compute relative error for each calibration point: (expected - observed) / expected
+        relative_error = (expected_arr - observed_arr) / expected_arr
+
+        # Compute log-space bins for moving averages
+        log_observed = np.log10(observed_arr)
+        log_x_range = np.log10(x_range)
+
+        # Compute percentile-based error curves (moving average in log-space windows)
+        percentile_relative_errors = {}
+        percentile_carbon_weighted_errors = {}
+
+        # Always compute relative error percentiles if needed
+        if plot_percentile_relative_error:
+            for percentile in error_percentiles:
+                percentile_relative_error = np.zeros_like(x_range)
+
+                for i, log_x in enumerate(log_x_range):
+                    window_half = moving_average_window_log_units / 2.0
+                    mask = (log_observed >= log_x - window_half) & (
+                        log_observed <= log_x + window_half
+                    )
+                    if np.sum(mask) > 0:
+                        percentile_relative_error[i] = float(
+                            np.percentile(relative_error[mask], percentile)
+                        )
+                    else:
+                        percentile_relative_error[i] = float("nan")
+
+                percentile_relative_errors[percentile] = percentile_relative_error
+
+        # Compute carbon count weighted error for this percentile if needed
+        if plot_percentile_carbon_count_error and plot_carbon_count_weighted_error:
+            carbon_weighted_error = relative_error * carbon_counts_arr
+
+            for percentile in error_percentiles:
+                percentile_carbon_weighted_error = np.zeros_like(x_range)
+
+                for i, log_x in enumerate(log_x_range):
+                    window_half = moving_average_window_log_units / 2.0
+                    mask = (log_observed >= log_x - window_half) & (
+                        log_observed <= log_x + window_half
+                    )
+                    if np.sum(mask) > 0:
+                        percentile_carbon_weighted_error[i] = float(
+                            np.percentile(carbon_weighted_error[mask], percentile)
+                        )
+                    else:
+                        percentile_carbon_weighted_error[i] = float("nan")
+
+                percentile_carbon_weighted_errors[percentile] = (
+                    percentile_carbon_weighted_error
+                )
+
+        # Create plot based on which error types are enabled
+        fig2, ax2_primary = plt.subplots(figsize=(12, 6))
+
+        # Colors for different percentiles
+        colors = plt.cm.viridis(np.linspace(0.2, 0.9, len(error_percentiles)))
+
+        # Determine which axes to use based on enabled plots
+        both_enabled = (
+            plot_percentile_relative_error
+            and plot_percentile_carbon_count_error
+            and plot_carbon_count_weighted_error
+        )
+
+        if both_enabled:
+            # Both error types enabled: carbon count on left, relative error on right
+            ax2_left = ax2_primary
+            ax2_right = ax2_left.twinx()
+
+            # Plot carbon count weighted error on left y-axis (primary)
+            for (percentile, carbon_error), color in zip(
+                percentile_carbon_weighted_errors.items(), colors
+            ):
+                ax2_left.plot(
+                    x_range,
+                    carbon_error,
+                    color=color,
+                    linestyle="--",
+                    linewidth=2.0,
+                    label=f"P{int(percentile)} carbon count error",
+                )
+
+            # Plot relative error on right y-axis (secondary)
+            for (percentile, rel_error), color in zip(
+                percentile_relative_errors.items(), colors
+            ):
+                ax2_right.plot(
+                    x_range,
+                    rel_error,
+                    color=color,
+                    linestyle="-",
+                    linewidth=2.0,
+                    label=f"P{int(percentile)} relative error",
+                )
+
+            # Align the zero points of both y-axes
+            # Get the current limits after plotting
+            left_ylim = ax2_left.get_ylim()
+            right_ylim = ax2_right.get_ylim()
+
+            # Calculate the position of zero as a fraction from bottom to top for each axis
+            # zero_position = (0 - ymin) / (ymax - ymin)
+            left_ymin, left_ymax = left_ylim
+            right_ymin, right_ymax = right_ylim
+
+            # To align zeros, we need to make the ratio (0 - ymin) / (ymax - ymin) equal for both axes
+            # We'll adjust the limits to achieve this while preserving the original ymax values
+
+            # If zero is within the current range, calculate its position
+            if left_ymin <= 0 <= left_ymax and right_ymin <= 0 <= right_ymax:
+                # Both axes cross zero - align them
+                left_bottom_to_zero = 0 - left_ymin
+                left_zero_to_top = left_ymax - 0
+                right_bottom_to_zero = 0 - right_ymin
+                right_zero_to_top = right_ymax - 0
+
+                # Calculate the ratio of bottom-to-zero vs zero-to-top for each axis
+                # We want these ratios to be equal: bottom_to_zero / zero_to_top = constant
+                left_ratio = (
+                    left_bottom_to_zero / left_zero_to_top
+                    if left_zero_to_top != 0
+                    else 1.0
+                )
+                right_ratio = (
+                    right_bottom_to_zero / right_zero_to_top
+                    if right_zero_to_top != 0
+                    else 1.0
+                )
+
+                # Adjust the axis with the smaller ratio to match the larger one
+                if left_ratio < right_ratio:
+                    # Left axis needs more space below zero
+                    new_left_ymin = -left_zero_to_top * right_ratio
+                    ax2_left.set_ylim(new_left_ymin, left_ymax)
+                elif right_ratio < left_ratio:
+                    # Right axis needs more space below zero
+                    new_right_ymin = -right_zero_to_top * left_ratio
+                    ax2_right.set_ylim(new_right_ymin, right_ymax)
+                # If ratios are equal, they're already aligned
+
+            ax2_left.set_xlabel("Observed isotopic peak intensity")
+            ax2_left.set_ylabel("Carbon count error (relative error × carbon count)")
+            ax2_left.set_xscale("log")
+            ax2_left.axhline(0, color="black", linestyle=":", linewidth=1.0, alpha=0.3)
+            ax2_left.grid(True, alpha=0.3)
+
+            ax2_right.set_ylabel("Relative error: (expected - observed) / expected")
+            ax2_right.axhline(0, color="black", linestyle=":", linewidth=1.0, alpha=0.5)
+
+            # Combine legends from both axes
+            lines_left, labels_left = ax2_left.get_legend_handles_labels()
+            lines_right, labels_right = ax2_right.get_legend_handles_labels()
+            ax2_left.legend(
+                lines_left + lines_right,
+                labels_left + labels_right,
+                loc="upper left",
+            )
+
+            title_suffix = (
+                " (dashed: carbon count error [left], solid: relative error [right])"
+            )
+
+        elif plot_percentile_carbon_count_error and plot_carbon_count_weighted_error:
+            # Only carbon count error enabled
+            ax2_primary.set_xlabel("Observed isotopic peak intensity")
+            ax2_primary.set_ylabel("Carbon count error (relative error × carbon count)")
+            ax2_primary.set_xscale("log")
+            ax2_primary.axhline(
+                0, color="black", linestyle=":", linewidth=1.0, alpha=0.3
+            )
+            ax2_primary.grid(True, alpha=0.3)
+
+            for (percentile, carbon_error), color in zip(
+                percentile_carbon_weighted_errors.items(), colors
+            ):
+                ax2_primary.plot(
+                    x_range,
+                    carbon_error,
+                    color=color,
+                    linestyle="--",
+                    linewidth=2.0,
+                    label=f"P{int(percentile)} carbon count error",
+                )
+
+            ax2_primary.legend(loc="upper left")
+            title_suffix = " (carbon count error only)"
+
+        elif plot_percentile_relative_error:
+            # Only relative error enabled
+            ax2_primary.set_xlabel("Observed isotopic peak intensity")
+            ax2_primary.set_ylabel("Relative error: (expected - observed) / expected")
+            ax2_primary.set_xscale("log")
+            ax2_primary.axhline(
+                0, color="black", linestyle=":", linewidth=1.0, alpha=0.5
+            )
+            ax2_primary.grid(True, alpha=0.3)
+
+            for (percentile, rel_error), color in zip(
+                percentile_relative_errors.items(), colors
+            ):
+                ax2_primary.plot(
+                    x_range,
+                    rel_error,
+                    color=color,
+                    linestyle="-",
+                    linewidth=2.0,
+                    label=f"P{int(percentile)} relative error",
+                )
+
+            ax2_primary.legend(loc="upper left")
+            title_suffix = " (relative error only)"
+        else:
+            # Should not reach here due to validation, but handle gracefully
+            title_suffix = ""
+
+        ax2_primary.set_title(
+            f"Percentile-based error curves{title_suffix}\n"
+            f"Percentiles: {', '.join([str(int(p)) for p in error_percentiles])}"
+        )
+        plt.tight_layout()
+
+        plot_path_2 = output_path.with_name(output_path.stem + "_error_percentiles.png")
+        plt.savefig(plot_path_2)
+        plt.close()
 
     with open(output_path, "a") as f:
         f.write("\nInverse calibration for deduce_isotopic_pattern:\n")
@@ -797,7 +1193,150 @@ def fit_isotopic_tolerance_parameters(
         f.write(f"  bU: {hetero_upper_b:.6g}\n")
         f.write(f"  coverage_hetero: {coverage_hetero:.2%}\n")
 
-        f.write(f"  Plot saved to: {plot_path}\n")
+        if emit_pairs:
+            pairs_df = pl.DataFrame(
+                [
+                    {
+                        "peak_id": pair.peak_id,
+                        "source_file": pair.source_file,
+                        "precursor_mz": pair.precursor_mz,
+                        "peak_height": pair.peak_height,
+                        "spectral_info_score": pair.spectral_info_score,
+                        "dotprod_similarity": pair.dotprod_similarity,
+                        "library_name": pair.library_name,
+                        "library_formula": pair.library_formula,
+                        "inchikey": pair.inchikey,
+                        "smiles": pair.smiles,
+                        "element_label": pair.element_label,
+                        "observed_intensity": pair.observed_intensity,
+                        "expected_intensity": pair.expected_intensity,
+                        "query_mz_list": str(pair.query_mz_list),
+                        "query_intensity_list": str(pair.query_intensity_list),
+                        "library_mz_list": str(pair.library_mz_list),
+                        "library_intensity_list": str(pair.library_intensity_list),
+                    }
+                    for pair in fitting_pairs
+                ]
+            )
+            pairs_output_path = output_path.with_name(
+                output_path.stem + "_fitting_pairs.xlsx"
+            )
+            pairs_df.write_excel(pairs_output_path)
+            f.write(f"\n  Fitting pairs saved to: {pairs_output_path}\n")
+            f.write(f"    Total pairs: {len(fitting_pairs)}\n")
+            if skipped_for_missing_name > 0:
+                f.write(f"    Skipped for pairs output (missing name): {skipped_for_missing_name}\n")
+            if entries_filtered_for_missing_inchikey > 0:
+                f.write(f"    Filtered before fitting (missing inchikey): {entries_filtered_for_missing_inchikey}\n")
+
+        f.write(f"\n  Plots saved to:\n")
+        f.write(f"    - Calibration bounds: {plot_path_1}\n")
+        if plot_path_2 is not None:
+            f.write(f"    - Error percentiles: {plot_path_2}\n")
+        else:
+            f.write(f"    - Error percentiles: SKIPPED (both plot flags disabled)\n")
+
+        # -----------------------------
+        # Error values at specific intensity points (for percentiles)
+        # -----------------------------
+        if plot_path_2 is not None:
+            f.write("\nPercentile error values at specific intensity points:\n")
+            f.write("  Intensity points: 10^4, 10^5, 10^6, 10^7, 10^8\n")
+            f.write(
+                f"  Percentiles: {', '.join([str(int(p)) for p in error_percentiles])}\n"
+            )
+
+            # Define intensity points
+            intensity_points = np.array([1e4, 1e5, 1e6, 1e7, 1e8])
+
+            # Interpolate values at these intensity points
+            def interpolate_at_intensities(x_range_arg, y_values, target_intensities):
+                """Interpolate y values at target intensity points using log-log interpolation"""
+                log_x = np.log10(x_range_arg)
+                log_target = np.log10(target_intensities)
+
+                # Find valid (non-NaN) points
+                valid_mask = ~np.isnan(y_values) & ~np.isinf(y_values)
+                if np.sum(valid_mask) < 2:
+                    return np.full_like(target_intensities, np.nan)
+
+                # Handle both positive and negative values by interpolating absolute values and preserving sign
+                y_abs = np.abs(y_values[valid_mask])
+                y_sign = np.sign(y_values[valid_mask])
+
+                try:
+                    # Interpolate in log space for absolute values
+                    log_y = np.log10(y_abs + 1e-15)  # Add small epsilon to avoid log(0)
+                    interp_func = interp1d(
+                        log_x[valid_mask],
+                        log_y,
+                        kind="linear",
+                        bounds_error=False,
+                        fill_value=np.nan,
+                    )
+                    log_interpolated = interp_func(log_target)
+
+                    # Convert back from log and apply sign from nearest valid point
+                    abs_interpolated = np.power(10, log_interpolated) - 1e-15
+
+                    # Find nearest valid point for each target to determine sign
+                    sign_interpolated = np.full_like(target_intensities, 1.0)
+                    for i, lt in enumerate(log_target):
+                        if not np.isnan(log_interpolated[i]):
+                            nearest_idx = np.argmin(np.abs(log_x[valid_mask] - lt))
+                            sign_interpolated[i] = y_sign[nearest_idx]
+
+                    return sign_interpolated * abs_interpolated
+                except:
+                    return np.full_like(target_intensities, np.nan)
+
+            # Build table for relative error if enabled
+            if plot_percentile_relative_error:
+                f.write("\n  Relative Error:\n")
+                header = "  Intensity   "
+                for percentile in error_percentiles:
+                    header += f" | P{int(percentile):2d}   "
+                f.write(header + "\n")
+
+                sep = "  ------------"
+                for _ in error_percentiles:
+                    sep += "|--------"
+                f.write(sep + "\n")
+
+                for i, intensity in enumerate(intensity_points):
+                    row = f"  1e{int(i + 4):1d}       "
+                    for percentile in error_percentiles:
+                        interpolated_values = interpolate_at_intensities(
+                            x_range,
+                            percentile_relative_errors[percentile],
+                            intensity_points,
+                        )
+                        row += f" | {interpolated_values[i]:6.3f}"
+                    f.write(row + "\n")
+
+            # Build table for carbon count error if enabled
+            if plot_percentile_carbon_count_error and plot_carbon_count_weighted_error:
+                f.write("\n  Carbon Count Error:\n")
+                header = "  Intensity   "
+                for percentile in error_percentiles:
+                    header += f" | P{int(percentile):2d}   "
+                f.write(header + "\n")
+
+                sep = "  ------------"
+                for _ in error_percentiles:
+                    sep += "|--------"
+                f.write(sep + "\n")
+
+                for i, intensity in enumerate(intensity_points):
+                    row = f"  1e{int(i + 4):1d}       "
+                    for percentile in error_percentiles:
+                        interpolated_values = interpolate_at_intensities(
+                            x_range,
+                            percentile_carbon_weighted_errors[percentile],
+                            intensity_points,
+                        )
+                        row += f" | {interpolated_values[i]:6.3f}"
+                    f.write(row + "\n")
 
     # Prefer heteroscedastic coverage if it meets target; we still return both parameters for inspection.
     chosen_success_rate = (
@@ -818,7 +1357,7 @@ def fit_isotopic_tolerance_parameters(
     )
 
 
-def main(config: Config):
+def main(config: isotopic_config):
     assert config.chromatogram_dir is not None, (
         "config.chromatogram_dir must be set (defaults are intentionally empty). "
         "Set it in the __main__ block."
@@ -892,7 +1431,9 @@ def main(config: Config):
         raise ValueError("No valid chromatogram files found.")
 
     chromatogram_lf = pl.concat(chromatogram_lfs)
-
+    print(
+        f"number of total peaks in chromatograms is {chromatogram_lf.select(pl.len()).collect().item()}"
+    )
     calibration_hits_lfs: list[pl.LazyFrame] = []
 
     # Normalize both ground-truth sources to a shared, *transformed* schema before concatenation.
@@ -903,6 +1444,7 @@ def main(config: Config):
         "calibration_source_file",
         # masses + intensities used downstream
         "calibration_precursor_mz",
+        "calibration_rt",
         "calibration_height",
         "calibration_ms1_isotopes_mz",
         "calibration_ms1_isotopes_intensity",
@@ -911,6 +1453,19 @@ def main(config: Config):
         "calibration_true_sulfur_count",
         "calibration_true_chlorine_count",
         "calibration_true_bromine_count",
+        # spectral info score for selecting most informative spectrum
+        "calibration_spectral_info_score",
+        # library metadata (only present for library-search rows)
+        "calibration_library_name",
+        "calibration_library_inchikey",
+        "calibration_library_smiles",
+        "calibration_library_formula_array",
+        # MS2 spectra for dotprod (only for library-search rows)
+        "calibration_query_ms2_mz",
+        "calibration_query_ms2_intensity",
+        "calibration_library_ms2_mz",
+        "calibration_library_ms2_intensity",
+        "calibration_dotprod_similarity",
     ]
 
     # -------------------------
@@ -920,6 +1475,16 @@ def main(config: Config):
         spectral_lib = (
             pl.union([pl.scan_parquet(p) for p in config.spectral_library_paths])
             .filter(pl.col("ion_mode").eq("P"))
+            .select(
+                "precursor_mz",
+                "cleaned_normalized_mz",
+                "cleaned_normalized_intensity",
+                "precursor_formula_array",
+                # Preserve library metadata for emit_pairs
+                pl.col("name").alias("library_name"),
+                pl.col("inchikey").alias("library_inchikey"),
+                pl.col("smiles").alias("library_smiles"),
+            )
             .with_columns(nominal_mass=pl.col("precursor_mz").round(0).cast(pl.Int64))
         )
 
@@ -1000,28 +1565,57 @@ def main(config: Config):
                 .alias("_n_unique_formulas_for_ms2")
             )
             .filter(pl.col("_n_unique_formulas_for_ms2") == 1)
-            # Now that formula consistency is guaranteed, keep only the best dot-product match per MS2.
-            .filter(
-                pl.col("dotprod_similarity").eq(
-                    pl.col("dotprod_similarity").max().over("Peak ID", "source_file")
-                )
+            # Now that formula consistency is guaranteed, keep only the best dot-product match per peak.
+            # Why: If multiple library spectra match the same peak with the same formula, we only want
+            # to use the single highest-scoring match for fitting, not multiple entries.
+            .with_columns(
+                pl.col("dotprod_similarity")
+                .max()
+                .over("Peak ID", "source_file")
+                .alias("_max_dotprod_for_peak")
             )
+            .filter(pl.col("dotprod_similarity").eq(pl.col("_max_dotprod_for_peak")))
+            # If multiple library entries have the same max dotprod, keep only one (arbitrary but deterministic)
+            .unique(subset=["Peak ID", "source_file"], keep="first")
         )
-
+        print(
+            f"Number of suspects after filtering: {suspects_lf.select(pl.len()).collect(engine='streaming').item()}"
+        )
         suspects_calibration_lf = suspects_lf.select(
             pl.col("Peak ID").alias("calibration_peak_id"),
             pl.col("source_file").alias("calibration_source_file"),
             pl.col("Precursor_mz_MSDIAL").alias("calibration_precursor_mz"),
+            pl.col("RT (min)").alias("calibration_rt"),
             pl.col("Height").alias("calibration_height"),
             pl.col("ms1_isotopes_m/z").alias("calibration_ms1_isotopes_mz"),
             pl.col("ms1_isotopes_intensity").alias(
                 "calibration_ms1_isotopes_intensity"
             ),
             # This ground-truth signal is not produced by the library-search path; keep explicit nulls.
-            pl.lit(None, dtype=pl.Int64).alias("calibration_true_carbon_count"),
-            pl.lit(None, dtype=pl.Int64).alias("calibration_true_sulfur_count"),
-            pl.lit(None, dtype=pl.Int64).alias("calibration_true_chlorine_count"),
-            pl.lit(None, dtype=pl.Int64).alias("calibration_true_bromine_count"),
+            pl.col("precursor_formula_array")
+            .arr.get(CARBON_INDEX)
+            .alias("calibration_true_carbon_count"),
+            pl.col("precursor_formula_array")
+            .arr.get(SULFUR_INDEX)
+            .alias("calibration_true_sulfur_count"),
+            pl.col("precursor_formula_array")
+            .arr.get(CHLORINE_INDEX)
+            .alias("calibration_true_chlorine_count"),
+            pl.col("precursor_formula_array")
+            .arr.get(BROMINE_INDEX)
+            .alias("calibration_true_bromine_count"),
+            pl.col("spectral_info_score").alias("calibration_spectral_info_score"),
+            # Preserve library metadata for emit_pairs
+            pl.col("library_name").alias("calibration_library_name"),
+            pl.col("library_inchikey").alias("calibration_library_inchikey"),
+            pl.col("library_smiles").alias("calibration_library_smiles"),
+            pl.col("precursor_formula_array").alias("calibration_library_formula_array"),
+            # MS2 spectra for dotprod
+            pl.col("msms_m/z").alias("calibration_query_ms2_mz"),
+            pl.col("msms_intensity").alias("calibration_query_ms2_intensity"),
+            pl.col("cleaned_normalized_mz").alias("calibration_library_ms2_mz"),
+            pl.col("cleaned_normalized_intensity").alias("calibration_library_ms2_intensity"),
+            pl.col("dotprod_similarity").alias("calibration_dotprod_similarity"),
         )
 
         # Fail fast: enforce identical schema for safe concatenation.
@@ -1160,6 +1754,7 @@ def main(config: Config):
             pl.col("Peak ID").alias("calibration_peak_id"),
             pl.col("source_file").alias("calibration_source_file"),
             pl.col("Precursor_mz_MSDIAL").alias("calibration_precursor_mz"),
+            pl.col("RT (min)").alias("calibration_rt"),
             pl.col("Height").alias("calibration_height"),
             pl.col("ms1_isotopes_m/z").alias("calibration_ms1_isotopes_mz"),
             pl.col("ms1_isotopes_intensity").alias(
@@ -1173,6 +1768,18 @@ def main(config: Config):
             pl.col("_ground_truth_bromine_count").alias(
                 "calibration_true_bromine_count"
             ),
+            pl.lit(None, dtype=pl.Float64).alias("calibration_spectral_info_score"),
+            # Mass list doesn't have library metadata, use nulls
+            pl.lit(None, dtype=pl.String).alias("calibration_library_name"),
+            pl.lit(None, dtype=pl.String).alias("calibration_library_inchikey"),
+            pl.lit(None, dtype=pl.String).alias("calibration_library_smiles"),
+            pl.lit(None, dtype=pl.List(pl.Int64)).alias("calibration_library_formula_array"),
+            # Mass list doesn't have MS2 spectra, use nulls
+            pl.lit(None, dtype=pl.List(pl.Float64)).alias("calibration_query_ms2_mz"),
+            pl.lit(None, dtype=pl.List(pl.Float64)).alias("calibration_query_ms2_intensity"),
+            pl.lit(None, dtype=pl.List(pl.Float64)).alias("calibration_library_ms2_mz"),
+            pl.lit(None, dtype=pl.List(pl.Float64)).alias("calibration_library_ms2_intensity"),
+            pl.lit(None, dtype=pl.Float64).alias("calibration_dotprod_similarity"),
         )
 
         # Fail fast: enforce identical schema for safe concatenation.
@@ -1191,11 +1798,123 @@ def main(config: Config):
     )
 
     with open(output_file_path, "a") as f:
-        f.write(f"Calibration hits total: {calibration_hits.height}\n")
+        f.write(
+            f"Calibration hits total (before alignment): {calibration_hits.height}\n"
+        )
         f.write(
             f"  - from library search: {int(config.use_library_search_for_ground_truth)}\n"
         )
         f.write(f"  - from mass list: {int(config.use_mass_list_for_ground_truth)}\n")
+
+    # -------------------------
+    # Feature alignment: Group features within MS1 and RT tolerance, then select most informative
+    # -------------------------
+    # Why: For library matches (not mass list), we want to align features that are close in both
+    # MS1 and RT, then use only the annotation from the most informative spectrum (highest spectral_info_score).
+    # This ensures we use the best-quality annotation for each aligned feature group.
+    if config.use_library_search_for_ground_truth:
+        # Separate library hits (have spectral_info_score) from mass list hits (have null spectral_info_score)
+        library_hits_df = calibration_hits.filter(
+            pl.col("calibration_spectral_info_score").is_not_null()
+        )
+        mass_list_hits_df = calibration_hits.filter(
+            pl.col("calibration_spectral_info_score").is_null()
+        )
+
+        if library_hits_df.height > 0:
+            # Convert RT from minutes to seconds for tolerance comparison
+            rt_tolerance_minutes = config.rt_tolerance_seconds / 60.0
+
+            # Sort by source_file, precursor_mz, and RT to prepare for grouping
+            library_hits_sorted = library_hits_df.sort(
+                [
+                    "calibration_source_file",
+                    "calibration_precursor_mz",
+                    "calibration_rt",
+                ]
+            )
+
+            # Why: Create alignment groups using a self-join approach within each file.
+            # For each feature, find all other features within tolerance and assign a group ID.
+            # We use a simpler approach: sort and assign groups based on gaps.
+            #
+            # Create a unique alignment group ID for features within tolerance.
+            # Algorithm: within each file, for sorted features, start a new group when the gap
+            # in m/z or RT exceeds tolerance.
+            library_hits_aligned = (
+                library_hits_sorted.with_columns(
+                    # Compute absolute tolerance for m/z
+                    (
+                        pl.col("calibration_precursor_mz")
+                        * config.precursor_tolerance_ppm
+                        * 1e-6
+                    ).alias("_mz_tolerance"),
+                )
+                .with_columns(
+                    # Check if this row starts a new group (mz or RT gap from previous row > tolerance)
+                    (
+                        (
+                            (
+                                pl.col("calibration_precursor_mz")
+                                - pl.col("calibration_precursor_mz").shift(1)
+                            ).abs()
+                            > pl.col("_mz_tolerance")
+                        )
+                        | (
+                            (
+                                pl.col("calibration_rt")
+                                - pl.col("calibration_rt").shift(1)
+                            ).abs()
+                            > rt_tolerance_minutes
+                        )
+                        | (
+                            pl.col("calibration_source_file")
+                            != pl.col("calibration_source_file").shift(1)
+                        )
+                        | (pl.col("calibration_precursor_mz").shift(1).is_null())
+                    )
+                    .cast(pl.Int64)
+                    .alias("_new_group")
+                )
+                .with_columns(
+                    # Create group ID by cumulative sum of new_group flags
+                    pl.col("_new_group").cum_sum().alias("_alignment_group_id")
+                )
+            )
+
+            # For each alignment group, keep only the feature with the highest spectral_info_score
+            library_hits_aligned = library_hits_aligned.filter(
+                pl.col("calibration_spectral_info_score")
+                == pl.col("calibration_spectral_info_score")
+                .max()
+                .over("_alignment_group_id")
+            )
+
+            # If multiple features have the same max score, keep the one with highest height
+            library_hits_aligned = library_hits_aligned.filter(
+                pl.col("calibration_height")
+                == pl.col("calibration_height").max().over("_alignment_group_id")
+            )
+
+            # Remove temporary columns
+            library_hits_aligned = library_hits_aligned.drop(
+                ["_mz_tolerance", "_new_group", "_alignment_group_id"]
+            )
+
+            # Recombine with mass list hits
+            calibration_hits = pl.concat(
+                [library_hits_aligned, mass_list_hits_df], how="vertical"
+            )
+
+            with open(output_file_path, "a") as f:
+                f.write(
+                    f"Calibration hits after alignment: {calibration_hits.height}\n"
+                )
+                f.write(f"  - aligned library hits: {library_hits_aligned.height}\n")
+                f.write(f"  - mass list hits (unchanged): {mass_list_hits_df.height}\n")
+        else:
+            with open(output_file_path, "a") as f:
+                f.write("No library hits to align.\n")
 
     # Fail fast if a requested ground-truth source produced zero usable matches.
     # Why: If mass-list matching yields zero features, downstream calibration will either be empty or
@@ -1233,6 +1952,16 @@ def main(config: Config):
             "calibration_true_sulfur_count",
             "calibration_true_chlorine_count",
             "calibration_true_bromine_count",
+            "calibration_spectral_info_score",
+            "calibration_library_name",
+            "calibration_library_inchikey",
+            "calibration_library_smiles",
+            "calibration_library_formula_array",
+            "calibration_query_ms2_mz",
+            "calibration_query_ms2_intensity",
+            "calibration_library_ms2_mz",
+            "calibration_library_ms2_intensity",
+            "calibration_dotprod_similarity",
         ]
     ).rename(
         {
@@ -1248,6 +1977,16 @@ def main(config: Config):
             "calibration_true_sulfur_count": "true_sulfur_count",
             "calibration_true_chlorine_count": "true_chlorine_count",
             "calibration_true_bromine_count": "true_bromine_count",
+            "calibration_spectral_info_score": "spectral_info_score",
+            "calibration_library_name": "name",
+            "calibration_library_inchikey": "inchikey",
+            "calibration_library_smiles": "smiles",
+            "calibration_library_formula_array": "formula_array",
+            "calibration_query_ms2_mz": "query_ms2_mz",
+            "calibration_query_ms2_intensity": "query_ms2_intensity",
+            "calibration_library_ms2_mz": "library_ms2_mz",
+            "calibration_library_ms2_intensity": "library_ms2_intensity",
+            "calibration_dotprod_similarity": "dotprod_similarity",
         }
     )
 
@@ -1270,15 +2009,25 @@ def main(config: Config):
         minimum_isotopic_peak_intensity=config.minimum_isotopic_peak_intensity,
         target_success_rate=config.target_success_rate,
         mass_accuracy_threshold_da=config.mass_accuracy_threshold_da,
+        moving_average_window_log_units=config.moving_average_window_log_units,
+        plot_carbon_count_weighted_error=config.plot_carbon_count_weighted_error,
+        error_percentiles=config.error_percentiles,
+        plot_percentile_relative_error=config.plot_percentile_relative_error,
+        plot_percentile_carbon_count_error=config.plot_percentile_carbon_count_error,
+        use_carbon=config.use_carbon,
+        use_sulfur=config.use_sulfur,
+        use_chlorine=config.use_chlorine,
+        use_bromine=config.use_bromine,
+        emit_pairs=config.emit_pairs,
     )
 
 
 if __name__ == "__main__":
     # Defaults intentionally live here (not in Config) so running this file does not silently
     # depend on a specific workstation path unless you opt into it.
-    default_config = Config(
+    default_config = isotopic_config(
         chromatogram_dir=Path(
-            "/home/analytit_admin/Data/raw_data/iibr_data/251224_spiked_plasma/"
+            "/home/analytit_admin/Data/raw_data/iibr_data/251224_spiked_plasma/positive"
         ),
         spectral_library_paths=(
             Path(
@@ -1290,14 +2039,18 @@ if __name__ == "__main__":
         ),
         # Enable sources as desired
         use_library_search_for_ground_truth=True,
-        use_mass_list_for_ground_truth=True,
-        # Ground-truth CSV (optional). Must contain columns:
-        #   - "Molecular Formula"
-        #   - "Monoisotopic Mass"
-        ground_truth_csv_path=Path(
-            "/home/analytit_admin/Data/raw_data/iibr_data/251224_spiked_plasma/compounds.csv"
-        ),
-        ground_truth_ms1_tolerance_ppm=2.0,
-        target_success_rate=0.95,
+        use_mass_list_for_ground_truth=False,
+        info_score_threshold=0.5,
+        dot_product_threshold=0.9,
+        ms1_mass_tolerance_ppm=2,
+        target_success_rate=0.9,
+        minimum_isotopic_peak_intensity=0,
+        plot_carbon_count_weighted_error=True,
+        moving_average_window_log_units=1,
+        emit_pairs=True,
+        # ground_truth_csv_path=Path(
+        #     "/home/analytit_admin/Data/raw_data/iibr_data/251224_spiked_plasma/compounds.csv"
+        # ),
+        # ground_truth_ms1_tolerance_ppm=2.0,
     )
     main(default_config)
