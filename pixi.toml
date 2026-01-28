@@ -23,7 +23,7 @@ build = "*"
 
 [tasks]
 
-cibw-wheels = { cmd = "python -m cibuildwheel --output-dir dist dist/*.tar.gz", env = {CIBW_BUILD = " cp310-* cp311-* cp312-* cp313-* cp314-*", CIBW_SKIP = "*musllinux* *-win32", CIBW_ARCHS_WINDOWS = "AMD64", CIBW_PACKAGE = "."}, depends-on=["build-sdist"]}
+# cibw-wheels = { cmd = "python -m cibuildwheel --output-dir dist dist/*.tar.gz", env = {CIBW_BUILD = " cp310-* cp311-* cp312-* cp313-* cp314-*", CIBW_SKIP = "*musllinux* *-win32", CIBW_ARCHS_WINDOWS = "AMD64", CIBW_PACKAGE = "."}, depends-on=["build-sdist"]} # not really needed in my opinion
 build-sdist = {cmd="python -m build --sdist --outdir dist", depends-on = ["clean_dist"]}
 build-wheel = "python -m build --wheel --outdir dist"
 build-all = {cmd="python -m build --wheel --sdist --outdir dist",depends-on = ["clean_dist"]}
@@ -35,6 +35,8 @@ publish-pypi = {cmd="twine upload --repository pypi --skip-existing dist/*", dep
 publish-prefix = {cmd="rattler-build upload prefix --channel nir-cohen"}
 publish-anaconda = {cmd="rattler-build upload anaconda --owner Nir_Cohen --channel main"}
 
+build = {cmd = "pixi build",depends-on = ["cargo-clean"]}
+cargo-clean = "cargo clean"
 [target.win-64.tasks]
 build-wheel = { cmd = "python -m build --wheel --no-isolation --outdir dist"}
 build-all = { cmd = "python -m build --wheel --sdist --no-isolation --outdir dist"}
@@ -51,25 +53,28 @@ backend = { name = "pixi-build-python", version = "*",channels = [
   "https://prefix.dev/conda-forge",
 ]}
 [package.build.config]
-noarch = false
-[workspace.build-variants]
-python = ["3.12", "3.13","3.14"]
+noarch = true
+
 [package.build-dependencies]
 python = "*"
 pip = "*"
 numpy = ">=1.20.0,<3.0"
 hatchling = ">=1.13.2"
 setuptools = ">=68.0.0"
-maturin = ">=1.09.0"
+setuptools-rust = "*"
+# maturin = ">=1.09.0"
+wheel ="*"
 rattler-build = ">=0.48.0"
 rust = ">=1.91.0"
 rust-src = ">=1.91.0"
 compilers = "*"
 cargo-bundle-licenses = "*"
 [package.host-dependencies]
-python = "*"
+python = ">=3.12,<3.15"
 pip = "*"
-maturin = ">=1.09.0,<2.0"
+# maturin = ">=1.09.0,<2.0"
+setuptools = ">=68.0.0"
+setuptools-rust = "*"
 [package.run-dependencies]
 polars = ">=1.35.2,<2"
 rdkit = ">=2024.0.0"
@@ -80,7 +85,6 @@ pandas = "*"
 lxml = "*"
 requests = "*"
 aiohttp = "*"
-# for polars
 pyarrow = "*"
 python-calamine = "*"
 openpyxl = "*"
@@ -167,16 +171,9 @@ isotope_fit = "python experiments/find_optimal_isotopic_parameters.py"
 # The task exits with an error if no `mprofile*` files are found.
 # plot-profile = "sh -lc 'if [ \"$#\" -eq 0 ]; then file=$(ls -t mprofile* 2>/dev/null | head -n1); if [ -z \"$file\" ]; then echo \"No mprofile file found\"; exit 1; fi; mprof plot \"$file\"; else mprof plot \"$@\"; fi' --"
 
-[feature.docs.tasks]
-docs-serve ="mkdocs serve"
-[feature.docs.dependencies]
-mkdocs="*"
-mkdocstrings-python="*"
-pymdown-extensions="*"
-mkdocstrings ="*"
-mkdocs-material= "*"
 [feature.docs.dependencies]
 mkdocs = ">=1.5.0"
+pymdown-extensions="*"
 mkdocs-material = ">=9.5.0"
 mkdocstrings = ">=0.24.0"
 mkdocstrings-python = ">=1.7.0"

@@ -34,10 +34,7 @@ jobs:
         run: pixi run test
 
       - name: Build wheels
-        run: pixi run cibw-wheels
-
-      - name: Build sdist
-        run: pixi run sdist
+        run: pixi run build-all
 
       - name: Upload wheel artifacts
         uses: actions/upload-artifact@v4
@@ -46,7 +43,7 @@ jobs:
           path: dist
 
       - name: Build conda packages
-        run: pixi build
+        run: cargo clean && pixi build
         shell: bash
 
       - name: Upload conda artifacts

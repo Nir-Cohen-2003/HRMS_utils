@@ -23,19 +23,24 @@ dependencies = [
     "sqlalchemy",
 ]
 dynamic = ["version"]
-
 [build-system]
-requires = ["maturin>=1.09,<2.0"]
-build-backend = "maturin"
+requires = ["setuptools>=61.0", "setuptools-rust>=1.5.0", "wheel"]
+build-backend = "setuptools.build_meta"
 
-[tool.maturin]
-features = ["pyo3/extension-module"]
-# Point to the existing Rust project
-manifest-path = "Cargo.toml"
-# Compile the extension as hrms_utils._internal
-module-name = "hrms_utils._internal"
-# Tell maturin where the main python source is (so it bundles hrms_utils)
-python-source = "src"
+[tool.setuptools.packages.find]
+where = ["src"]
+# [build-system]
+# requires = ["maturin>=1.09,<2"]
+# build-backend = "maturin"
+# compatibility = "abi3-py312"
+# [tool.maturin]
+# features = ["pyo3/extension-module"]
+# # Point to the existing Rust project
+# manifest-path = "Cargo.toml"
+# # Compile the extension as hrms_utils._internal
+# module-name = "hrms_utils._internal"
+# # Tell maturin where the main python source is (so it bundles hrms_utils)
+# python-source = "src"
 
 [tool.ty.src] #thsi project uses pyrefly, but mrimo introduces the ty type checker, which we disable
 exclude = ["src", "scripts", "tests","experiments"]
