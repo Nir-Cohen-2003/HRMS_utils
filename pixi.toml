@@ -15,8 +15,8 @@ license = "Apache-2.0"
 license-file = "LICENSE"
 authors = ["Nir Cohen"]
 [dependencies]
-hrms_utils = {path = "."}
-
+# hrms_utils = {path = "."}
+python = "*"
 
 [pypi-dependencies]
 build = "*"
@@ -44,6 +44,7 @@ default = {features = [], solve-group = "default"}
 testing = {features = ["testing"], solve-group = "testing"}
 experiments = {features = ["experiments"], solve-group = "experiments",no-default-feature = true}
 docs = {features = ["docs"], solve-group = "docs"}
+
 [package.build]
 backend = { name = "pixi-build-python", version = "*",channels = [
   "https://prefix.dev/pixi-build-backends",
@@ -128,6 +129,7 @@ kaleido = ">=1.1.0, <2"
 
 [feature.experiments.target.linux-64.dependencies]
 hrms_utils = {path = "."}
+# fast_cosine_sim = {path = "packages/fast_cosine_sim"}
 # python ="3.12.*"
 optuna = "*"
 nvmolkit = "*"
@@ -173,3 +175,13 @@ mkdocstrings-python="*"
 pymdown-extensions="*"
 mkdocstrings ="*"
 mkdocs-material= "*"
+[feature.docs.dependencies]
+mkdocs = ">=1.5.0"
+mkdocs-material = ">=9.5.0"
+mkdocstrings = ">=0.24.0"
+mkdocstrings-python = ">=1.7.0"
+
+[feature.docs.tasks]
+docs-serve = "mkdocs serve"
+docs-build = "mkdocs build"
+docs-deploy = "mkdocs gh-deploy"

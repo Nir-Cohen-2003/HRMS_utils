@@ -1,0 +1,39 @@
+[project]
+name = "fast_cosine_sim"
+version = "0.1.0"
+description = "GPU batched approximate cosine similarity that exploits the sparsity of HRMS spectra to cast all-to-all cosine similarity (with mass tolerance) as a sparse-sparse matrix multiplication problem."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "Apache-2.0" }
+authors = [{ name = "Nir Cohen" }]
+
+dependencies = [
+  "numpy>=1.26",
+  "scipy>=1.11",
+  "polars>=1.36.0",
+  "pyarrow>=12.0.0",
+  # Prefer the generic CuPy package name here; platform-specific wheels/variants are environment-managed (e.g. via pixi/conda).
+  "cupy>=12.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0.0",
+]
+
+[tool.pytest.ini_options]
+markers = [
+  "runtime: runtime/integration-style tests that may require CUDA/CuPy and can be skipped when unavailable",
+]
+# Show detailed test output including print statements
+addopts = "-v -s"
+
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+
+[tool.setuptools.packages.find]
+where = ["src"]

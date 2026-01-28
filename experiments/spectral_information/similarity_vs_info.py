@@ -1,48 +1,71 @@
-import datetime
 import logging
-import math
 import os
 import sys
 from pathlib import Path
 from time import perf_counter
-from typing import Dict, List, Literal, Optional, Union
 
 import numpy as np
 import polars as pl
 
-# Add fast_cosine_sim to path to import batched_gpu and approximate_similarity
-# Assumes this script is in experiments/spectral_information/
-# and fast_cosine_sim is in experiments/fast_cosine_sim/
-sys.path.append(str(Path(__file__).parents[1] / "fast_cosine_sim"))
+# Add the src directory to sys.path so hrms_utils can be imported
+sys.path.append(str(Path(__file__).parents[2] / "src"))
 
-from approximate_similarity import SimilarityConfig
-from batched_gpu import build_and_write_pairs_parquet_gpu_batched
-from batched_utils import BatchedGPUConfig
-from utils import compute_and_save_tanimoto_scores
+# Use the packaged fast_cosine_sim implementation (packages/fast_cosine_sim) instead of
+# experiments-local modules.
+#
+# This experiment should be runnable without installing the wheel/conda package, so we
+# add the local packages source tree (`packages/fast_cosine_sim/src`) to sys.path.
+_FAST_COSINE_SIM_SRC = (
+    Path(__file__).parents[2] / "packages" / "fast_cosine_sim" / "src"
+)
+assert _FAST_COSINE_SIM_SRC.exists(), (
+    f"Expected fast_cosine_sim source tree at {_FAST_COSINE_SIM_SRC}. "
+    "If you moved the package, update this path."
+)
+sys.path.insert(0, str(_FAST_COSINE_SIM_SRC))
 
-logging.basicConfig(level=logging.INFO)
+from fast_cosine_sim import (  # noqa: E402
+    GPUApproximateConfig,
+    batched_approximate_similarity_gpu,
+)
+
+# Import hrms_core to register the spectral_similarity plugin
+import hrms_utils.hrms_core  # noqa: F401
+
 os.environ["RUST_BACKTRACE"] = "full"
 
 
 if __name__ == "__main__":
     LIBRARY_PATH = Path(
-        "/home/analytit_admin/Data/spectral_libs/info_score/combined_library.parquet"
+        "file:///home/analytit_admin/Data/spectral_libs/info_score/combined_library.parquet"
     )
     PAIRS_PATH = Path(
-        "/home/analytit_admin/Data/spectral_libs/info_score/combined_library_pairs_260104.parquet"
+        "/home/analytit_admin/Data/spectral_libs/info_score/combined_library_pairs_260121.parquet"
     )
-    LEFT_LIBRARY_SNAPSHOT = PAIRS_PATH.with_suffix(".left_library.parquet")
-    PAIRS_WITH_TANIMOTO_PATH = Path(
-        "/home/analytit_admin/Data/spectral_libs/info_score/combined_library_pairs_with_tanimoto_260104.parquet"
+    APPROX_PAIRS_PATH = PAIRS_PATH.with_suffix(".approx.parquet")
+    LOG_PATH = PAIRS_PATH.with_suffix(".log")
+
+    # Why: Remove existing log file to start fresh and avoid appending to old logs
+    if LOG_PATH.exists():
+        LOG_PATH.unlink()
+
+    # Setup logging to file and console
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+        handlers=[
+            logging.FileHandler(LOG_PATH),
+            logging.StreamHandler(sys.stdout),
+        ],
+        force=True,
     )
 
-    # approx_cfg = SimilarityConfig(
-    #     upper_mass_bound=1000.0,
-    #     bin_size=0.0001,
-    #     ms2_tolerance_ppm=10.0,
-    #     intensity_power=0.5,
-    #     threshold=0.5,
-    # )
+    # Threshold configuration
+    # Why: Approximate threshold is lower to ensure we don't miss candidates that might
+    # pass the exact threshold after proper peak matching. The gap accounts for binning
+    # artifacts and tolerance window expansion effects.
+    EXACT_THRESHOLD = 0.5
+    APPROX_THRESHOLD = 0.35
 
     logging.info(
         f"Starting similarity calculation. Approx threshold: {APPROX_THRESHOLD}, Exact threshold: {EXACT_THRESHOLD}"
@@ -64,7 +87,11 @@ if __name__ == "__main__":
     approx_cfg = GPUApproximateConfig(
         # Binning parameters
         upper_mass_bound=1000.0,
+<<<<<<< HEAD
         bin_size=0.001,
+=======
+        bin_size=0.0001,
+>>>>>>> fast_cosine_sim_project
         ms2_tolerance_ppm=5.0,
         intensity_power=0.5,
         approx_threshold=APPROX_THRESHOLD,
@@ -73,7 +100,11 @@ if __name__ == "__main__":
         # Memory management
         target_gpu_mem_ratio=0.1,  # Use 10% of free GPU memory (conservative)
         safety_factor=0.5,  # Additional safety margin for memory estimation
+<<<<<<< HEAD
         write_buffer_batches=1000,  # Flush to parquet every 100 GPU batches
+=======
+        write_buffer_batches=100,  # Flush to parquet every 100 GPU batches
+>>>>>>> fast_cosine_sim_project
         # Column names (match the library schema)
         spectrum_id_col="msp_index",
         mz_col="cleaned_normalized_mz",

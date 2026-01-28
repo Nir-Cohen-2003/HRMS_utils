@@ -1,0 +1,89 @@
+[workspace]
+name = "fast_cosine_sim"
+version = "0.1.0"
+description = "GPU batched approximate similarity (CuPy + Polars)"
+authors = ["Nir Cohen"]
+channels = [
+  "https://prefix.dev/pixi-build-backends",
+  # "https://prefix.dev/conda-forge",
+  "conda-forge",
+]
+platforms = ["linux-64"]
+preview = ["pixi-build"]
+
+[package]
+name = "fast_cosine_sim"
+version = "0.1.0"
+license = "Apache-2.0"
+license-file = "LICENSE"
+authors = ["Nir Cohen"]
+
+[package.build]
+backend = { name = "pixi-build-python", version = "0.4.*", channels = [
+  "conda-forge",
+]}
+
+[tasks]
+build-all = {cmd="python -m build --wheel --sdist --outdir dist",depends-on = ["clean_dist"]}
+clean_dist = "rm -rf dist || true"
+publish-testpypi = {cmd="twine upload --repository testpypi --skip-existing dist/*", depends-on = ["build-all"]}
+publish-pypi = {cmd="twine upload --repository pypi --skip-existing dist/*", depends-on = ["build-all"]}
+
+# [target.win-64.tasks]
+# build-all = { cmd = "python -m build --wheel --sdist --no-isolation --outdir dist"}
+
+[dependencies]
+# Local package itself is defined by this pixi project; no self-dependency entry needed.
+python = "3.12.*"
+setuptools = ">=80.10.1,<81"
+cython = ">=3.2.4,<4"
+numpy = ">=1.26.4,<3"
+scipy = ">=1.17.0,<2"
+polars = ">=1.37.1,<2"
+cupy = ">=12.3.0,<14"
+numba = ">=0.63.1,<0.64"
+pyarrow = ">=23.0.0,<24"
+[pypi-dependencies]
+build = "*"
+
+[environments]
+default = {features = [], solve-group = "default"}
+testing = {features = ["testing"], solve-group = "testing"}
+[package.host-dependencies]
+# Keep the build system as simple as possible for a pure-python package.
+python = "3.12.*"
+pip = "*"
+setuptools = ">=68"
+wheel = "*"
+
+[package.run-dependencies]
+python = "3.12.*"
+numpy = ">=1.26"
+scipy = ">=1.11"
+polars = ">=1.36"
+pyarrow = "*"
+cupy = ">=12.0.0, <13.0.0"
+numba = "*"
+numba-cuda = "*"
+
+[feature.testing.tasks]
+check = "pyrefly check --ignore missing-import"
+check_all = "pyrefly check ./src/hrms_utils"
+test = "python -m pytest tests/ -v -s"
+test-normal = "python -m pytest tests/test_normal_spectra.py -v -s"
+test-problematic = "python -m pytest tests/test_problematic_spectra.py -v -s"
+test-real = "python -m pytest tests/test_real_data.py -v -s"
+
+profile-gpu = {cmd = "python scripts/optimize_gpu_kernel.py --n-spectra 200000 --n-peaks-per-spectrum 50 --output-dir ./full_test --batch-configs \"10000,20000,40000\""}
+profile-gpu-short = {cmd = "python scripts/optimize_gpu_kernel.py --n-spectra 50000 --n-peaks-per-spectrum 50 --output-dir ./short_test --batch-configs \"5000,10000,20000\""}
+benchmark-expansion-algorithms = {cmd = "python benchmarks/benchmark_expansion_algorithms.py --batch-sizes 1000,5000,10000"}
+benchmark-tolerance-fusion = {cmd = "python benchmarks/benchmark_tolerance_lookup_fusion.py --batch-sizes 1000,5000,10000"}
+benchmark-compare-flash-entropy = {cmd = "python benchmarks/compare_flash_entropy_cosine.py --n-spectra 1000000 --n-queries 1000 --batch-size 2000"}
+simple = "python -m src.fast_cosine_sim.gpu_approximate_similarity"
+[feature.testing.dependencies]
+fast_cosine_sim = {path = "."}
+pytest = "*"
+pyrefly = "*"
+cupy = ">=12.0.0,<13.0.0"
+matplotlib = "*"
+seaborn= "*"

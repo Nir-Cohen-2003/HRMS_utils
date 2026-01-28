@@ -1,0 +1,71 @@
+Running optimization...
+Chromatograms: ['/home/analytit_admin/Data/raw_data/iibr_data/251224_spiked_plasma/positive/251224_002.mdpeak', '/home/analytit_admin/Data/raw_data/iibr_data/251224_spiked_plasma/positive/251224_018.mdpeak', '/home/analytit_admin/Data/raw_data/iibr_data/251224_spiked_plasma/positive/251224_014.mdpeak', '/home/analytit_admin/Data/raw_data/iibr_data/251224_spiked_plasma/positive/251224_013.mdpeak', '/home/analytit_admin/Data/raw_data/iibr_data/251224_spiked_plasma/positive/251224_007.mdpeak', '/home/analytit_admin/Data/raw_data/iibr_data/251224_spiked_plasma/positive/251224_017.mdpeak', '/home/analytit_admin/Data/raw_data/iibr_data/251224_spiked_plasma/positive/251224_005.mdpeak', '/home/analytit_admin/Data/raw_data/iibr_data/251224_spiked_plasma/positive/251224_004.mdpeak', '/home/analytit_admin/Data/raw_data/iibr_data/251224_spiked_plasma/positive/251224_019.mdpeak', '/home/analytit_admin/Data/raw_data/iibr_data/251224_spiked_plasma/positive/251224_006.mdpeak', '/home/analytit_admin/Data/raw_data/iibr_data/251224_spiked_plasma/positive/251224_016.mdpeak', '/home/analytit_admin/Data/raw_data/iibr_data/251224_spiked_plasma/positive/251224_003.mdpeak', '/home/analytit_admin/Data/raw_data/iibr_data/251224_spiked_plasma/positive/251224_015.mdpeak', '/home/analytit_admin/Data/raw_data/iibr_data/251224_spiked_plasma/positive/251224_008.mdpeak']
+Config: isotopic_config(chromatogram_dir=PosixPath('/home/analytit_admin/Data/raw_data/iibr_data/251224_spiked_plasma/positive'), chromatogram_glob='**/*.mdpeak', spectral_library_paths=(PosixPath('/home/analytit_admin/Data/spectral_libs/msp_for_Yonathan/NIST.parquet'), PosixPath('/home/analytit_admin/Data/spectral_libs/msp_for_Yonathan/fraghub.parquet')), output_file=PosixPath('experiments/isotopic_parameters_results.txt'), use_library_search_for_ground_truth=True, use_mass_list_for_ground_truth=False, ground_truth_csv_path=None, ground_truth_ms1_tolerance_ppm=5.0, precursor_tolerance_ppm=5.0, dot_product_threshold=0.9, ms2_tolerance_ppm=10.0, info_score_threshold=0.5, fragment_cleaning_tolerance_ppm=5.0, min_dbe=-0.5, max_dbe=30.0, use_carbon=True, use_sulfur=False, use_chlorine=False, use_bromine=False, ms1_mass_tolerance_ppm=2, rt_tolerance_seconds=30.0, isotopic_mass_tolerance_ppm=2.0, minimum_isotopic_peak_intensity=0, target_success_rate=0.9, mass_accuracy_threshold_da=200.0, moving_average_window_log_units=1, plot_carbon_count_weighted_error=True, error_percentiles=(10.0, 50.0, 90.0), plot_percentile_relative_error=True, plot_percentile_carbon_count_error=True, emit_pairs=True, pairs_output_file=PosixPath('experiments/isotopic_fitting_pairs.xlsx'))
+Calibration hits total (before alignment): 998
+  - from library search: 1
+  - from mass list: 0
+Calibration hits after alignment: 923
+  - aligned library hits: 923
+  - mass list hits (unchanged): 0
+Optimization dataset: 923 compounds
+
+Inverse calibration for deduce_isotopic_pattern:
+  expected_hat(observed) = alpha * (observed + offset) ** beta
+  NOTE: Calibration pairs include isotopic peaks for 13C (M+1), 34S (M+2), 37Cl (M+2), 37Cl2 (M+4), 81Br (M+2).
+  Calibration pair counts by isotopic peak:
+    - 13C (M+1):  840
+    - 34S (M+2):  0
+    - 37Cl (M+2): 0
+    - 37Cl2 (M+4): 0
+    - 81Br (M+2): 0
+  alpha: 1.32762
+  beta: 0.981853
+  offset: 0
+
+Asymmetric constant bounds (tightest window on residuals):
+  expected_lower = expected_hat * exp(-wL_const)
+  expected_upper = expected_hat * exp(+wU_const)
+  wL_const: 0.288902
+  wU_const: 0.248321
+  coverage_const: 90.00%
+
+Asymmetric heteroscedastic bounds (fit to per-bin quantile residuals):
+  expected_lower = expected_hat * exp(-wL(observed))
+  expected_upper = expected_hat * exp(+wU(observed))
+  wL(observed) = aL * (observed + offset) ** bL
+  wU(observed) = aU * (observed + offset) ** bU
+  aL: 6.36769
+  bL: -0.237487
+  aU: 16.1178
+  bU: -0.30322
+  coverage_hetero: 90.00%
+
+  Fitting pairs saved to: experiments/isotopic_parameters_results_fitting_pairs.xlsx
+    Total pairs: 840
+    Filtered before fitting (missing inchikey): 2
+
+  Plots saved to:
+    - Calibration bounds: experiments/isotopic_parameters_results_calibration_bounds.png
+    - Error percentiles: experiments/isotopic_parameters_results_error_percentiles.png
+
+Percentile error values at specific intensity points:
+  Intensity points: 10^4, 10^5, 10^6, 10^7, 10^8
+  Percentiles: 10, 50, 90
+
+  Relative Error:
+  Intensity    | P10    | P50    | P90   
+  ------------|--------|--------|--------
+  1e4        |    nan |    nan |    nan
+  1e5        | -0.193 |  0.102 |  0.302
+  1e6        | -0.227 |  0.014 |  0.205
+  1e7        | -0.112 |  0.002 |  0.088
+  1e8        | -0.073 | -0.008 |  0.037
+
+  Carbon Count Error:
+  Intensity    | P10    | P50    | P90   
+  ------------|--------|--------|--------
+  1e4        |    nan |    nan |    nan
+  1e5        | -2.582 |  0.982 |  3.267
+  1e6        | -3.429 |  0.140 |  2.924
+  1e7        | -2.086 |  0.016 |  1.312
+  1e8        | -1.190 | -0.093 |  0.536
