@@ -8,13 +8,18 @@ from typing import TYPE_CHECKING
 import polars as pl
 from polars.plugins import register_plugin_function
 
-from .._internal import __version__ as __version__ #type: ignore
-from .._internal import NUM_ELEMENTS #type: ignore
-from .._internal import read_mzml_files #type: ignore
+from .._internal import (
+    NUM_ELEMENTS,  # type: ignore
+    read_mzml_files,  # type: ignore
+    read_thermo_files,  # type: ignore
+)
+from .._internal import __version__ as __version__  # type: ignore
+
 if TYPE_CHECKING:
     from .typing import IntoExprColumn
 
 LIB: Path = Path(__file__).parent.parent
+
 
 # Placeholder for the Polars expression namespace
 @pl.api.register_expr_namespace("mass_decomposition")
@@ -34,7 +39,7 @@ class MassDecomposerUtils:
         """
         Decompose a mass into possible chemical formulas.
 
-        Input expression: 
+        Input expression:
             pl.Float64
 
         Args:
@@ -85,7 +90,7 @@ class MassDecomposerUtils:
         """
         Decompose a mass into possible chemical formulas, with per-mass bounds.
 
-        Input expression: 
+        Input expression:
             pl.Struct({
                 "mass": pl.Float64,
                 "min_bounds": pl.Array(pl.Int32),
@@ -186,9 +191,9 @@ class MassDecomposerUtils:
     ) -> pl.Expr:
         """
         Deduce the isotopic pattern from the given precursor and MS1 data.
-        
+
         Input expression (self): Precursor m/z (Float64)
-        
+
         Args:
             ms1_mzs: Expression/column for MS1 m/z values (List[Float64])
             ms1_intensities: Expression/column for MS1 intensities (List[Float64])
@@ -212,7 +217,7 @@ class MassDecomposerUtils:
             "min_bounds": min_bounds,
             "max_bounds": max_bounds,
         }
-        
+
         return register_plugin_function(
             args=[self._expr, ms1_mzs, ms1_intensities],
             plugin_path=LIB,
@@ -226,6 +231,7 @@ class MassDecomposerUtils:
 class SpectralInfoNamespace:
     def __init__(self, expr: pl.Expr):
         self._expr = expr
+
     def spectral_info_score(
         self,
         *,
@@ -240,7 +246,7 @@ class SpectralInfoNamespace:
         the entropy of the minimum distances between connected nodes in a normalized space.
 
         Args:
-            A struct with the following fields: 
+            A struct with the following fields:
             "precursor_formula": Array(Int32, NUM_ELEMENTS),
             "fragment_formulas": List(Array(Int32, NUM_ELEMENTS)),
             and with keywords:
@@ -269,12 +275,12 @@ class SpectralInfoNamespace:
 
 @pl.api.register_expr_namespace("spectral_similarity")
 class SpectralUtils:
-    def __init__(self, expr : pl.Expr):
+    def __init__(self, expr: pl.Expr):
         self._expr = expr
 
     def entropy_similarity(
         self,
-        ms2_tolerance_in_ppm: float ,
+        ms2_tolerance_in_ppm: float,
         clean_spectra_first: bool = True,
         noise_threshold: float = 0.001,
         ignore_precursor: bool = False,
@@ -370,6 +376,7 @@ class SpectralUtils:
             noise_threshold=noise_threshold,
             ignore_precursor=ignore_precursor,
         )
+
     def dotprod_similarity(
         self,
         ms2_tolerance_in_ppm: float,
@@ -390,6 +397,7 @@ class SpectralUtils:
             noise_threshold=noise_threshold,
             ignore_precursor=ignore_precursor,
         )
+
     def explained_intensity(
         self,
         ms2_tolerance_in_ppm: float,
@@ -432,16 +440,14 @@ class SpectralUtils:
         )
 
 
-
 def read_mzml(paths: list[str]) -> list[pl.DataFrame]:
     """
     Read multiple mzML files into Polars DataFrames using the Rust backend.
-    
+
     Args:
         paths: List of file paths to read.
-        
+
     Returns:
         List of Polars DataFrames, one for each file.
     """
     return read_mzml_files(paths)
-

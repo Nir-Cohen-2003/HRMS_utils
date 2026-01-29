@@ -1,8 +1,8 @@
+use super::algorithms::*;
+use super::common::*;
 use polars::prelude::*;
 use pyo3_polars::derive::polars_expr;
 use rayon::prelude::*;
-use super::common::*;
-use super::algorithms::*;
 
 #[derive(serde::Deserialize, Debug, Default)]
 #[serde(default)]
@@ -17,7 +17,10 @@ pub struct SimilarityKwargs {
 }
 
 #[polars_expr(output_type=Float64)]
-pub fn calculate_similarity_struct(inputs: &[Series], kwargs: SimilarityKwargs) -> PolarsResult<Series> {
+pub fn calculate_similarity_struct(
+    inputs: &[Series],
+    kwargs: SimilarityKwargs,
+) -> PolarsResult<Series> {
     let struct_series = &inputs[0];
     let ca: &StructChunked = struct_series.struct_()?;
 
@@ -54,8 +57,15 @@ pub fn calculate_similarity_struct(inputs: &[Series], kwargs: SimilarityKwargs) 
         .zip(int2_vec.into_par_iter())
         .zip(precursor_mz1_vec.into_par_iter())
         .zip(precursor_mz2_vec.into_par_iter())
-        .map(|(((((opt_mz1, opt_int1), opt_mz2), opt_int2), precursor_mz1), precursor_mz2)| {
-            match (opt_mz1, opt_int1, opt_mz2, opt_int2, precursor_mz1, precursor_mz2) {
+        .map(
+            |(((((opt_mz1, opt_int1), opt_mz2), opt_int2), precursor_mz1), precursor_mz2)| match (
+                opt_mz1,
+                opt_int1,
+                opt_mz2,
+                opt_int2,
+                precursor_mz1,
+                precursor_mz2,
+            ) {
                 (Some(mz1), Some(int1), Some(mz2), Some(int2), Some(pmz1), Some(pmz2)) => {
                     let spec1: Spectrum = Spectrum::from_polars_lists(&mz1, &int1).ok()?;
                     let spec2: Spectrum = Spectrum::from_polars_lists(&mz2, &int2).ok()?;
@@ -73,15 +83,18 @@ pub fn calculate_similarity_struct(inputs: &[Series], kwargs: SimilarityKwargs) 
                     Some(similarity)
                 }
                 _ => None,
-            }
-        })
+            },
+        )
         .collect();
 
     Ok(out.into_series())
 }
 
 #[polars_expr(output_type=Float64)]
-pub fn cosine_similarity_struct(inputs: &[Series], kwargs: SimilarityKwargs) -> PolarsResult<Series> {
+pub fn cosine_similarity_struct(
+    inputs: &[Series],
+    kwargs: SimilarityKwargs,
+) -> PolarsResult<Series> {
     let struct_series = &inputs[0];
     let ca: &StructChunked = struct_series.struct_()?;
 
@@ -120,8 +133,15 @@ pub fn cosine_similarity_struct(inputs: &[Series], kwargs: SimilarityKwargs) -> 
         .zip(int2_vec.into_par_iter())
         .zip(precursor_mz1_vec.into_par_iter())
         .zip(precursor_mz2_vec.into_par_iter())
-        .map(|(((((opt_mz1, opt_int1), opt_mz2), opt_int2), precursor_mz1), precursor_mz2)| {
-            match (opt_mz1, opt_int1, opt_mz2, opt_int2, precursor_mz1, precursor_mz2) {
+        .map(
+            |(((((opt_mz1, opt_int1), opt_mz2), opt_int2), precursor_mz1), precursor_mz2)| match (
+                opt_mz1,
+                opt_int1,
+                opt_mz2,
+                opt_int2,
+                precursor_mz1,
+                precursor_mz2,
+            ) {
                 (Some(mz1), Some(int1), Some(mz2), Some(int2), Some(pmz1), Some(pmz2)) => {
                     let spec1: Spectrum = Spectrum::from_polars_lists(&mz1, &int1).ok()?;
                     let spec2: Spectrum = Spectrum::from_polars_lists(&mz2, &int2).ok()?;
@@ -141,15 +161,18 @@ pub fn cosine_similarity_struct(inputs: &[Series], kwargs: SimilarityKwargs) -> 
                     Some(similarity)
                 }
                 _ => None,
-            }
-        })
+            },
+        )
         .collect();
 
     Ok(out.into_series())
 }
 
 #[polars_expr(output_type=Float64)]
-pub fn explained_intensity_struct(inputs: &[Series], kwargs: SimilarityKwargs) -> PolarsResult<Series> {
+pub fn explained_intensity_struct(
+    inputs: &[Series],
+    kwargs: SimilarityKwargs,
+) -> PolarsResult<Series> {
     let struct_series = &inputs[0];
     let ca: &StructChunked = struct_series.struct_()?;
 
@@ -189,8 +212,15 @@ pub fn explained_intensity_struct(inputs: &[Series], kwargs: SimilarityKwargs) -
         .zip(int2_vec.into_par_iter())
         .zip(precursor_mz1_vec.into_par_iter())
         .zip(precursor_mz2_vec.into_par_iter())
-        .map(|(((((opt_mz1, opt_int1), opt_mz2), opt_int2), precursor_mz1), precursor_mz2)| {
-            match (opt_mz1, opt_int1, opt_mz2, opt_int2, precursor_mz1, precursor_mz2) {
+        .map(
+            |(((((opt_mz1, opt_int1), opt_mz2), opt_int2), precursor_mz1), precursor_mz2)| match (
+                opt_mz1,
+                opt_int1,
+                opt_mz2,
+                opt_int2,
+                precursor_mz1,
+                precursor_mz2,
+            ) {
                 (Some(mz1), Some(int1), Some(mz2), Some(int2), Some(pmz1), Some(pmz2)) => {
                     let spec1: Spectrum = Spectrum::from_polars_lists(&mz1, &int1).ok()?;
                     let spec2: Spectrum = Spectrum::from_polars_lists(&mz2, &int2).ok()?;
@@ -211,11 +241,9 @@ pub fn explained_intensity_struct(inputs: &[Series], kwargs: SimilarityKwargs) -
                     Some(similarity)
                 }
                 _ => None,
-            }
-        })
+            },
+        )
         .collect();
 
     Ok(out.into_series())
 }
-
-

@@ -100,8 +100,11 @@ pub fn calculate_score_for_spectrum(
                 if unique_mask[l] {
                     let formula_j = &norm_formulas[j][1..];
                     let formula_l = &norm_formulas[l][1..];
-                    
-                    let is_same = formula_j.iter().zip(formula_l.iter()).all(|(a, b)| (a - b).abs() < 1e-12);
+
+                    let is_same = formula_j
+                        .iter()
+                        .zip(formula_l.iter())
+                        .all(|(a, b)| (a - b).abs() < 1e-12);
 
                     if is_same {
                         unique_mask[l] = false;

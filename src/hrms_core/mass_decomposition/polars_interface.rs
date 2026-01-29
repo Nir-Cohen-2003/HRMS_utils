@@ -1,22 +1,39 @@
+use crate::mass_decomposition::algorithms::{
+    deduce_isotopic_pattern_inner, MassDecomposer, SpectrumDecomposer,
+};
+use crate::mass_decomposition::common::{
+    default_max_bounds, default_min_bounds, formula_to_string, CleanAndNormalizeSpectrumKwargs,
+    CleanedAndNormalizedSpectrumResult, DecompositionKwargs, DecompositionParams,
+    DeduceIsotopicPatternKwargs, IsotopicPatternParams, SpectrumDecompositionParams,
+    ELEMENT_SYMBOLS, NUM_ELEMENTS,
+};
+use itertools::Itertools;
+use polars::datatypes::DataType;
 use polars::prelude::*;
-use polars::datatypes::{DataType};
+use polars::series::Series;
+use polars_arrow::array::Int32Array;
+use polars_arrow::array::PrimitiveArray;
 use pyo3_polars::derive::polars_expr;
 use rayon::prelude::*;
-use crate::mass_decomposition::algorithms::{MassDecomposer, SpectrumDecomposer, deduce_isotopic_pattern_inner};
-use crate::mass_decomposition::common::{DecompositionParams, SpectrumDecompositionParams, formula_to_string, NUM_ELEMENTS, ELEMENT_SYMBOLS, CleanAndNormalizeSpectrumKwargs,CleanedAndNormalizedSpectrumResult, DecompositionKwargs, DeduceIsotopicPatternKwargs, IsotopicPatternParams, default_min_bounds, default_max_bounds};
-use polars::series::Series;
-use polars_arrow::array::{Int32Array};
 use std::collections::HashMap;
-use std::sync::Arc;
-use polars_arrow::array::PrimitiveArray;
-use itertools::Itertools; // Add to Cargo.toml if not present
-
-
+use std::sync::Arc; // Add to Cargo.toml if not present
 
 fn mass_decomposition_output(_fields: &[Field]) -> PolarsResult<Field> {
-    let formula_field = Field::new("formulas".into(), DataType::List(Box::new(DataType::Array(Box::new(DataType::Int32), NUM_ELEMENTS))));
-    let formula_str_field = Field::new("formulas_str".into(), DataType::List(Box::new(DataType::String)));
-    let error_field = Field::new("errors_ppm".into(), DataType::List(Box::new(DataType::Float64)));
+    let formula_field = Field::new(
+        "formulas".into(),
+        DataType::List(Box::new(DataType::Array(
+            Box::new(DataType::Int32),
+            NUM_ELEMENTS,
+        ))),
+    );
+    let formula_str_field = Field::new(
+        "formulas_str".into(),
+        DataType::List(Box::new(DataType::String)),
+    );
+    let error_field = Field::new(
+        "errors_ppm".into(),
+        DataType::List(Box::new(DataType::Float64)),
+    );
     let v = vec![formula_field, formula_str_field, error_field];
     Ok(Field::new("mass_decomposition".into(), DataType::Struct(v)))
 }
@@ -29,9 +46,9 @@ fn mass_decomposition(inputs: &[Series], kwargs: DecompositionKwargs) -> PolarsR
     let max_bounds: [i32; NUM_ELEMENTS] = kwargs.max_bounds.unwrap();
 
     let decomposer = Arc::new(MassDecomposer::new(min_bounds, max_bounds));
-    
+
     let allow_half_integer = kwargs.dbe_mode == "half_integer";
-    
+
     let params = Arc::new(DecompositionParams {
         tolerance_ppm: kwargs.tolerance_ppm,
         min_dbe: kwargs.min_dbe,
@@ -41,7 +58,7 @@ fn mass_decomposition(inputs: &[Series], kwargs: DecompositionKwargs) -> PolarsR
 
     // Get contiguous slice and process in parallel
     let masses_slice = masses.cont_slice().expect("masses should be contiguous");
-    
+
     let mut indexed_results: Vec<(usize, Vec<[i32; NUM_ELEMENTS]>, Vec<f64>)> = masses_slice
         .par_iter()
         .enumerate()
@@ -68,32 +85,38 @@ fn mass_decomposition(inputs: &[Series], kwargs: DecompositionKwargs) -> PolarsR
                 Some(Series::try_from((PlSmallStr::EMPTY, arr_boxed)).unwrap())
             })
             .collect();
-        
-        let formulas_series = Series::new(
-            PlSmallStr::from_static("formulas"), 
-            formulas_vec
-        ).cast(&DataType::Array(Box::new(DataType::Int32), NUM_ELEMENTS)).unwrap();
 
-        let formulas_str: Vec<String> = formulas.iter()
-            .map(|f| formula_to_string(f))
-            .collect();
+        let formulas_series = Series::new(PlSmallStr::from_static("formulas"), formulas_vec)
+            .cast(&DataType::Array(Box::new(DataType::Int32), NUM_ELEMENTS))
+            .unwrap();
+
+        let formulas_str: Vec<String> = formulas.iter().map(|f| formula_to_string(f)).collect();
 
         formulas_series_vec.push(formulas_series);
         formulas_str_series_vec.push(Series::new("formulas_str".into(), formulas_str));
         errors_series_vec.push(Series::new("errors_ppm".into(), errors_ppm));
     }
 
-    let out = StructChunked::from_series("mass_decomposition".into(), len, [
-        &Series::new("formulas".into(), formulas_series_vec),
-        &Series::new("formulas_str".into(), formulas_str_series_vec),
-        &Series::new("errors_ppm".into(), errors_series_vec),
-    ].iter().copied())?;
-    
+    let out = StructChunked::from_series(
+        "mass_decomposition".into(),
+        len,
+        [
+            &Series::new("formulas".into(), formulas_series_vec),
+            &Series::new("formulas_str".into(), formulas_str_series_vec),
+            &Series::new("errors_ppm".into(), errors_series_vec),
+        ]
+        .iter()
+        .copied(),
+    )?;
+
     Ok(out.into_series())
 }
 
 #[polars_expr(output_type_func=mass_decomposition_output)]
-fn mass_decomposition_with_bounds(inputs: &[Series], kwargs: DecompositionKwargs) -> PolarsResult<Series> {
+fn mass_decomposition_with_bounds(
+    inputs: &[Series],
+    kwargs: DecompositionKwargs,
+) -> PolarsResult<Series> {
     let input_series = &inputs[0];
     let input_struct = input_series.struct_()?;
     let num_rows = input_struct.len();
@@ -105,7 +128,7 @@ fn mass_decomposition_with_bounds(inputs: &[Series], kwargs: DecompositionKwargs
     let masses_chunked = mass_series.rechunk();
     let min_bounds_chunked = min_bounds_series.rechunk();
     let max_bounds_chunked = max_bounds_series.rechunk();
-    
+
     let masses_ca: &ChunkedArray<Float64Type> = masses_chunked.f64()?;
     let min_bounds_arrays: &ChunkedArray<FixedSizeListType> = min_bounds_chunked.array()?;
     let max_bounds_arrays: &ChunkedArray<FixedSizeListType> = max_bounds_chunked.array()?;
@@ -119,14 +142,14 @@ fn mass_decomposition_with_bounds(inputs: &[Series], kwargs: DecompositionKwargs
             let mass = masses_ca.get(idx).unwrap();
             let min_bounds_arr = min_bounds_arrays.get(idx).unwrap();
             let max_bounds_arr = max_bounds_arrays.get(idx).unwrap();
-            
+
             // Zero-copy slice access
             let min_bounds_values = min_bounds_arr
                 .as_any()
                 .downcast_ref::<PrimitiveArray<i32>>()
                 .expect("min_bounds should be i32 array")
                 .values();
-            
+
             let max_bounds_values = max_bounds_arr
                 .as_any()
                 .downcast_ref::<PrimitiveArray<i32>>()
@@ -137,16 +160,18 @@ fn mass_decomposition_with_bounds(inputs: &[Series], kwargs: DecompositionKwargs
             let mut max_bounds: [i32; NUM_ELEMENTS] = [0; NUM_ELEMENTS];
             min_bounds.copy_from_slice(min_bounds_values);
             max_bounds.copy_from_slice(max_bounds_values);
-            
+
             (idx, mass, (min_bounds, max_bounds))
         })
         .collect();
 
     // Group by bounds
-    let mut bounds_to_data: HashMap<([i32; NUM_ELEMENTS], [i32; NUM_ELEMENTS]), Vec<(usize, f64)>> = HashMap::new();
-    
+    let mut bounds_to_data: HashMap<([i32; NUM_ELEMENTS], [i32; NUM_ELEMENTS]), Vec<(usize, f64)>> =
+        HashMap::new();
+
     for (idx, mass, bounds) in bounds_data {
-        bounds_to_data.entry(bounds)
+        bounds_to_data
+            .entry(bounds)
             .or_insert_with(Vec::new)
             .push((idx, mass));
     }
@@ -157,12 +182,13 @@ fn mass_decomposition_with_bounds(inputs: &[Series], kwargs: DecompositionKwargs
         max_dbe: kwargs.max_dbe,
         allow_half_integer,
     });
-    
+
     // Process each unique bounds set in parallel
-    let results_by_bounds: Vec<_> = bounds_to_data.into_par_iter()
+    let results_by_bounds: Vec<_> = bounds_to_data
+        .into_par_iter()
         .flat_map(|((min_bounds, max_bounds), data)| {
             let decomposer = Arc::new(MassDecomposer::new(min_bounds, max_bounds));
-            
+
             data.into_par_iter()
                 .map(|(idx, mass)| {
                     let (formulas, errors) = decomposer.decompose(mass, &params);
@@ -188,44 +214,77 @@ fn mass_decomposition_with_bounds(inputs: &[Series], kwargs: DecompositionKwargs
                 Some(Series::try_from((PlSmallStr::EMPTY, arr_boxed)).unwrap())
             })
             .collect();
-        
-        let formulas_series = Series::new(
-            PlSmallStr::from_static("formulas"), 
-            formulas_vec
-        ).cast(&DataType::Array(Box::new(DataType::Int32), NUM_ELEMENTS)).unwrap();
 
-        let formulas_str: Vec<String> = formulas.iter()
-            .map(|f| formula_to_string(f))
-            .collect();
+        let formulas_series = Series::new(PlSmallStr::from_static("formulas"), formulas_vec)
+            .cast(&DataType::Array(Box::new(DataType::Int32), NUM_ELEMENTS))
+            .unwrap();
+
+        let formulas_str: Vec<String> = formulas.iter().map(|f| formula_to_string(f)).collect();
 
         formulas_series_vec.push(formulas_series);
         formulas_str_series_vec.push(Series::new("formulas_str".into(), formulas_str));
         errors_series_vec.push(Series::new("errors_ppm".into(), errors_ppm));
     }
-    
-    let out = StructChunked::from_series("mass_decomposition_with_bounds".into(), num_rows, [
-        &Series::new("formulas".into(), formulas_series_vec),
-        &Series::new("formulas_str".into(), formulas_str_series_vec),
-        &Series::new("errors_ppm".into(), errors_series_vec),
-    ].iter().copied())?;
-    
+
+    let out = StructChunked::from_series(
+        "mass_decomposition_with_bounds".into(),
+        num_rows,
+        [
+            &Series::new("formulas".into(), formulas_series_vec),
+            &Series::new("formulas_str".into(), formulas_str_series_vec),
+            &Series::new("errors_ppm".into(), errors_series_vec),
+        ]
+        .iter()
+        .copied(),
+    )?;
+
     Ok(out.into_series())
 }
 
 fn spectrum_decomposition_normalized_output(_fields: &[Field]) -> PolarsResult<Field> {
-    let formula_field = Field::new("formulas".into(), DataType::List(Box::new(DataType::Array(Box::new(DataType::Int32), NUM_ELEMENTS))));
-    let formula_str_field = Field::new("formulas_str".into(), DataType::List(Box::new(DataType::String)));
-    let normalized_masses_field = Field::new("normalized_masses".into(), DataType::List(Box::new(DataType::Float64)));
-    let intensities_field = Field::new("intensities".into(), DataType::List(Box::new(DataType::Float64)));
-    let error_field = Field::new("errors_ppm".into(), DataType::List(Box::new(DataType::Float64)));
-    let v = vec![formula_field, formula_str_field, normalized_masses_field, intensities_field, error_field];
-    Ok(Field::new("spectrum_decomposition_normalized".into(), DataType::Struct(v)))
+    let formula_field = Field::new(
+        "formulas".into(),
+        DataType::List(Box::new(DataType::Array(
+            Box::new(DataType::Int32),
+            NUM_ELEMENTS,
+        ))),
+    );
+    let formula_str_field = Field::new(
+        "formulas_str".into(),
+        DataType::List(Box::new(DataType::String)),
+    );
+    let normalized_masses_field = Field::new(
+        "normalized_masses".into(),
+        DataType::List(Box::new(DataType::Float64)),
+    );
+    let intensities_field = Field::new(
+        "intensities".into(),
+        DataType::List(Box::new(DataType::Float64)),
+    );
+    let error_field = Field::new(
+        "errors_ppm".into(),
+        DataType::List(Box::new(DataType::Float64)),
+    );
+    let v = vec![
+        formula_field,
+        formula_str_field,
+        normalized_masses_field,
+        intensities_field,
+        error_field,
+    ];
+    Ok(Field::new(
+        "spectrum_decomposition_normalized".into(),
+        DataType::Struct(v),
+    ))
 }
 
 #[polars_expr(output_type_func=spectrum_decomposition_normalized_output)]
-fn spectrum_decomposition_normalized(inputs: &[Series], kwargs: CleanAndNormalizeSpectrumKwargs) -> PolarsResult<Series> {
+fn spectrum_decomposition_normalized(
+    inputs: &[Series],
+    kwargs: CleanAndNormalizeSpectrumKwargs,
+) -> PolarsResult<Series> {
     // use std::time::Instant;
-    
+
     let s: &Series = &inputs[0];
     let ca: &ChunkedArray<StructType> = s.struct_()?;
     let len: usize = ca.len();
@@ -253,30 +312,33 @@ fn spectrum_decomposition_normalized(inputs: &[Series], kwargs: CleanAndNormaliz
         .enumerate()
         .map(|(idx, ((masses_list, intensities_list), precursor_arr))| {
             // For List types, we need to downcast to ListArray first, then get values
-            let masses_ca:&ChunkedArray<Float64Type> = masses_list.f64().expect("masses should be a List(Float64)");
+            let masses_ca: &ChunkedArray<Float64Type> =
+                masses_list.f64().expect("masses should be a List(Float64)");
             let masses_vec: Vec<f64> = masses_ca.into_no_null_iter().collect();
-            let masses:&[f64] = masses_vec.as_slice();
+            let masses: &[f64] = masses_vec.as_slice();
 
-            let intensities_ca:&ChunkedArray<Float64Type> = intensities_list.f64().expect("intensities should be a List(Float64)");
+            let intensities_ca: &ChunkedArray<Float64Type> = intensities_list
+                .f64()
+                .expect("intensities should be a List(Float64)");
             let intensities_vec: Vec<f64> = intensities_ca.into_no_null_iter().collect();
-            let intensities:&[f64] = intensities_vec.as_slice();
+            let intensities: &[f64] = intensities_vec.as_slice();
 
-            let precursor_ca:&ChunkedArray<Int32Type>   = precursor_arr.i32().expect("precursor_formula should be an Array(Int32,NUM_ELEMENTS)");
+            let precursor_ca: &ChunkedArray<Int32Type> = precursor_arr
+                .i32()
+                .expect("precursor_formula should be an Array(Int32,NUM_ELEMENTS)");
             let precursor_vec: Vec<i32> = precursor_ca.into_no_null_iter().collect();
             let precursor_slice: &[i32] = precursor_vec.as_slice();
 
             let mut precursor_formula: [i32; NUM_ELEMENTS] = [0; NUM_ELEMENTS];
             precursor_formula.copy_from_slice(precursor_slice);
-            
+
             let mut max_bounds = precursor_formula.clone();
             if kwargs.water_absorption {
                 max_bounds[0] += 2; //H
                 max_bounds[3] += 1; //O
             }
             let min_bounds = [0; NUM_ELEMENTS];
-            
-            
-            
+
             let params = SpectrumDecompositionParams {
                 tolerance_ppm: kwargs.raw_fragment_tolerance_ppm,
                 min_dbe: kwargs.min_dbe,
@@ -286,21 +348,21 @@ fn spectrum_decomposition_normalized(inputs: &[Series], kwargs: CleanAndNormaliz
             };
 
             let decomposer = SpectrumDecomposer::new(min_bounds, max_bounds);
-            
+
             let result = decomposer.clean_and_normalize_spectrum(
                 masses,
                 intensities,
                 &params,
                 kwargs.normalized_fragment_tolerance_ppm,
             );
-            
+
             (idx, result)
         })
         .collect();
     // let first_loop_duration = start_first_loop.elapsed();
     // println!("First loop (decomposition) took: {:?}", first_loop_duration);
     // println!("Decomposition results collected");
-    
+
     // Sort to restore order
     let mut sorted_results = indexed_results;
     sorted_results.sort_unstable_by_key(|(idx, _)| *idx);
@@ -310,7 +372,8 @@ fn spectrum_decomposition_normalized(inputs: &[Series], kwargs: CleanAndNormaliz
     let series_data: Vec<_> = sorted_results
         .into_par_iter()
         .map(|(_idx, result)| {
-            let formulas_vec: Vec<Option<Series>> = result.fragments
+            let formulas_vec: Vec<Option<Series>> = result
+                .fragments
                 .iter()
                 .map(|frag| {
                     let arr = Int32Array::from_slice(&frag.formula);
@@ -318,27 +381,27 @@ fn spectrum_decomposition_normalized(inputs: &[Series], kwargs: CleanAndNormaliz
                     Some(Series::try_from((PlSmallStr::EMPTY, arr_boxed)).unwrap())
                 })
                 .collect();
-            
-            let formulas_series = Series::new(
-                PlSmallStr::from_static("formulas"), 
-                formulas_vec
-            ).cast(&DataType::Array(Box::new(DataType::Int32), NUM_ELEMENTS)).unwrap();
 
-            let formulas_str: Vec<String> = result.fragments.iter()
+            let formulas_series = Series::new(PlSmallStr::from_static("formulas"), formulas_vec)
+                .cast(&DataType::Array(Box::new(DataType::Int32), NUM_ELEMENTS))
+                .unwrap();
+
+            let formulas_str: Vec<String> = result
+                .fragments
+                .iter()
                 .map(|frag| formula_to_string(&frag.formula))
                 .collect();
-            
-            let normalized_masses: Vec<f64> = result.fragments.iter()
+
+            let normalized_masses: Vec<f64> = result
+                .fragments
+                .iter()
                 .map(|frag| frag.normalized_mass)
                 .collect();
-            
-            let intensities: Vec<f64> = result.fragments.iter()
-                .map(|frag| frag.intensity)
-                .collect();
-            
-            let errors: Vec<f64> = result.fragments.iter()
-                .map(|frag| frag.error_ppm)
-                .collect();
+
+            let intensities: Vec<f64> =
+                result.fragments.iter().map(|frag| frag.intensity).collect();
+
+            let errors: Vec<f64> = result.fragments.iter().map(|frag| frag.error_ppm).collect();
 
             (
                 formulas_series,
@@ -352,44 +415,65 @@ fn spectrum_decomposition_normalized(inputs: &[Series], kwargs: CleanAndNormaliz
     // let second_loop_duration = start_second_loop.elapsed();
     // println!("Second loop (series building) took: {:?}", second_loop_duration);
 
-    let (formulas_series_vec, formulas_str_series_vec, normalized_masses_series_vec, intensities_series_vec, errors_series_vec): (Vec<_>, Vec<_>, Vec<_>, Vec<_>, Vec<_>) = 
-        series_data.into_iter()
-            .map(|(f, fs, nm, i, e)| (f, fs, nm, i, e))
-            .multiunzip();
+    let (
+        formulas_series_vec,
+        formulas_str_series_vec,
+        normalized_masses_series_vec,
+        intensities_series_vec,
+        errors_series_vec,
+    ): (Vec<_>, Vec<_>, Vec<_>, Vec<_>, Vec<_>) = series_data
+        .into_iter()
+        .map(|(f, fs, nm, i, e)| (f, fs, nm, i, e))
+        .multiunzip();
 
-    let out = StructChunked::from_series("spectrum_decomposition_normalized".into(), len, [
-        &Series::new("formulas".into(), formulas_series_vec),
-        &Series::new("formulas_str".into(), formulas_str_series_vec),
-        &Series::new("normalized_masses".into(), normalized_masses_series_vec),
-        &Series::new("intensities".into(), intensities_series_vec),
-        &Series::new("errors_ppm".into(), errors_series_vec),
-    ].iter().copied())?;
-    
+    let out = StructChunked::from_series(
+        "spectrum_decomposition_normalized".into(),
+        len,
+        [
+            &Series::new("formulas".into(), formulas_series_vec),
+            &Series::new("formulas_str".into(), formulas_str_series_vec),
+            &Series::new("normalized_masses".into(), normalized_masses_series_vec),
+            &Series::new("intensities".into(), intensities_series_vec),
+            &Series::new("errors_ppm".into(), errors_series_vec),
+        ]
+        .iter()
+        .copied(),
+    )?;
+
     Ok(out.into_series())
 }
 
 fn isotopic_pattern_output(_fields: &[Field]) -> PolarsResult<Field> {
-    Ok(Field::new("isotopic_bounds".into(), DataType::Array(Box::new(DataType::Int32), NUM_ELEMENTS * 2)))
+    Ok(Field::new(
+        "isotopic_bounds".into(),
+        DataType::Array(Box::new(DataType::Int32), NUM_ELEMENTS * 2),
+    ))
 }
 
-fn parse_bounds(bounds_map: Option<HashMap<String, i32>>, defaults: [i32; NUM_ELEMENTS]) -> [i32; NUM_ELEMENTS] {
+fn parse_bounds(
+    bounds_map: Option<HashMap<String, i32>>,
+    defaults: [i32; NUM_ELEMENTS],
+) -> [i32; NUM_ELEMENTS] {
     let mut bounds = defaults;
     if let Some(map) = bounds_map {
         for (k, v) in map {
-             if let Some(idx) = ELEMENT_SYMBOLS.iter().position(|&s| s == k) {
-                 bounds[idx] = v;
-             }
+            if let Some(idx) = ELEMENT_SYMBOLS.iter().position(|&s| s == k) {
+                bounds[idx] = v;
+            }
         }
     }
     bounds
 }
 
 #[polars_expr(output_type_func=isotopic_pattern_output)]
-fn deduce_isotopic_pattern(inputs: &[Series], kwargs: DeduceIsotopicPatternKwargs) -> PolarsResult<Series> {
+fn deduce_isotopic_pattern(
+    inputs: &[Series],
+    kwargs: DeduceIsotopicPatternKwargs,
+) -> PolarsResult<Series> {
     let precursor_mzs = inputs[0].f64()?;
     let ms1_mzs_series = &inputs[1];
     let ms1_intensities_series = &inputs[2];
-    
+
     let ms1_mzs_ca = ms1_mzs_series.list()?;
     let ms1_intensities_ca = ms1_intensities_series.list()?;
 
@@ -420,17 +504,28 @@ fn deduce_isotopic_pattern(inputs: &[Series], kwargs: DeduceIsotopicPatternKwarg
     let ms1_intensities_vec: Vec<Option<Series>> = ms1_intensities_ca.into_iter().collect();
 
     // Parallel processing
-    let results: Vec<Option<[i32; NUM_ELEMENTS * 2]>> = precursor_vec.into_par_iter()
+    let results: Vec<Option<[i32; NUM_ELEMENTS * 2]>> = precursor_vec
+        .into_par_iter()
         .zip(ms1_mzs_vec.into_par_iter())
         .zip(ms1_intensities_vec.into_par_iter())
         .map(|((precursor_opt, ms1_mzs_opt), ms1_int_opt)| {
-             if let (Some(precursor_mz), Some(ms1_mzs_s), Some(ms1_int_s)) = (precursor_opt, ms1_mzs_opt, ms1_int_opt) {
-                let ms1_mzs_tmp = ms1_mzs_s.cast(&DataType::Float64).expect("Failed to cast ms1_mzs to Float64");
-                let ms1_mzs = ms1_mzs_tmp.f64().expect("Failed to get ms1_mzs as Float64 ChunkedArray");
-                
-                let ms1_int_tmp = ms1_int_s.cast(&DataType::Float64).expect("Failed to cast ms1_intensities to Float64");
-                let ms1_int = ms1_int_tmp.f64().expect("Failed to get ms1_intensities as Float64 ChunkedArray");
-                
+            if let (Some(precursor_mz), Some(ms1_mzs_s), Some(ms1_int_s)) =
+                (precursor_opt, ms1_mzs_opt, ms1_int_opt)
+            {
+                let ms1_mzs_tmp = ms1_mzs_s
+                    .cast(&DataType::Float64)
+                    .expect("Failed to cast ms1_mzs to Float64");
+                let ms1_mzs = ms1_mzs_tmp
+                    .f64()
+                    .expect("Failed to get ms1_mzs as Float64 ChunkedArray");
+
+                let ms1_int_tmp = ms1_int_s
+                    .cast(&DataType::Float64)
+                    .expect("Failed to cast ms1_intensities to Float64");
+                let ms1_int = ms1_int_tmp
+                    .f64()
+                    .expect("Failed to get ms1_intensities as Float64 ChunkedArray");
+
                 // Convert to Vec or slice
                 let ms1_mzs_slice: Vec<f64> = ms1_mzs.into_no_null_iter().collect();
                 let ms1_int_slice: Vec<f64> = ms1_int.into_no_null_iter().collect();
@@ -439,19 +534,20 @@ fn deduce_isotopic_pattern(inputs: &[Series], kwargs: DeduceIsotopicPatternKwarg
                     precursor_mz,
                     &ms1_mzs_slice,
                     &ms1_int_slice,
-                    &params
+                    &params,
                 );
 
                 // deduced is [C_l, S_l, Cl_l, Br_l, C_u, S_u, Cl_u, Br_u]
                 // Indices: C=1, S=7, Cl=8, Br=10
-                
+
                 let mut row_result = base_result;
-                
+
                 // Helper to update
-                let update_elem = |idx_elem: usize, val_l: f64, val_u: f64, res: &mut [i32; NUM_ELEMENTS * 2]| {
-                     res[idx_elem] = val_l.ceil() as i32;
-                     res[idx_elem + NUM_ELEMENTS] = val_u.floor() as i32;
-                };
+                let update_elem =
+                    |idx_elem: usize, val_l: f64, val_u: f64, res: &mut [i32; NUM_ELEMENTS * 2]| {
+                        res[idx_elem] = val_l.ceil() as i32;
+                        res[idx_elem + NUM_ELEMENTS] = val_u.floor() as i32;
+                    };
 
                 update_elem(1, deduced[0], deduced[4], &mut row_result); // C
                 update_elem(7, deduced[1], deduced[5], &mut row_result); // S
@@ -459,37 +555,40 @@ fn deduce_isotopic_pattern(inputs: &[Series], kwargs: DeduceIsotopicPatternKwarg
                 update_elem(10, deduced[3], deduced[7], &mut row_result); // Br
 
                 Some(row_result)
-             } else {
-                 None
-             }
+            } else {
+                None
+            }
         })
         .collect();
 
     // Convert to Series
-    // For Array type, we need to construct it carefully. 
+    // For Array type, we need to construct it carefully.
     // Since polars 0.37+, Series::new with Array type might be tricky from Vec<[i32]>.
     // Best way is to flatten and create Array from it? Or use List then cast?
     // But output type is fixed size Array.
-    
+
     // Let's try creating a list of series and casting? Or Int32Array directly if we can.
     // FixedSizeListArray in arrow.
-    
+
     // Simplest: Create a flattened Vec<i32>, then create Series, then reshape/cast?
     // But Array support in Series construction is evolving.
-    
+
     // Let's use the List approach then cast to Array.
     let mut flattened: Vec<Option<Series>> = Vec::with_capacity(len);
     for res in results {
         if let Some(arr) = res {
-             let s = Series::new(PlSmallStr::EMPTY, arr.as_ref());
-             flattened.push(Some(s));
+            let s = Series::new(PlSmallStr::EMPTY, arr.as_ref());
+            flattened.push(Some(s));
         } else {
-             flattened.push(None);
+            flattened.push(None);
         }
     }
-    
+
     let list_series = Series::new(PlSmallStr::from_static("isotopic_bounds"), flattened);
-    let array_series = list_series.cast(&DataType::Array(Box::new(DataType::Int32), NUM_ELEMENTS * 2))?;
+    let array_series = list_series.cast(&DataType::Array(
+        Box::new(DataType::Int32),
+        NUM_ELEMENTS * 2,
+    ))?;
 
     Ok(array_series)
 }

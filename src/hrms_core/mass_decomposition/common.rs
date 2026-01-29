@@ -1,19 +1,16 @@
 use serde::Deserialize;
 // Re-export NUM_ELEMENTS and ELEMENT_SYMBOLS so other modules can access them via this module.
-pub use crate::common::{NUM_ELEMENTS, ELEMENT_SYMBOLS, ATOMIC_MASSES, ELEMENT_ISOTOPES, IsotopeProps};
+pub use crate::common::{
+    IsotopeProps, ATOMIC_MASSES, ELEMENT_ISOTOPES, ELEMENT_SYMBOLS, NUM_ELEMENTS,
+};
 use std::collections::HashMap;
 
-
-
-
 pub fn check_dbe(formula: &Formula, min_dbe: f64, max_dbe: f64, allow_half_integer: bool) -> bool {
-    
     let c_count = formula[1];
-    
-    
+
     let n_count = formula[2];
     let p_count = formula[6];
-    
+
     let h_count = formula[0];
     let na_count = formula[5];
     let k_count = formula[9];
@@ -21,11 +18,9 @@ pub fn check_dbe(formula: &Formula, min_dbe: f64, max_dbe: f64, allow_half_integ
     let cl_count = formula[8];
     let br_count = formula[10];
     let i_count = formula[11];
-    
-    let dbe = (
-        (c_count) as f64) + 
-        ((n_count + p_count) as f64 / 2.0) - 
-        ((h_count+f_count + cl_count + br_count + i_count + na_count + k_count) as f64 / 2.0) 
+
+    let dbe = ((c_count) as f64) + ((n_count + p_count) as f64 / 2.0)
+        - ((h_count + f_count + cl_count + br_count + i_count + na_count + k_count) as f64 / 2.0)
         + 1.0;
 
     if dbe < min_dbe || dbe > max_dbe {
@@ -141,16 +136,16 @@ pub fn default_max_bounds() -> Formula {
     // H=0, C=1, N=2, O=3, F=4, Na=5, P=6, S=7, Cl=8, K=9, Br=10, I=11
     // Based on python DEFAULT_MAX_BOUND
     bounds[0] = 100; // H
-    bounds[1] = 50;  // C
-    bounds[2] = 20;  // N
-    bounds[3] = 20;  // O
-    bounds[4] = 40;  // F
-    bounds[5] = 0;   // Na
-    bounds[6] = 5;   // P
-    bounds[7] = 5;   // S
-    bounds[8] = 10;  // Cl
-    bounds[9] = 0;   // K
+    bounds[1] = 50; // C
+    bounds[2] = 20; // N
+    bounds[3] = 20; // O
+    bounds[4] = 40; // F
+    bounds[5] = 0; // Na
+    bounds[6] = 5; // P
+    bounds[7] = 5; // S
+    bounds[8] = 10; // Cl
+    bounds[9] = 0; // K
     bounds[10] = 10; // Br
-    bounds[11] = 5;  // I
+    bounds[11] = 5; // I
     bounds
 }

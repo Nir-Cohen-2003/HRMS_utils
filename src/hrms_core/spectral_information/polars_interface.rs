@@ -12,28 +12,29 @@ pub struct SpectralInfoKwargs {
     pub ignore_hydrogens: bool,
 }
 
-
 #[polars_expr(output_type=Float64)]
 pub fn tree_spectral_info_score(
     inputs: &[Series],
     kwargs: SpectralInfoKwargs,
 ) -> PolarsResult<Series> {
-
     let struct_series = &inputs[0];
     let ca: &StructChunked = struct_series.struct_()?;
 
     let precursor_series = ca
         .field_by_name("precursor_formula")?
-        .cast(&DataType::Array(Box::new(DataType::Float64),NUM_ELEMENTS))?;
+        .cast(&DataType::Array(Box::new(DataType::Float64), NUM_ELEMENTS))?;
     let fragments_series = ca
         .field_by_name("fragment_formulas")?
-        .cast(&DataType::List(Box::new(DataType::Array(Box::new(DataType::Float64),NUM_ELEMENTS))))?;
+        .cast(&DataType::List(Box::new(DataType::Array(
+            Box::new(DataType::Float64),
+            NUM_ELEMENTS,
+        ))))?;
 
     let precursors_ca: &ChunkedArray<FixedSizeListType> = precursor_series.array()?;
     let fragments_ca: &ChunkedArray<ListType> = fragments_series.list()?;
 
-    let precursor_vec : Vec<Series> = precursors_ca.into_no_null_iter().collect();
-    let fragments_vec : Vec<Series> = fragments_ca.into_no_null_iter().collect();
+    let precursor_vec: Vec<Series> = precursors_ca.into_no_null_iter().collect();
+    let fragments_vec: Vec<Series> = fragments_ca.into_no_null_iter().collect();
 
     let distance_metric = kwargs.distance_metric;
     let ignore_hydrogens = kwargs.ignore_hydrogens;
@@ -42,10 +43,10 @@ pub fn tree_spectral_info_score(
         .into_par_iter()
         .zip(fragments_vec.into_par_iter())
         .enumerate()
-        .map(|(index, (precursor_s, fragments_s))| {      
+        .map(|(index, (precursor_s, fragments_s))| {
             let precursor_ca: &ChunkedArray<Float64Type> = precursor_s.f64().unwrap();
             let precursor_vec: Vec<f64> = precursor_ca.into_no_null_iter().collect();
-            
+
             let fragments_list: &ChunkedArray<FixedSizeListType> = fragments_s.array().unwrap();
             let mut fragments_flat: Vec<f64> = Vec::new();
             for fragment_series_opt in fragments_list.clone().into_iter() {
@@ -62,10 +63,9 @@ pub fn tree_spectral_info_score(
                 ignore_hydrogens,
             );
             (index, score.unwrap_or(0.0))
-        }
-        )
+        })
         .collect();
-    
+
     let mut sorted_results = indexed_scores;
     sorted_results.sort_unstable_by_key(|(idx, _)| *idx);
     let scores: Vec<f64> = sorted_results.into_iter().map(|(_, score)| score).collect();

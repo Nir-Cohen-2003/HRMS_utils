@@ -20,7 +20,7 @@ Concise, actionable rules for editing this repository. Keep changes explicit, fa
 
 ### 2. Architecture & execution
 - **Breaking Changes:** If you introduce a breaking change, update **every** impacted part of the codebase immediately. Do not leave "fallbacks" or legacy support code.
-- **Pixi:** Do not  run python files directly. run them via `pixi`, e.g., `pixi run -e experiments python python_file.py`, substitute the appropriate environment.
+- **Pixi:** Do not  run python files directly. run them via `pixi`, e.g., `pixi run -e experiments python python_file.py`, substitute the appropriate environment. pixi is the one enviroment manager for thsi project, do no use pip or crago directly, with the sole exception of cargo check. running "pixi run ..." already makes the environment up to date, never do manual rebuilding or updating.
 
 ### 3. Simplicity & Scope
 - **Simple Code:** Avoid `try/catch` blocks unless strictly necessary. Failures should be loud, especially in experimental code.

@@ -77,7 +77,7 @@ fn read_single_mzml(path: &Path) -> Result<DataFrame, Box<dyn std::error::Error 
         } else {
             (Vec::new(), Vec::new())
         };
-        
+
         mzs.push(Some(Series::new("mz".into(), mz_vec)));
         intensities.push(Some(Series::new("intensity".into(), int_vec)));
 
@@ -90,9 +90,9 @@ fn read_single_mzml(path: &Path) -> Result<DataFrame, Box<dyn std::error::Error 
                 // Fallback to isolation window target if selected ion is missing
                 let iso = &precursor.isolation_window;
                 if iso.target != 0.0 {
-                     precursor_mzs.push(Some(iso.target as f64));
+                    precursor_mzs.push(Some(iso.target as f64));
                 } else {
-                     precursor_mzs.push(None);
+                    precursor_mzs.push(None);
                 }
             }
 
@@ -101,10 +101,9 @@ fn read_single_mzml(path: &Path) -> Result<DataFrame, Box<dyn std::error::Error 
             if iso.target != 0.0 {
                 let (lower, upper) = match iso.flags {
                     IsolationWindowState::Explicit => (iso.lower_bound, iso.upper_bound),
-                    IsolationWindowState::Offset => (
-                        iso.target - iso.lower_bound,
-                        iso.target + iso.upper_bound,
-                    ),
+                    IsolationWindowState::Offset => {
+                        (iso.target - iso.lower_bound, iso.target + iso.upper_bound)
+                    }
                     IsolationWindowState::Complete => (iso.lower_bound, iso.upper_bound),
                     _ => (0.0, 0.0),
                 };
@@ -119,19 +118,23 @@ fn read_single_mzml(path: &Path) -> Result<DataFrame, Box<dyn std::error::Error 
             let activation = &precursor.activation;
             if activation.energy != 0.0 {
                 collision_energies.push(Some(activation.energy as f64));
-                
+
                 // Try to find unit in params
                 let mut unit = None;
                 for param in activation.params() {
                     if param.is_ms() && param.accession == Some(1000045) {
-                         unit = Some(format!("{:?}", param.unit));
-                         break;
+                        unit = Some(format!("{:?}", param.unit));
+                        break;
                     }
                 }
                 // Fallback search by name
                 if unit.is_none() {
-                    if let Some(p) = activation.params().iter().find(|p| p.name == "collision energy") {
-                         unit = Some(p.unit.to_string());
+                    if let Some(p) = activation
+                        .params()
+                        .iter()
+                        .find(|p| p.name == "collision energy")
+                    {
+                        unit = Some(p.unit.to_string());
                     }
                 }
                 collision_energy_units.push(unit);
@@ -139,7 +142,6 @@ fn read_single_mzml(path: &Path) -> Result<DataFrame, Box<dyn std::error::Error 
                 collision_energies.push(None);
                 collision_energy_units.push(None);
             }
-
         } else {
             precursor_mzs.push(None);
             iso_window_lower.push(None);
@@ -154,7 +156,7 @@ fn read_single_mzml(path: &Path) -> Result<DataFrame, Box<dyn std::error::Error 
     let s_ms_level = Series::new("ms_level".into(), ms_levels);
     let s_scan_time = Series::new("scan_time".into(), scan_times);
     let s_polarity = Series::new("polarity".into(), polarities);
-    
+
     let s_mz = create_list_f64_series("mz", mzs)?;
     let s_intensity = create_list_f64_series("intensity", intensities)?;
 

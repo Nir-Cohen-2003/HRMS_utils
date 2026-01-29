@@ -56,9 +56,7 @@ pub fn clean_spectrum(
 
     // 1. Remove empty peaks and filter by mz
     cleaned_peaks.retain(|peak| {
-        peak.intensity > 0.0
-            && peak.mz >= min_mz.unwrap_or(0.0)
-            && peak.mz <= effective_max_mz
+        peak.intensity > 0.0 && peak.mz >= min_mz.unwrap_or(0.0) && peak.mz <= effective_max_mz
     });
 
     if apply_full_cleaning {
@@ -67,8 +65,11 @@ pub fn clean_spectrum(
             cleaned_peaks.retain(|peak| peak.mz < precursor_mz - 1.0);
         } else {
             // ignore fragments in the 1 Da range below the precursor, not including it.
-            let tolerance = ms2_tolerance_in_ppm * 1e-6 *(MASS_THRESHOLD_FOR_PPM).max(precursor_mz);
-            cleaned_peaks.retain(|peak| peak.mz < precursor_mz - 1.0 || (peak.mz - precursor_mz).abs() < tolerance);
+            let tolerance =
+                ms2_tolerance_in_ppm * 1e-6 * (MASS_THRESHOLD_FOR_PPM).max(precursor_mz);
+            cleaned_peaks.retain(|peak| {
+                peak.mz < precursor_mz - 1.0 || (peak.mz - precursor_mz).abs() < tolerance
+            });
         }
     }
 
@@ -84,7 +85,11 @@ pub fn clean_spectrum(
     if apply_full_cleaning {
         // 3. Remove noise
         if let Some(threshold) = noise_threshold {
-            if let Some(max_intensity) = cleaned_peaks.iter().map(|p| p.intensity).max_by(|a, b| a.partial_cmp(b).unwrap()) {
+            if let Some(max_intensity) = cleaned_peaks
+                .iter()
+                .map(|p| p.intensity)
+                .max_by(|a, b| a.partial_cmp(b).unwrap())
+            {
                 let noise_level = threshold * max_intensity;
                 cleaned_peaks.retain(|p| p.intensity >= noise_level);
             }
@@ -98,10 +103,9 @@ pub fn clean_spectrum(
             }
         }
     }
-    
+
     cleaned_peaks.retain(|p| p.intensity > 0.0);
     cleaned_peaks.sort_by(|a, b| a.mz.partial_cmp(&b.mz).unwrap());
-
 
     // 5. Normalize intensity
     if normalize_intensity {
@@ -135,7 +139,6 @@ pub fn need_centroid(peaks: &[Peak], ms2_tolerance_in_ppm: f64) -> bool {
     false
 }
 
-
 /// Centroids a spectrum using the logic from the C code.
 pub fn centroid_spectrum(peaks: &mut Vec<Peak>, ms2_tolerance_in_ppm: f64) {
     if peaks.is_empty() {
@@ -143,7 +146,12 @@ pub fn centroid_spectrum(peaks: &mut Vec<Peak>, ms2_tolerance_in_ppm: f64) {
     }
 
     let mut argsort: Vec<usize> = (0..peaks.len()).collect();
-    argsort.sort_by(|&a, &b| peaks[b].intensity.partial_cmp(&peaks[a].intensity).unwrap_or(std::cmp::Ordering::Equal));
+    argsort.sort_by(|&a, &b| {
+        peaks[b]
+            .intensity
+            .partial_cmp(&peaks[a].intensity)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
 
     for i in 0..argsort.len() {
         let idx = argsort[i];
@@ -159,7 +167,7 @@ pub fn centroid_spectrum(peaks: &mut Vec<Peak>, ms2_tolerance_in_ppm: f64) {
             let right = current_peak_mz * ms2_tolerance_in_ppm / (1e6 - ms2_tolerance_in_ppm);
             (left, right)
         } else {
-            (0.0, 0.0) 
+            (0.0, 0.0)
         };
 
         let mut idx_left = idx;
@@ -168,7 +176,9 @@ pub fn centroid_spectrum(peaks: &mut Vec<Peak>, ms2_tolerance_in_ppm: f64) {
         }
 
         let mut idx_right = idx;
-        while idx_right < peaks.len() - 1 && (peaks[idx_right + 1].mz - current_peak_mz) <= mz_delta_allowed_right {
+        while idx_right < peaks.len() - 1
+            && (peaks[idx_right + 1].mz - current_peak_mz) <= mz_delta_allowed_right
+        {
             idx_right += 1;
         }
 

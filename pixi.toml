@@ -35,8 +35,6 @@ publish-pypi = {cmd="twine upload --repository pypi --skip-existing dist/*", dep
 publish-prefix = {cmd="rattler-build upload prefix --channel nir-cohen"}
 publish-anaconda = {cmd="rattler-build upload anaconda --owner Nir_Cohen --channel main"}
 
-build = {cmd = "pixi build",depends-on = ["cargo-clean"]}
-cargo-clean = "cargo clean"
 [target.win-64.tasks]
 build-wheel = { cmd = "python -m build --wheel --no-isolation --outdir dist"}
 build-all = { cmd = "python -m build --wheel --sdist --no-isolation --outdir dist"}
@@ -76,6 +74,8 @@ pip = "*"
 setuptools = ">=68.0.0"
 setuptools-rust = "*"
 [package.run-dependencies]
+python-abi3 = ">=3.12"
+python = ">=3.12"
 polars = ">=1.35.2,<2"
 rdkit = ">=2024.0.0"
 numpy = ">=1.20.0"
@@ -92,6 +92,7 @@ xlsx2csv = "*"
 xlsxwriter = "*"
 connectorx = "*"
 sqlalchemy = "*"
+dotnet-runtime = "8.*"
 
 [feature.testing.tasks]
 check = "pyrefly check --ignore missing-import"
@@ -105,6 +106,7 @@ test = {cmd="echo 'All tests passed!'", depends-on = [
     # "test_mol",
     "test_info_score",
     "test_isotopic_pattern",
+    "test_thermo",
 
   ]}
 test_core_utils = "pytest tests/hrms_core"
@@ -114,6 +116,7 @@ test_mol = "python tests/rdkit/mol.py"
 test_info_score = "python tests/spectral/test_spectral_information.py"
 test_isotopic_pattern = "pytest tests/hrms_core/test_isotopic_pattern.py"
 test_mzml = "pytest tests/hrms_core/test_mzml_io.py"
+test_thermo = "pytest tests/hrms_core/test_thermo_io.py"
 
 convert_msp = "python scripts/convert_msp.py"
 
