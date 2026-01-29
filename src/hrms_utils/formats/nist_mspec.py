@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Dict, Iterable, TypeVar, cast
 
 # import numpy as np
+import polars as pl
 import polars.selectors as plcs
 
 from ..formula_annotation.element_table import ADDUCT_MASSES
@@ -464,14 +465,14 @@ def _annotate_spectra(
             .alias("raw_spectrum_intensity")
         )
         .with_columns(
-            pl.struct(
+            pl.struct(  # type: ignore[missing-attribute]
                 [
                     pl.col("precursor_formula_array").alias("precursor_formula"),
                     pl.col("raw_spectrum_mz").alias("mz"),
                     pl.col("raw_spectrum_intensity").alias("intensities"),
                 ]
             )
-            .mass_decomposition.clean_and_normalize_spectrum(  # type: ignore[missing-attribute]
+            .mass_decomposition.clean_and_normalize_spectrum(
                 raw_fragment_tolerance_ppm=raw_fragment_tolerance_ppm,
                 normalized_fragment_tolerance_ppm=normalized_fragment_tolerance_ppm,
                 min_dbe=-0.5,
@@ -579,16 +580,16 @@ def _add_spectral_information_score(data: polarsFrame) -> polarsFrame:
                 ]
             ).alias("spectra_for_spectral_info")
         ).with_columns(
-            pl.col("spectra_for_spectral_info")
+            pl.col("spectra_for_spectral_info")  # type: ignore[missing-attribute]
             .spectral_info.spectral_info_score(
                 distance_metric="l2", ignore_hydrogens=True
             )
-            .alias("spectral_information_score"),  # type: ignore[missing-attribute]
-            pl.col("spectra_for_spectral_info")
+            .alias("spectral_information_score"),
+            pl.col("spectra_for_spectral_info")  # type: ignore[missing-attribute]
             .spectral_info.spectral_info_score(
                 distance_metric="l2", ignore_hydrogens=False
             )
-            .alias("spectral_information_score_with_hydrogens"),  # type: ignore[missing-attribute]
+            .alias("spectral_information_score_with_hydrogens"),
         ),
     )
 

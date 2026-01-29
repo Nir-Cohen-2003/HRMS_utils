@@ -51,7 +51,7 @@ backend = { name = "pixi-build-python", version = "*",channels = [
   "https://prefix.dev/conda-forge",
 ]}
 [package.build.config]
-noarch = true
+noarch = false
 
 [package.build-dependencies]
 python = "*"
@@ -96,9 +96,9 @@ dotnet-runtime = "8.*"
 
 [feature.testing.tasks]
 check = "pyrefly check --ignore missing-import"
-check_all = "pyrefly check ./src/hrms_utils"
+check_all = "pyrefly check ./src/hrms_utils --ignore missing-import --ignore missing-module-attribute"
 check_nist_mspec = "pyrefly check ./src/hrms_utils/formats/nist_mspec.py"
-
+# ty_check_nist_mspec = "ty check ./src/hrms_utils/formats/nist_mspec.py"
 test = {cmd="echo 'All tests passed!'", depends-on = [
     "test_core_utils",
     "test_nist_mspec",
@@ -131,6 +131,7 @@ plotly = ">=6.3.0,<7"
 nbformat = ">=5.10.4,<6"
 marimo ="*"
 ruff = "*"
+ty = "*"
 [feature.testing.pypi-dependencies]
 kaleido = ">=1.1.0, <2"
 

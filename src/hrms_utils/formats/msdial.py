@@ -1,48 +1,61 @@
-import polars as pl
-import numpy as np
+from dataclasses import dataclass
 from pathlib import Path
 from time import time
-from dataclasses import dataclass
-from typing import List, Tuple, Dict, TypeVar, cast, Iterable
+from typing import Dict, Iterable, List, Tuple, TypeVar, cast
+
+import numpy as np
+import polars as pl
+
 from ..formula_annotation.element_table import ELEMENT_INDEX, ELEMENT_MASSES
 from ..hrms_core import *
 
-T = TypeVar('T', pl.DataFrame, pl.LazyFrame)
+T = TypeVar("T", pl.DataFrame, pl.LazyFrame)
 
 
 MSDIAL_columns_to_read = {
-    'Peak ID': pl.Int64,
-    'Scan': pl.Int64,
-    'RT left(min)': pl.Float64, 
-    'RT (min)': pl.Float64, 
-    'RT right (min)': pl.Float64,
-    'Precursor m/z': pl.Float64,
-    'Height': pl.Float64, 
-    'Adduct': pl.String,
-    'Isotope': pl.Int32, 
-    'MSMS spectrum': pl.String, # will be converted to 2 lists, m/z and intensity
-    'MS1 isotopes': pl.String, # will be converted to 2 lists, m/z and intensity
+    "Peak ID": pl.Int64,
+    "Scan": pl.Int64,
+    "RT left(min)": pl.Float64,
+    "RT (min)": pl.Float64,
+    "RT right (min)": pl.Float64,
+    "Precursor m/z": pl.Float64,
+    "Height": pl.Float64,
+    "Adduct": pl.String,
+    "Isotope": pl.Int32,
+    "MSMS spectrum": pl.String,  # will be converted to 2 lists, m/z and intensity
+    "MS1 isotopes": pl.String,  # will be converted to 2 lists, m/z and intensity
 }
 
 MSDIAL_other_columns = [
-    'Estimated noise', 'S/N',
-    'Sharpness', 'Gaussian similarity', 'Ideal slope', 'Symmetry', 'MS1 isotopes' #'S/N', (second S/N has the same values as the first one.)
+    "Estimated noise",
+    "S/N",
+    "Sharpness",
+    "Gaussian similarity",
+    "Ideal slope",
+    "Symmetry",
+    "MS1 isotopes",  #'S/N', (second S/N has the same values as the first one.)
 ]
 
 
-MSDIAL_columns_to_output= [
-    'Peak ID',
-    'RT (min)',
-    'Precursor_mz_MSDIAL',
-    'Height', 
-    'Precursor_type_MSDIAL', 
+MSDIAL_columns_to_output = [
+    "Peak ID",
+    "RT (min)",
+    "Precursor_mz_MSDIAL",
+    "Height",
+    "Precursor_type_MSDIAL",
     "Isotope",
-    'msms_m/z', 'msms_intensity', 
-    'isobars',
-    'msms_m/z_cleaned', 'msms_intensity_cleaned',
-    'energy_is_too_low', 'energy_is_too_high',
-    'ms1_isotopes_m/z', 'ms1_isotopes_intensity'
+    "msms_m/z",
+    "msms_intensity",
+    "isobars",
+    "msms_m/z_cleaned",
+    "msms_intensity_cleaned",
+    "energy_is_too_low",
+    "energy_is_too_high",
+    "ms1_isotopes_m/z",
+    "ms1_isotopes_intensity",
 ]
+
+
 @dataclass
 class blank_config:
     ms1_mass_tolerance: float = 3e-6
@@ -52,72 +65,75 @@ class blank_config:
     dRT_min_with_ms2: float = 0.3
     ms2_fit: float = 0.85
     ms2_mass_tolerance: float = 5e-6  # new field
-    noise_threshold: float = 0.005    # new field
+    noise_threshold: float = 0.005  # new field
 
     def __post_init__(self):
-        if self.ms1_mass_tolerance > 0.0001:  # if the value is more than 0.0001, its a ppm value and we multiply by 1e-6
+        if (
+            self.ms1_mass_tolerance > 0.0001
+        ):  # if the value is more than 0.0001, its a ppm value and we multiply by 1e-6
             self.ms1_mass_tolerance = self.ms1_mass_tolerance * 1e-6
         if self.use_ms2:
             # Ensure ms2_mass_tolerance and noise_threshold are set if use_ms2 is True
-            if not hasattr(self, 'ms2_mass_tolerance') or self.ms2_mass_tolerance is None:
+            if (
+                not hasattr(self, "ms2_mass_tolerance")
+                or self.ms2_mass_tolerance is None
+            ):
                 self.ms2_mass_tolerance = 5e-6
-            if not hasattr(self, 'noise_threshold') or self.noise_threshold is None:
+            if not hasattr(self, "noise_threshold") or self.noise_threshold is None:
                 self.noise_threshold = 0.005
 
     def to_dict(self) -> dict:
         return {
-            'ms1_mass_tolerance': self.ms1_mass_tolerance,
-            'dRT_min': self.dRT_min,
-            'ratio': self.ratio,
-            'use_ms2': self.use_ms2,
-            'dRT_min_with_ms2': self.dRT_min_with_ms2,
-            'ms2_fit': self.ms2_fit,
-            'ms2_mass_tolerance': self.ms2_mass_tolerance,
-            'noise_threshold': self.noise_threshold
+            "ms1_mass_tolerance": self.ms1_mass_tolerance,
+            "dRT_min": self.dRT_min,
+            "ratio": self.ratio,
+            "use_ms2": self.use_ms2,
+            "dRT_min_with_ms2": self.dRT_min_with_ms2,
+            "ms2_fit": self.ms2_fit,
+            "ms2_mass_tolerance": self.ms2_mass_tolerance,
+            "noise_threshold": self.noise_threshold,
         }
 
     @classmethod
-    def from_dict(cls, config_dict: dict) -> 'blank_config':
+    def from_dict(cls, config_dict: dict) -> "blank_config":
         return cls(**config_dict)
 
 
-
-def get_chromatogram(path: str | Path)-> pl.DataFrame :
-    '''Reads the .txt output of a complete chromatogram from MSDIAL (note- use the "trim content fo excel option), and returns a polars dataframe with the following schema:
-        Peak ID: pl.Int64
-        RT (min): pl.Float64
-        Precursor_mz_MSDIAL: pl.Float64
-        Height: pl.Float64
-        Precursor_type_MSDIAL: pl.String
-        msms_m/z: pl.List(pl.Float64)
-        msms_intensity: pl.List(pl.Float64)
-        isobars: pl.List(pl.Int64)
-        msms_m/z_cleaned: pl.List(pl.Float64)
-        msms_intensity_cleaned: pl.List(pl.Float64)
-        energy_is_too_low: pl.Boolean
-        energy_is_too_high: pl.Boolean
-        ms1_isotopes_m/z: pl.List(pl.Float64)
-        ms1_isotopes_intensity: pl.List(pl.Float64)
-    '''
+def get_chromatogram(path: str | Path) -> pl.DataFrame:
+    """Reads the .txt output of a complete chromatogram from MSDIAL (note- use the "trim content fo excel option), and returns a polars dataframe with the following schema:
+    Peak ID: pl.Int64
+    RT (min): pl.Float64
+    Precursor_mz_MSDIAL: pl.Float64
+    Height: pl.Float64
+    Precursor_type_MSDIAL: pl.String
+    msms_m/z: pl.List(pl.Float64)
+    msms_intensity: pl.List(pl.Float64)
+    isobars: pl.List(pl.Int64)
+    msms_m/z_cleaned: pl.List(pl.Float64)
+    msms_intensity_cleaned: pl.List(pl.Float64)
+    energy_is_too_low: pl.Boolean
+    energy_is_too_high: pl.Boolean
+    ms1_isotopes_m/z: pl.List(pl.Float64)
+    ms1_isotopes_intensity: pl.List(pl.Float64)
+    """
     chromatogram = _get_chromatogram_basic(path=path)
     chromatogram = _annotate_isobars_and_clean_spectrum(chromatogram=chromatogram)
     chromatogram = _add_energy_annotation(chromatogram=chromatogram)
     chromatogram = chromatogram.select(MSDIAL_columns_to_output)
-    if not isinstance(chromatogram,pl.DataFrame):
+    if not isinstance(chromatogram, pl.DataFrame):
         raise Exception("failed getting chromatogram from the file: " + str(path))
-    
+
     return chromatogram
 
 
 def subtract_blank_frame(
-        sample_df: pl.DataFrame, 
-        blank_df: pl.DataFrame, 
-        config:blank_config) -> pl.DataFrame:
-    '''subtracts a blank chromatogram, using ms1, ms2 and RT. 
-    in absense of ms2 for either the blank or the sample compound, a stricter rt threshold is used. 
-    keep dRT_min_with_ms2 > dRT_min, or the logic gets wrong.'''
+    sample_df: pl.DataFrame, blank_df: pl.DataFrame, config: blank_config
+) -> pl.DataFrame:
+    """subtracts a blank chromatogram, using ms1, ms2 and RT.
+    in absense of ms2 for either the blank or the sample compound, a stricter rt threshold is used.
+    keep dRT_min_with_ms2 > dRT_min, or the logic gets wrong."""
 
-    if not config.use_ms2: #so when both sample and blank spectra has msms, we require a 0.85 fit on ms2, but lower fit on rt. if any of them lacks ms2, we just use strict rt.
+    if not config.use_ms2:  # so when both sample and blank spectra has msms, we require a 0.85 fit on ms2, but lower fit on rt. if any of them lacks ms2, we just use strict rt.
         sample_lf = sample_df.select(
             [
                 "Peak ID",
@@ -137,71 +153,82 @@ def subtract_blank_frame(
         subtract_df = sample_lf.join_where(
             blank_lf,
             pl.col("RT (min)") < pl.col("RT (min)_blank") + config.dRT_min,
-            pl.col("RT (min)") > pl.col("RT (min)_blank") -  config.dRT_min,
-            (pl.col("Precursor_mz_MSDIAL").truediv(pl.col("Precursor_mz_MSDIAL_blank"))-1.0).abs().le(config.ms1_mass_tolerance),
-            pl.col("Height") <  pl.col("Height_blank") * config.ratio,
-            suffix="_blank"
+            pl.col("RT (min)") > pl.col("RT (min)_blank") - config.dRT_min,
+            (
+                pl.col("Precursor_mz_MSDIAL").truediv(
+                    pl.col("Precursor_mz_MSDIAL_blank")
+                )
+                - 1.0
+            )
+            .abs()
+            .le(config.ms1_mass_tolerance),
+            pl.col("Height") < pl.col("Height_blank") * config.ratio,
+            suffix="_blank",
         ).collect(engine="streaming")
-    else: # so we just use strict rt
+    else:  # so we just use strict rt
         sample_lf = sample_df.select(
             [
                 "Peak ID",
                 "RT (min)",
                 "Precursor_mz_MSDIAL",
                 "Height",
-                'msms_m/z',
-                'msms_intensity'
+                "msms_m/z",
+                "msms_intensity",
             ]
         ).lazy()
         blank_lf = blank_df.select(
-            [
-                "RT (min)",
-                "Precursor_mz_MSDIAL",
-                "Height",
-                'msms_m/z',
-                'msms_intensity'
-            ]
+            ["RT (min)", "Precursor_mz_MSDIAL", "Height", "msms_m/z", "msms_intensity"]
         ).lazy()
         subtract_lf = sample_lf.join_where(
             blank_lf,
             pl.col("RT (min)") < pl.col("RT (min)_blank") + config.dRT_min_with_ms2,
             pl.col("RT (min)") > pl.col("RT (min)_blank") - config.dRT_min_with_ms2,
-            (pl.col("Precursor_mz_MSDIAL").truediv(pl.col("Precursor_mz_MSDIAL_blank"))-1).abs().le(config.ms1_mass_tolerance),
-            pl.col("Height") <  pl.col("Height_blank") * config.ratio,
-            suffix="_blank"
+            (
+                pl.col("Precursor_mz_MSDIAL").truediv(
+                    pl.col("Precursor_mz_MSDIAL_blank")
+                )
+                - 1
+            )
+            .abs()
+            .le(config.ms1_mass_tolerance),
+            pl.col("Height") < pl.col("Height_blank") * config.ratio,
+            suffix="_blank",
         )
         subtract_lf_rt_strict = subtract_lf.filter(
-            pl.col('msms_m/z').is_null() | 
-            pl.col('msms_m/z_blank').is_null()
+            pl.col("msms_m/z").is_null() | pl.col("msms_m/z_blank").is_null()
         )
         subtract_lf_rt_strict = subtract_lf_rt_strict.filter(
             pl.col("RT (min)") < pl.col("RT (min)_blank") + config.dRT_min,
-            pl.col("RT (min)") > pl.col("RT (min)_blank") - config.dRT_min
+            pl.col("RT (min)") > pl.col("RT (min)_blank") - config.dRT_min,
         )
 
         subtract_df_ms2 = subtract_lf.filter(
-            pl.col('msms_m/z').is_not_null(),
-            pl.col('msms_m/z_blank').is_not_null()
+            pl.col("msms_m/z").is_not_null(), pl.col("msms_m/z_blank").is_not_null()
         ).collect(engine="streaming")
-        
+
         subtract_df_ms2 = subtract_df_ms2.filter(
-            pl.struct(
-                pl.col('msms_intensity').alias('intensities1'),
-                pl.col('msms_m/z').alias('mz1'),
-                pl.col('msms_intensity_blank').alias('intensities2'),
-                pl.col('msms_m/z_blank').alias('mz2'),
-                pl.col('Precursor_mz_MSDIAL').alias('precursor_mz1'),
-                pl.col('Precursor_mz_MSDIAL_blank').alias('precursor_mz2'),
-            ).spectral_similarity.dotprod_similarity( #type: ignore[missing-attribute]
+            pl.struct(  # type: ignore[missing-attribute]
+                pl.col("msms_intensity").alias("intensities1"),
+                pl.col("msms_m/z").alias("mz1"),
+                pl.col("msms_intensity_blank").alias("intensities2"),
+                pl.col("msms_m/z_blank").alias("mz2"),
+                pl.col("Precursor_mz_MSDIAL").alias("precursor_mz1"),
+                pl.col("Precursor_mz_MSDIAL_blank").alias("precursor_mz2"),
+            )
+            .spectral_similarity.dotprod_similarity(
                 ms2_tolerance_in_ppm=config.ms2_mass_tolerance,
                 clean_spectra_first=True,
                 noise_threshold=0.001,
                 ignore_precursor=True,
-            ).ge(config.ms2_fit))
-        
-        subtract_df = pl.concat([subtract_df_ms2,subtract_lf_rt_strict.collect(engine="streaming")])
+            )
+            .ge(config.ms2_fit)
+        )
 
-    cleaned_sample_df = sample_df.join(subtract_df,on="Peak ID", how='anti')
+        subtract_df = pl.concat(
+            [subtract_df_ms2, subtract_lf_rt_strict.collect(engine="streaming")]
+        )
+
+    cleaned_sample_df = sample_df.join(subtract_df, on="Peak ID", how="anti")
     return cleaned_sample_df
 
 
@@ -319,170 +346,260 @@ def annotate_chromatogram_with_formulas(
       ranking/selection is the caller's responsibility.
     """
     # Isotopic pattern deduction
-    chromatogram = chromatogram.with_columns(
-        pl.col("Precursor_mz_MSDIAL").mass_decomposition.deduce_isotopic_pattern( # type: ignore[missing-attribute]
-            ms1_mzs=pl.col("ms1_isotopes_m/z"),
-            ms1_intensities=pl.col("ms1_isotopes_intensity"),
-            ms1_mass_tolerance_ppm=precursor_mass_accuracy_ppm,
-            isotopic_mass_tolerance_ppm=isotopic_mass_accuracy_ppm,
-            minimum_intensity=isotopic_minimum_intensity,
-            intensity_absolute_tolerance=isotopic_intensity_absolute_tolerance,
-            intensity_relative_tolerance=isotopic_intensity_relative_tolerance,
-            max_bounds=max_bounds,
-        ).alias("bounds")
-    ).filter(
-        pl.col("bounds").arr.min().ge(0)  # Filter out rows where pattern deduction failed, which is signaled by negative bounds
-    ).with_columns(
-        pl.col("bounds").arr.slice(0, length=NUM_ELEMENTS).list.to_array(width=NUM_ELEMENTS).alias("min_bounds"),
-        pl.col("bounds").arr.slice(NUM_ELEMENTS, length=NUM_ELEMENTS).list.to_array(width=NUM_ELEMENTS).alias("max_bounds")
+    chromatogram = (
+        chromatogram.with_columns(
+            pl.col("Precursor_mz_MSDIAL")  # type: ignore[missing-attribute]
+            .mass_decomposition.deduce_isotopic_pattern(
+                ms1_mzs=pl.col("ms1_isotopes_m/z"),
+                ms1_intensities=pl.col("ms1_isotopes_intensity"),
+                ms1_mass_tolerance_ppm=precursor_mass_accuracy_ppm,
+                isotopic_mass_tolerance_ppm=isotopic_mass_accuracy_ppm,
+                minimum_intensity=isotopic_minimum_intensity,
+                intensity_absolute_tolerance=isotopic_intensity_absolute_tolerance,
+                intensity_relative_tolerance=isotopic_intensity_relative_tolerance,
+                max_bounds=max_bounds,
+            )
+            .alias("bounds")
+        )
+        .filter(
+            pl.col("bounds")
+            .arr.min()
+            .ge(
+                0
+            )  # Filter out rows where pattern deduction failed, which is signaled by negative bounds
+        )
+        .with_columns(
+            pl.col("bounds")
+            .arr.slice(0, length=NUM_ELEMENTS)
+            .list.to_array(width=NUM_ELEMENTS)
+            .alias("min_bounds"),
+            pl.col("bounds")
+            .arr.slice(NUM_ELEMENTS, length=NUM_ELEMENTS)
+            .list.to_array(width=NUM_ELEMENTS)
+            .alias("max_bounds"),
+        )
     )
     # Mass decomposition
-    chromatogram = chromatogram.with_columns(
-        pl.struct(
-            pl.col("Precursor_mz_MSDIAL").alias("mass"),
-            pl.col("min_bounds"),
-            pl.col("max_bounds"),
-        ).mass_decomposition.decompose_mass_with_bounds( #type: ignore[missing-attribute]
-            tolerance_ppm=precursor_mass_accuracy_ppm,
+    chromatogram = (
+        chromatogram.with_columns(
+            pl.struct(  # type: ignore[missing-attribute]
+                pl.col("Precursor_mz_MSDIAL").alias("mass"),
+                pl.col("min_bounds"),
+                pl.col("max_bounds"),
+            )
+            .mass_decomposition.decompose_mass_with_bounds(
+                tolerance_ppm=precursor_mass_accuracy_ppm,
+            )
+            .alias("decomposed_formulas_struct")
         )
-        .alias("decomposed_formulas_struct")
-    ).with_columns(
-        pl.col("decomposed_formulas_struct").struct.field("formulas").alias("precursor_formula"),
-        pl.col("decomposed_formulas_struct").struct.field("formulas_str").alias("precursor_formula_str"),
-        pl.col("decomposed_formulas_struct").struct.field("errors_ppm").alias("precursor_errors_ppm"),
-    ).drop(["bounds", "decomposed_formulas_struct"])
-    chromatogram = chromatogram.explode(["precursor_formula", "precursor_formula_str", "precursor_errors_ppm"])
+        .with_columns(
+            pl.col("decomposed_formulas_struct")
+            .struct.field("formulas")
+            .alias("precursor_formula"),
+            pl.col("decomposed_formulas_struct")
+            .struct.field("formulas_str")
+            .alias("precursor_formula_str"),
+            pl.col("decomposed_formulas_struct")
+            .struct.field("errors_ppm")
+            .alias("precursor_errors_ppm"),
+        )
+        .drop(["bounds", "decomposed_formulas_struct"])
+    )
+    chromatogram = chromatogram.explode(
+        ["precursor_formula", "precursor_formula_str", "precursor_errors_ppm"]
+    )
 
     # Cleaning + normalization
-    chromatogram = chromatogram.rechunk().with_columns(
-        pl.struct(
-            pl.col("msms_m/z").alias("mz"),
-            pl.col("msms_intensity").alias("intensities"),
-            pl.col("precursor_formula"),
+    chromatogram = (
+        chromatogram.rechunk()
+        .with_columns(
+            pl.struct(  # type: ignore[missing-attribute]
+                pl.col("msms_m/z").alias("mz"),
+                pl.col("msms_intensity").alias("intensities"),
+                pl.col("precursor_formula"),
+            )
+            .mass_decomposition.clean_and_normalize_spectrum(
+                raw_fragment_tolerance_ppm=fragment_mass_accuracy_ppm,
+                normalized_fragment_tolerance_ppm=normalized_fragment_mass_accuracy_ppm,
+                min_dbe=-0.5,
+                max_dbe=30.0,
+                dbe_mode="half_integer",
+                water_absorption=False,
+            )
+            .alias("cleaned_spectra")
         )
-        .mass_decomposition.clean_and_normalize_spectrum( #type: ignore[missing-attribute]
-            raw_fragment_tolerance_ppm=fragment_mass_accuracy_ppm,
-            normalized_fragment_tolerance_ppm=normalized_fragment_mass_accuracy_ppm,
-            min_dbe=-0.5,
-            max_dbe=30.0,
-            dbe_mode="half_integer",
-            water_absorption=False
+        .with_columns(
+            pl.col("cleaned_spectra")
+            .struct.field("normalized_masses")
+            .alias("cleaned_msms_mz"),
+            pl.col("cleaned_spectra")
+            .struct.field("intensities")
+            .alias("cleaned_msms_intensity"),
+            pl.col("cleaned_spectra")
+            .struct.field("formulas")
+            .alias("cleaned_spectrum_formulas"),
+            pl.col("cleaned_spectra")
+            .struct.field("formulas_str")
+            .alias("cleaned_spectrum_formulas_str"),
+            pl.col("cleaned_spectra")
+            .struct.field("errors_ppm")
+            .alias("cleaned_fragment_errors_ppm"),
         )
-        .alias("cleaned_spectra")
-    ).with_columns(
-        pl.col("cleaned_spectra").struct.field("normalized_masses").alias("cleaned_msms_mz"),
-        pl.col("cleaned_spectra").struct.field("intensities").alias("cleaned_msms_intensity"),
-        pl.col("cleaned_spectra").struct.field("formulas").alias("cleaned_spectrum_formulas"),
-        pl.col("cleaned_spectra").struct.field("formulas_str").alias("cleaned_spectrum_formulas_str"),
-        pl.col("cleaned_spectra").struct.field("errors_ppm").alias("cleaned_fragment_errors_ppm"),
-    ).drop("cleaned_spectra")
-    
+        .drop("cleaned_spectra")
+    )
+
     return chromatogram
 
 
-def _get_chromatogram_basic(path: str | Path)-> pl.DataFrame :
+def _get_chromatogram_basic(path: str | Path) -> pl.DataFrame:
     chromatogram = pl.read_csv(
-        source=path,has_header=True,skip_rows=0,separator="	", null_values='null',
-        columns=list(MSDIAL_columns_to_read.keys()), #type: ignore[no-matching-overload]
-        schema_overrides=MSDIAL_columns_to_read)
+        source=path,
+        has_header=True,
+        skip_rows=0,
+        separator="	",
+        null_values="null",
+        columns=list(MSDIAL_columns_to_read.keys()),  # type: ignore[no-matching-overload]
+        schema_overrides=MSDIAL_columns_to_read,
+    )
     # chromatogram = chromatogram.select(MSDIAL_columns_to_read.keys())
-    chromatogram = _convert_spectra_to_list(chromatogram).drop(['MSMS spectrum',"MS1 isotopes"])
-    chromatogram=chromatogram.with_columns(
-        pl.col('RT right (min)').sub(pl.col('RT left(min)')).alias('peak_width_min'),
-        pl.col('Precursor m/z').round(0).cast(pl.Int64).alias('nominal_mass'),
-        pl.col('RT (min)').mul(60).round(0).cast(pl.Int64).alias('RT_(sec)'),
-        pl.col('Precursor m/z').round(4).alias('Precursor m/z'),
-        
+    chromatogram = _convert_spectra_to_list(chromatogram).drop(
+        ["MSMS spectrum", "MS1 isotopes"]
+    )
+    chromatogram = chromatogram.with_columns(
+        pl.col("RT right (min)").sub(pl.col("RT left(min)")).alias("peak_width_min"),
+        pl.col("Precursor m/z").round(0).cast(pl.Int64).alias("nominal_mass"),
+        pl.col("RT (min)").mul(60).round(0).cast(pl.Int64).alias("RT_(sec)"),
+        pl.col("Precursor m/z").round(4).alias("Precursor m/z"),
     ).rename(
         {
-        'Precursor m/z':'Precursor_mz_MSDIAL',
-        'Adduct':'Precursor_type_MSDIAL', 
+            "Precursor m/z": "Precursor_mz_MSDIAL",
+            "Adduct": "Precursor_type_MSDIAL",
         }
     )
-    
+
     return chromatogram
 
-def _add_energy_annotation(chromatogram:pl.DataFrame) -> pl.DataFrame:
-    chromatogram_with_msms = chromatogram.filter(pl.col('msms_m/z').is_not_null())
-    chromatogram_with_msms = chromatogram_with_msms.with_columns( # get the index of the molecular ion, if it even exists
-        molecular_ion_index=(pl.col('msms_m/z')-pl.col('Precursor_mz_MSDIAL')).list.eval(pl.element().abs()).list.arg_min()
-    ) #this will return an index even if there is no molecular ion.
+
+def _add_energy_annotation(chromatogram: pl.DataFrame) -> pl.DataFrame:
+    chromatogram_with_msms = chromatogram.filter(pl.col("msms_m/z").is_not_null())
+    chromatogram_with_msms = chromatogram_with_msms.with_columns(  # get the index of the molecular ion, if it even exists
+        molecular_ion_index=(pl.col("msms_m/z") - pl.col("Precursor_mz_MSDIAL"))
+        .list.eval(pl.element().abs())
+        .list.arg_min()
+    )  # this will return an index even if there is no molecular ion.
     chromatogram_with_msms = chromatogram_with_msms.with_columns(
         molecular_ion_intensity=pl.when(
-            (pl.col('msms_m/z').list.get(pl.col('molecular_ion_index')) - pl.col('Precursor_mz_MSDIAL'))<0.003 # 3 mDa as the tolerance
-        ).then(pl.col('msms_intensity').list.get(pl.col('molecular_ion_index'))).otherwise(pl.lit(0)),
-        second_highest_intensity=pl.col('msms_intensity').list.sort(descending=True,nulls_last=True).list.get(1,null_on_oob=True).fill_null(pl.lit(0))#for cases where there is only one peak, we fill this value with 0 
+            (
+                pl.col("msms_m/z").list.get(pl.col("molecular_ion_index"))
+                - pl.col("Precursor_mz_MSDIAL")
+            )
+            < 0.003  # 3 mDa as the tolerance
+        )
+        .then(pl.col("msms_intensity").list.get(pl.col("molecular_ion_index")))
+        .otherwise(pl.lit(0)),
+        second_highest_intensity=pl.col("msms_intensity")
+        .list.sort(descending=True, nulls_last=True)
+        .list.get(1, null_on_oob=True)
+        .fill_null(
+            pl.lit(0)
+        ),  # for cases where there is only one peak, we fill this value with 0
     )
     chromatogram_with_msms = chromatogram_with_msms.with_columns(
-        pl.col('molecular_ion_intensity').le(0.1).alias('energy_is_too_high'),
-        (pl.col('molecular_ion_intensity').eq(1)&pl.col('second_highest_intensity').le(0.2)).alias('energy_is_too_low')
-    ).select(['Peak ID','energy_is_too_high','energy_is_too_low'])
-    return chromatogram.join(other=chromatogram_with_msms,on='Peak ID',how='left')
-
+        pl.col("molecular_ion_intensity").le(0.1).alias("energy_is_too_high"),
+        (
+            pl.col("molecular_ion_intensity").eq(1)
+            & pl.col("second_highest_intensity").le(0.2)
+        ).alias("energy_is_too_low"),
+    ).select(["Peak ID", "energy_is_too_high", "energy_is_too_low"])
+    return chromatogram.join(other=chromatogram_with_msms, on="Peak ID", how="left")
 
 
 def _convert_spectra_to_list(chromatogram: T) -> T:
-
-    return cast(T,chromatogram.with_columns(
-        pl.col('MSMS spectrum').str.extract_all(
-            pattern=r'(\d+\.\d+)'
-        ).list.eval(pl.element().cast(pl.Float64)).alias('msms_m/z'),
-        pl.col('MSMS spectrum').str.extract_all(
-            pattern=r'(\d+)\s|(\d+$)'
-        ).list.eval(pl.element().str.extract( pattern=r'(\d+)').cast(pl.Float64).round(4)).alias('msms_intensity'),
-        pl.col('MS1 isotopes').str.extract_all(
-            pattern=r'(\d+\.\d+)'
-        ).list.eval(pl.element().cast(pl.Float64)).alias('ms1_isotopes_m/z'),
-        pl.col('MS1 isotopes').str.extract_all(
-            pattern=r'(\d+)\s|(\d+$)'
-        ).list.eval(pl.element().str.extract( pattern=r'(\d+)').cast(pl.Float64).round(4)).alias('ms1_isotopes_intensity')
-    ).with_columns(
-        pl.col('msms_intensity').truediv(pl.col('msms_intensity').list.max())
-    ))
+    return cast(
+        T,
+        chromatogram.with_columns(
+            pl.col("MSMS spectrum")
+            .str.extract_all(pattern=r"(\d+\.\d+)")
+            .list.eval(pl.element().cast(pl.Float64))
+            .alias("msms_m/z"),
+            pl.col("MSMS spectrum")
+            .str.extract_all(pattern=r"(\d+)\s|(\d+$)")
+            .list.eval(
+                pl.element().str.extract(pattern=r"(\d+)").cast(pl.Float64).round(4)
+            )
+            .alias("msms_intensity"),
+            pl.col("MS1 isotopes")
+            .str.extract_all(pattern=r"(\d+\.\d+)")
+            .list.eval(pl.element().cast(pl.Float64))
+            .alias("ms1_isotopes_m/z"),
+            pl.col("MS1 isotopes")
+            .str.extract_all(pattern=r"(\d+)\s|(\d+$)")
+            .list.eval(
+                pl.element().str.extract(pattern=r"(\d+)").cast(pl.Float64).round(4)
+            )
+            .alias("ms1_isotopes_intensity"),
+        ).with_columns(
+            pl.col("msms_intensity").truediv(pl.col("msms_intensity").list.max())
+        ),
+    )
 
 
 def _annotate_isobars_and_clean_spectrum(chromatogram: T) -> pl.DataFrame:
     chromatogram_lf = chromatogram.lazy()
-    chromatogram_with_msms = chromatogram_lf.filter(pl.col('msms_intensity').is_not_null()) #why? cause otherwise we don't know how to subtract spectrum
+    chromatogram_with_msms = chromatogram_lf.filter(
+        pl.col("msms_intensity").is_not_null()
+    )  # why? cause otherwise we don't know how to subtract spectrum
 
-    
     isobars = chromatogram_with_msms.join_where(
         chromatogram_with_msms,
         # pl.col('Precursor_mz_MSDIAL').round(decimals=0).eq(pl.col('Precursor_mz_MSDIAL_isobar').round(decimals=0)),
         # pl.col('Precursor_mz_MSDIAL').round(decimals=0).cast(pl.UInt16).eq(pl.col('Precursor_mz_MSDIAL_isobar').round(decimals=0).cast(pl.UInt16)),
-        pl.col('nominal_mass').eq(pl.col('nominal_mass_isobar')),
-        pl.col('RT_(sec)').sub(pl.col('RT_(sec)_isobar')).abs().le(pl.lit(6,dtype=pl.Int64)), #less than 6 seconds of difference
-        pl.col('Height').truediv(pl.col('Height_isobar')).le(pl.lit(3,dtype=pl.Int64)), #the contaminant is at least a third as high
-        pl.col('Peak ID').ne(pl.col('Peak ID_isobar')) # to prevent compunds from being the isobars of themselves
-        ,suffix='_isobar'
-        )
+        pl.col("nominal_mass").eq(pl.col("nominal_mass_isobar")),
+        pl.col("RT_(sec)")
+        .sub(pl.col("RT_(sec)_isobar"))
+        .abs()
+        .le(pl.lit(6, dtype=pl.Int64)),  # less than 6 seconds of difference
+        pl.col("Height")
+        .truediv(pl.col("Height_isobar"))
+        .le(pl.lit(3, dtype=pl.Int64)),  # the contaminant is at least a third as high
+        pl.col("Peak ID").ne(
+            pl.col("Peak ID_isobar")
+        ),  # to prevent compunds from being the isobars of themselves
+        suffix="_isobar",
+    )
 
-    isobars = isobars.group_by('Peak ID').all()
-    isobars = isobars.with_columns(pl.col('Peak ID_isobar').alias('isobars'))
-    isobars = isobars.select(['Peak ID','isobars'])
+    isobars = isobars.group_by("Peak ID").all()
+    isobars = isobars.with_columns(pl.col("Peak ID_isobar").alias("isobars"))
+    isobars = isobars.select(["Peak ID", "isobars"])
 
-    chromatogram_lf = chromatogram_lf.join(isobars,on='Peak ID',how='left')
+    chromatogram_lf = chromatogram_lf.join(isobars, on="Peak ID", how="left")
     chromatogram_df = chromatogram_lf.collect()
-    
-    only_with_isobars = chromatogram_df.filter(pl.col('isobars').is_not_null())
+
+    only_with_isobars = chromatogram_df.filter(pl.col("isobars").is_not_null())
 
     # ugly workaround. didn't find a better way.
-    only_with_isobars_rows = only_with_isobars.select(['Peak ID','msms_m/z','msms_intensity','RT (min)','isobars','Height']).rows_by_key(key=['Peak ID'],named=True,unique=True)
-    chromatogram_rows = chromatogram_df.rows_by_key(key=['Peak ID'],named=True,unique=True)
+    only_with_isobars_rows = only_with_isobars.select(
+        ["Peak ID", "msms_m/z", "msms_intensity", "RT (min)", "isobars", "Height"]
+    ).rows_by_key(key=["Peak ID"], named=True, unique=True)
+    chromatogram_rows = chromatogram_df.rows_by_key(
+        key=["Peak ID"], named=True, unique=True
+    )
     for compound in only_with_isobars_rows:
-        isobars = only_with_isobars_rows[compound]['isobars']
+        isobars = only_with_isobars_rows[compound]["isobars"]
         for isobar in isobars:
-            only_with_isobars_rows[compound]['msms_m/z'], only_with_isobars_rows[compound]['msms_intensity'] = _subtract_isobar_spectra( # subtracts the second from the first
-                only_with_isobars_rows[compound]['msms_m/z'], 
-                only_with_isobars_rows[compound]['msms_intensity'],
-                only_with_isobars_rows[compound]['RT (min)'], 
-                only_with_isobars_rows[compound]['Height'],
-                chromatogram_rows[isobar]['msms_m/z'],
-                chromatogram_rows[isobar]['msms_intensity'],
-                chromatogram_rows[isobar]['RT (min)'],
-                chromatogram_rows[isobar]['Height']
-                )
-
+            (
+                only_with_isobars_rows[compound]["msms_m/z"],
+                only_with_isobars_rows[compound]["msms_intensity"],
+            ) = _subtract_isobar_spectra(  # subtracts the second from the first
+                only_with_isobars_rows[compound]["msms_m/z"],
+                only_with_isobars_rows[compound]["msms_intensity"],
+                only_with_isobars_rows[compound]["RT (min)"],
+                only_with_isobars_rows[compound]["Height"],
+                chromatogram_rows[isobar]["msms_m/z"],
+                chromatogram_rows[isobar]["msms_intensity"],
+                chromatogram_rows[isobar]["RT (min)"],
+                chromatogram_rows[isobar]["Height"],
+            )
 
     # this block just rearanges the data to a dict of {"Peak ID" : [the IDs], "data1":[the data] etc}
     cleaned_rows = []
@@ -495,70 +612,85 @@ def _annotate_isobars_and_clean_spectrum(chromatogram: T) -> pl.DataFrame:
         for key, value in row.items():
             if key not in result_dict:
                 result_dict[key] = []
-            result_dict[key].append(value) #type: ignore[missing-attribute]
+            result_dict[key].append(value)  # type: ignore[missing-attribute]
 
     chromatogram3 = pl.DataFrame(
         result_dict,
         schema_overrides={
-            'Peak ID': pl.Int64,
-            'msms_m/z': pl.List(pl.Float64),
-            'msms_intensity': pl.List(pl.Float64),
-        })
-    if chromatogram3.is_empty(): # so if there are no isobars, we still have a dataframe
+            "Peak ID": pl.Int64,
+            "msms_m/z": pl.List(pl.Float64),
+            "msms_intensity": pl.List(pl.Float64),
+        },
+    )
+    if (
+        chromatogram3.is_empty()
+    ):  # so if there are no isobars, we still have a dataframe
         chromatogram3 = pl.DataFrame(
-            {'Peak ID': [], 'msms_m/z': [], 'msms_intensity': []},
+            {"Peak ID": [], "msms_m/z": [], "msms_intensity": []},
             schema_overrides={
-                'Peak ID': pl.Int64,
-                'msms_m/z': pl.List(pl.Float64),
-                'msms_intensity': pl.List(pl.Float64),
-            }
+                "Peak ID": pl.Int64,
+                "msms_m/z": pl.List(pl.Float64),
+                "msms_intensity": pl.List(pl.Float64),
+            },
         )
-    chromatogram3 = chromatogram3.select(['Peak ID','msms_m/z','msms_intensity'])
+    chromatogram3 = chromatogram3.select(["Peak ID", "msms_m/z", "msms_intensity"])
 
-    chromatogram_df=chromatogram_df.join(chromatogram3, on="Peak ID",how="left", suffix="_cleaned")
-    chromatogram_df = chromatogram_df.with_columns( #converts empty lists to null
-        pl.when(
-        pl.col('msms_m/z_cleaned').list.len().gt(0)
-        ).then(pl.col('msms_m/z_cleaned')),
-        pl.when(
-        pl.col('msms_intensity_cleaned').list.len().gt(0)
-        ).then(pl.col('msms_intensity_cleaned'))) 
-    
+    chromatogram_df = chromatogram_df.join(
+        chromatogram3, on="Peak ID", how="left", suffix="_cleaned"
+    )
+    chromatogram_df = chromatogram_df.with_columns(  # converts empty lists to null
+        pl.when(pl.col("msms_m/z_cleaned").list.len().gt(0)).then(
+            pl.col("msms_m/z_cleaned")
+        ),
+        pl.when(pl.col("msms_intensity_cleaned").list.len().gt(0)).then(
+            pl.col("msms_intensity_cleaned")
+        ),
+    )
 
     return chromatogram_df
 
+
 def _subtract_isobar_spectra(
-        compound_msms_mz,compound_msms_intensity,
-        compound_RT, compound_height,
-        isobar_msms_mz,isobar_msms_intensity,
-        isobar_RT,isobar_height):
+    compound_msms_mz,
+    compound_msms_intensity,
+    compound_RT,
+    compound_height,
+    isobar_msms_mz,
+    isobar_msms_intensity,
+    isobar_RT,
+    isobar_height,
+):
+    rt_diff = compound_RT - isobar_RT
+    coeff = np.exp(-np.power(rt_diff, 2) * 10) * (isobar_height / compound_height)
+    coeff = np.full_like(isobar_msms_intensity, fill_value=coeff)
+    adj_isobar_msms_intensity = np.multiply(coeff, isobar_msms_intensity)
 
-    rt_diff= compound_RT - isobar_RT
-    coeff = np.exp(-np.power(rt_diff,2)*10) *(isobar_height/compound_height)
-    coeff = np.full_like(isobar_msms_intensity,fill_value=coeff)
-    adj_isobar_msms_intensity = np.multiply(coeff,isobar_msms_intensity)
+    compound_spectra_dict = dict(zip(compound_msms_mz, compound_msms_intensity))
+    isobar_spectra_dict = dict(zip(isobar_msms_mz, adj_isobar_msms_intensity))
+    compound_spectra_dict = {
+        mz: (compound_spectra_dict[mz] - isobar_spectra_dict.get(mz, 0))
+        for mz in compound_spectra_dict.keys()
+    }
 
-    compound_spectra_dict = dict(zip(compound_msms_mz,compound_msms_intensity))
-    isobar_spectra_dict = dict(zip(isobar_msms_mz,adj_isobar_msms_intensity))
-    compound_spectra_dict = {mz: (compound_spectra_dict[mz] - isobar_spectra_dict.get(mz,0)) for mz in compound_spectra_dict.keys()}
-    
-    compound_spectra_dict = {mz: intensity for mz, intensity in compound_spectra_dict.items() if intensity > 0 }
+    compound_spectra_dict = {
+        mz: intensity
+        for mz, intensity in compound_spectra_dict.items()
+        if intensity > 0
+    }
 
-    compound_msms_mz = np.array(list(compound_spectra_dict.keys()),dtype=np.float64)
-    compound_msms_intensity = np.array(list(compound_spectra_dict.values()),dtype=np.float64)
+    compound_msms_mz = np.array(list(compound_spectra_dict.keys()), dtype=np.float64)
+    compound_msms_intensity = np.array(
+        list(compound_spectra_dict.values()), dtype=np.float64
+    )
 
-    return compound_msms_mz,compound_msms_intensity
-    
+    return compound_msms_mz, compound_msms_intensity
 
 
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     start = time()
-    pl.Config(
-    tbl_rows=20,
-    tbl_cols=15)
-    path = Path(r'/home/analytit_admin/Data/iibr_data/250515_006.txt')
-    blank_path = Path(r'/home/analytit_admin/Data/iibr_data/250515_003.txt')
+    pl.Config(tbl_rows=20, tbl_cols=15)
+    path = Path(r"/home/analytit_admin/Data/iibr_data/250515_006.txt")
+    blank_path = Path(r"/home/analytit_admin/Data/iibr_data/250515_003.txt")
     chromatogram = get_chromatogram(path=path)
     blank = get_chromatogram(path=blank_path)
 
@@ -572,10 +704,8 @@ if __name__ == '__main__':
     #     print("wrong output! this must be either a polars lazyframe or dataframe")
     #     print(type(chromatogram))
     chromatogram = subtract_blank_frame(
-        sample_df=chromatogram,
-        blank_df=blank,
-        config=blank_config()
+        sample_df=chromatogram, blank_df=blank, config=blank_config()
     )
     print(chromatogram.head(10))
 
-    print(time()-start)
+    print(time() - start)
