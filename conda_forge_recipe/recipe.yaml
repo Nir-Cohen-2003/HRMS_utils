@@ -25,14 +25,16 @@ requirements:
     - ${{ compiler('rust') }}
     - cargo-bundle-licenses
   host:
-    - python >=3.12
+    - python
     - pip
+    - python-abi3 =3.12
     - setuptools >=68.0.0
     - setuptools-rust >=1.5.0
     - wheel
     - numpy >=1.20.0
   run:
     - python >=3.12
+    - python_abi 3.12 *_cp312
     - polars >=1.35.2,<2
     - rdkit >=2024.0.0
     - numpy >=1.20.0
@@ -67,7 +69,7 @@ about:
   summary: Utilities for high-resolution mass spectrometry (HRMS) data
   description: |
     HRMS_utils provides tools for working with high-resolution mass spectrometry data.
-    The codebase relies heavily on Polars dataframes with spectra often stored as 
+    The codebase relies heavily on Polars dataframes with spectra often stored as
     nested datatypes within these dataframes. Includes Rust extensions for performance-critical
     operations like spectral similarity calculations.
   repository: https://github.com/Nir-Cohen-2003/MS_utils
