@@ -43,6 +43,7 @@ polars = ">=1.37.1,<2"
 cupy = ">=12.3.0,<14"
 numba = ">=0.63.1,<0.64"
 pyarrow = ">=23.0.0,<24"
+psutil = ">=5.9,<7"
 [pypi-dependencies]
 build = "*"
 
@@ -65,6 +66,7 @@ pyarrow = "*"
 cupy = ">=12.0.0, <13.0.0"
 numba = "*"
 numba-cuda = "*"
+psutil = "*"
 
 [feature.testing.tasks]
 check = "pyrefly check --ignore missing-import"
@@ -74,8 +76,8 @@ test-normal = "python -m pytest tests/test_normal_spectra.py -v -s"
 test-problematic = "python -m pytest tests/test_problematic_spectra.py -v -s"
 test-real = "python -m pytest tests/test_real_data.py -v -s"
 
-profile-gpu = {cmd = "python scripts/optimize_gpu_kernel.py --n-spectra 200000 --n-peaks-per-spectrum 50 --output-dir ./full_test --batch-configs \"10000,20000,40000\""}
-profile-gpu-short = {cmd = "python scripts/optimize_gpu_kernel.py --n-spectra 50000 --n-peaks-per-spectrum 50 --output-dir ./short_test --batch-configs \"5000,10000,20000\""}
+profile-gpu = {cmd = "python benchmarks/benchmark_throughput.py --n-left 200000 --n-right 200000 --n-peaks 50"}
+profile-gpu-short = {cmd = "python benchmarks/benchmark_throughput.py --n-left 5000 --n-right 50000 --n-peaks 50"}
 benchmark-expansion-algorithms = {cmd = "python benchmarks/benchmark_expansion_algorithms.py --batch-sizes 1000,5000,10000"}
 benchmark-tolerance-fusion = {cmd = "python benchmarks/benchmark_tolerance_lookup_fusion.py --batch-sizes 1000,5000,10000"}
 benchmark-compare-flash-entropy = {cmd = "python benchmarks/compare_flash_entropy_cosine.py --n-spectra 1000000 --n-queries 1000 --batch-size 2000"}

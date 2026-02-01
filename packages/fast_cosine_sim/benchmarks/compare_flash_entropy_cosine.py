@@ -37,12 +37,9 @@ else:
     print("Please clone/place FlashEntropySearch in the package root.")
 
 try:
-    from fast_cosine_sim import GPUApproximateConfig
-    from fast_cosine_sim.gpu_approximate_similarity import (
-        _sparse_bin_spectra_df_to_csr,
-        construct_expansion_matrix_gpu,
-        batched_approximate_similarity_gpu
-    )
+    from fast_cosine_sim import GPUApproximateConfig, batched_approximate_similarity_gpu
+    from fast_cosine_sim.binning import sparse_bin_spectra_df_to_csr
+    from fast_cosine_sim.gpu_operations import construct_expansion_matrix_gpu, normalize_csr_rows_inplace_gpu
 except ImportError as e:
     print(f"Error importing fast_cosine_sim: {e}")
     sys.exit(1)
@@ -147,7 +144,7 @@ class FastCosineRunner:
         t0 = time.perf_counter()
         
         # 1. Convert to CSR
-        self.csr_matrix = _sparse_bin_spectra_df_to_csr(
+        self.csr_matrix = sparse_bin_spectra_df_to_csr(
             df,
             self.config.mz_col,
             self.config.intensity_col,
@@ -187,7 +184,6 @@ class FastCosineRunner:
         # To separate setup time, we should probably stick to the benchmark_throughput style loop.
         
         import cupyx.scipy.sparse as cps
-        from fast_cosine_sim.gpu_approximate_similarity import _normalize_csr_rows_inplace_gpu
 
         n_spectra = self.csr_matrix.shape[0]
         n_queries = min(n_queries, n_spectra)
@@ -204,7 +200,7 @@ class FastCosineRunner:
             
             # Transfer Left
             left_gpu = cps.csr_matrix(left_csr, dtype=np.float32)
-            _normalize_csr_rows_inplace_gpu(left_gpu)
+            normalize_csr_rows_inplace_gpu(left_gpu)
             
             # Match against all DB (batched)
             for j in range(0, n_spectra, self.batch_size):
@@ -213,7 +209,7 @@ class FastCosineRunner:
                 
                 # Transfer Right
                 right_gpu = cps.csr_matrix(right_csr, dtype=np.float32)
-                _normalize_csr_rows_inplace_gpu(right_gpu)
+                normalize_csr_rows_inplace_gpu(right_gpu)
                 
                 # Expand
                 right_expanded = right_gpu.dot(self.expansion_matrix)

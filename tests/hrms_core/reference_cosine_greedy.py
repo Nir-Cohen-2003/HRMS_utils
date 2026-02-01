@@ -25,7 +25,8 @@ from typing import Tuple
 import numpy as np
 from numpy.typing import NDArray
 
-from fast_cosine_sim.config import MASS_TOLERANCE_CUTOFF
+# Mass tolerance cutoff in Da - below this value, tolerance is computed as cutoff * ppm * 1e-6
+MASS_TOLERANCE_CUTOFF = 200.0
 
 
 def collect_peak_pairs_ppm(
@@ -94,20 +95,16 @@ def collect_peak_pairs_ppm(
             continue
         
         # For each matching peak, compute score
+        # Why: matchms applies mz_power to individual peaks, then multiplies
+        # Formula: score = (mz1^p * int1^q) * (mz2^p * int2^q)
         for j in np.where(within_tolerance)[0]:
             m2 = mz2[j]
             int2 = int2_transformed[j]
             
-            # Compute score: intensity product * mz^mz_power
-            # Why: matchms uses this formula for peak pair scoring
-            if mz_power == 0.0:
-                # Optimize common case: no mz weighting
-                score = float(int1 * int2)
-            else:
-                # Use geometric mean of m/z values for mz weighting
-                # Why: this is how matchms handles mz_power
-                mz_avg = (m1 + m2) / 2.0
-                score = float(int1 * int2 * np.power(mz_avg, mz_power))
+            # Compute weighted intensities for each peak separately
+            power_prod_spec1 = (m1 ** mz_power) * int1
+            power_prod_spec2 = (m2 ** mz_power) * int2
+            score = float(power_prod_spec1 * power_prod_spec2)
             
             pairs.append([i, j, score])
     
@@ -154,7 +151,8 @@ def score_best_matches(
     """
     # Sort pairs by score (descending)
     # Why: greedy algorithm processes highest-scoring pairs first
-    sorted_indices = np.argsort(matching_pairs[:, 2])[::-1]
+    # Use mergesort (stable) to match matchms exactly
+    sorted_indices = np.argsort(matching_pairs[:, 2], kind="mergesort")[::-1]
     sorted_pairs = matching_pairs[sorted_indices]
     
     # Track which peaks have been matched
@@ -183,20 +181,17 @@ def score_best_matches(
         return (0.0, 0)
     
     # Compute normalization factors
-    # Why: standard cosine similarity normalizes by vector norms
+    # Why: matchms computes spec_power = mz^mz_power * intensity^intensity_power
+    # then normalizes by the L2 norm: sqrt(sum(spec_power^2))
     int1_transformed = np.power(intensity1, intensity_power, dtype=np.float64)
     int2_transformed = np.power(intensity2, intensity_power, dtype=np.float64)
     
-    if mz_power == 0.0:
-        # Common case: no mz weighting
-        norm1 = np.linalg.norm(int1_transformed)
-        norm2 = np.linalg.norm(int2_transformed)
-    else:
-        # Apply mz weighting
-        mz1_weighted = np.power(mz1, mz_power / 2.0, dtype=np.float64)
-        mz2_weighted = np.power(mz2, mz_power / 2.0, dtype=np.float64)
-        norm1 = np.linalg.norm(int1_transformed * mz1_weighted)
-        norm2 = np.linalg.norm(int2_transformed * mz2_weighted)
+    # Apply mz power to match matchms: spec_power = mz^mz_power * intensity^intensity_power
+    spec1_power = np.power(mz1, mz_power, dtype=np.float64) * int1_transformed
+    spec2_power = np.power(mz2, mz_power, dtype=np.float64) * int2_transformed
+    
+    norm1 = np.linalg.norm(spec1_power)
+    norm2 = np.linalg.norm(spec2_power)
     
     # Compute normalized cosine score
     if norm1 == 0.0 or norm2 == 0.0:
@@ -207,6 +202,150 @@ def score_best_matches(
     return (float(cosine_score), int(num_matches))
 
 
+def _need_centroid(
+    mz: NDArray[np.float64],
+    tolerance_ppm: float,
+) -> bool:
+    """
+    Check if spectrum needs centroiding based on C's logic.
+    
+    Args:
+        mz: m/z values (must be sorted)
+        tolerance_ppm: tolerance in ppm for peak merging
+        
+    Returns:
+        True if any adjacent peaks are within ppm tolerance
+    """
+    if mz.size < 2 or tolerance_ppm <= 0.0:
+        return False
+    
+    for i in range(len(mz) - 1):
+        tolerance_da = mz[i + 1] * tolerance_ppm * 1e-6
+        if mz[i + 1] - mz[i] <= tolerance_da:
+            return True
+    return False
+
+
+def _centroid_spectrum(
+    mz: NDArray[np.float64],
+    intensity: NDArray[np.float32],
+    tolerance_ppm: float,
+) -> Tuple[NDArray[np.float64], NDArray[np.float32]]:
+    """
+    Centroid a spectrum using the logic from the C code.
+    
+    Merges peaks within ppm tolerance using intensity-weighted average m/z.
+    
+    Args:
+        mz: m/z values
+        intensity: intensity values
+        tolerance_ppm: tolerance in ppm for peak merging
+        
+    Returns:
+        Tuple of (centroided_mz, centroided_intensity)
+    """
+    if mz.size == 0:
+        return mz, intensity
+    
+    # Work with copies
+    peaks_mz = mz.copy()
+    peaks_int = intensity.copy().astype(np.float64)
+    
+    # Get indices sorted by intensity descending
+    argsort = np.argsort(peaks_int)[::-1]
+    
+    for i in range(len(argsort)):
+        idx = argsort[i]
+        
+        if peaks_int[idx] <= 0.0:
+            continue  # Already merged
+        
+        current_mz = peaks_mz[idx]
+        
+        # Calculate tolerance windows
+        if tolerance_ppm > 0.0:
+            mz_delta_left = current_mz * tolerance_ppm * 1e-6
+            mz_delta_right = current_mz * tolerance_ppm / (1e6 - tolerance_ppm)
+        else:
+            mz_delta_left = 0.0
+            mz_delta_right = 0.0
+        
+        # Find range of peaks to potentially merge
+        idx_left = idx
+        while idx_left > 0 and (current_mz - peaks_mz[idx_left - 1]) <= mz_delta_left:
+            idx_left -= 1
+        
+        idx_right = idx
+        while idx_right < len(peaks_mz) - 1 and (peaks_mz[idx_right + 1] - current_mz) <= mz_delta_right:
+            idx_right += 1
+        
+        # Count merge candidates
+        merge_candidates = 0
+        for j in range(idx_left, idx_right + 1):
+            if peaks_int[j] > 0.0:
+                merge_candidates += 1
+        
+        # Merge if there are multiple peaks in range
+        if merge_candidates > 1:
+            intensity_sum = 0.0
+            intensity_weighted_mz_sum = 0.0
+            
+            for j in range(idx_left, idx_right + 1):
+                if peaks_int[j] > 0.0:
+                    intensity_sum += peaks_int[j]
+                    intensity_weighted_mz_sum += peaks_int[j] * peaks_mz[j]
+                    peaks_int[j] = 0.0  # Mark as merged
+            
+            if intensity_sum > 0.0:
+                peaks_mz[idx] = intensity_weighted_mz_sum / intensity_sum
+                peaks_int[idx] = intensity_sum
+    
+    # Remove merged peaks (intensity <= 0)
+    mask = peaks_int > 0.0
+    peaks_mz = peaks_mz[mask]
+    peaks_int = peaks_int[mask]
+    
+    # Sort by m/z
+    sort_idx = np.argsort(peaks_mz)
+    peaks_mz = peaks_mz[sort_idx]
+    peaks_int = peaks_int[sort_idx].astype(np.float32)
+    
+    return peaks_mz, peaks_int
+
+
+def _apply_centroiding_if_needed(
+    mz: NDArray[np.float64],
+    intensity: NDArray[np.float32],
+    tolerance_ppm: float,
+) -> Tuple[NDArray[np.float64], NDArray[np.float32]]:
+    """
+    Apply centroiding to spectrum if needed.
+    
+    Repeatedly applies centroiding until no more peaks need merging.
+    
+    Args:
+        mz: m/z values
+        intensity: intensity values
+        tolerance_ppm: tolerance in ppm for peak merging
+        
+    Returns:
+        Tuple of (centroided_mz, centroided_intensity)
+    """
+    if tolerance_ppm <= 0.0 or mz.size < 2:
+        return mz, intensity
+    
+    current_mz = mz.copy()
+    current_intensity = intensity.copy()
+    
+    # Iteratively centroid until no more peaks need merging
+    while _need_centroid(current_mz, tolerance_ppm):
+        current_mz, current_intensity = _centroid_spectrum(
+            current_mz, current_intensity, tolerance_ppm
+        )
+    
+    return current_mz, current_intensity
+
+
 def cosine_greedy_ppm(
     mz1: NDArray[np.float64],
     intensity1: NDArray[np.float32],
@@ -215,7 +354,7 @@ def cosine_greedy_ppm(
     tolerance_ppm: float,
     mz_power: float = 0.0,
     intensity_power: float = 1.0,
-    apply_centroiding: bool = True,
+    apply_centroiding: bool = False,
 ) -> Tuple[float, int]:
     """
     Compute greedy cosine similarity between two mass spectra using ppm tolerance.
@@ -230,15 +369,10 @@ def cosine_greedy_ppm(
         tolerance_ppm: tolerance in ppm for peak matching
         mz_power: power to raise m/z to in score calculation (default: 0.0)
         intensity_power: power to raise intensities to in score calculation (default: 1.0)
-        apply_centroiding: if True, centroid spectra before matching (default: True)
+        apply_centroiding: whether to apply centroiding before matching (default: False)
     
     Returns:
         Tuple of (cosine_score, num_matches)
-        
-    Why centroiding by default:
-        Centroiding prevents one-to-many peak matching (which causes similarities > 1.0).
-        Both reference and GPU implementations should see the same centroided data
-        for fair comparison. Centroiding is enabled by default to match GPU pipeline.
         
     Example:
         >>> mz1 = np.array([100.0, 200.0, 300.0], dtype=np.float64)
@@ -255,23 +389,10 @@ def cosine_greedy_ppm(
     assert mz2.shape[0] == intensity2.shape[0], "mz2 and intensity2 must have same length"
     assert float(tolerance_ppm) > 0.0, f"tolerance_ppm must be positive, got {tolerance_ppm}"
     
-    # Apply centroiding if requested (default: True)
-    # Why: ensures both reference and GPU implementations see the same data
+    # Apply centroiding if requested
     if apply_centroiding:
-        from fast_cosine_sim.centroiding import centroid_by_neighbor_distance
-        
-        mz1, intensity1 = centroid_by_neighbor_distance(
-            mz1,
-            intensity1,
-            tolerance_ppm=tolerance_ppm,
-            mass_tolerance_cutoff_mz=MASS_TOLERANCE_CUTOFF,
-        )
-        mz2, intensity2 = centroid_by_neighbor_distance(
-            mz2,
-            intensity2,
-            tolerance_ppm=tolerance_ppm,
-            mass_tolerance_cutoff_mz=MASS_TOLERANCE_CUTOFF,
-        )
+        mz1, intensity1 = _apply_centroiding_if_needed(mz1, intensity1, tolerance_ppm)
+        mz2, intensity2 = _apply_centroiding_if_needed(mz2, intensity2, tolerance_ppm)
     
     # Find all matching pairs within tolerance
     matching_pairs = collect_peak_pairs_ppm(

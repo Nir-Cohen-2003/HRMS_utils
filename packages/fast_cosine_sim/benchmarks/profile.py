@@ -59,8 +59,8 @@ from numpy.typing import NDArray
 from fast_cosine_sim import (
     GPUApproximateConfig,
     batched_approximate_similarity_gpu,
+    AggregatedKernelTimings,
 )
-from fast_cosine_sim.gpu_approximate_similarity import AggregatedKernelTimings
 
 # Set plotting style
 sns.set_style("whitegrid")

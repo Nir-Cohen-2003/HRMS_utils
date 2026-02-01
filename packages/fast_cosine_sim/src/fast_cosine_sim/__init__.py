@@ -9,6 +9,7 @@ the exact similarity computation/refinement.
 from __future__ import annotations
 
 from .gpu_approximate_similarity import (
+    AggregatedKernelTimings,
     GPUApproximateConfig,
     batched_approximate_similarity_gpu,
 )
@@ -17,6 +18,7 @@ from .gpu_approximate_similarity import (
 compute_gpu_batched_approximate_similarity_pairs = batched_approximate_similarity_gpu
 
 __all__ = [
+    "AggregatedKernelTimings",
     "GPUApproximateConfig",
     "batched_approximate_similarity_gpu",
     "compute_gpu_batched_approximate_similarity_pairs",

@@ -21,8 +21,8 @@ import numpy as np
 import polars as pl
 import pytest
 
-from fast_cosine_sim import GPUApproximateConfig
-from fast_cosine_sim.gpu_approximate_similarity import (
+from fast_cosine_sim import (
+    GPUApproximateConfig,
     batched_approximate_similarity_gpu,
 )
 

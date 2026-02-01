@@ -34,9 +34,9 @@ from numpy.typing import NDArray
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from fast_cosine_sim.gpu_approximate_similarity import (
-    MASS_TOLERANCE_CUTOFF,
-    _expand_csr_horizontal_adaptive_gpu,
+from fast_cosine_sim.config import MASS_TOLERANCE_CUTOFF
+from fast_cosine_sim.gpu_operations import (
+    expand_csr_horizontal_adaptive_gpu,
 )
 
 os.environ["NUMBA_NUM_THREADS"] = str(os.cpu_count() or 1)
@@ -352,7 +352,7 @@ def expand_cupy_vectorized(
     Returns:
         Expanded CuPy CSR matrix
     """
-    return _expand_csr_horizontal_adaptive_gpu(
+    return expand_csr_horizontal_adaptive_gpu(
         mat_gpu, bin_size, ms2_tolerance_ppm, nbins
     )
 
