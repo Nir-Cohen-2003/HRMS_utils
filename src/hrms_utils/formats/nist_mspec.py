@@ -1,19 +1,27 @@
+"""
+NIST MSP/MSPEC format parser.
+
+This module provides parsing functions for NIST MSP and MSPEC format files.
+It uses the common spectral processing pipeline for consistency across formats.
+"""
+
 import re
 from pathlib import Path
-from typing import Dict, Iterable, TypeVar, cast
+from typing import TypeVar, cast
 
-# import numpy as np
 import polars as pl
-import polars.selectors as plcs
 
-from ..formula_annotation.element_table import ADDUCT_MASSES
-from ..formula_annotation.utils import (
-    format_formula_string_to_array,
-    formula_fits_mass,
-    get_precursor_ion_formula_array,
-    num_elements,
-)
+from ..formula_annotation.element_table import NUM_ELEMENTS
+from ..formula_annotation.utils import format_formula_string_to_array
 from ..hrms_core import *
+from .spectra_pipeline import (
+    filter_metadata,
+    extract_collision_energy_values,
+    annotate_spectra,
+    add_precursor_type_indicators,
+    add_molecular_ion_info,
+    add_spectral_information_score,
+)
 
 polarsFrame = TypeVar("polarsFrame", pl.DataFrame, pl.LazyFrame)
 
@@ -21,7 +29,19 @@ polarsFrame = TypeVar("polarsFrame", pl.DataFrame, pl.LazyFrame)
 def create_nist_dataframe(
     named_file_list: list[tuple[str | Path, str]],
 ) -> pl.DataFrame:
-    """takes a list of tuples with the first element being the path to the file and the second being the to write as "DB_Name" column, and returns a polars DataFrame with the data from all files"""
+    """
+    Read multiple MSP/MSPEC files and combine into a single DataFrame.
+    
+    Takes a list of tuples where each tuple contains:
+    - File path (str or Path)
+    - Database name (str) to add as "DB_Name" column
+    
+    Args:
+        named_file_list: List of (file_path, db_name) tuples
+        
+    Returns:
+        Combined DataFrame from all files with DB_Name column
+    """
     for file_path, db_name in named_file_list:
         if not isinstance(file_path, Path):
             file_path = Path(file_path)
@@ -32,11 +52,13 @@ def create_nist_dataframe(
         # make sure the file is a MSPEC, mspec, MSP or msp file
         if file_path.suffix.lower() not in [".mspec", ".msp"]:
             raise ValueError(f"File {file_path} is not a MSPEC or MSP file.")
+    
     dataframes = []
     for file_path, db_name in named_file_list:
         df = read_MSPEC_file(file_path)
         df = df.with_columns(pl.lit(db_name).alias("DB_Name"))
         dataframes.append(df)
+    
     combined_df = pl.concat(dataframes, how="vertical")
     return combined_df
 
@@ -48,24 +70,38 @@ def read_MSPEC_file(
     molecular_ion_tolerance_ppm: float = 5.0,
     lazy: bool = False,
 ) -> pl.DataFrame | pl.LazyFrame:
+    """
+    Read an MSP or MSPEC file and apply the standard processing pipeline.
+    
+    Args:
+        path: Path to MSP or MSPEC file
+        raw_fragment_tolerance_ppm: Tolerance for initial fragment annotation (ppm)
+        normalized_fragment_tolerance_ppm: Tolerance after normalization (ppm)
+        molecular_ion_tolerance_ppm: Tolerance for molecular ion matching (ppm)
+        lazy: If True, return a LazyFrame instead of collecting
+        
+    Returns:
+        Processed DataFrame or LazyFrame with standardized columns
+    """
     with open(path, "r") as file:
         file_contents = file.read()
 
-    data = _read_file(file_contents)
-    data = _annotate_and_filter_metadata(data)
-    data = _extract_collision_energy_values(data)
-    data = _annotate_spectra(
+    # Parse raw entries
+    data = _parse_mspec_entries(file_contents)
+    
+    # Apply common processing pipeline
+    data = filter_metadata(data)
+    data = extract_collision_energy_values(data)
+    data = annotate_spectra(
         data,
         raw_fragment_tolerance_ppm=raw_fragment_tolerance_ppm,
         normalized_fragment_tolerance_ppm=normalized_fragment_tolerance_ppm,
     )
-
-    data = _add_precursor_type_indicators(data)
-
-    # data = _add_base_peak_mz_fraction_and_diff(data)
-    data = _add_molecular_ion_info(data, molecular_ion_tolerance_ppm)
-
-    data = _add_spectral_information_score(data)
+    data = add_precursor_type_indicators(data)
+    data = add_molecular_ion_info(data, molecular_ion_tolerance_ppm)
+    data = add_spectral_information_score(data)
+    
+    # Select final columns in standard order
     data = data.select(
         [
             "name",
@@ -116,9 +152,20 @@ def read_MSPEC_file(
         return data
 
 
-def _read_file(file_contents: str):
+def _parse_mspec_entries(file_contents: str) -> pl.LazyFrame:
+    """
+    Parse MSP/MSPEC file contents into a LazyFrame with raw data.
+    
+    This is an internal function that extracts all metadata and spectrum data
+    from MSP/MSPEC format entries.
+    
+    Args:
+        file_contents: Raw file contents as string
+        
+    Returns:
+        LazyFrame with parsed but unprocessed data
+    """
     mz_intensity_pattern = r"(\d+\.\d+)\s(\d+(\.\d+)?)"
-    # Collision_energy_ev_pattern = r'(\d+)e*V*v*$'
 
     entries = _split_entries(file_contents)
     data = pl.DataFrame(entries, schema={"raw": pl.String}).lazy()
@@ -158,7 +205,7 @@ def _read_file(file_contents: str):
             .str.extract(pattern=r"(?i)Ion_?mode: (p|n)", group_index=1)
             .alias(
                 "ion_mode"
-            ),  # works for P,N, and negative/postivie in any capitalization
+            ),  # works for P,N, and negative/positive in any capitalization
             pl.col("raw")
             .str.extract(pattern=r"(?i)Precursor_?type: (.+)", group_index=1)
             .alias("precursor_type"),
@@ -222,7 +269,7 @@ def _read_file(file_contents: str):
             .map_elements(
                 format_formula_string_to_array, return_dtype=pl.List(pl.Int32)
             )
-            .list.to_array(width=num_elements)
+            .list.to_array(width=NUM_ELEMENTS)
             .alias("molecular_formula_array"),
             pl.col("mz_intensity")
             .list.eval(
@@ -251,378 +298,15 @@ def _read_file(file_contents: str):
             .map_elements(
                 format_formula_string_to_array, return_dtype=pl.List(pl.Int32)
             )
-            .list.to_array(width=num_elements)
+            .list.to_array(width=NUM_ELEMENTS)
             .alias("precursor_formula_array"),
         )
     )
     return data
 
 
-def _extract_collision_energy_values(data: polarsFrame) -> polarsFrame:
-    """
-    cases we need to account for:
-
-    NCE=70% 16eV
-    20 (NCE)
-    20 NCE
-    20 eV
-    20 V
-    20
-    20 % (nominal)
-    20.0 eV
-    [20.0, 30.0, 60.0, 40.0]
-
-    logic:
-    if there is only NCE, or only V or ev, we take that value and put it in the needed column: collision_energy_NCE or collision_energy_ev
-    if there are bot hNCE and ev or V, each "number" is assigned to the column of the closest description- the order can be thus:
-        desc1 num1 desc2 num2
-        desc1 num1 num2 desc2
-        num1 desc1 desc2 num2
-        num1 desc1 num2 desc2
-        desc1 desc2 num1 num2
-        num1 num2 desc1 desc2
-    % is considered to indicate NCE.
-    if a number does not contain any such description, if it is orbitra, we consider it NCE, otherwise ev.
-    If a list of numbers is present (e.g. [20, 30, 40]), calculate the mean and assign to NCE (if Orbitrap) or eV (otherwise).
-    """
-    # Regex patterns
-    # NCE: Matches "NCE=20", "NCE 20", "20%", "20 NCE", "20 (NCE)"
-    # Group 1: Prefix match number (NCE=20)
-    # Group 2: Suffix match number (20 NCE, 20%)
-    pat_nce = r"(?i)(?:NCE\s*[:=]?\s*([0-9]+(?:\.[0-9]+)?)|([0-9]+(?:\.[0-9]+)?)\s*(?:%|(?:\(?NCE\)?)))"
-
-    # eV: Matches "20eV", "20 eV", "20V", "20 V"
-    # Group 1: Number
-    pat_ev = r"(?i)([0-9]+(?:\.[0-9]+)?)\s*e?V"
-
-    # Bare number: Matches any number. Used as fallback.
-    pat_num = r"([0-9]+(?:\.[0-9]+)?)"
-
-    # List pattern: Matches content inside square brackets
-    pat_list_content = r"\[(.*?)\]"
-
-    return cast(
-        polarsFrame,
-        data.with_columns(
-            # Extract NCE candidates
-            pl.col("collision_energy_raw")
-            .str.extract(pat_nce, group_index=1)
-            .fill_null(
-                pl.col("collision_energy_raw").str.extract(pat_nce, group_index=2)
-            )
-            .cast(pl.Float64, strict=False)
-            .alias("collision_energy_NCE"),
-            # Extract eV candidates
-            pl.col("collision_energy_raw")
-            .str.extract(pat_ev, group_index=1)
-            .cast(pl.Float64, strict=False)
-            .alias("collision_energy_ev"),
-            # Extract List candidates
-            pl.col("collision_energy_raw")
-            .str.extract(pat_list_content, group_index=1)
-            .str.extract_all(r"\d+(?:\.\d+)?")
-            .list.eval(pl.element().cast(pl.Float64, strict=False))
-            .alias("collision_energy_list"),
-        )
-        .with_columns(
-            # Fallback logic: if NCE, eV and List are null, try to use the bare number
-            pl.when(
-                pl.col("collision_energy_NCE").is_null()
-                & pl.col("collision_energy_ev").is_null()
-                & pl.col("collision_energy_list").is_null()
-            )
-            .then(
-                pl.col("collision_energy_raw")
-                .str.extract(pat_num, group_index=1)
-                .cast(pl.Float64, strict=False)
-            )
-            .otherwise(None)
-            .alias("_bare_energy"),
-            # Calculate mean of list if present
-            pl.col("collision_energy_list").list.mean().alias("_list_mean"),
-        )
-        .with_columns(
-            # Apply Orbitrap logic to fallback for NCE (using list mean or bare energy)
-            pl.when(pl.col("collision_energy_NCE").is_null())
-            .then(
-                pl.when(pl.col("is_orbitrap"))
-                .then(pl.coalesce([pl.col("_list_mean"), pl.col("_bare_energy")]))
-                .otherwise(None)
-            )
-            .otherwise(pl.col("collision_energy_NCE"))
-            .alias("collision_energy_NCE"),
-            # Apply Orbitrap logic to fallback for eV (using list mean or bare energy)
-            pl.when(pl.col("collision_energy_ev").is_null())
-            .then(
-                pl.when(pl.col("is_orbitrap").not_())
-                .then(pl.coalesce([pl.col("_list_mean"), pl.col("_bare_energy")]))
-                .otherwise(None)
-            )
-            .otherwise(pl.col("collision_energy_ev"))
-            .alias("collision_energy_ev"),
-        )
-        .with_columns(
-            pl.col("collision_energy_list")
-            .list.len()
-            .ge(2)
-            .fill_null(False)
-            .alias("multiple_collision_energies"),
-            # Mean is either the list mean, or the single value present
-            pl.coalesce(
-                [
-                    pl.col("_list_mean"),
-                    pl.col("collision_energy_NCE"),
-                    pl.col("collision_energy_ev"),
-                ]
-            ).alias("collision_energy_mean"),
-        )
-        .drop("_bare_energy", "_list_mean"),
-    )
-
-
-def _annotate_and_filter_metadata(data: polarsFrame) -> polarsFrame:
-    """filters out entries with missing or invalid metadata or low resolution spectra"""
-    instrument_data_columns = plcs.by_name(
-        ["instrument", "instrument_type", "ionization"]
-    )
-
-    # Build mask that only excludes rows explicitly tagged with 'QQ' in any instrument column.
-    # Treat NULL as not matching 'QQ' so missing instrument metadata does not drop the row.
-    qq_mask = pl.any_horizontal(
-        instrument_data_columns.str.contains(r"(?i)QQ").fill_null(False)
-    )
-
-    data = cast(
-        polarsFrame,
-        data.filter(
-            qq_mask.not_()  # keep rows unless one of the instrument columns explicitly includes QQ
-        ).with_columns(
-            # Use fill_null(False) so missing values won't produce NULL booleans and won't exclude rows
-            pl.any_horizontal(
-                instrument_data_columns.str.contains(r"(?i)LC").fill_null(False)
-            ).alias("is_LC"),
-            pl.any_horizontal(
-                instrument_data_columns.str.contains(
-                    r"(?i)orbi(?:trap)?|HCD"
-                ).fill_null(False)
-                | instrument_data_columns.str.contains(r"(?i)thermo").fill_null(False)
-                | (
-                    instrument_data_columns.str.contains(r"(?i)FT").fill_null(False)
-                    & instrument_data_columns.str.contains(r"(?i)ICR")
-                    .not_()
-                    .fill_null(True)
-                    & instrument_data_columns.str.contains(r"(?i)TOF")
-                    .not_()
-                    .fill_null(True)
-                )
-            ).alias("is_orbitrap"),
-            pl.any_horizontal(
-                instrument_data_columns.str.contains(r"(?i)TOF").fill_null(False)
-            ).alias("is_TOF"),
-            pl.any_horizontal(
-                instrument_data_columns.str.contains(r"(?i)ESI|LC").fill_null(False)
-            ).alias("is_ESI"),  # LC is usually coupled with ESI
-        ),
-    )
-
-    return data
-
-
-def _annotate_spectra(
-    data: polarsFrame,
-    raw_fragment_tolerance_ppm: float,
-    normalized_fragment_tolerance_ppm: float,
-) -> polarsFrame:
-    """cleans and normalizes the masses and intensities in the spectra, and adds explained intensity column. also, it filters entries where the precursor mass does not match the precursor formula."""
-    # Determine adduct_mass based on precursor_type
-    adduct_mapping = pl.Series(
-        name="precursor_type", values=list(ADDUCT_MASSES.keys()), dtype=pl.String
-    )
-    adduct_masses = pl.Series(
-        name="adduct_mass", values=list(ADDUCT_MASSES.values()), dtype=pl.Float64
-    )
-    adduct_df = pl.DataFrame(
-        {"precursor_type": adduct_mapping, "adduct_mass": adduct_masses}
-    )
-
-    if isinstance(data, pl.LazyFrame):
-        adduct_lf = adduct_df.lazy()
-        data_lf = data.join(adduct_lf, on="precursor_type", how="left")
-        data_frame = cast(polarsFrame, data_lf)
-    elif isinstance(data, pl.DataFrame):
-        data_df = data.join(adduct_df, on="precursor_type", how="left")
-        data_frame = cast(polarsFrame, data_df)
-    else:
-        raise TypeError(
-            f"In function '_annotate_spectra', data must be a Polars DataFrame or LazyFrame, got {type(data)}"
-        )
-
-    return cast(
-        polarsFrame,
-        data_frame.with_columns(
-            pl.col("raw_spectrum_intensity")
-            .truediv(pl.col("raw_spectrum_intensity").list.sum())
-            .alias("raw_spectrum_intensity")
-        )
-        .with_columns(
-            pl.struct(  # type: ignore[missing-attribute]
-                [
-                    pl.col("precursor_formula_array").alias("precursor_formula"),
-                    pl.col("raw_spectrum_mz").alias("mz"),
-                    pl.col("raw_spectrum_intensity").alias("intensities"),
-                ]
-            )
-            .mass_decomposition.clean_and_normalize_spectrum(
-                raw_fragment_tolerance_ppm=raw_fragment_tolerance_ppm,
-                normalized_fragment_tolerance_ppm=normalized_fragment_tolerance_ppm,
-                min_dbe=-0.5,
-                max_dbe=40,
-                dbe_mode="half_integer",
-                water_absorption=True,
-            )
-            .alias("cleaned_normalized_spectra")
-        )
-        .with_columns(  # Extract results and add adduct_mass back to normalized masses
-            pl.col("cleaned_normalized_spectra")
-            .struct.field("normalized_masses")
-            .alias("cleaned_normalized_mz"),
-            pl.col("cleaned_normalized_spectra")
-            .struct.field("intensities")
-            .alias("cleaned_normalized_intensity"),
-            pl.col("cleaned_normalized_spectra")
-            .struct.field("formulas")
-            .alias("cleaned_fragment_formulas"),
-            pl.col("cleaned_normalized_spectra")
-            .struct.field("formulas_str")
-            .alias("cleaned_fragment_formulas_str"),
-            pl.col("cleaned_normalized_spectra")
-            .struct.field("errors_ppm")
-            .alias("cleaned_fragment_errors_ppm"),
-        )
-        .drop("cleaned_normalized_spectra")
-        .with_columns(
-            pl.col("cleaned_normalized_intensity")
-            .list.sum()
-            .truediv(pl.col("raw_spectrum_intensity").list.sum())
-            .alias("explained_intensity")
-        ),
-    )
-
-
-def _add_precursor_type_indicators(data: polarsFrame) -> polarsFrame:
-    fragment_pattern = (
-        r"-\d*"
-        + r"((H(\d+|[A-Z]|[a-z]))|([A-G]|[I-Z])[a-z]?\d*)"
-        + r"(([A-Z][a-z]?\d*))*"
-    )
-
-    return cast(
-        polarsFrame,
-        data.with_columns(
-            pl.col("precursor_type").str.contains("i").alias("Isotope"),
-            pl.col("precursor_type").str.contains("Cat").alias("Cation"),
-            pl.col("precursor_type").str.contains("[0-9]M").alias("Multimer"),
-            pl.col("precursor_type").str.contains("][0-9]").alias("MultiCharge"),
-            pl.col("precursor_type").str.contains(fragment_pattern).alias("Fragment"),
-        ).with_columns(
-            (
-                pl.col("Isotope")
-                | pl.col("Cation")
-                | pl.col("Multimer")
-                | pl.col("MultiCharge")
-                | pl.col("Fragment")
-                | pl.col("precursor_type")
-                .str.contains("M")
-                .not_()  # there are some that are [123.1234]+, all of the m with single occurance, which are probably not clean
-            )
-            .not_()
-            .alias("clean_precursor")
-        ),
-    )
-
-
-def _add_molecular_ion_info(
-    NIST: polarsFrame, tolerance_ppm: float = 10.0
-) -> polarsFrame:
-    lazy_frame = NIST.lazy()
-    lazy_frame = lazy_frame.with_columns(
-        molecular_ion_intensity=pl.when(
-            pl.col("cleaned_normalized_mz")
-            .list.last()
-            .is_close(
-                pl.col("precursor_mz"),
-                rel_tol=tolerance_ppm * 1e-6,
-                abs_tol=200.0 * tolerance_ppm * 1e-6,
-            )
-        )
-        .then(pl.col("cleaned_normalized_intensity").list.last())
-        .otherwise(None)
-    )
-
-    if isinstance(NIST, pl.LazyFrame):
-        return cast(polarsFrame, lazy_frame)
-    elif isinstance(NIST, pl.DataFrame):
-        return cast(polarsFrame, lazy_frame.collect(engine="streaming"))
-    else:
-        raise TypeError(
-            f"In function '_add_molecular_ion_info', NIST must be a Polars DataFrame or LazyFrame, got {type(NIST)}"
-        )
-
-
-def _add_spectral_information_score(data: polarsFrame) -> polarsFrame:
-    return cast(
-        polarsFrame,
-        data.with_columns(
-            pl.struct(
-                [
-                    pl.col("precursor_formula_array").alias("precursor_formula"),
-                    pl.col("cleaned_fragment_formulas").alias("fragment_formulas"),
-                ]
-            ).alias("spectra_for_spectral_info")
-        ).with_columns(
-            pl.col("spectra_for_spectral_info")  # type: ignore[missing-attribute]
-            .spectral_info.spectral_info_score(
-                distance_metric="l2", ignore_hydrogens=True
-            )
-            .alias("spectral_information_score"),
-            pl.col("spectra_for_spectral_info")  # type: ignore[missing-attribute]
-            .spectral_info.spectral_info_score(
-                distance_metric="l2", ignore_hydrogens=False
-            )
-            .alias("spectral_information_score_with_hydrogens"),
-        ),
-    )
-
-
-def _add_base_peak_mz_fraction_and_diff(NIST: polarsFrame) -> polarsFrame:
-    return cast(
-        polarsFrame,
-        NIST.with_columns(
-            pl.col("raw_spectrum_mz")
-            .list.get(pl.col("raw_spectrum_intensity").list.arg_max())
-            .alias("base_peak_mz")
-        ).with_columns(
-            pl.col("base_peak_mz")
-            .truediv(pl.col("precursor_mz"))
-            .round(3)
-            .alias("base_peak_div_precursor_mz"),
-            pl.col("precursor_mz")
-            .sub(pl.col("base_peak_mz"))
-            .round(3)
-            .alias("precursor_minus_base_peak_mz"),
-        ),
-    )
-
-
-def _find_missing_pattern_sections(file_contents, pattern):
-    sections = _split_entries(file_contents)
-    for section in sections:
-        if pattern not in section:
-            print("Missing " + pattern + " in section:", section)
-            break
-
-
 def _split_entries(file_contents: str) -> list:
+    """Split file contents into individual MSP/MSPEC entries."""
     entries = re.split(r"\n\s*\n", file_contents)
     if entries[len(entries) - 1] == "":
         entries.pop()
@@ -634,54 +318,16 @@ if __name__ == "__main__":
     from time import perf_counter
 
     start_time = perf_counter()
-    nist = pl.read_parquet(r"D:\Nir\pyscreen_test\NIST23.parquet")
-    # replace the DB_Name with the correct one:
-    # hr_msms -> hr_msms_nist
-    # NIST_hr_msms2 -> nist_hr_msms#2
-    nist = nist.with_columns(
-        pl.when(pl.col("DB_Name").eq("hr_msms"))
-        .then(pl.lit("hr_msms_nist"))
-        .when(pl.col("DB_Name").eq("NIST_hr_msms2"))
-        .then(pl.lit("nist_hr_msms#2"))
-        .otherwise(pl.col("DB_Name"))
-        .alias("DB_Name")
-    )
-    nist = pl.read_parquet(r"D:\Nir\pyscreen_test\NIST23.parquet")
-    # replace the DB_Name with the correct one:
-    # hr_msms -> hr_msms_nist
-    # NIST_hr_msms2 -> nist_hr_msms#2
-    nist = nist.with_columns(
-        pl.when(pl.col("DB_Name").eq("hr_msms"))
-        .then(pl.lit("hr_msms_nist"))
-        .when(pl.col("DB_Name").eq("NIST_hr_msms2"))
-        .then(pl.lit("nist_hr_msms#2"))
-        .otherwise(pl.col("DB_Name"))
-        .alias("DB_Name")
-    )
-    nist.write_parquet(r"D:\Nir\pyscreen_test\NIST23_fixed.parquet")
-
-    # #### creation of NIST23 dataframe
-    # file_dir = Path('/home/analytit_admin/Data/NIST_hr_msms/')
-    # # now the names and DB_name of the files:
-    # file_names = [
-    #     ('hr_msms_1.MSPEC', 'hr_msms_nist'),
-    #     ('hr_msms_2.MSPEC', 'hr_msms_nist'),
-    #     ('hr_msms_3.MSPEC', 'hr_msms_nist'),
-    #     ('hr_msms_4.MSPEC', 'hr_msms_nist'),
-    #     ('hr_msms_5.MSPEC', 'hr_msms_nist'),
-    #     ('hr_msms_6.MSPEC', 'hr_msms_nist'),
-    #     ('NIST_hr_msms2_1.MSPEC', 'nist_hr_msms#2'),
-    #     ('NIST_hr_msms2_2.MSPEC', 'nist_hr_msms#2'),
-    #     ('NIST_hr_msms2_3.MSPEC', 'nist_hr_msms#2'),
-    #     ('NIST_hr_msms2_4.MSPEC', 'nist_hr_msms#2'),
-    #     ('NIST_hr_msms2_5.MSPEC', 'nist_hr_msms#2'),
+    
+    # Example: Read a single file
+    # df = read_MSPEC_file("/path/to/file.msp")
+    
+    # Example: Create combined dataframe from multiple files
+    # file_list = [
+    #     ("/path/to/file1.msp", "database_1"),
+    #     ("/path/to/file2.msp", "database_2"),
     # ]
-    # file_list = [(file_dir / file_name, db_name) for file_name, db_name in file_names]
-    # nist_df = create_nist_dataframe(file_list)
-    # end_create_time = perf_counter()
-    # print(f"Time taken to create NIST23 DataFrame: {end_create_time - start_time:.2f} seconds")
-    # nist_df.write_parquet(file_dir / 'NIST23.parquet')
-    # print("NIST23 DataFrame created and saved to NIST23.parquet")
-    # end_write_time = perf_counter()
-    # print(f"Time taken to write NIST23 DataFrame: {end_write_time - end_create_time:.2f} seconds")
-    # print(f"Total time taken: {end_write_time - start_time:.2f} seconds")
+    # df = create_nist_dataframe(file_list)
+    
+    print("Module loaded successfully")
+    print(f"Time taken: {perf_counter() - start_time:.4f} seconds")
