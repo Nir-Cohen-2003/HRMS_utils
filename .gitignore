@@ -37,5 +37,5 @@ mprofile_**.dat
 third_party/
 **.log
 **.joblib
-packages/fast_cosine_sim/src/fast_cosine_sim.egg-info/
+**.egg-info/
 tests/data/**.raw

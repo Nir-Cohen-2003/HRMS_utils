@@ -2,7 +2,6 @@
 channels = [
   "https://prefix.dev/conda-forge",
   "https://prefix.dev/pixi-build-backends",
-  # "rapidsai",
   "conda-forge",
 ]
 platforms = ["linux-64","win-64"]
@@ -92,7 +91,7 @@ xlsxwriter = "*"
 connectorx = "*"
 sqlalchemy = "*"
 
-[feature.testing.tasks]
+[feature.tests.tasks]
 check = "pyrefly check --ignore missing-import"
 check_all = "pyrefly check ./src/hrms_utils --ignore missing-import --ignore missing-module-attribute"
 check_nist_mspec = "pyrefly check ./src/hrms_utils/formats/nist_mspec.py"
@@ -122,7 +121,7 @@ test_info_score = "python tests/spectral/test_spectral_information.py"
 
 convert_msp = "python scripts/convert_msp.py"
 
-[feature.testing.dependencies]
+[feature.tests.dependencies]
 hrms_utils = {path = "."}
 numba = ">=0.61.0"
 pytest = ">=8.4.2,<9"
@@ -134,7 +133,7 @@ nbformat = ">=5.10.4,<6"
 marimo ="*"
 ruff = "*"
 ty = "*"
-[feature.testing.pypi-dependencies]
+[feature.tests.pypi-dependencies]
 kaleido = ">=1.1.0, <2"
 
 [feature.experiments.target.linux-64.dependencies]
