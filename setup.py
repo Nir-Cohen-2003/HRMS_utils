@@ -1,4 +1,5 @@
 import subprocess
+from ctypes import pythonapi
 from pathlib import Path
 
 from setuptools import find_packages, setup
@@ -47,6 +48,7 @@ setup(
             py_limited_api=True,
         )
     ],
+    python_requires=">=3.12",
     cmdclass={"build_ext": CustomBuildExt},
     zip_safe=False,
 )

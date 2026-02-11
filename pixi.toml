@@ -1,7 +1,7 @@
 [workspace]
 channels = [
-  "https://prefix.dev/conda-forge",
-  "https://prefix.dev/pixi-build-backends",
+  # "https://prefix.dev/conda-forge",
+  # "https://prefix.dev/pixi-build-backends",
   "conda-forge",
 ]
 platforms = ["linux-64","win-64"]
@@ -22,8 +22,8 @@ build = "*"
 [tasks]
 
 # cibw-wheels = { cmd = "python -m cibuildwheel --output-dir dist dist/*.tar.gz", env = {CIBW_BUILD = " cp310-* cp311-* cp312-* cp313-* cp314-*", CIBW_SKIP = "*musllinux* *-win32", CIBW_ARCHS_WINDOWS = "AMD64", CIBW_PACKAGE = "."}, depends-on=["build-sdist"]} # not really needed in my opinion
-build-sdist = {cmd="python -m build --sdist --outdir dist", depends-on = ["clean_dist"]}
-build-wheel = "python -m build --wheel --outdir dist"
+# build-sdist = {cmd="python -m build --sdist --outdir dist", depends-on = ["clean_dist"]}
+# build-wheel = "python -m build --wheel --outdir dist"
 build-all = {cmd="python -m build --wheel --sdist --outdir dist",depends-on = ["clean_dist"]}
 clean_dist = "rm -rf dist || true"
 
@@ -43,55 +43,56 @@ testing = {features = ["testing"], solve-group = "testing"}
 experiments = {features = ["experiments"], solve-group = "experiments",no-default-feature = true}
 docs = {features = ["docs"], solve-group = "docs"}
 
+# [package.build]
+# backend = { name = "pixi-build-python", version = "*",channels = [
+#   "https://prefix.dev/pixi-build-backends",
+#   "https://prefix.dev/conda-forge",
+# ]}
+# [package.build.config]
+# noarch = false
 [package.build]
-backend = { name = "pixi-build-python", version = "*",channels = [
-  "https://prefix.dev/pixi-build-backends",
-  "https://prefix.dev/conda-forge",
-]}
-[package.build.config]
-noarch = false
-
-[package.build-dependencies]
-python = "*"
-pip = "*"
-python-abi3 = "==3.12"
-setuptools = ">=68.0.0"
-setuptools-rust = "*"
+backend = { name = "pixi-build-rattler-build", version = "*"}
+# [package.build-dependencies]
+# python = "*"
+# pip = "*"
+# python_abi = "==3.12"
+# setuptools = ">=68.0.0"
+# setuptools-rust = "*"
 # maturin = ">=1.09.0"
-wheel ="*"
-rattler-build = ">=0.48.0"
-rust = ">=1.91.0"
-rust-src = ">=1.91.0"
-compilers = "*"
-cargo-bundle-licenses = "*"
-[package.host-dependencies]
-python = "*"
-pip = "*"
+# wheel ="*"
+# rattler-build = ">=0.48.0"
+# rust = ">=1.91.0"
+# rust-src = ">=1.91.0"
+# compilers = "*"
+# cargo-bundle-licenses = "*"
+# [package.host-dependencies]
+# python = "*"
+# pip = "*"
 # maturin = ">=1.09.0,<2.0"
-setuptools = ">=68.0.0"
-setuptools-rust = "*"
-python-abi3 = "==3.12"
-[package.run-dependencies]
-python-abi3 = "==3.12"
-python = ">=3.12"
-polars = ">=1.35.2,<2"
-rdkit = ">=2024.0.0"
-numpy = ">=1.20.0"
-scipy = "*"
-pymzml = ">2.5.0"
-pandas = "*"
-lxml = "*"
-requests = "*"
-aiohttp = "*"
-pyarrow = "*"
-python-calamine = "*"
-openpyxl = "*"
-xlsx2csv = "*"
-xlsxwriter = "*"
-connectorx = "*"
-sqlalchemy = "*"
+# setuptools = ">=68.0.0"
+# setuptools-rust = "*"
+# python_abi = "==3.12"
+# [package.run-dependencies]
+# python-abi3 = "==3.12"
+# python = ">=3.12"
+# polars = ">=1.35.2,<2"
+# rdkit = ">=2024.0.0"
+# numpy = ">=1.20.0"
+# scipy = "*"
+# pymzml = ">2.5.0"
+# pandas = "*"
+# lxml = "*"
+# requests = "*"
+# aiohttp = "*"
+# pyarrow = "*"
+# python-calamine = "*"
+# openpyxl = "*"
+# xlsx2csv = "*"
+# xlsxwriter = "*"
+# connectorx = "*"
+# sqlalchemy = "*"
 
-[feature.tests.tasks]
+[feature.testing.tasks]
 check = "pyrefly check --ignore missing-import"
 check_all = "pyrefly check ./src/hrms_utils --ignore missing-import --ignore missing-module-attribute"
 check_nist_mspec = "pyrefly check ./src/hrms_utils/formats/nist_mspec.py"
@@ -121,7 +122,7 @@ test_info_score = "python tests/spectral/test_spectral_information.py"
 
 convert_msp = "python scripts/convert_msp.py"
 
-[feature.tests.dependencies]
+[feature.testing.dependencies]
 hrms_utils = {path = "."}
 numba = ">=0.61.0"
 pytest = ">=8.4.2,<9"
@@ -133,7 +134,7 @@ nbformat = ">=5.10.4,<6"
 marimo ="*"
 ruff = "*"
 ty = "*"
-[feature.tests.pypi-dependencies]
+[feature.testing.pypi-dependencies]
 kaleido = ">=1.1.0, <2"
 
 [feature.experiments.target.linux-64.dependencies]

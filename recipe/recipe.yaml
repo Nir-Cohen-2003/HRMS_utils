@@ -1,0 +1,57 @@
+context:
+  version: "0.8.0"
+  python_min: "3.12"
+
+package:
+  name: hrms_utils
+  version: ${{ version }}
+
+source:
+  path: ../
+
+build:
+  script: |
+    python -m pip install . --no-deps -vv
+  python:
+    version_independent: true # Key setting for ABI3
+
+requirements:
+  build:
+    - ${{ compiler('c') }}
+    - ${{ compiler('rust') }}
+    - cargo-bundle-licenses
+    - rust >=1.91.0
+    - rust-src >=1.91.0
+    - rattler-build >=0.48.0
+  host:
+    - python
+    - python-abi3 ==${{ python_min }} # Enables ABI3 compatibility
+    - setuptools >=68.0.0
+    - setuptools-rust
+    - pip
+    # - python_abi >=3.12
+    - wheel
+  run:
+    - python >=${{ python_min }}
+    - polars >=1.35.2,<2
+    - rdkit >=2024.0.0
+    - numpy >=1.20.0
+    - scipy
+    - pymzml >2.5.0
+    - pandas
+    - lxml
+    - requests
+    - aiohttp
+    - pyarrow
+    - python-calamine
+    - openpyxl
+    - xlsx2csv
+    - xlsxwriter
+    - connectorx
+    - sqlalchemy
+
+tests:
+  - python:
+      imports:
+        - hrms_utils
+      python_version: ["${{ python_min ~ '.*' }}", "3.13.*"]
