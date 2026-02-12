@@ -1,6 +1,5 @@
 [project]
 name = "hrms_utils"
-# version = "0.8.0"
 license = "Apache-2.0"
 license-files = ["LICENSE"]
 requires-python = ">=3.12"
@@ -23,13 +22,23 @@ dependencies = [
     "sqlalchemy",
 ]
 dynamic = ["version"]
+
 [build-system]
-requires = ["setuptools>=61.0", "setuptools-rust>=1.5.0", "wheel"]
-build-backend = "setuptools.build_meta"
+requires = ["maturin>=1.0,<2.0"]
+build-backend = "maturin"
 
-[tool.setuptools.packages.find]
-where = ["src"]
+[tool.maturin]
+features = ["pyo3/abi3-py312"]
+bindings = "pyo3"
 
+# --- LEGACY SETUPTOOLS CONFIGURATION (commented out) ---
+# [build-system]
+# requires = ["setuptools>=61.0", "setuptools-rust>=1.5.0", "wheel"]
+# build-backend = "setuptools.build_meta"
+#
+# [tool.setuptools.packages.find]
+# where = ["src"]
+# --- END LEGACY SETUPTOOLS CONFIGURATION ---
 
-[tool.ty.src] #thsi project uses pyrefly, but mrimo introduces the ty type checker, which we disable
+[tool.ty.src] #this project uses pyrefly, but mrimo introduces the ty type checker, which we disable
 exclude = ["src", "scripts", "tests","experiments"]

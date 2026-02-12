@@ -11,14 +11,17 @@ source:
 
 build:
   script: |
-    python -m pip install . --no-deps -vv
+    maturin build --release --out dist
+    pip install dist/*.whl --no-deps -vv
   python:
     version_independent: true # Key setting for ABI3
 
 requirements:
+  ignore_run_exports:
+    by_name:
+      - python_abi
   build:
     - ${{ compiler('c') }}
-    - ${{ compiler('rust') }}
     - cargo-bundle-licenses
     - rust >=1.91.0
     - rust-src >=1.91.0
@@ -26,11 +29,11 @@ requirements:
   host:
     - python
     - python-abi3 ==${{ python_min }} # Enables ABI3 compatibility
-    - setuptools >=68.0.0
-    - setuptools-rust
+    - maturin >=1.0,<2.0
     - pip
-    # - python_abi >=3.12
-    - wheel
+    # - setuptools >=68.0.0
+    # - setuptools-rust
+    # - wheel
   run:
     - python >=${{ python_min }}
     - polars >=1.35.2,<2
@@ -54,4 +57,4 @@ tests:
   - python:
       imports:
         - hrms_utils
-      python_version: ["${{ python_min ~ '.*' }}", "3.13.*"]
+      python_version: ["${{ python_min ~ '.*' }}", "3.13.*", "3.14.*"]
