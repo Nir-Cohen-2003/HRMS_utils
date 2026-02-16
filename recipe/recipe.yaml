@@ -11,8 +11,7 @@ source:
 
 build:
   script: |
-    maturin build --release --out dist
-    pip install dist/*.whl --no-deps -vv
+    python -m pip install . --no-deps --no-build-isolation -vv
   python:
     version_independent: true # Key setting for ABI3
 
@@ -29,8 +28,9 @@ requirements:
   host:
     - python
     - python-abi3 ==${{ python_min }} # Enables ABI3 compatibility
-    - maturin >=1.0,<2.0
     - pip
+    - python-build
+    - maturin
     # - setuptools >=68.0.0
     # - setuptools-rust
     # - wheel
@@ -58,3 +58,12 @@ tests:
       imports:
         - hrms_utils
       python_version: ["${{ python_min ~ '.*' }}", "3.13.*", "3.14.*"]
+
+about:
+  homepage: https://github.com/Nir-Cohen-2003/HRMS_utils
+  license: Apache 2.0
+  license_file: LICENSE
+  summary: fast usitlisites for HRMS data processing
+  description: |
+    polars based processing of spectral libraries, chromatogram and more. Rust based polars extension for core computational steps such as mass decomposition, spectra cleaning, spectral simailrity etc.
+  repository: https://github.com/Nir-Cohen-2003/HRMS_utils

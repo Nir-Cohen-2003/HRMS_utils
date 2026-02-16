@@ -28,6 +28,8 @@ requires = ["maturin>=1.0,<2.0"]
 build-backend = "maturin"
 
 [tool.maturin]
+module-name = "hrms_utils._internal"
+python-source = "src"
 features = ["pyo3/abi3-py312"]
 bindings = "pyo3"
 
