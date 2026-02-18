@@ -389,6 +389,7 @@ def annotate_chromatogram_with_formulas(
             )
             .mass_decomposition.decompose_mass_with_bounds(
                 tolerance_ppm=precursor_mass_accuracy_ppm,
+                dbe_mode="half_integer",
             )
             .alias("decomposed_formulas_struct")
         )
