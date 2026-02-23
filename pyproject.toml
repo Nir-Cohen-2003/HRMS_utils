@@ -32,15 +32,7 @@ module-name = "hrms_utils._internal"
 python-source = "src"
 features = ["pyo3/abi3-py312"]
 bindings = "pyo3"
-
-# --- LEGACY SETUPTOOLS CONFIGURATION (commented out) ---
-# [build-system]
-# requires = ["setuptools>=61.0", "setuptools-rust>=1.5.0", "wheel"]
-# build-backend = "setuptools.build_meta"
-#
-# [tool.setuptools.packages.find]
-# where = ["src"]
-# --- END LEGACY SETUPTOOLS CONFIGURATION ---
+exclude = ["scripts/**", "tests/**","experiments/**","docs/**","results/**","ideas/**"]
 
 [tool.ty.src] #this project uses pyrefly, but mrimo introduces the ty type checker, which we disable
 exclude = ["src", "scripts", "tests","experiments"]

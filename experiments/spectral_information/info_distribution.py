@@ -1,5 +1,5 @@
 import marimo
-from pandas.util.version import PrePostDevType
+# from pandas.util.version import PrePostDevType
 
 __generated_with = "0.18.3"
 app = marimo.App(width="full")
@@ -795,6 +795,165 @@ def _(
         x_range=(0.0, 60.0),
     )
     plot_informativity_vs_metric(heavy_atoms_config)
+    return
+
+
+@app.cell
+def _(Path, Tuple, dataclass, np, pl, plt):
+    @dataclass
+    class StackedBarConfig:
+        """
+        Configuration for stacked bar chart comparing NIST and FragHub distributions.
+
+        parquet_paths: list of parquet files (NIST, FragHub order expected).
+        labels: labels for each dataset.
+        output_path: where to save the figure.
+        bins: number of histogram bins.
+        range: value range for the histogram.
+        top_percentile: percentile threshold for 'most informative' molecules (e.g., 90 means top 10%).
+        """
+
+        parquet_paths: list
+        labels: list
+        output_path: Path
+        bins: int = 50
+        range: Tuple[float, float] = (0.0, 5.0)
+        top_percentile: float = 90.0
+
+    def plot_stacked_bar_distributions(config: StackedBarConfig) -> None:
+        """
+        Create a 2-subplot figure with stacked bar charts:
+        - Top: distribution of all molecules (using their most informative spectrum)
+        - Bottom: distribution of all spectra (stacked NIST + FragHub)
+        """
+        assert len(config.parquet_paths) == len(config.labels) == 2, (
+            "Expected exactly 2 parquet paths and labels for NIST and FragHub"
+        )
+
+        bin_edges = np.linspace(config.range[0], config.range[1], config.bins + 1)
+        bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
+        bar_width = bin_edges[1] - bin_edges[0]
+
+        all_mol_maxes = []
+        all_spectra_scores = []
+
+        # Why: Use polars for all data processing and reuse compute_molecule_max_info.
+        for path, label in zip(config.parquet_paths, config.labels):
+            assert path.exists(), f"Parquet file not found: {path}"
+            df = pl.read_parquet(
+                path, columns=["spectral_information_score", "base_inchikey"]
+            )
+            df = df.filter(pl.col("spectral_information_score").is_not_null())
+
+            # Top: Most informative spectrum per molecule
+            mol_max = compute_molecule_max_info(df)
+            all_mol_maxes.append(mol_max)
+
+            # Bottom: All spectra
+            spec_scores = (
+                df.select(pl.col("spectral_information_score").cast(pl.Float64))
+                .to_numpy()
+                .ravel()
+            )
+            all_spectra_scores.append(spec_scores)
+
+            print(
+                f"{label}: {len(mol_max)} molecules, {len(spec_scores)} total spectra."
+            )
+
+        mol_counts_0, _ = np.histogram(all_mol_maxes[0], bins=bin_edges)
+        mol_counts_1, _ = np.histogram(all_mol_maxes[1], bins=bin_edges)
+
+        spec_counts_0, _ = np.histogram(all_spectra_scores[0], bins=bin_edges)
+        spec_counts_1, _ = np.histogram(all_spectra_scores[1], bins=bin_edges)
+
+        colors = ["#0072B2", "#D55E00"]
+
+        fig, axes = plt.subplots(
+            2, 1, figsize=(8, 8), sharex=True, facecolor="white"
+        )
+
+        # Top: Most informative spectrum per molecule
+        axes[0].bar(
+            bin_centers,
+            mol_counts_0,
+            width=bar_width,
+            color=colors[0],
+            label=config.labels[0],
+            edgecolor="black",
+            linewidth=0.5,
+        )
+        axes[0].bar(
+            bin_centers,
+            mol_counts_1,
+            width=bar_width,
+            bottom=mol_counts_0,
+            color=colors[1],
+            label=config.labels[1],
+            edgecolor="black",
+            linewidth=0.5,
+        )
+        axes[0].set_ylabel("Molecule Count")
+        axes[0].legend(frameon=False)
+        axes[0].grid(alpha=0.25)
+
+        # Bottom: All spectra
+        axes[1].bar(
+            bin_centers,
+            spec_counts_0,
+            width=bar_width,
+            color=colors[0],
+            label=config.labels[0],
+            edgecolor="black",
+            linewidth=0.5,
+        )
+        axes[1].bar(
+            bin_centers,
+            spec_counts_1,
+            width=bar_width,
+            bottom=spec_counts_0,
+            color=colors[1],
+            label=config.labels[1],
+            edgecolor="black",
+            linewidth=0.5,
+        )
+        axes[1].set_xlabel("Spectral Information Score")
+        axes[1].set_ylabel("Spectrum Count")
+        axes[1].legend(frameon=False)
+        axes[1].grid(alpha=0.25)
+
+        axes[1].set_xlim(config.range)
+
+        config.output_path.parent.mkdir(parents=True, exist_ok=True)
+        fig.tight_layout()
+        fig.savefig(
+            str(config.output_path), dpi=400, facecolor="white", transparent=False
+        )
+        plt.close(fig)
+        print(f"Stacked bar chart saved to {config.output_path}")
+
+        config.output_path.parent.mkdir(parents=True, exist_ok=True)
+        fig.tight_layout()
+        fig.savefig(
+            str(config.output_path), dpi=400, facecolor="white", transparent=False
+        )
+        plt.close(fig)
+        print(f"Stacked bar chart saved to {config.output_path}")
+
+    stacked_config = StackedBarConfig(
+        parquet_paths=[
+            Path("/home/analytit_admin/Data/spectral_libs/msp_for_Yonathan/NIST.parquet"),
+            Path(
+                "/home/analytit_admin/Data/spectral_libs/msp_for_Yonathan/fraghub.parquet"
+            ),
+        ],
+        labels=["NIST23", "Fraghub"],
+        output_path=Path("stacked_bar_distribution_nist_fraghub.png"),
+        bins=50,
+        range=(0.0, 5.0),
+        top_percentile=90.0,
+    )
+    plot_stacked_bar_distributions(stacked_config)
     return
 
 

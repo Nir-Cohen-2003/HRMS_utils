@@ -171,11 +171,7 @@ benchmark_gpu_cosine = {cmd="python experiments/fast_cosine_sim/simms_sparse_exa
 fit_models = "python experiments/spectral_information/tanimoto_similarity_prediction.py"
 
 isotope_fit = "python experiments/find_optimal_isotopic_parameters.py"
-# profile = "mprof run experiments/spectral_information/similarity_vs_info.py"
-# When run without arguments, automatically select the newest file whose name starts with 'mprofile'
-# and run `mprof plot` on it. If arguments are provided they are forwarded to `mprof plot`.
-# The task exits with an error if no `mprofile*` files are found.
-# plot-profile = "sh -lc 'if [ \"$#\" -eq 0 ]; then file=$(ls -t mprofile* 2>/dev/null | head -n1); if [ -z \"$file\" ]; then echo \"No mprofile file found\"; exit 1; fi; mprof plot \"$file\"; else mprof plot \"$@\"; fi' --"
+find_optimal_energy = "python experiments/spectral_information/optimal_energy_selection.py"
 
 [feature.docs.dependencies]
 mkdocs = ">=1.5.0"
