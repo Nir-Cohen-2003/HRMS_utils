@@ -34,11 +34,9 @@ MSP (Mass Spectral Library) files contain reference spectra with metadata like c
 ```python
 from pathlib import Path
 import polars as pl
-from hrms_utils.formats.nist_mspec import read_MSPEC_file
+from hrms_utils.formats.spectral_library import process_single_file
+library = process_single_file(
 
-# Load library
-library_path = Path("tests/data/msp_sample.msp")
-library = read_MSPEC_file(
     library_path,
     raw_fragment_tolerance_ppm=10.0,
     normalized_fragment_tolerance_ppm=5.0,
@@ -146,7 +144,7 @@ print(library.select(quality_cols).describe())
 
 ## Step 3: Automatic Cleaning Process
 
-When you call `read_MSPEC_file()`, it automatically:
+When you call `process_single_file()`, it automatically:
 
 1. **Extracts metadata** from MSP entries
 2. **Validates formulas** against precursor mass
@@ -241,17 +239,9 @@ print(f"High-quality TOF spectra: {len(tof_hq)}")
 Merge libraries from different sources:
 
 ```python
-from hrms_utils.formats.nist_mspec import create_nist_dataframe
+from hrms_utils.formats.spectral_library import process_spectral_library
+combined = process_spectral_library(library_files)
 
-# List of (file_path, database_name) tuples
-library_files = [
-    (Path("library1.msp"), "NIST"),
-    (Path("library2.msp"), "MassBank"),
-    (Path("library3.msp"), "GNPS"),
-]
-
-# Combine into one DataFrame
-combined = create_nist_dataframe(library_files)
 
 print(f"Combined library: {len(combined)} spectra")
 
@@ -368,13 +358,9 @@ Here's a full workflow for processing an MSP library:
 ```python
 from pathlib import Path
 import polars as pl
-from hrms_utils.formats.nist_mspec import read_MSPEC_file, create_nist_dataframe
+from hrms_utils.formats.spectral_library import process_single_file, process_spectral_library
+library = process_single_file(
 
-# Configure display
-pl.Config.set_tbl_rows(20)
-
-# 1. Load library
-library = read_MSPEC_file(
     "tests/data/msp_sample.msp",
     raw_fragment_tolerance_ppm=10.0,
     normalized_fragment_tolerance_ppm=5.0

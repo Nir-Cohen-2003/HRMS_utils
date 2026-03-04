@@ -33,7 +33,7 @@ Spectral similarity search involves:
 from pathlib import Path
 import polars as pl
 from hrms_utils.formats.msdial import get_chromatogram, annotate_chromatogram_with_formulas
-from hrms_utils.formats.nist_mspec import read_MSPEC_file
+from hrms_utils.formats.spectral_library import process_single_file as read_MSPEC_file
 
 # Load query chromatogram
 query = get_chromatogram("tests/data/MSDIAL_output.txt")
@@ -329,7 +329,7 @@ Full workflow from loading data to exporting results:
 from pathlib import Path
 import polars as pl
 from hrms_utils.formats.msdial import get_chromatogram
-from hrms_utils.formats.nist_mspec import read_MSPEC_file
+from hrms_utils.formats.spectral_library import process_single_file as read_MSPEC_file
 
 # Configure display
 pl.Config.set_tbl_rows(20)

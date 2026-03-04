@@ -18,6 +18,7 @@ python = "*"
 
 [pypi-dependencies]
 build = "*"
+parallel_rdkit = "*"
 
 [tasks]
 

@@ -47,7 +47,7 @@ See [Data Structures](data-structures.md) for details on the Polars DataFrame sc
 - [Decompose mass to formulas](api/hrms_core.md#hrms_utils.hrms_core.MassDecomposerUtils.decompose_mass)
 - [Compute spectral similarity](api/hrms_core.md#hrms_utils.hrms_core.SpectralUtils.dotprod_similarity)
 - [Read MSDIAL chromatogram](api/formats.md#hrms_utils.formats.msdial.get_chromatogram)
-- [Read MSP library](api/formats.md#hrms_utils.formats.nist_mspec.read_MSPEC_file)
+- [Read MSP library](api/formats.md#hrms_utils.formats.spectral_library.process_single_file)
 
 ### Advanced Features
 
@@ -86,13 +86,13 @@ df.with_columns(
 Format parsers and utilities are standard Python functions:
 
 ```python
-from hrms_utils.formats import msdial, nist_mspec
+from hrms_utils.formats import msdial, spectral_library
 
 # Returns Polars DataFrame
 chromatogram = msdial.get_chromatogram("file.txt")
 
 # Returns Polars DataFrame
-library = nist_mspec.read_MSPEC_file("library.msp")
+library = spectral_library.process_single_file("library.msp")
 ```
 
 ## Type Hints

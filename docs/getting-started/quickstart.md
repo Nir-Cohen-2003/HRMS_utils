@@ -29,8 +29,8 @@ from hrms_utils.formats.msdial import get_chromatogram
 chromatogram = get_chromatogram("sample.txt")
 
 # MSP/MSPEC library
-from hrms_utils.formats.nist_mspec import read_MSPEC_file
-library = read_MSPEC_file("library.msp")
+from hrms_utils.formats.spectral_library import process_single_file
+library = process_single_file("library.msp")
 
 # mzML files
 mzml_data = hrms_core.read_mzml(["file1.mzML", "file2.mzML"])

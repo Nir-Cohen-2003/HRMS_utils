@@ -51,7 +51,7 @@ Schema returned by `get_chromatogram()`:
 
 ### MSP Library
 
-Schema returned by `read_MSPEC_file()`:
+Schema returned by `process_single_file()`:
 
 | Column | Type | Description |
 |--------|------|-------------|

@@ -26,11 +26,11 @@ Functions for reading and processing MSDIAL chromatogram exports.
 
 Functions for reading NIST-format spectral libraries.
 
-::: hrms_utils.formats.nist_mspec.read_MSPEC_file
+::: hrms_utils.formats.spectral_library.process_single_file
     options:
       show_root_heading: false
 
-::: hrms_utils.formats.nist_mspec.create_nist_dataframe
+::: hrms_utils.formats.spectral_library.process_spectral_library
     options:
       show_root_heading: false
 

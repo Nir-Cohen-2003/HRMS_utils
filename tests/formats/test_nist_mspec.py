@@ -3,7 +3,7 @@ import time
 from pathlib import Path
 import traceback
 import polars as pl
-from hrms_utils.formats.nist_mspec import read_MSPEC_file
+from hrms_utils.formats.spectral_library import process_single_file as read_MSPEC_file
 import os
 import numpy as np
 

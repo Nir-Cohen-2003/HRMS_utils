@@ -5,6 +5,7 @@ from .epa_xlsx import (
     Main_sheet_cleaner,
     Synonym_sheet_cleaner,
 )
-from .mgf import read_all_ms2_files, read_mgf_to_dataframe
-from .nist_mspec import create_nist_dataframe, read_MSPEC_file
+from .mgf import read_all_ms2_files, parse_mgf, read_mgf_to_dataframe
+from .nist_mspec import parse_mspec, create_nist_dataframe, read_MSPEC_file
+from .spectral_library import process_spectral_library, process_single_file
 from .msdial import blank_config, get_chromatogram, subtract_blank_frame, annotate_chromatogram_with_formulas, NUM_ELEMENTS
