@@ -39,3 +39,4 @@ third_party/
 **.joblib
 **.egg-info/
 tests/data/**.raw
+data/
