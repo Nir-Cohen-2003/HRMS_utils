@@ -19,6 +19,6 @@ fn _internal(_py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(io_thermo::read_thermo_files, m)?)?;
     Ok(())
 }
-
-#[global_allocator]
-static ALLOC: PolarsAllocator = PolarsAllocator::new();
+// this allocator is not thread safe, and clashes with the thermo RAW file parser code which uses dotnet
+// #[global_allocator]
+// static ALLOC: PolarsAllocator = PolarsAllocator::new();

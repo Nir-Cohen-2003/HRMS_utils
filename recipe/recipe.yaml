@@ -1,69 +1,74 @@
 context:
-  version: "0.8.0"
-  python_min: "3.12"
+    version: "0.8.0"
+    python_min: "3.12"
 
 package:
-  name: hrms_utils
-  version: ${{ version }}
+    name: hrms_utils
+    version: ${{ version }}
 
 source:
-  path: ../
+    path: ../
 
 build:
-  script: |
-    python -m pip install . --no-deps --no-build-isolation -vv
-  python:
-    version_independent: true # Key setting for ABI3
+    script: |
+        python -m build --wheel --outdir "$SRC_DIR/dist/wheels" --no-isolation --skip-dependency-check
+        mkdir -p "$RECIPE_DIR/../dist"
+        cp "$SRC_DIR/dist/wheels/"*.whl "$RECIPE_DIR/../dist/"
+        python -m pip install "$SRC_DIR/dist/wheels/"*.whl --no-deps --no-build-isolation -vv
+    python:
+        version_independent: true # Key setting for ABI3
 
 requirements:
-  ignore_run_exports:
-    by_name:
-      - python_abi
-  build:
-    - ${{ compiler('c') }}
-    - cargo-bundle-licenses
-    - rust >=1.91.0
-    - rust-src >=1.91.0
-    - rattler-build >=0.48.0
-  host:
-    - python
-    - python-abi3 ==${{ python_min }} # Enables ABI3 compatibility
-    - pip
-    - python-build
-    - maturin
-    # - setuptools >=68.0.0
-    # - setuptools-rust
-    # - wheel
-  run:
-    - python >=${{ python_min }}
-    - polars >=1.35.2,<2
-    - rdkit >=2024.0.0
-    - numpy >=1.20.0
-    - scipy
-    - pymzml >2.5.0
-    - pandas
-    - lxml
-    - requests
-    - aiohttp
-    - pyarrow
-    - python-calamine
-    - openpyxl
-    - xlsx2csv
-    - xlsxwriter
-    - connectorx
-    - sqlalchemy
+    ignore_run_exports:
+        by_name:
+            - python_abi
+    build:
+        - ${{ compiler('c') }}
+        - cargo-bundle-licenses
+        - rust >=1.91.0
+        - rust-src >=1.91.0
+        - rattler-build >=0.48.0
+        - cmake
+        - ninja
+    host:
+        - python
+        - python-abi3 ==${{ python_min }} # Enables ABI3 compatibility
+        - pip
+        - python-build
+        - maturin
+        - cmake
+        - ninja
+    run:
+        - python >=${{ python_min }}
+        - polars >=1.35.2,<2
+        - rdkit >=2024.0.0
+        - numpy >=1.20.0
+        - parallel_rdkit
+        - scipy
+        - pymzml >2.5.0
+        - pandas
+        - lxml
+        - requests
+        - aiohttp
+        - pyarrow
+        - python-calamine
+        - openpyxl
+        - xlsx2csv
+        - xlsxwriter
+        - connectorx
+        - sqlalchemy
 
 tests:
-  - python:
-      imports:
-        - hrms_utils
-      python_version: ["${{ python_min ~ '.*' }}", "3.13.*", "3.14.*"]
+    - python:
+          imports:
+              - hrms_utils
+          python_version: ["${{ python_min ~ '.*' }}", "3.13.*", "3.14.*"]
 
 about:
-  homepage: https://github.com/Nir-Cohen-2003/HRMS_utils
-  # license: Apache 2.0
-  license_file: LICENSE
-  summary: fast usitlisites for HRMS data processing
-  description: |
-    polars based processing of spectral libraries, chromatogram and more. Rust based polars extension for core computational steps such as mass decomposition, spectra cleaning, spectral simailrity etc.
-  repository: https://github.com/Nir-Cohen-2003/HRMS_utils
+    homepage: https://github.com/Nir-Cohen-2003/HRMS_utils
+    # license: Apache 2.0
+    license_file: LICENSE
+    summary: fast usitlisites for HRMS data processing
+    description: |
+        polars based processing of spectral libraries, chromatogram and more. Rust based polars extension for core computational steps such as mass decomposition, spectra cleaning, spectral simailrity etc.
+    repository: https://github.com/Nir-Cohen-2003/HRMS_utils

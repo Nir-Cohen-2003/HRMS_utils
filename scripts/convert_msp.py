@@ -9,38 +9,86 @@ Where <path> can be:
 - A directory containing library files
 """
 
+import argparse
 import sys
 from pathlib import Path
-import polars as pl
-from hrms_utils.formats.spectral_library import process_spectral_library
 from time import perf_counter
-import argparse
+
+import polars as pl
+
+from hrms_utils.formats.spectral_library import process_spectral_library
+
 
 def collect_library_files(path: Path) -> list[Path]:
     """Collect all supported library files from the given path."""
-    valid_suffixes = {'.msp', '.mspec', '.mgf', '.MSP', '.MSPEC', '.MGF'}
-    
+    valid_suffixes = {".msp", ".mspec", ".mgf", ".MSP", ".MSPEC", ".MGF"}
+
     if path.is_file():
-        assert path.suffix in valid_suffixes, f"File {path} does not have a valid library suffix: {path.suffix}"
+        assert path.suffix in valid_suffixes, (
+            f"File {path} does not have a valid library suffix: {path.suffix}"
+        )
         return [path]
-    
+
     if path.is_dir():
-        files = [f for f in path.iterdir() if f.is_file() and f.suffix in valid_suffixes]
+        files = [
+            f for f in path.iterdir() if f.is_file() and f.suffix in valid_suffixes
+        ]
         assert len(files) > 0, f"No library files found in directory: {path}"
         return sorted(files)
-    
+
     raise ValueError(f"Path does not exist or is not a file/directory: {path}")
 
+
 def main():
-    parser = argparse.ArgumentParser(description="Convert Spectral Library files to Parquet with deduplication and enrichment")
-    parser.add_argument("input_path", type=Path, help="File or directory with library files")
-    parser.add_argument("--pubchem", "-p", type=Path, default=None, help="Parquet with PubChem data for enrichment")
-    parser.add_argument("--raw-fragment-tolerance-ppm", "-r", type=float, default=10.0, help="Raw fragment tolerance in ppm (default: 10.0)")
-    parser.add_argument("--normalized-fragment-tolerance-ppm", "-n", type=float, default=5.0, help="Normalized fragment tolerance in ppm (default: 5.0)")
-    parser.add_argument("--molecular-ion-tolerance-ppm", "-m", type=float, default=5.0, help="Molecular ion tolerance in ppm (default: 5.0)")
-    parser.add_argument("--ms2-tolerance-ppm", "-t", type=float, default=10.0, help="MS2 tolerance in ppm for deduplication (default: 10.0)")
-    parser.add_argument("--dedup-threshold", "-d", type=float, default=0.99, help="Explained intensity threshold for deduplication (default: 0.99)")
-    
+    parser = argparse.ArgumentParser(
+        description="Convert Spectral Library files to Parquet with deduplication and enrichment"
+    )
+    parser.add_argument(
+        "input_path", type=Path, help="File or directory with library files"
+    )
+    parser.add_argument(
+        "--pubchem",
+        "-p",
+        type=Path,
+        default=None,
+        help="Parquet with PubChem data for enrichment",
+    )
+    parser.add_argument(
+        "--raw-fragment-tolerance-ppm",
+        "-r",
+        type=float,
+        default=10.0,
+        help="Raw fragment tolerance in ppm (default: 10.0)",
+    )
+    parser.add_argument(
+        "--normalized-fragment-tolerance-ppm",
+        "-n",
+        type=float,
+        default=5.0,
+        help="Normalized fragment tolerance in ppm (default: 5.0)",
+    )
+    parser.add_argument(
+        "--molecular-ion-tolerance-ppm",
+        "-m",
+        type=float,
+        default=5.0,
+        help="Molecular ion tolerance in ppm (default: 5.0)",
+    )
+    parser.add_argument(
+        "--ms2-tolerance-ppm",
+        "-t",
+        type=float,
+        default=10.0,
+        help="MS2 tolerance in ppm for deduplication (default: 10.0)",
+    )
+    parser.add_argument(
+        "--dedup-threshold",
+        "-d",
+        type=float,
+        default=0.99,
+        help="Explained intensity threshold for deduplication (default: 0.99)",
+    )
+
     args = parser.parse_args()
 
     input_path = args.input_path.resolve()
@@ -50,9 +98,9 @@ def main():
     # Collect all matching files
     library_files = collect_library_files(input_path)
     print(f"Found {len(library_files)} file(s) to process")
-    
+
     start = perf_counter()
-    
+
     # Use the unified API
     df = process_spectral_library(
         files=library_files,
@@ -60,23 +108,23 @@ def main():
         normalized_fragment_tolerance_ppm=args.normalized_fragment_tolerance_ppm,
         molecular_ion_tolerance_ppm=args.molecular_ion_tolerance_ppm,
         pubchem_path=pubchem_path,
-        dedup_tolerance_ppm=args.ms2_tolerance_ppm,
-        dedup_threshold=args.dedup_threshold
+        dedup_threshold=args.dedup_threshold,
     )
-    
+
     end = perf_counter()
     print(f"Processed {df.height} spectra in {end - start:.2f} seconds")
     print(f"Unique compounds: {df.unique(subset='base_inchikey').height}")
 
     # Determine output path
     if input_path.is_file():
-        output_path = input_path.with_suffix('.parquet')
+        output_path = input_path.with_suffix(".parquet")
     else:
         output_path = input_path / f"{input_path.name}.parquet"
 
     print(f"Writing to {output_path}...")
     df.write_parquet(output_path)
     print("Success!")
+
 
 if __name__ == "__main__":
     main()
