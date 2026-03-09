@@ -6,7 +6,7 @@ rust-version = "1.90"
 [lib]
 name = "hrms_core"
 crate-type = ["rlib","cdylib"]
-path = "src/hrms_core/lib.rs"
+path = "hrms_core/lib.rs"
 [dependencies]
 polars = { version = "*", features = ["dtype-struct","dtype-array", "dtype-full"] }
 pyo3 = { version = "*", features = ["extension-module", "abi3-py312"] }

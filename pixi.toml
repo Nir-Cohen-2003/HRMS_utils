@@ -30,7 +30,7 @@ publish-anaconda = {cmd="rattler-build upload anaconda --owner Nir_Cohen --chann
 default = {features = [], solve-group = "default"}
 testing = {features = ["testing"], solve-group = "testing"}
 experiments = {features = ["experiments"], solve-group = "experiments",no-default-feature = true}
-scripts = {feature = ["scripts"], solve-group = "scripts"}
+scripts = {features = ["scripts"], solve-group = "scripts"}
 docs = {features = ["docs"], solve-group = "docs"}
 
 
@@ -106,9 +106,13 @@ find_optimal_energy = "python experiments/spectral_information/optimal_energy_se
 convert_msp = "python scripts/convert_msp.py"
 process-pubchem = "python scripts/process_pubchem.py"
 process-pubchem-download = "python scripts/process_pubchem.py --download"
+check_msp_conversion = "python scripts/check_convert_msp.py data/ -p data/pubchem.parquet"
 [feature.scripts.target.linux-64.dependencies]
 hrms_utils = {path = "."}
 parallel_rdkit = {path = "../parallel_rdkit/"}
+
+[feature.scripts.dependencies]
+dataframely = ">=2.7.0,<3"
 
 [feature.docs.dependencies]
 mkdocs = ">=1.5.0"

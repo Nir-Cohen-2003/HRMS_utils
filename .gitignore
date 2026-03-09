@@ -40,3 +40,4 @@ third_party/
 **.egg-info/
 tests/data/**.raw
 data/
+.cache/

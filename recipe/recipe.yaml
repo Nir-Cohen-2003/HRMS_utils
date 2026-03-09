@@ -7,14 +7,22 @@ package:
     version: ${{ version }}
 
 source:
-    path: ../
+    path: ../src/
+    use_gitignore: true
 
 build:
     script: |
-        python -m build --wheel --outdir "$SRC_DIR/dist/wheels" --no-isolation --skip-dependency-check
+        export CARGO_HOME="$SRC_DIR/../.cache/rattler-cargo-home"
+        export CARGO_TARGET_DIR="$SRC_DIR/../.cache/rattler-cargo-target"
+
+        # 2. Enable sccache
+        export RUSTC_WRAPPER="sccache"
+
+        # 3. Build the package
+        python -m build --wheel --outdir "$SRC_DIR/../dist/wheels" --no-isolation --skip-dependency-check
         mkdir -p "$RECIPE_DIR/../dist"
-        cp "$SRC_DIR/dist/wheels/"*.whl "$RECIPE_DIR/../dist/"
-        python -m pip install "$SRC_DIR/dist/wheels/"*.whl --no-deps --no-build-isolation -vv
+        cp "$SRC_DIR/../dist/wheels/"*.whl "$RECIPE_DIR/../dist/"
+        python -m pip install "$SRC_DIR/../dist/wheels/"*.whl --no-deps --no-build-isolation -vv
     python:
         version_independent: true # Key setting for ABI3
 
@@ -30,6 +38,7 @@ requirements:
         - rattler-build >=0.48.0
         - cmake
         - ninja
+        - sccache
     host:
         - python
         - python-abi3 ==${{ python_min }} # Enables ABI3 compatibility
@@ -41,9 +50,10 @@ requirements:
     run:
         - python >=${{ python_min }}
         - polars >=1.35.2,<2
+        - dataframely >=2.0.0,<3
         - rdkit >=2024.0.0
         - numpy >=1.20.0
-        - parallel_rdkit
+        # - parallel_rdkit
         - scipy
         - pymzml >2.5.0
         - pandas

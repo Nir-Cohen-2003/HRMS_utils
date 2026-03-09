@@ -9,7 +9,6 @@ from parallel_rdkit import (
     smiles_to_inchikey_parallel,
 )
 
-from ..formula_annotation.element_table import ADDUCT_MASSES
 from ..formula_annotation.utils import (
     format_formula_string_to_array,
     formula_to_array,
@@ -56,11 +55,21 @@ def process_spectral_library(
     molecular_ion_tolerance_ppm: float = 5.0,
     includes_MSn: bool = False,
     pubchem_path: Path | None = None,
+    min_explained_intensity: float | None = None,
     dedup_threshold: float = 0.99,
+    logger=None,
 ) -> pl.DataFrame:
     """Unified entry point for processing multiple spectral library files with deduplication and enrichment."""
+    import time
+
+    def log(msg):
+        if logger is not None:
+            print(msg, file=logger)
+
+    t0 = time.perf_counter()
     lazyframes = []
     for f in files:
+        ti = time.perf_counter()
         lf = process_single_file(
             f,
             raw_fragment_tolerance_ppm=raw_fragment_tolerance_ppm,
@@ -70,26 +79,51 @@ def process_spectral_library(
             lazy=True,
         )
         lazyframes.append(lf)
+        log(f"[{time.perf_counter() - ti:.2f}s] Parsed {f}")
 
-    combined_lf = pl.concat(lazyframes, how="vertical_relaxed")
+    combined_lf = pl.concat(lazyframes, how="diagonal_relaxed")
+    # Workaround for polars schema lengths differ bug
+    df = combined_lf.collect(engine="streaming")
+    combined_lf = df.lazy()
+    log(f"[{time.perf_counter() - t0:.2f}s] Parsed all files into LazyFrames")
 
     # Filter rows with no molecular info early
+    t1 = time.perf_counter()
     combined_lf = _filter_invalid_entries(combined_lf)
+    log(f"[{time.perf_counter() - t1:.2f}s] Built invalid entries filter")
 
     # Optional PubChem enrichment
     if pubchem_path is not None:
+        t2 = time.perf_counter()
         combined_lf = _enrich_with_pubchem(combined_lf, pubchem_path)
+        log(f"[{time.perf_counter() - t2:.2f}s] Built PubChem enrichment")
 
-    # Collect for deduplication and MS-ready standardization
-    df = combined_lf.collect(engine="streaming")
+    # Filter by explained intensity
+    if min_explained_intensity is not None:
+        t_filter = time.perf_counter()
+        combined_lf = combined_lf.filter(pl.col("explained_intensity") >= min_explained_intensity)
+        log(f"[{time.perf_counter() - t_filter:.2f}s] Applied explained intensity filter (>= {min_explained_intensity})")
 
     # Pairwise deduplication
-    df = _deduplicate_spectra(
-        df, tolerance_ppm=normalized_fragment_tolerance_ppm, threshold=dedup_threshold
+    t4 = time.perf_counter()
+    combined_lf = _deduplicate_spectra(
+        combined_lf, 
+        fragment_tolerance_ppm=normalized_fragment_tolerance_ppm, 
+        molecular_ion_tolerance_ppm=molecular_ion_tolerance_ppm,
+        threshold=dedup_threshold
     )
+    log(f"[{time.perf_counter() - t4:.2f}s] Built deduplication plan")
 
     # MS-ready standardization
+    t5 = time.perf_counter()
+    df = combined_lf.collect(engine="streaming")
+    log(f"[{time.perf_counter() - t5:.2f}s] Collected and evaluated pipeline")
+    
+    t6 = time.perf_counter()
     df = _standardize_structures(df)
+    log(f"[{time.perf_counter() - t6:.2f}s] Standardized structures")
+
+    log(f"[{time.perf_counter() - t0:.2f}s] Total execution time")
 
     return df
 
@@ -117,6 +151,7 @@ def _process_pipeline(
     """
     lf = _fill_missing_inchikeys(lf)
     lf = _add_base_inchikey(lf)
+    lf = _normalize_precursor_type_strings(lf)
     lf = _compute_precursor_formula(lf)
     lf = _annotate_and_filter_metadata(lf)
     lf = _extract_collision_energy_values(lf)
@@ -130,10 +165,10 @@ def _process_pipeline(
     lf = _add_spectral_information_score(lf)
 
     # Column selection
-    cols = [
+    existing_cols = lf.collect_schema().names()
+    target_cols = [
         "name",
-        "nist_id",
-        "db_id",
+        # "db_id",
         "instrument_type",
         "instrument",
         "ionization",
@@ -172,10 +207,12 @@ def _process_pipeline(
         "spectral_information_score_with_hydrogens",
         "source_file",
     ]
+
+    cols_to_select = [c for c in target_cols if c in existing_cols]
+
     # Add MSn columns if they exist
-    existing_cols = lf.collect_schema().names()
     msn_cols = [c for c in existing_cols if c.startswith("msn_")]
-    return lf.select(cols + msn_cols)
+    return lf.select(cols_to_select + msn_cols)
 
 
 def _filter_invalid_entries(lf: pl.LazyFrame) -> pl.LazyFrame:
@@ -211,15 +248,21 @@ def _fill_missing_inchikeys(lf: pl.LazyFrame) -> pl.LazyFrame:
 
     if result_df.filter(inchi_only_mask).height > 0:
         inchi_only_df = result_df.filter(inchi_only_mask)
-        inchi_list = inchi_only_df["inchi"].to_list()
+        inchi_list = inchi_only_df["inchi"].unique().to_list()
         smiles_from_inchi = inchi_to_smiles_parallel(inchi_list)
-        inchi_to_smiles_map = dict(zip(inchi_list, smiles_from_inchi))
+        inchi_to_smiles_df = pl.DataFrame(
+            {"inchi": inchi_list, "smiles_mapped": smiles_from_inchi}
+        )
 
-        result_df = result_df.with_columns(
-            pl.when(inchi_only_mask)
-            .then(pl.col("inchi").map_dict(inchi_to_smiles_map, default=None))
-            .otherwise(pl.col("smiles"))
-            .alias("smiles")
+        result_df = (
+            result_df.join(inchi_to_smiles_df, on="inchi", how="left")
+            .with_columns(
+                pl.when(inchi_only_mask)
+                .then(pl.col("smiles_mapped"))
+                .otherwise(pl.col("smiles"))
+                .alias("smiles")
+            )
+            .drop("smiles_mapped")
         )
 
     # Then convert smiles to inchikey
@@ -229,15 +272,21 @@ def _fill_missing_inchikeys(lf: pl.LazyFrame) -> pl.LazyFrame:
 
     if result_df.filter(smiles_but_no_inchikey_mask).height > 0:
         smiles_df = result_df.filter(smiles_but_no_inchikey_mask)
-        smiles_list = smiles_df["smiles"].to_list()
+        smiles_list = smiles_df["smiles"].unique().to_list()
         inchikeys = smiles_to_inchikey_parallel(smiles_list)
-        smiles_to_inchikey_map = dict(zip(smiles_list, inchikeys))
+        smiles_to_inchikey_df = pl.DataFrame(
+            {"smiles": smiles_list, "inchikey_mapped": inchikeys}
+        )
 
-        result_df = result_df.with_columns(
-            pl.when(smiles_but_no_inchikey_mask)
-            .then(pl.col("smiles").map_dict(smiles_to_inchikey_map, default=None))
-            .otherwise(pl.col("inchikey"))
-            .alias("inchikey")
+        result_df = (
+            result_df.join(smiles_to_inchikey_df, on="smiles", how="left")
+            .with_columns(
+                pl.when(smiles_but_no_inchikey_mask)
+                .then(pl.col("inchikey_mapped"))
+                .otherwise(pl.col("inchikey"))
+                .alias("inchikey")
+            )
+            .drop("inchikey_mapped")
         )
 
     return result_df.lazy()
@@ -289,6 +338,20 @@ def _compute_precursor_formula(lf: pl.LazyFrame) -> pl.LazyFrame:
         .map_elements(format_formula_string_to_array, return_dtype=pl.List(pl.Int32))
         .list.to_array(width=num_elements)
         .alias("precursor_formula_array")
+    )
+
+
+def _normalize_precursor_type_strings(lf: pl.LazyFrame) -> pl.LazyFrame:
+    return lf.with_columns(
+        pl.when(pl.col("precursor_type").is_not_null())
+        .then(
+            pl.col("precursor_type")
+            .str.strip_chars()
+            .str.replace_all(r"\s+", "")
+            .str.replace_all(r"[−–—]", "-")
+        )
+        .otherwise(None)
+        .alias("precursor_type")
     )
 
 
@@ -432,21 +495,9 @@ def _annotate_spectra(
     raw_fragment_tolerance_ppm: float,
     normalized_fragment_tolerance_ppm: float,
 ) -> polarsFrame:
-    adduct_df = pl.DataFrame(
-        {
-            "precursor_type": list(ADDUCT_MASSES.keys()),
-            "adduct_mass": list(ADDUCT_MASSES.values()),
-        }
-    )
-
-    if isinstance(data, pl.LazyFrame):
-        data_frame = data.join(adduct_df.lazy(), on="precursor_type", how="left")
-    else:
-        data_frame = data.join(adduct_df, on="precursor_type", how="left")
-
     return cast(
         polarsFrame,
-        data_frame.with_columns(
+        data.with_columns(
             pl.col("raw_spectrum_intensity")
             .truediv(pl.col("raw_spectrum_intensity").list.sum())
             .alias("raw_spectrum_intensity")
@@ -573,40 +624,56 @@ def _add_spectral_information_score(data: polarsFrame) -> polarsFrame:
 
 
 def _deduplicate_spectra(
-    df: pl.DataFrame, tolerance_ppm: float, threshold: float
-) -> pl.DataFrame:
-    """Pairwise deduplication based on explained intensity."""
-    df = df.with_row_index("_dedup_idx")
+    lf: pl.LazyFrame, fragment_tolerance_ppm: float, molecular_ion_tolerance_ppm: float, threshold: float
+) -> pl.LazyFrame:
+    """Pairwise deduplication based on explained intensity, restricted to same base_inchikey and precursor_mz."""
+    lf = lf.with_row_index("_dedup_idx")
 
-    # Join on base_inchikey to find potential duplicates
+    valid_bases = lf.filter(
+        pl.col("base_inchikey").is_not_null() & (pl.col("base_inchikey") != "")
+    )
+    
+    # We only want to deduplicate among valid base_inchikeys
+    base_lf = valid_bases.select(
+        [
+            "_dedup_idx",
+            "base_inchikey",
+            "cleaned_normalized_mz",
+            "cleaned_normalized_intensity",
+            "precursor_mz",
+        ]
+    )
+
+    # Bin precursor_mz to 0.1 Da bins to avoid Cartesian explosion during join
+    base_lf = base_lf.with_columns(
+        (pl.col("precursor_mz") * 10.0).cast(pl.Int64).alias("_mz_bin")
+    )
+
+    # Create a right table that expands the bins to [bin-1, bin, bin+1] to catch boundary matches
+    right_lf = base_lf.with_columns(
+        pl.col("_mz_bin").map_elements(lambda x: [x-1, x, x+1], return_dtype=pl.List(pl.Int64)).alias("_mz_bin_adj")
+    ).explode("_mz_bin_adj").drop("_mz_bin").rename({"_mz_bin_adj": "_mz_bin"})
+
+    # Join on base_inchikey AND the expanded mz bin
     pairs = (
-        df.select(
-            [
-                "_dedup_idx",
-                "base_inchikey",
-                "cleaned_normalized_mz",
-                "cleaned_normalized_intensity",
-                "precursor_mz",
-            ]
-        )
+        base_lf
         .join(
-            df.select(
-                [
-                    "_dedup_idx",
-                    "base_inchikey",
-                    "cleaned_normalized_mz",
-                    "cleaned_normalized_intensity",
-                    "precursor_mz",
-                ]
-            ),
-            on="base_inchikey",
+            right_lf,
+            on=["base_inchikey", "_mz_bin"],
             suffix="_right",
         )
         .filter(pl.col("_dedup_idx") < pl.col("_dedup_idx_right"))
     )
 
-    if pairs.is_empty():
-        return df.drop("_dedup_idx")
+    # Now exact precursor_mz tolerance filter
+    # ppm = abs(mz1 - mz2) / mz2 * 1e6
+    pairs = pairs.with_columns(
+        (
+            (pl.col("precursor_mz") - pl.col("precursor_mz_right")).abs() 
+            / pl.col("precursor_mz_right") * 1e6
+        ).alias("_ppm_diff")
+    ).filter(pl.col("_ppm_diff") <= molecular_ion_tolerance_ppm)
+
 
     # Forward similarity
     pairs = pairs.with_columns(
@@ -621,7 +688,7 @@ def _deduplicate_spectra(
             ]
         )
         .spectral_similarity.explained_intensity(
-            ms2_tolerance_in_ppm=tolerance_ppm, permissive=True
+            ms2_tolerance_in_ppm=fragment_tolerance_ppm, permissive=True
         )
         .alias("sim_forward"),
         # Reverse similarity
@@ -636,7 +703,7 @@ def _deduplicate_spectra(
             ]
         )
         .spectral_similarity.explained_intensity(
-            ms2_tolerance_in_ppm=tolerance_ppm, permissive=True
+            ms2_tolerance_in_ppm=fragment_tolerance_ppm, permissive=True
         )
         .alias("sim_reverse"),
     )
@@ -649,9 +716,16 @@ def _deduplicate_spectra(
         .unique()
     )
 
-    return df.filter(~pl.col("_dedup_idx").is_in(to_remove["_dedup_idx_right"])).drop(
-        "_dedup_idx"
-    )
+    # Join back with original lf and filter out the duplicates
+    return lf.join(
+        to_remove.with_columns(pl.lit(True).alias("_is_dup")), 
+        left_on="_dedup_idx", 
+        right_on="_dedup_idx_right", 
+        how="left"
+    ).filter(
+        pl.col("_is_dup").is_null()
+    ).drop(["_dedup_idx", "_is_dup"])
+
 
 
 def _enrich_with_pubchem(lf: pl.LazyFrame, pubchem_path: Path) -> pl.LazyFrame:
@@ -661,45 +735,29 @@ def _enrich_with_pubchem(lf: pl.LazyFrame, pubchem_path: Path) -> pl.LazyFrame:
         .select(
             [
                 pl.col("CID").alias("cid"),
-                pl.col("InChIKey").alias("inchikey"),
-                pl.col("SMILES").alias("smiles"),
-                pl.col("InChI").alias("inchi"),
-                pl.col("Formula").alias("formula"),
-                pl.col("monoisotopic_mass"),
+                pl.col("InChIKey").alias("inchikey_pubchem"),
+                pl.col("SMILES").alias("smiles_pubchem"),
+                pl.col("InChI").alias("inchi_pubchem"),
             ]
         )
         .with_columns(
-            pl.col("inchikey").str.split("-").list.get(0).alias("base_inchikey")
+            pl.col("inchikey_pubchem").str.split("-").list.get(0).alias("base_inchikey")
         )
         # Deduplicate pubchem by base_inchikey
         .unique(subset="base_inchikey")
+        .with_columns(pl.col("base_inchikey").alias("base_inchikey_pubchem"))
     )
 
-    pubchem_lf = pubchem_lf
+    lf = lf.join(pubchem_lf, on="base_inchikey", how="left")
 
-    lf = lf.join(pubchem_lf, on="base_inchikey", how="left", suffix="_pubchem")
-
-    # Fill missing identifiers
+    # Override identifiers with PubChem
+    import polars.selectors as cs
     return lf.with_columns(
-        pl.when(pl.col("smiles").is_null() | (pl.col("smiles") == ""))
-        .then(pl.col("smiles_pubchem"))
-        .otherwise(pl.col("smiles"))
-        .alias("smiles"),
-        pl.when(pl.col("inchi").is_null() | (pl.col("inchi") == ""))
-        .then(pl.col("inchi_pubchem"))
-        .otherwise(pl.col("inchi"))
-        .alias("inchi"),
-        pl.when(pl.col("inchikey").is_null() | (pl.col("inchikey") == ""))
-        .then(pl.col("inchikey_pubchem"))
-        .otherwise(pl.col("inchikey"))
-        .alias("inchikey"),
-    ).drop(
-        [
-            c
-            for c in lf.collect_schema().names()
-            if c.endswith("_pubchem") or c in ["cid", "formula", "monoisotopic_mass"]
-        ]
-    )
+        pl.col("smiles_pubchem").alias("smiles"),
+        pl.col("inchi_pubchem").alias("inchi"),
+        pl.col("inchikey_pubchem").alias("inchikey"),
+        pl.col("base_inchikey_pubchem").alias("base_inchikey"),
+    ).drop(cs.ends_with("_pubchem"), "cid")
 
 
 def _standardize_structures(df: pl.DataFrame) -> pl.DataFrame:
@@ -711,9 +769,9 @@ def _standardize_structures(df: pl.DataFrame) -> pl.DataFrame:
         missing = mapping_df.filter(pl.col("smiles").is_null())[
             "base_inchikey"
         ].to_list()
-        raise ValueError(f"Missing SMILES for base_inchikeys: {missing}")
+        print(f"Missing SMILES for base_inchikeys: {missing}")
 
-    smiles_list = mapping_df["smiles"].to_list()
+    smiles_list = [s if s is not None else "" for s in mapping_df["smiles"].to_list()]
     msready_smiles, msready_inchi, msready_inchikey = msready_inchi_inchikey_parallel(
         smiles_list
     )

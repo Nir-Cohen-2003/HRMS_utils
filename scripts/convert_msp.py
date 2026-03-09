@@ -88,6 +88,13 @@ def main():
         default=0.99,
         help="Explained intensity threshold for deduplication (default: 0.99)",
     )
+    parser.add_argument(
+        "--min-explained-intensity",
+        "-e",
+        type=float,
+        default=0.95,
+        help="Minimum explained intensity to keep a spectrum (default: 0.95)",
+    )
 
     args = parser.parse_args()
 
@@ -108,7 +115,9 @@ def main():
         normalized_fragment_tolerance_ppm=args.normalized_fragment_tolerance_ppm,
         molecular_ion_tolerance_ppm=args.molecular_ion_tolerance_ppm,
         pubchem_path=pubchem_path,
+        min_explained_intensity=args.min_explained_intensity,
         dedup_threshold=args.dedup_threshold,
+        logger=sys.stdout,
     )
 
     end = perf_counter()

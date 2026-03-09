@@ -15,7 +15,7 @@ def _():
 
     # Domain imports from hrms_utils
     import hrms_utils
-    from hrms_utils.formats.nist_mspec import read_MSPEC_file
+    from hrms_utils.formats.spectral_library import process_single_file as read_MSPEC_file
     return List, Path, Tuple, dataclass, np, pl, plt, read_MSPEC_file
 
 

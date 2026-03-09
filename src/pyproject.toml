@@ -30,7 +30,7 @@ build-backend = "maturin"
 
 [tool.maturin]
 module-name = "hrms_utils._internal"
-python-source = "src"
+python-source = "."
 features = ["pyo3/abi3-py312"]
 bindings = "pyo3"
 exclude = ["scripts/**", "tests/**","experiments/**","docs/**","results/**","ideas/**"]
