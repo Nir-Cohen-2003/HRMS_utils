@@ -20,7 +20,7 @@ def parse_mspec(path: Path | str) -> pl.LazyFrame:
             pl.col("raw").str.extract(pattern=r"(?i)DB#: (\d+)", group_index=1).alias("db_id"),
             pl.col("raw").str.extract(pattern=r"(?i)Instrument_?type: (.+)", group_index=1).alias("instrument_type"),
             pl.col("raw").str.extract(pattern=r"(?i)Instrument: (.+)", group_index=1).alias("instrument"),
-            pl.col("raw").str.extract(pattern=r"(?i)(?:Spectrum_type|MSLEVEL): (?:MS)?(\d+)", group_index=1).str.to_integer().alias("mslevel"),
+            pl.col("raw").str.extract(pattern=r"(?i)(?:Spectrum_type|MSLEVEL): (?:MS)?(\d+)", group_index=1).cast(pl.Int64, strict=False).alias("mslevel"),
             pl.col("raw").str.extract(pattern=r"(?i)Collision_gas: (.+)", group_index=1).alias("collision_gas"),
             pl.col("raw").str.extract(pattern=r"(?i)Collision_?energy: (.+)", group_index=1).alias("collision_energy_raw"),
             pl.col("raw").str.extract(pattern=r"(?i)Ionization: (.+)", group_index=1).alias("ionization"),

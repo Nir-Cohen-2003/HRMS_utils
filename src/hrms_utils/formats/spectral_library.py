@@ -1,8 +1,10 @@
 import re
+import time
 from pathlib import Path
 from typing import List, Optional, TypeVar, Union, cast
 
 import polars as pl
+import polars.selectors as cs
 from parallel_rdkit import (
     inchi_to_smiles_parallel,
     msready_inchi_inchikey_parallel,
@@ -60,7 +62,6 @@ def process_spectral_library(
     logger=None,
 ) -> pl.DataFrame:
     """Unified entry point for processing multiple spectral library files with deduplication and enrichment."""
-    import time
 
     def log(msg):
         if logger is not None:
@@ -82,46 +83,86 @@ def process_spectral_library(
         log(f"[{time.perf_counter() - ti:.2f}s] Parsed {f}")
 
     combined_lf = pl.concat(lazyframes, how="diagonal_relaxed")
+    # Filter by explained intensity
+    if min_explained_intensity is not None:
+        combined_lf = _filter_invalid_entries(combined_lf)
+        # Filter rows with no molecular info early
+        combined_lf = combined_lf.filter(
+            pl.col("explained_intensity") >= min_explained_intensity
+        )
+        log(
+            f"Defined explained intensity filter (>= {min_explained_intensity}) and any molecular info presence filter "
+        )
     # Workaround for polars schema lengths differ bug
     df = combined_lf.collect(engine="streaming")
     combined_lf = df.lazy()
-    log(f"[{time.perf_counter() - t0:.2f}s] Parsed all files into LazyFrames")
+    log(f"[{time.perf_counter() - t0:.2f}s] Parsed all files and collected")
 
-    # Filter rows with no molecular info early
     t1 = time.perf_counter()
-    combined_lf = _filter_invalid_entries(combined_lf)
-    log(f"[{time.perf_counter() - t1:.2f}s] Built invalid entries filter")
 
     # Optional PubChem enrichment
     if pubchem_path is not None:
-        t2 = time.perf_counter()
         combined_lf = _enrich_with_pubchem(combined_lf, pubchem_path)
-        log(f"[{time.perf_counter() - t2:.2f}s] Built PubChem enrichment")
+        log("Built PubChem enrichment")
 
-    # Filter by explained intensity
-    if min_explained_intensity is not None:
-        t_filter = time.perf_counter()
-        combined_lf = combined_lf.filter(pl.col("explained_intensity") >= min_explained_intensity)
-        log(f"[{time.perf_counter() - t_filter:.2f}s] Applied explained intensity filter (>= {min_explained_intensity})")
+    # MS-ready standardization
+    df = combined_lf.collect(engine="streaming")
+    log(f"[{time.perf_counter() - t1:.2f}s] collected after enriching with pubchem")
+    t5 = time.perf_counter()
+    df = _standardize_structures(df)
+    combined_lf = df.lazy()
+    log(f"[{time.perf_counter() - t5:.2f}s] Standardized structures")
 
     # Pairwise deduplication
     t4 = time.perf_counter()
+
+    # Pre-deduplication stats
+    stats_df = combined_lf.select(
+        ["source_file", "base_inchikey", "clean_precursor"]
+    ).collect()
+
+    def get_stats(df, prefix=""):
+        total_spectra = df.height
+        total_molecules = df["base_inchikey"].n_unique()
+        stats_str = (
+            f"{prefix}Total: {total_spectra} spectra, {total_molecules} molecules\n"
+        )
+
+        file_stats = (
+            df.group_by("source_file")
+            .agg(
+                pl.len().alias("spectra"),
+                pl.col("base_inchikey").n_unique().alias("molecules"),
+            )
+            .sort("source_file")
+        )
+        for row in file_stats.iter_rows(named=True):
+            stats_str += f"  {row['source_file']}: {row['spectra']} spectra, {row['molecules']} molecules\n"
+        return stats_str
+
+    log("Library Statistics (Pre-deduplication):")
+    log(get_stats(stats_df))
+
+    clean_df = stats_df.filter(pl.col("clean_precursor"))
+    log("Library Statistics (Clean Precursors Only):")
+    log(get_stats(clean_df))
+
     combined_lf = _deduplicate_spectra(
-        combined_lf, 
-        fragment_tolerance_ppm=normalized_fragment_tolerance_ppm, 
+        combined_lf,
+        fragment_tolerance_ppm=normalized_fragment_tolerance_ppm,
         molecular_ion_tolerance_ppm=molecular_ion_tolerance_ppm,
-        threshold=dedup_threshold
+        threshold=dedup_threshold,
     )
     log(f"[{time.perf_counter() - t4:.2f}s] Built deduplication plan")
 
-    # MS-ready standardization
-    t5 = time.perf_counter()
-    df = combined_lf.collect(engine="streaming")
-    log(f"[{time.perf_counter() - t5:.2f}s] Collected and evaluated pipeline")
-    
     t6 = time.perf_counter()
-    df = _standardize_structures(df)
-    log(f"[{time.perf_counter() - t6:.2f}s] Standardized structures")
+    df = combined_lf.collect(engine="streaming")
+    log(f"[{time.perf_counter() - t6:.2f}s] Collected deduplicated library")
+
+    log("Library Statistics (Post-deduplication):")
+    log(get_stats(df))
+    log("Library Statistics (Post-deduplication, Clean Precursors Only):")
+    log(get_stats(df.filter(pl.col("clean_precursor"))))
 
     log(f"[{time.perf_counter() - t0:.2f}s] Total execution time")
 
@@ -624,7 +665,10 @@ def _add_spectral_information_score(data: polarsFrame) -> polarsFrame:
 
 
 def _deduplicate_spectra(
-    lf: pl.LazyFrame, fragment_tolerance_ppm: float, molecular_ion_tolerance_ppm: float, threshold: float
+    lf: pl.LazyFrame,
+    fragment_tolerance_ppm: float,
+    molecular_ion_tolerance_ppm: float,
+    threshold: float,
 ) -> pl.LazyFrame:
     """Pairwise deduplication based on explained intensity, restricted to same base_inchikey and precursor_mz."""
     lf = lf.with_row_index("_dedup_idx")
@@ -632,7 +676,7 @@ def _deduplicate_spectra(
     valid_bases = lf.filter(
         pl.col("base_inchikey").is_not_null() & (pl.col("base_inchikey") != "")
     )
-    
+
     # We only want to deduplicate among valid base_inchikeys
     base_lf = valid_bases.select(
         [
@@ -641,6 +685,7 @@ def _deduplicate_spectra(
             "cleaned_normalized_mz",
             "cleaned_normalized_intensity",
             "precursor_mz",
+            "source_file",
         ]
     )
 
@@ -650,30 +695,33 @@ def _deduplicate_spectra(
     )
 
     # Create a right table that expands the bins to [bin-1, bin, bin+1] to catch boundary matches
-    right_lf = base_lf.with_columns(
-        pl.col("_mz_bin").map_elements(lambda x: [x-1, x, x+1], return_dtype=pl.List(pl.Int64)).alias("_mz_bin_adj")
-    ).explode("_mz_bin_adj").drop("_mz_bin").rename({"_mz_bin_adj": "_mz_bin"})
+    right_lf = (
+        base_lf.with_columns(
+            pl.col("_mz_bin")
+            .map_elements(lambda x: [x - 1, x, x + 1], return_dtype=pl.List(pl.Int64))
+            .alias("_mz_bin_adj")
+        )
+        .explode("_mz_bin_adj")
+        .drop("_mz_bin")
+        .rename({"_mz_bin_adj": "_mz_bin"})
+    )
 
     # Join on base_inchikey AND the expanded mz bin
-    pairs = (
-        base_lf
-        .join(
-            right_lf,
-            on=["base_inchikey", "_mz_bin"],
-            suffix="_right",
-        )
-        .filter(pl.col("_dedup_idx") < pl.col("_dedup_idx_right"))
-    )
+    pairs = base_lf.join(
+        right_lf,
+        on=["base_inchikey", "_mz_bin"],
+        suffix="_right",
+    ).filter(pl.col("_dedup_idx") < pl.col("_dedup_idx_right"))
 
     # Now exact precursor_mz tolerance filter
     # ppm = abs(mz1 - mz2) / mz2 * 1e6
     pairs = pairs.with_columns(
         (
-            (pl.col("precursor_mz") - pl.col("precursor_mz_right")).abs() 
-            / pl.col("precursor_mz_right") * 1e6
+            (pl.col("precursor_mz") - pl.col("precursor_mz_right")).abs()
+            / pl.col("precursor_mz_right")
+            * 1e6
         ).alias("_ppm_diff")
     ).filter(pl.col("_ppm_diff") <= molecular_ion_tolerance_ppm)
-
 
     # Forward similarity
     pairs = pairs.with_columns(
@@ -708,24 +756,46 @@ def _deduplicate_spectra(
         .alias("sim_reverse"),
     )
 
-    to_remove = (
-        pairs.filter(
-            (pl.col("sim_forward") >= threshold) & (pl.col("sim_reverse") >= threshold)
+    duplicate_pairs = pairs.filter(
+        (pl.col("sim_forward") >= threshold) & (pl.col("sim_reverse") >= threshold)
+    ).collect()
+
+    if not duplicate_pairs.is_empty():
+        # Log total duplicates
+        total_dups = duplicate_pairs.select("_dedup_idx_right").n_unique()
+        print(f"Deduplication: found {total_dups} duplicate spectra")
+
+        # Log duplicates per file
+        dups_per_file = duplicate_pairs.group_by("source_file_right").agg(
+            pl.col("_dedup_idx_right").n_unique().alias("num_duplicates")
         )
-        .select("_dedup_idx_right")
-        .unique()
-    )
+        for row in dups_per_file.iter_rows(named=True):
+            print(f"  {row['source_file_right']}: {row['num_duplicates']} duplicates")
+
+        # Overlap matrix
+        overlap_matrix = (
+            duplicate_pairs.group_by(["source_file", "source_file_right"])
+            .agg(pl.len().alias("count"))
+            .pivot(on="source_file_right", index="source_file", values="count")
+            .fill_null(0)
+        )
+
+        with open("overlap_matrix.txt", "w") as f:
+            f.write(str(overlap_matrix))
+
+    to_remove = duplicate_pairs.select("_dedup_idx_right").unique()
 
     # Join back with original lf and filter out the duplicates
-    return lf.join(
-        to_remove.with_columns(pl.lit(True).alias("_is_dup")), 
-        left_on="_dedup_idx", 
-        right_on="_dedup_idx_right", 
-        how="left"
-    ).filter(
-        pl.col("_is_dup").is_null()
-    ).drop(["_dedup_idx", "_is_dup"])
-
+    return (
+        lf.join(
+            to_remove.lazy().with_columns(pl.lit(True).alias("_is_dup")),
+            left_on="_dedup_idx",
+            right_on="_dedup_idx_right",
+            how="left",
+        )
+        .filter(pl.col("_is_dup").is_null())
+        .drop(["_dedup_idx", "_is_dup"])
+    )
 
 
 def _enrich_with_pubchem(lf: pl.LazyFrame, pubchem_path: Path) -> pl.LazyFrame:
@@ -745,18 +815,16 @@ def _enrich_with_pubchem(lf: pl.LazyFrame, pubchem_path: Path) -> pl.LazyFrame:
         )
         # Deduplicate pubchem by base_inchikey
         .unique(subset="base_inchikey")
-        .with_columns(pl.col("base_inchikey").alias("base_inchikey_pubchem"))
     )
 
     lf = lf.join(pubchem_lf, on="base_inchikey", how="left")
 
     # Override identifiers with PubChem
-    import polars.selectors as cs
+
     return lf.with_columns(
-        pl.col("smiles_pubchem").alias("smiles"),
-        pl.col("inchi_pubchem").alias("inchi"),
-        pl.col("inchikey_pubchem").alias("inchikey"),
-        pl.col("base_inchikey_pubchem").alias("base_inchikey"),
+        pl.coalesce([pl.col("smiles_pubchem"), pl.col("smiles")]).alias("smiles"),
+        pl.coalesce([pl.col("inchi_pubchem"), pl.col("inchi")]).alias("inchi"),
+        pl.coalesce([pl.col("inchikey_pubchem"), pl.col("inchikey")]).alias("inchikey"),
     ).drop(cs.ends_with("_pubchem"), "cid")
 
 
@@ -764,12 +832,6 @@ def _standardize_structures(df: pl.DataFrame) -> pl.DataFrame:
 
     # Get unique SMILES per base_inchikey
     mapping_df = df.group_by("base_inchikey").agg(pl.col("smiles").drop_nulls().first())
-
-    if mapping_df["smiles"].null_count() > 0:
-        missing = mapping_df.filter(pl.col("smiles").is_null())[
-            "base_inchikey"
-        ].to_list()
-        print(f"Missing SMILES for base_inchikeys: {missing}")
 
     smiles_list = [s if s is not None else "" for s in mapping_df["smiles"].to_list()]
     msready_smiles, msready_inchi, msready_inchikey = msready_inchi_inchikey_parallel(
@@ -787,6 +849,21 @@ def _standardize_structures(df: pl.DataFrame) -> pl.DataFrame:
 
     # Join back and replace
     df = df.join(results_df, on="base_inchikey", how="left")
+
+    # Identify failures: No msready_inchikey (None or empty string)
+    failed_mask = pl.col("msready_inchikey").is_null() | (
+        pl.col("msready_inchikey") == ""
+    )
+    failed_df = df.filter(failed_mask)
+
+    if not failed_df.is_empty():
+        failed_df.write_parquet("failed_structures.parquet")
+        num_failed_keys = failed_df["base_inchikey"].n_unique()
+        num_failed_rows = failed_df.height
+        print(
+            f"Standardization failed for {num_failed_keys} unique InChIKeys ({num_failed_rows} total rows). Saved to 'failed_structures.parquet'."
+        )
+
     return df.with_columns(
         pl.col("msready_smiles").alias("smiles"),
         pl.col("msready_inchi").alias("inchi"),
