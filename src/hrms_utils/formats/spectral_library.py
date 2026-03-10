@@ -691,24 +691,11 @@ def _deduplicate_spectra(
 
     # Bin precursor_mz to 0.1 Da bins to avoid Cartesian explosion during join
     base_lf = base_lf.with_columns(
-        (pl.col("precursor_mz") * 10.0).cast(pl.Int64).alias("_mz_bin")
+        pl.col("precursor_mz").round(decimals=0).cast(pl.Int64).alias("_mz_bin")
     )
-
-    # Create a right table that expands the bins to [bin-1, bin, bin+1] to catch boundary matches
-    right_lf = (
-        base_lf.with_columns(
-            pl.col("_mz_bin")
-            .map_elements(lambda x: [x - 1, x, x + 1], return_dtype=pl.List(pl.Int64))
-            .alias("_mz_bin_adj")
-        )
-        .explode("_mz_bin_adj")
-        .drop("_mz_bin")
-        .rename({"_mz_bin_adj": "_mz_bin"})
-    )
-
     # Join on base_inchikey AND the expanded mz bin
     pairs = base_lf.join(
-        right_lf,
+        base_lf,
         on=["base_inchikey", "_mz_bin"],
         suffix="_right",
     ).filter(pl.col("_dedup_idx") < pl.col("_dedup_idx_right"))
