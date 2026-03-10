@@ -56,6 +56,8 @@ class OptimalEnergyConfig:
     precursor_mz_column: str = "precursor_mz"
     use_nce: bool = False
     plot_bin_size: float = 5.0
+    max_energy: Optional[float] = None
+    plot_only: bool = False
 
 
 @dataclass
@@ -147,7 +149,11 @@ def get_coverage_matrix(
     )
 
     # Determine grid
-    hard_max = 500.0 if not config.use_nce else 300.0
+    if config.max_energy is not None:
+        hard_max = config.max_energy
+    else:
+        hard_max = 150.0 if config.use_nce else 100.0
+
     all_energies = df_clean[primary_col].to_numpy()
     if len(all_energies) == 0:
         return np.array([]), np.empty((0,0), dtype=bool), molecules_with_null_energy, 0
@@ -452,6 +458,9 @@ def run_analysis_for_ion_mode(
 
     generate_plots(grid, cov_matrix, molecules_with_valid_ranges, ion_mode, config)
 
+    if config.plot_only:
+        return []
+
     results = find_optimal_energy_combinations(
         grid, cov_matrix, molecules_with_valid_ranges, config.max_combinations
     )
@@ -460,10 +469,14 @@ def run_analysis_for_ion_mode(
 
 
 def print_results(
-    results: List[EnergyCombinationResult], ion_mode: str, unit: str = "eV"
+    results: List[EnergyCombinationResult], ion_mode: str, config: OptimalEnergyConfig, unit: str = "eV"
 ) -> None:
     """Print results to console in human-readable format."""
     print(f"\n{'=' * 20} {ion_mode} Ion Mode {'=' * 20}")
+
+    if config.plot_only:
+        print("Set search skipped (--plot-only is enabled).")
+        return
 
     if not results:
         print("No results (no molecules meet threshold)")
@@ -585,7 +598,7 @@ def run_analysis(
         results[ion_mode] = ion_results
 
         unit = "NCE" if config.use_nce else "eV"
-        print_results(ion_results, ion_mode, unit=unit)
+        print_results(ion_results, ion_mode, config, unit=unit)
         save_results_to_parquet(ion_results, ion_mode, config)
 
     return results
@@ -667,6 +680,17 @@ if __name__ == "__main__":
         default=5.0,
         help="Energy bin size for plots (default: 5.0)",
     )
+    parser.add_argument(
+        "--max-energy",
+        type=float,
+        default=None,
+        help="Maximum collision energy to consider. Defaults to 100 eV or 150 NCE.",
+    )
+    parser.add_argument(
+        "--plot-only",
+        action="store_true",
+        help="Generate plots only without running set optimization.",
+    )
 
     args = parser.parse_args()
 
@@ -682,6 +706,8 @@ if __name__ == "__main__":
         energy_tolerance=args.energy_tolerance,
         use_nce=args.use_nce,
         plot_bin_size=args.plot_bin_size,
+        max_energy=args.max_energy,
+        plot_only=args.plot_only,
     )
 
     try:
