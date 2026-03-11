@@ -76,7 +76,7 @@ pub fn clean_spectrum(
     cleaned_peaks.sort_by(|a, b| a.mz.partial_cmp(&b.mz).unwrap());
 
     // 2. Centroid the spectrum (C-like iterative approach)
-    if ms2_tolerance_in_ppm > 0.0 {
+    if apply_full_cleaning && ms2_tolerance_in_ppm > 0.0 {
         while need_centroid(&cleaned_peaks, ms2_tolerance_in_ppm) {
             centroid_spectrum(&mut cleaned_peaks, ms2_tolerance_in_ppm);
         }

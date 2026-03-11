@@ -3,29 +3,81 @@ import time
 from pathlib import Path
 import traceback
 import polars as pl
-from hrms_utils.formats.spectral_library import process_single_file as read_MSPEC_file
+from hrms_utils.formats.spectral_library import process_single_file, process_spectral_library
 import os
 import numpy as np
 
-def run_mspec_reader_profile(msp_file_path: Path):
+TARGET_COLS = [
+    "name",
+    "instrument_type",
+    "instrument",
+    "ionization",
+    "ion_mode",
+    "mslevel",
+    "collision_energy_NCE",
+    "collision_energy_ev",
+    "collision_energy_list",
+    "multiple_collision_energies",
+    "collision_energy_mean",
+    "cas",
+    "inchikey",
+    "base_inchikey",
+    "smiles",
+    "inchi",
+    "is_orbitrap",
+    "is_TOF",
+    "is_ESI",
+    "precursor_type",
+    "precursor_mz",
+    "molecular_formula",
+    "molecular_formula_array",
+    "precursor_formula_array",
+    "clean_precursor",
+    "exact_mass",
+    "raw_spectrum_mz",
+    "raw_spectrum_intensity",
+    "cleaned_normalized_mz",
+    "cleaned_normalized_intensity",
+    "cleaned_fragment_formulas",
+    "cleaned_fragment_formulas_str",
+    "cleaned_fragment_errors_ppm",
+    "explained_intensity",
+    "molecular_ion_intensity",
+    "spectral_information_score",
+    "spectral_information_score_with_hydrogens",
+    "source_file",
+]
+
+from typing import Optional
+
+def run_reader_profile(file_path: Path, use_pubchem: bool = False, pubchem_path: Optional[Path] = None):
     """
-    Reads a MSPEC file, profiles the execution time,
+    Reads a spectral library file (MSPEC, MSP, or MGF), profiles the execution time,
     and prints the number of spectra read.
     """
-    print(f"\nProcessing file: {msp_file_path.name}")
+    print(f"\nProcessing file: {file_path.name} | use_pubchem: {use_pubchem}")
     start_time = time.perf_counter()
     
-    # Read the MSPEC file
     try:
-        spectra_df = read_MSPEC_file(
-            msp_file_path,
-            raw_fragment_tolerance_ppm=15.0,
-            normalized_fragment_tolerance_ppm=10.0,
-            molecular_ion_tolerance_ppm=10.0
-        )
+        if use_pubchem and pubchem_path and pubchem_path.exists():
+            spectra_df = process_spectral_library(
+                [file_path],
+                raw_fragment_tolerance_ppm=15.0,
+                normalized_fragment_tolerance_ppm=10.0,
+                molecular_ion_tolerance_ppm=10.0,
+                pubchem_path=pubchem_path,
+                logger=sys.stdout
+            )
+        else:
+            spectra_df = process_single_file(
+                file_path,
+                raw_fragment_tolerance_ppm=15.0,
+                normalized_fragment_tolerance_ppm=10.0,
+                molecular_ion_tolerance_ppm=10.0
+            )
         is_empty = spectra_df.is_empty()
     except Exception as e:
-        print(f"An error occurred while reading the MSPEC file: {e}")
+        print(f"An error occurred while reading the file: {e}")
         traceback.print_exc()
         return
 
@@ -33,15 +85,20 @@ def run_mspec_reader_profile(msp_file_path: Path):
 
     # Calculate the duration
     duration = end_time - start_time
-    
-    # Get the number of spectra
     num_spectra = len(spectra_df)
-    
-    # Print the profiling information
     print(f"Read {num_spectra} spectra in {duration:.4f} seconds.")
     
-    # Assert that the DataFrame is not empty
     assert not is_empty, "The resulting DataFrame should not be empty."
+    
+    # Check that columns align with target columns
+    unexpected_cols = [c for c in spectra_df.columns if c not in TARGET_COLS and not c.startswith("msn_")]
+    if unexpected_cols:
+        print(f"Warning: Found unexpected columns: {unexpected_cols}")
+    
+    missing_cols = [c for c in TARGET_COLS if c not in spectra_df.columns]
+    if missing_cols:
+        print(f"Note: Target columns not present in output: {missing_cols}")
+
     print(spectra_df.schema)
     print(spectra_df.head())
 
@@ -61,7 +118,7 @@ def run_mspec_reader_profile(msp_file_path: Path):
     for col, count in filtered_cols.items():
         print(f"  - {col}: {count} unique values, values: {spectra_df[col].unique().to_list()}")
     
-    # Always print values for specific columns (USER-CONFIGURABLE)
+    # Always print values for specific columns
     always_print_cols = ["instrument", "instrument_type", "ionization", "ion_mode", "mslevel"]
     print("\nAlways printed columns:")
     for col in always_print_cols:
@@ -106,28 +163,19 @@ def run_mspec_reader_profile(msp_file_path: Path):
     print(f"  - ESI Orbitrap: {esi_orbi_count}")
     print(f"  - ESI TOF: {esi_tof_count}")
     print(f"  - ESI Other: {esi_other_count}")
-
-
     
     # print a histogram (in numpy) of explained_intensity for clean precursors
-    # Why: numeric histograms help CI and debugging without introducing plot artifacts.
     for hist_col in ["explained_intensity", "spectral_information_score"]:
         if hist_col not in spectra_df.columns:
             print(f"\nColumn '{hist_col}' not found; skipping histogram.")
             continue
 
-        # Filter to clean precursors and drop nulls to ensure meaningful histogram bins.
         filtered = spectra_df.filter(pl.col("clean_precursor") & pl.col(hist_col).is_not_null()).select(pl.col(hist_col))
         if filtered.height == 0:
             print(f"\nNo rows for clean precursors with non-null '{hist_col}'; skipping histogram.")
             continue
 
-        # Convert to 1D numpy array for numeric histogram computation.
-        # shape: (n_rows,)
         values: np.ndarray = filtered.to_numpy().ravel()
-
-        # Choose adaptive bins; 'auto' is a reasonable default that adjusts to the distribution
-        # to provide informative buckets without needing visualization.
         counts, edges = np.histogram(values, bins=20)
         percentages = (counts / counts.sum()) * 100.0
 
@@ -136,7 +184,7 @@ def run_mspec_reader_profile(msp_file_path: Path):
         print(f"  - counts: {counts.tolist()}")
         print(f"  - percentages: {[round(p, 2) for p in percentages.tolist()]}")
         print(f"  - bin_edges (len {len(edges)}): {edges.tolist()}")
-        # Also print the basic distribution summary for this column
+        
         summary = filtered.select([
             pl.col(hist_col).mean().alias("mean"),
             pl.col(hist_col).median().alias("median"),
@@ -146,44 +194,73 @@ def run_mspec_reader_profile(msp_file_path: Path):
         ]).to_dict(as_series=False)
         print(f"  - summary: { {k:v[0] for k,v in summary.items()} }")
 
-    print(spectra_df.filter(
-        pl.col("clean_precursor"),
-        pl.col("precursor_type").eq("[M+H]+")
-    ).sort(by="explained_intensity").head(1).select([
-        "precursor_formula_array",
-        "explained_intensity",
-        "nist_id",
-        "raw_spectrum_mz",
-        "raw_spectrum_intensity",
-        "cleaned_normalized_mz",
-        "cleaned_normalized_intensity",
-        "cleaned_fragment_formulas_str",
-        "cleaned_fragment_errors_ppm"
-    ]).to_init_repr())
+    if "nist_id" in spectra_df.columns:
+        print(spectra_df.filter(
+            pl.col("clean_precursor"),
+            pl.col("precursor_type").eq("[M+H]+")
+        ).sort(by="explained_intensity").head(1).select([
+            "precursor_formula_array",
+            "explained_intensity",
+            "nist_id",
+            "raw_spectrum_mz",
+            "raw_spectrum_intensity",
+            "cleaned_normalized_mz",
+            "cleaned_normalized_intensity",
+            "cleaned_fragment_formulas_str",
+            "cleaned_fragment_errors_ppm"
+        ]).to_init_repr())
+    else:
+        print(spectra_df.filter(
+            pl.col("clean_precursor"),
+            pl.col("precursor_type").eq("[M+H]+")
+        ).sort(by="explained_intensity").head(1).select([
+            col for col in [
+                "precursor_formula_array",
+                "explained_intensity",
+                "raw_spectrum_mz",
+                "raw_spectrum_intensity",
+                "cleaned_normalized_mz",
+                "cleaned_normalized_intensity",
+                "cleaned_fragment_formulas_str",
+                "cleaned_fragment_errors_ppm"
+            ] if col in spectra_df.columns
+        ]).to_init_repr())
 
 
 if __name__ == "__main__":
+    pubchem_path = Path("data/pubchem.parquet").resolve()
+
     if len(sys.argv) > 1:
         # CLI mode: process provided file or directory path
         input_path = Path(sys.argv[1]).resolve()
         assert input_path.exists(), f"Input path does not exist: {input_path}"
         
         if input_path.is_file():
-            assert input_path.suffix.lower() in ['.msp', '.mspec'], f"File must have .msp or .mspec extension, got: {input_path.suffix}"
-            run_mspec_reader_profile(input_path)
+            assert input_path.suffix.lower() in ['.msp', '.mspec', '.mgf'], f"File must have .msp, .mspec, or .mgf extension, got: {input_path.suffix}"
+            run_reader_profile(input_path)
+            if pubchem_path.exists():
+                run_reader_profile(input_path, use_pubchem=True, pubchem_path=pubchem_path)
         elif input_path.is_dir():
-            files_to_test = [f for f in input_path.iterdir() if f.is_file() and f.suffix.lower() in ['.msp', '.mspec']]
-            assert len(files_to_test) > 0, f"No MSPEC/MSP files found in directory: {input_path}"
+            files_to_test = [f for f in input_path.iterdir() if f.is_file() and f.suffix.lower() in ['.msp', '.mspec', '.mgf']]
+            assert len(files_to_test) > 0, f"No supported spectral files found in directory: {input_path}"
             for file_path in sorted(files_to_test):
-                run_mspec_reader_profile(file_path)
+                run_reader_profile(file_path)
+                if pubchem_path.exists():
+                    run_reader_profile(file_path, use_pubchem=True, pubchem_path=pubchem_path)
         else:
             raise ValueError(f"Path is neither a file nor a directory: {input_path}")
     else:
         # Default mode: process all files in tests/data directory
         data_dir = (Path(__file__).resolve().parent.parent / "data").resolve()
         assert data_dir.exists(), f"data directory not found: {data_dir}"
-        files_to_test = [f for f in os.listdir(data_dir) if f.lower().endswith(('.msp', '.mspec'))]
+        files_to_test = [f for f in os.listdir(data_dir) if f.lower().endswith(('.msp', '.mspec', '.mgf'))]
         
         for file_name in files_to_test:
             file_path = data_dir / file_name
-            run_mspec_reader_profile(file_path)
+            run_reader_profile(file_path)
+            if pubchem_path.exists():
+                print(f"PubChem found at {pubchem_path}, running with pubchem crossing...")
+                run_reader_profile(file_path, use_pubchem=True, pubchem_path=pubchem_path)
+            else:
+                print(f"PubChem not found at {pubchem_path}, skipping pubchem crossing test.")
+
