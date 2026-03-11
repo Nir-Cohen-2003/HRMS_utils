@@ -83,10 +83,11 @@ kaleido = ">=1.1.0, <2"
 
 [feature.experiments.target.linux-64.dependencies]
 hrms_utils = {path = "."}
-parallel_rdkit = "*"
+parallel_rdkit = {path = "../parallel_rdkit"}
 pyzmq = "*"
 marimo ="*"
 memory_profiler = "*"
+umap-learn = "*"
 
 
 
@@ -101,6 +102,7 @@ fit_models = "python experiments/spectral_information/tanimoto_similarity_predic
 
 isotope_fit = "python experiments/find_optimal_isotopic_parameters.py"
 find_optimal_energy = "python experiments/spectral_information/optimal_energy_selection.py"
+find_optimal_energy_umap = "python experiments/spectral_information/optimal_energy_umap.py"
 
 [feature.scripts.tasks]
 convert_msp = "python scripts/convert_msp.py"
@@ -109,7 +111,7 @@ process-pubchem-download = "python scripts/process_pubchem.py --download"
 check_msp_conversion = "python scripts/check_convert_msp.py data/ -p data/pubchem.parquet"
 [feature.scripts.target.linux-64.dependencies]
 hrms_utils = {path = "."}
-parallel_rdkit = {path = "../parallel_rdkit/"}
+parallel_rdkit = "*"
 
 [feature.scripts.dependencies]
 dataframely = ">=2.7.0,<3"
