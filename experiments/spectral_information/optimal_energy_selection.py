@@ -10,6 +10,8 @@ Algorithm:
 2. Find optimal energy points that cover the most molecule ranges (greedy)
 """
 
+import concurrent.futures
+import itertools
 import logging
 from dataclasses import dataclass
 from pathlib import Path
@@ -19,7 +21,6 @@ import numpy as np
 import numpy.lib.recfunctions as rfn
 import polars as pl
 import scipy.sparse as sp
-from scipy.optimize import milp, LinearConstraint, Bounds
 
 logger = logging.getLogger(__name__)
 
@@ -33,12 +34,12 @@ class OptimalEnergyConfig:
         parquet_path: Path to input parquet file with spectral data.
         output_dir: Directory for output parquet files. If None, no files written.
         threshold: Minimum informativity fraction (default 2/3).
-        max_combinations: Maximum number of energy points to select (default 7).
+        max_combinations: Maximum number of energy points to select (default 6).
         collision_energy_column: Column name for collision energy values.
         molecule_id_column: Column name for molecule identifier.
         info_column: Column name for informativity score.
         ion_mode_column: Column name for ion mode (P/N).
-        energy_tolerance: Tolerance for treating energies as equivalent (default 1.0 eV).
+        bin_size: Bin size / step size for energy grid (default 2.0 eV).
         collision_energy_nce_column: Column name for NCE collision energy.
         precursor_mz_column: Column name for precursor m/z.
     """
@@ -46,16 +47,15 @@ class OptimalEnergyConfig:
     parquet_path: Path
     output_dir: Optional[Path] = None
     threshold: float = 2.0 / 3.0
-    max_combinations: int = 7
+    max_combinations: int = 6
     collision_energy_column: str = "collision_energy_ev"
     molecule_id_column: str = "base_inchikey"
     info_column: str = "spectral_information_score"
     ion_mode_column: str = "ion_mode"
-    energy_tolerance: float = 1.0
+    bin_size: float = 2.0
     collision_energy_nce_column: str = "collision_energy_NCE"
     precursor_mz_column: str = "precursor_mz"
     use_nce: bool = False
-    plot_bin_size: float = 5.0
     max_energy: Optional[float] = None
     plot_only: bool = False
 
@@ -77,11 +77,11 @@ def get_coverage_matrix(
 ) -> Tuple[np.ndarray, np.ndarray, int, int]:
     """
     For each molecule, interpolate informativity to a discrete energy grid.
-    
+
     Args:
         df: DataFrame with spectral data for one ion mode.
         config: Configuration with threshold and column names.
-        
+
     Returns:
         Tuple of:
         - grid: Array of candidate energies
@@ -152,40 +152,38 @@ def get_coverage_matrix(
     if config.max_energy is not None:
         hard_max = config.max_energy
     else:
-        hard_max = 150.0 if config.use_nce else 100.0
+        hard_max = 100.0
 
     all_energies = df_clean[primary_col].to_numpy()
     if len(all_energies) == 0:
-        return np.array([]), np.empty((0,0), dtype=bool), molecules_with_null_energy, 0
-        
+        return np.array([]), np.empty((0, 0), dtype=bool), molecules_with_null_energy, 0
+
     min_e = max(0.0, float(np.min(all_energies)))
     max_e = min(hard_max, float(np.max(all_energies)))
-    
-    # We create a grid using energy_tolerance as the step size
-    # To ensure we don't have too many candidates, if tolerance is very small, we might want to cap it.
-    # But usually tolerance is >= 1.0
-    grid = np.arange(np.floor(min_e), np.ceil(max_e) + config.energy_tolerance, config.energy_tolerance)
-    
+
+    # We create a grid using bin_size as the step size
+    grid = np.arange(np.floor(min_e), np.ceil(max_e) + config.bin_size, config.bin_size)
+
     num_candidates = len(grid)
     num_molecules = len(per_mol)
-    
+
     coverage_matrix = np.zeros((num_candidates, num_molecules), dtype=bool)
-    
+
     molecules_no_valid_range = 0
     valid_col_idx = 0
-    
+
     for row in per_mol.iter_rows(named=True):
         energies = np.array(row["energies"], dtype=np.float64)
         fractions = np.array(row["fractions"], dtype=np.float64)
-        
+
         if len(energies) == 0:
             continue
-            
+
         # Interpolate fractions onto the grid
         # Molecules with high info at e.g. 20 and 80 but 0 at 45 will correctly dip below threshold
         interp_f = np.interp(grid, energies, fractions, left=0.0, right=0.0)
         mask = interp_f >= config.threshold
-        
+
         if not np.any(mask):
             molecules_no_valid_range += 1
         else:
@@ -194,8 +192,31 @@ def get_coverage_matrix(
 
     # Keep only valid molecules
     coverage_matrix = coverage_matrix[:, :valid_col_idx]
-    
+
     return grid, coverage_matrix, molecules_with_null_energy, molecules_no_valid_range
+
+
+def _evaluate_first_item(args):
+    start_idx, k, M, cands = args
+
+    start_cov = cands[start_idx]
+
+    if k == 1:
+        return start_cov.bit_count(), (start_idx,)
+
+    best_score = -1
+    best_combo = tuple(range(start_idx, start_idx + k))  # fallback
+
+    for combo in itertools.combinations(range(start_idx + 1, M), k - 1):
+        cov = start_cov
+        for idx in combo:
+            cov |= cands[idx]
+        score = cov.bit_count()
+        if score > best_score:
+            best_score = score
+            best_combo = (start_idx,) + combo
+
+    return best_score, best_combo
 
 
 def find_optimal_energy_combinations(
@@ -205,7 +226,7 @@ def find_optimal_energy_combinations(
     max_combinations: int,
 ) -> List[EnergyCombinationResult]:
     """
-    Exact optimization algorithm to find optimal energy points using MILP.
+    Exact optimization algorithm to find optimal energy points using bitpacking and parallel combinations.
 
     Args:
         grid: Array of candidate energies.
@@ -243,71 +264,33 @@ def find_optimal_energy_combinations(
     pruned_cov = coverage_matrix[pruned_indices]
     M_pruned = len(pruned_indices)
 
-    # 2. Merge identical molecules to reduce constraints
-    packed = np.packbits(pruned_cov.T, axis=1)
-    structured = rfn.unstructured_to_structured(packed)
-    _, unique_cols, counts = np.unique(structured, return_index=True, return_counts=True)
-    
-    unique_cov = pruned_cov[:, unique_cols]
-    U = len(counts)
-
     logger.info(
-        "Optimization simplified: candidates %d -> %d, molecules %d -> %d",
-        num_candidates, M_pruned, num_molecules, U
+        "Optimization simplified: candidates %d -> %d, molecules %d",
+        num_candidates,
+        M_pruned,
+        num_molecules,
     )
+
+    # 2. Bitpack the coverage matrix
+    # Convert each candidate's boolean row into a single Python integer representing a bitset
+    packed_cov = np.packbits(pruned_cov, axis=1)
+    candidates_int = [int.from_bytes(row.tobytes(), "little") for row in packed_cov]
 
     results: List[EnergyCombinationResult] = []
     prev_best_cov = -1
 
     for k in range(1, max_k + 1):
-        if k == 1:
-            # Simple max for k=1
-            best_local_idx = int(np.argmax(pruned_cov.sum(axis=1)))
-            best_cov = int(pruned_cov[best_local_idx].sum())
-            best_combo_original = [int(pruned_indices[best_local_idx])]
-        else:
-            # Set up MILP
-            # Variables: [x_1..x_M_pruned, y_1..y_U]
-            # Objective: Maximize sum(count_j * y_j) -> Minimize -sum(count_j * y_j)
-            c = np.zeros(M_pruned + U)
-            c[M_pruned:] = -counts
-            
-            # Constraint 1: sum(x_i) <= k
-            row_0 = np.zeros(M_pruned + U)
-            row_0[:M_pruned] = 1
-            
-            # Constraint 2: For each unique molecule j: y_j - sum_i(cov[i,j] * x_i) <= 0
-            A_ub_main = sp.hstack([ -unique_cov.T.astype(int), sp.eye(U) ])
-            A_ub = sp.vstack([ row_0.reshape(1, -1), A_ub_main ])
-            
-            b_ub = np.zeros(1 + U)
-            b_ub[0] = k
-            
-            constraints = LinearConstraint(A_ub, -np.inf, b_ub)
-            integrality = np.ones(M_pruned + U)
-            bounds = Bounds(0, 1)
-            
-            # Solve
-            res = milp(
-                c=c, 
-                constraints=constraints, 
-                integrality=integrality, 
-                bounds=bounds,
-                options={'time_limit': 120} # safety timeout
-            )
-            
-            if res.success:
-                x_sol = res.x[:M_pruned]
-                selected_local = np.where(x_sol > 0.5)[0]
-                # True coverage sum:
-                mask = np.zeros(num_molecules, dtype=bool)
-                for sl in selected_local:
-                    mask |= pruned_cov[sl]
-                best_cov = int(mask.sum())
-                best_combo_original = [int(pruned_indices[sl]) for sl in selected_local]
-            else:
-                logger.warning("MILP failed for k=%d", k)
-                break
+        best_cov = -1
+        best_combo_original = []
+
+        tasks = [(i, k, M_pruned, candidates_int) for i in range(M_pruned - k + 1)]
+
+        # Parallel evaluate over start_idx
+        with concurrent.futures.ProcessPoolExecutor() as executor:
+            for score, combo in executor.map(_evaluate_first_item, tasks):
+                if score > best_cov:
+                    best_cov = score
+                    best_combo_original = [int(pruned_indices[idx]) for idx in combo]
 
         if best_cov <= prev_best_cov:
             break
@@ -346,7 +329,7 @@ def generate_plots(
     import matplotlib.pyplot as plt
 
     unit = "NCE" if config.use_nce else "eV"
-    bin_size = config.plot_bin_size
+    bin_size = config.bin_size
 
     out_dir = config.output_dir if config.output_dir is not None else Path(".")
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -361,9 +344,7 @@ def generate_plots(
     ax.set_xlabel(f"Collision Energy ({unit})")
     ax.set_ylabel("Coverage (%)")
 
-    out_1d = (
-        out_dir / f"coverage_1d_{ion_mode}_{bin_size}bin_{unit.lower()}.png"
-    )
+    out_1d = out_dir / f"coverage_1d_{ion_mode}_{bin_size}bin_{unit.lower()}.png"
     fig.savefig(out_1d, dpi=600, bbox_inches="tight")
     plt.close(fig)
 
@@ -371,7 +352,7 @@ def generate_plots(
     # Computes pairwise intersection via matrix multiplication for massive memory savings
     masks_int = coverage_matrix.astype(np.int32)
     intersection = masks_int @ masks_int.T
-    
+
     cov_2d_raw = cov_1d_raw[:, None] + cov_1d_raw[None, :] - intersection
     cov_2d = cov_2d_raw / total_valid_molecules * 100.0
 
@@ -383,9 +364,7 @@ def generate_plots(
     ax.set_xlabel(f"Collision Energy 1 ({unit})")
     ax.set_ylabel(f"Collision Energy 2 ({unit})")
 
-    out_2d = (
-        out_dir / f"coverage_2d_{ion_mode}_{bin_size}bin_{unit.lower()}.png"
-    )
+    out_2d = out_dir / f"coverage_2d_{ion_mode}_{bin_size}bin_{unit.lower()}.png"
     fig.savefig(out_2d, dpi=600, bbox_inches="tight")
     plt.close(fig)
 
@@ -450,9 +429,9 @@ def run_analysis_for_ion_mode(
 
     unit = "NCE" if config.use_nce else "eV"
     logger.info(
-        "Generated %d candidate energy points (tolerance=%.1f %s)",
+        "Generated %d candidate energy points (bin_size=%.1f %s)",
         len(grid),
-        config.energy_tolerance,
+        config.bin_size,
         unit,
     )
 
@@ -469,7 +448,10 @@ def run_analysis_for_ion_mode(
 
 
 def print_results(
-    results: List[EnergyCombinationResult], ion_mode: str, config: OptimalEnergyConfig, unit: str = "eV"
+    results: List[EnergyCombinationResult],
+    ion_mode: str,
+    config: OptimalEnergyConfig,
+    unit: str = "eV",
 ) -> None:
     """Print results to console in human-readable format."""
     print(f"\n{'=' * 20} {ion_mode} Ion Mode {'=' * 20}")
@@ -636,8 +618,8 @@ if __name__ == "__main__":
     parser.add_argument(
         "--max-combinations",
         type=int,
-        default=7,
-        help="Maximum number of energies to combine (default: 7)",
+        default=6,
+        help="Maximum number of energies to combine (default: 6)",
     )
     parser.add_argument(
         "--collision-energy-column",
@@ -664,21 +646,15 @@ if __name__ == "__main__":
         help="Column name for precursor m/z (default: precursor_mz)",
     )
     parser.add_argument(
-        "--energy-tolerance",
+        "--bin-size",
         type=float,
-        default=1.0,
-        help="Rounding tolerance for energy values (default: 1.0)",
+        default=2.0,
+        help="Step size for energy grid during optimization (default: 2.0)",
     )
     parser.add_argument(
         "--use-nce",
         action="store_true",
         help="Optimize for NCE instead of eV. If NCE is missing, will estimate from eV.",
-    )
-    parser.add_argument(
-        "--plot-bin-size",
-        type=float,
-        default=5.0,
-        help="Energy bin size for plots (default: 5.0)",
     )
     parser.add_argument(
         "--max-energy",
@@ -703,9 +679,8 @@ if __name__ == "__main__":
         molecule_id_column=args.molecule_id_column,
         collision_energy_nce_column=args.collision_energy_nce_column,
         precursor_mz_column=args.precursor_mz_column,
-        energy_tolerance=args.energy_tolerance,
+        bin_size=args.bin_size,
         use_nce=args.use_nce,
-        plot_bin_size=args.plot_bin_size,
         max_energy=args.max_energy,
         plot_only=args.plot_only,
     )
