@@ -29,9 +29,10 @@ from numpy.typing import NDArray
 def _centroid_single_spectrum_sorted_numba(
     mz: np.ndarray,
     intensity: np.ndarray,
+    weights: np.ndarray | None,
     tolerance_ppm: float,
     mass_tolerance_cutoff_mz: float,
-) -> tuple[np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray, np.ndarray | None]:
     """
     Numba-accelerated centroiding for a single sorted spectrum.
     
@@ -43,15 +44,20 @@ def _centroid_single_spectrum_sorted_numba(
     Args:
         mz: sorted m/z values (float64)
         intensity: corresponding intensities (float32)
+        weights: corresponding weights (float64) or None
         tolerance_ppm: ppm tolerance for merging
         mass_tolerance_cutoff_mz: minimum m/z for ppm calculation
     
     Returns:
-        (centroided_mz, centroided_intensity) arrays
+        (centroided_mz, centroided_intensity, centroided_weights) arrays
     """
     n = len(mz)
+    has_weights = weights is not None
+    
     if n == 0:
-        return np.empty(0, dtype=np.float64), np.empty(0, dtype=np.float32)
+        if has_weights:
+            return np.empty(0, dtype=np.float64), np.empty(0, dtype=np.float32), np.empty(0, dtype=np.float64)
+        return np.empty(0, dtype=np.float64), np.empty(0, dtype=np.float32), None
     
     if n == 1:
         # Why explicit dtype: numba requires consistent return types across all branches
@@ -59,17 +65,23 @@ def _centroid_single_spectrum_sorted_numba(
         out_intensity = np.empty(1, dtype=np.float32)
         out_mz[0] = mz[0]
         out_intensity[0] = intensity[0]
-        return out_mz, out_intensity
+        if has_weights:
+            out_weights = np.empty(1, dtype=np.float64)
+            out_weights[0] = weights[0]
+            return out_mz, out_intensity, out_weights
+        return out_mz, out_intensity, None
     
     # Pre-allocate output (worst case: no merging)
     # Why: numba doesn't support dynamic lists efficiently
     out_mz = np.empty(n, dtype=np.float64)
     out_intensity = np.empty(n, dtype=np.float32)
+    out_weights = np.empty(n, dtype=np.float64) if has_weights else None
     
     # Current cluster accumulators
     cluster_mz_sum = 0.0
     cluster_int_sum = 0.0
     cluster_weighted_mz_sum = 0.0
+    cluster_weight_sum = 0.0
     cluster_start = 0
     n_clusters = 0
     
@@ -77,6 +89,8 @@ def _centroid_single_spectrum_sorted_numba(
         # Accumulate current peak into cluster
         cluster_weighted_mz_sum += mz[i] * intensity[i]
         cluster_int_sum += intensity[i]
+        if has_weights:
+            cluster_weight_sum += weights[i] * intensity[i]
         
         # Compute tolerance for current peak
         effective_mz = max(mz[i], mass_tolerance_cutoff_mz)
@@ -90,42 +104,56 @@ def _centroid_single_spectrum_sorted_numba(
             if cluster_int_sum > 0:
                 out_mz[n_clusters] = cluster_weighted_mz_sum / cluster_int_sum
                 out_intensity[n_clusters] = cluster_int_sum
+                if has_weights:
+                    out_weights[n_clusters] = cluster_weight_sum / cluster_int_sum
             else:
                 # Shouldn't happen with valid MS data, but handle gracefully
                 out_mz[n_clusters] = mz[cluster_start]
                 out_intensity[n_clusters] = 0.0
+                if has_weights:
+                    out_weights[n_clusters] = weights[cluster_start]
             
             n_clusters += 1
             
             # Reset for next cluster
             cluster_weighted_mz_sum = 0.0
             cluster_int_sum = 0.0
+            cluster_weight_sum = 0.0
             cluster_start = i + 1
     
     # Don't forget the last cluster (includes peak n-1)
     cluster_weighted_mz_sum += mz[n - 1] * intensity[n - 1]
     cluster_int_sum += intensity[n - 1]
+    if has_weights:
+        cluster_weight_sum += weights[n - 1] * intensity[n - 1]
     
     if cluster_int_sum > 0:
         out_mz[n_clusters] = cluster_weighted_mz_sum / cluster_int_sum
         out_intensity[n_clusters] = cluster_int_sum
+        if has_weights:
+            out_weights[n_clusters] = cluster_weight_sum / cluster_int_sum
     else:
         out_mz[n_clusters] = mz[cluster_start]
         out_intensity[n_clusters] = 0.0
+        if has_weights:
+            out_weights[n_clusters] = weights[cluster_start]
     
     n_clusters += 1
     
     # Trim to actual size
-    return out_mz[:n_clusters], out_intensity[:n_clusters]
+    if has_weights:
+        return out_mz[:n_clusters], out_intensity[:n_clusters], out_weights[:n_clusters]
+    return out_mz[:n_clusters], out_intensity[:n_clusters], None
 
 
 def centroid_by_neighbor_distance(
     mz: NDArray[np.float64],
     intensity: NDArray[np.float32],
+    weights: NDArray[np.float64] | None = None,
     *,
     tolerance_ppm: float,
     mass_tolerance_cutoff_mz: float = 200.0,
-) -> tuple[NDArray[np.float64], NDArray[np.float32]]:
+) -> tuple[NDArray[np.float64], NDArray[np.float32], NDArray[np.float64] | None]:
     """
     Centroid a spectrum by merging consecutive peaks within tolerance.
     
@@ -164,29 +192,23 @@ def centroid_by_neighbor_distance(
     Args:
         mz: m/z values (shape: (n_peaks,))
         intensity: intensity values (shape: (n_peaks,))
+        weights: Optional weight values (shape: (n_peaks,))
         tolerance_ppm: MS2 tolerance in ppm for merging
         mass_tolerance_cutoff_mz: minimum m/z for ppm calculation (default 200 Da)
     
     Returns:
-        (centroided_mz, centroided_intensity) - sorted by m/z
-        
-    Example:
-        >>> mz = np.array([100.0, 100.0001, 200.0], dtype=np.float64)
-        >>> intensity = np.array([10.0, 20.0, 30.0], dtype=np.float32)
-        >>> cent_mz, cent_int = centroid_by_neighbor_distance(
-        ...     mz, intensity, tolerance_ppm=20.0
-        ... )
-        >>> # First two peaks merge (gap=0.0001 Da = 1 ppm < 20 ppm tolerance)
-        >>> len(cent_mz)  # 2 centroids
-        2
-        >>> cent_int[0]  # Sum of first two: 10 + 20
-        30.0
+        (centroided_mz, centroided_intensity, centroided_weights) - sorted by m/z
     """
     assert mz.ndim == 1, f"mz must be 1D, got {mz.ndim}D"
     assert intensity.ndim == 1, f"intensity must be 1D, got {intensity.ndim}D"
     assert mz.shape[0] == intensity.shape[0], (
         f"mz and intensity must have same length, got {mz.shape[0]} vs {intensity.shape[0]}"
     )
+    if weights is not None:
+        assert weights.ndim == 1, f"weights must be 1D, got {weights.ndim}D"
+        assert mz.shape[0] == weights.shape[0], (
+            f"mz and weights must have same length, got {mz.shape[0]} vs {weights.shape[0]}"
+        )
     assert float(tolerance_ppm) > 0.0, (
         f"tolerance_ppm must be positive, got {tolerance_ppm}"
     )
@@ -196,10 +218,14 @@ def centroid_by_neighbor_distance(
     
     n = len(mz)
     if n == 0:
-        return (mz.copy(), intensity.copy())
+        if weights is not None:
+            return (mz.copy(), intensity.copy(), weights.copy())
+        return (mz.copy(), intensity.copy(), None)
     
     if n == 1:
-        return (mz.copy(), intensity.copy())
+        if weights is not None:
+            return (mz.copy(), intensity.copy(), weights.copy())
+        return (mz.copy(), intensity.copy(), None)
     
     # Ensure sorted by m/z
     # Why: clustering algorithm assumes sorted order for efficiency
@@ -207,16 +233,21 @@ def centroid_by_neighbor_distance(
         sort_idx = np.argsort(mz)
         mz = mz[sort_idx].copy()
         intensity = intensity[sort_idx].copy()
+        if weights is not None:
+            weights = weights[sort_idx].copy()
     else:
         # Make copies to avoid modifying input (numba requirement)
         mz = mz.copy()
         intensity = intensity.copy()
+        if weights is not None:
+            weights = weights.copy()
     
     # Call numba-accelerated implementation
     # Why: 50-100x faster than pure Python for typical spectra (50-500 peaks)
     return _centroid_single_spectrum_sorted_numba(
         mz,
         intensity,
+        weights,
         float(tolerance_ppm),
         float(mass_tolerance_cutoff_mz),
     )
@@ -229,11 +260,12 @@ def centroid_flat_spectra(
     flat_mzs: NDArray[np.float64],
     flat_ints: NDArray[np.float32],
     spec_pos: NDArray[np.int32],
+    flat_weights: NDArray[np.float64] | None,
     n_spec: int,
     *,
     tolerance_ppm: float,
     mass_tolerance_cutoff_mz: float = 200.0,
-) -> tuple[NDArray[np.float64], NDArray[np.float32], NDArray[np.int32], int]:
+) -> tuple[NDArray[np.float64], NDArray[np.float32], NDArray[np.int32], NDArray[np.float64] | None, int]:
     """
     Centroid multiple spectra in flattened format.
     
@@ -255,12 +287,13 @@ def centroid_flat_spectra(
         flat_mzs: concatenated m/z values (shape: (total_peaks,))
         flat_ints: concatenated intensities (shape: (total_peaks,))
         spec_pos: spectrum index for each peak (shape: (total_peaks,))
+        flat_weights: Option weight values (shape: (total_peaks,))
         n_spec: number of spectra
         tolerance_ppm: MS2 tolerance in ppm
         mass_tolerance_cutoff_mz: m/z cutoff for ppm calculation
     
     Returns:
-        (centroided_mzs, centroided_ints, centroided_spec_pos, n_spec)
+        (centroided_mzs, centroided_ints, centroided_spec_pos, centroided_weights, n_spec)
         Same format as input, but with merged peaks
         
     Performance:
@@ -275,6 +308,12 @@ def centroid_flat_spectra(
         f"flat_mzs, flat_ints, spec_pos must have same length, "
         f"got {flat_mzs.shape[0]}, {flat_ints.shape[0]}, {spec_pos.shape[0]}"
     )
+    if flat_weights is not None:
+        assert flat_weights.ndim == 1, f"flat_weights must be 1D, got {flat_weights.ndim}D"
+        assert flat_weights.shape[0] == flat_mzs.shape[0], (
+            f"flat_mzs and flat_weights must have same length, "
+            f"got {flat_mzs.shape[0]} and {flat_weights.shape[0]}"
+        )
     assert int(n_spec) >= 0, f"n_spec must be non-negative, got {n_spec}"
     
     if n_spec == 0 or len(flat_mzs) == 0:
@@ -282,6 +321,7 @@ def centroid_flat_spectra(
             flat_mzs.copy(),
             flat_ints.copy(),
             spec_pos.copy(),
+            flat_weights.copy() if flat_weights is not None else None,
             n_spec,
         )
     
@@ -296,6 +336,7 @@ def centroid_flat_spectra(
     centroided_mzs_list = []
     centroided_ints_list = []
     centroided_spec_pos_list = []
+    centroided_weights_list = []
     
     # Process each spectrum
     # Why: This loop is unavoidable, but the numba-accelerated centroiding
@@ -310,12 +351,14 @@ def centroid_flat_spectra(
         
         spec_mz = flat_mzs[start_idx:end_idx]
         spec_int = flat_ints[start_idx:end_idx]
+        spec_weights = flat_weights[start_idx:end_idx] if flat_weights is not None else None
         spec_idx = spec_pos[start_idx]  # All peaks have same spec_idx
         
         # Centroid this spectrum using numba-accelerated function
-        cent_mz, cent_int = centroid_by_neighbor_distance(
+        cent_mz, cent_int, cent_weights = centroid_by_neighbor_distance(
             spec_mz,
             spec_int,
+            spec_weights,
             tolerance_ppm=tolerance_ppm,
             mass_tolerance_cutoff_mz=mass_tolerance_cutoff_mz,
         )
@@ -326,6 +369,8 @@ def centroid_flat_spectra(
         centroided_spec_pos_list.append(
             np.full(len(cent_mz), spec_idx, dtype=np.int32)
         )
+        if flat_weights is not None:
+            centroided_weights_list.append(cent_weights)
     
     if not centroided_mzs_list:
         # All spectra were empty
@@ -333,6 +378,7 @@ def centroid_flat_spectra(
             np.array([], dtype=np.float64),
             np.array([], dtype=np.float32),
             np.array([], dtype=np.int32),
+            np.array([], dtype=np.float64) if flat_weights is not None else None,
             n_spec,
         )
     
@@ -342,5 +388,6 @@ def centroid_flat_spectra(
         np.concatenate(centroided_mzs_list),
         np.concatenate(centroided_ints_list),
         np.concatenate(centroided_spec_pos_list),
+        np.concatenate(centroided_weights_list) if flat_weights is not None else None,
         n_spec,
     )

@@ -40,15 +40,18 @@ def select_and_collect(
     Why: Accept both DataFrame and LazyFrame inputs for flexibility.
     Selecting only needed columns reduces memory before processing.
     """
-    frame = frame.select(config.mz_col, config.intensity_col, config.spectrum_id_col)
+    cols = [config.mz_col, config.intensity_col, config.spectrum_id_col]
+    if config.weight_col is not None:
+        cols.append(config.weight_col)
+    frame = frame.select(cols)
     return (
         frame.collect(engine="streaming") if isinstance(frame, pl.LazyFrame) else frame
     )
 
 
 def _flatten_spectra_to_numpy(
-    df: pl.DataFrame, mz_col: str, int_col: str
-) -> tuple[NDArray[np.float64], NDArray[np.float32], NDArray[np.int32], int]:
+    df: pl.DataFrame, mz_col: str, int_col: str, weight_col: str | None = None
+) -> tuple[NDArray[np.float64], NDArray[np.float32], NDArray[np.int32], NDArray[np.float64] | None, int]:
     """
     Flatten list-valued spectrum columns from DataFrame into NumPy arrays.
 
@@ -59,12 +62,14 @@ def _flatten_spectra_to_numpy(
         df: DataFrame with list columns
         mz_col: Name of m/z column (list of floats)
         int_col: Name of intensity column (list of floats)
+        weight_col: Optional name of weight column (list of floats)
 
     Returns:
-        (flat_mzs, flat_ints, spec_idx, n_spec)
+        (flat_mzs, flat_ints, spec_idx, flat_weights, n_spec)
         - flat_mzs: np.ndarray[np.float64] of all m/z values
         - flat_ints: np.ndarray[np.float32] of all intensities
         - spec_idx: np.ndarray[np.int32] mapping each peak to its spectrum index
+        - flat_weights: np.ndarray[np.float64] of all weights, or None
         - n_spec: number of spectra
     """
     n_spec = len(df)
@@ -73,44 +78,53 @@ def _flatten_spectra_to_numpy(
             np.asarray([], dtype=np.float64),
             np.asarray([], dtype=np.float32),
             np.asarray([], dtype=np.int32),
+            np.asarray([], dtype=np.float64) if weight_col else None,
             0,
         )
 
     # Add temporary row index and explode
     df_idx = df.with_row_index("__spec_idx")
-    exploded = df_idx.explode([mz_col, int_col])
+    explode_cols = [mz_col, int_col]
+    if weight_col:
+        explode_cols.append(weight_col)
+    exploded = df_idx.explode(explode_cols)
 
     if len(exploded) == 0:
         return (
             np.asarray([], dtype=np.float64),
             np.asarray([], dtype=np.float32),
             np.asarray([], dtype=np.int32),
+            np.asarray([], dtype=np.float64) if weight_col else None,
             n_spec,
         )
 
     # Cast and extract
-    exploded = exploded.with_columns(
-        [
-            pl.col(mz_col).cast(pl.Float32),
-            pl.col(int_col).cast(pl.Float32),
-            pl.col("__spec_idx").cast(INDEX_DTYPE_PL),
-        ]
-    )
+    cast_cols = [
+        pl.col(mz_col).cast(pl.Float32),
+        pl.col(int_col).cast(pl.Float32),
+        pl.col("__spec_idx").cast(INDEX_DTYPE_PL),
+    ]
+    if weight_col:
+        cast_cols.append(pl.col(weight_col).cast(pl.Float32))
+    exploded = exploded.with_columns(cast_cols)
 
     flat_mzs = exploded.get_column(mz_col).to_numpy()
     flat_ints = exploded.get_column(int_col).to_numpy()
     spec_idx = exploded.get_column("__spec_idx").to_numpy()
+    flat_weights = exploded.get_column(weight_col).to_numpy() if weight_col else None
 
-    return flat_mzs, flat_ints, spec_idx, n_spec
+    return flat_mzs, flat_ints, spec_idx, flat_weights, n_spec
 
 
 def _sparse_bin_flat_spectra_to_csr(
     flat_mzs: NDArray[np.float64],
     flat_ints: NDArray[np.float32],
     spec_idx: NDArray[np.int32],
+    flat_weights: NDArray[np.float64] | None,
     n_spec: int,
     upper_bound: float,
     intensity_power: float,
+    weight_power: float,
     bin_size: float,
 ) -> sp.csr_matrix:
     """
@@ -127,9 +141,11 @@ def _sparse_bin_flat_spectra_to_csr(
         flat_mzs: All m/z values
         flat_ints: All intensity values
         spec_idx: Spectrum index for each peak
+        flat_weights: Optional array of weight values
         n_spec: Total number of spectra
         upper_bound: Maximum m/z
         intensity_power: Power to apply to intensities
+        weight_power: Power to apply to weights
         bin_size: Bin width
 
     Returns:
@@ -150,9 +166,13 @@ def _sparse_bin_flat_spectra_to_csr(
 
     mass_bins = mass_bins[valid_mask].astype(np.int32)
     spec_idx = spec_idx[valid_mask].astype(np.int32)
+    
     weights = np.asarray(flat_ints[valid_mask], dtype=np.float32) ** float(
         intensity_power
     )
+    if flat_weights is not None:
+        weight_vals = np.asarray(flat_weights[valid_mask], dtype=np.float32) ** float(weight_power)
+        weights = weights * weight_vals
 
     # Build COO matrix (duplicates are summed in tocsr())
     coo = sp.coo_matrix(
@@ -173,6 +193,8 @@ def sparse_bin_spectra_df_to_csr(
     intensity_power: float,
     bin_size: float,
     *,
+    weight_col: str | None = None,
+    weight_power: float = 0.0,
     apply_centroiding: bool = False,
     tolerance_ppm: float = 10.0,
     mass_tolerance_cutoff_mz: float = 200.0,
@@ -193,6 +215,8 @@ def sparse_bin_spectra_df_to_csr(
         upper_bound: Maximum m/z
         intensity_power: Power to apply to intensities
         bin_size: Bin width
+        weight_col: Optional name of weight column
+        weight_power: Power to apply to weights
         apply_centroiding: If True, centroid peaks before binning
         tolerance_ppm: PPM tolerance for centroiding (if enabled)
         mass_tolerance_cutoff_mz: m/z cutoff for centroiding (if enabled)
@@ -202,8 +226,8 @@ def sparse_bin_spectra_df_to_csr(
     """
     nbins = int(np.floor(upper_bound / float(bin_size))) + 1
 
-    flat_mzs, flat_ints, spec_idx, n_spec = _flatten_spectra_to_numpy(
-        df, mz_col, int_col
+    flat_mzs, flat_ints, spec_idx, flat_weights, n_spec = _flatten_spectra_to_numpy(
+        df, mz_col, int_col, weight_col
     )
 
     if n_spec == 0:
@@ -216,15 +240,16 @@ def sparse_bin_spectra_df_to_csr(
     if apply_centroiding:
         from .centroiding import centroid_flat_spectra
 
-        flat_mzs, flat_ints, spec_idx, n_spec = centroid_flat_spectra(
+        flat_mzs, flat_ints, spec_idx, flat_weights, n_spec = centroid_flat_spectra(
             flat_mzs,
             flat_ints,
             spec_idx,
+            flat_weights,
             n_spec,
             tolerance_ppm=tolerance_ppm,
             mass_tolerance_cutoff_mz=mass_tolerance_cutoff_mz,
         )
 
     return _sparse_bin_flat_spectra_to_csr(
-        flat_mzs, flat_ints, spec_idx, n_spec, upper_bound, intensity_power, bin_size
+        flat_mzs, flat_ints, spec_idx, flat_weights, n_spec, upper_bound, intensity_power, weight_power, bin_size
     )

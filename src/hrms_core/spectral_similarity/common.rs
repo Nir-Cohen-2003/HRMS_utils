@@ -4,6 +4,7 @@ use polars::prelude::*;
 pub struct Peak {
     pub mz: f64,
     pub intensity: f64,
+    pub weight: f64,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -16,18 +17,44 @@ impl Spectrum {
         Spectrum { peaks }
     }
 
-    pub fn from_polars_lists(mz_series: &Series, intensity_series: &Series) -> PolarsResult<Self> {
+    pub fn from_polars_lists(
+        mz_series: &Series,
+        intensity_series: &Series,
+        weight_series: Option<&Series>,
+    ) -> PolarsResult<Self> {
         let mz_ca = mz_series.f64()?;
         let int_ca = intensity_series.f64()?;
+
+        if let Some(w_series) = weight_series {
+            let w_ca = w_series.f64()?;
+            let peaks: Vec<Peak> = mz_ca
+                .into_iter()
+                .zip(int_ca.into_iter())
+                .zip(w_ca.into_iter())
+                .filter_map(
+                    |((mz_opt, int_opt), w_opt)| match (mz_opt, int_opt, w_opt) {
+                        (Some(mz), Some(intensity), Some(weight)) => Some(Peak {
+                            mz,
+                            intensity,
+                            weight,
+                        }),
+                        _ => None, // Skip nulls if any
+                    },
+                )
+                .collect();
+            return Ok(Spectrum::new(peaks));
+        }
 
         let peaks: Vec<Peak> = mz_ca
             .into_iter()
             .zip(int_ca.into_iter())
-            .filter_map(|(mz_opt, int_opt)| {
-                match (mz_opt, int_opt) {
-                    (Some(mz), Some(intensity)) => Some(Peak { mz, intensity }),
-                    _ => None, // Skip nulls if any
-                }
+            .filter_map(|(mz_opt, int_opt)| match (mz_opt, int_opt) {
+                (Some(mz), Some(intensity)) => Some(Peak {
+                    mz,
+                    intensity,
+                    weight: mz,
+                }),
+                _ => None, // Skip nulls if any
             })
             .collect();
         Ok(Spectrum::new(peaks))
@@ -192,17 +219,20 @@ pub fn centroid_spectrum(peaks: &mut Vec<Peak>, ms2_tolerance_in_ppm: f64) {
         if merge_candidates > 1 {
             let mut intensity_sum = 0.0;
             let mut intensity_weighted_sum = 0.0;
+            let mut weight_weighted_sum = 0.0;
 
             for j in idx_left..=idx_right {
                 if peaks[j].intensity > 0.0 {
                     intensity_sum += peaks[j].intensity;
                     intensity_weighted_sum += peaks[j].intensity * peaks[j].mz;
+                    weight_weighted_sum += peaks[j].intensity * peaks[j].weight;
                     peaks[j].intensity = 0.0; // Mark as merged
                 }
             }
 
             if intensity_sum > 0.0 {
                 peaks[idx].mz = intensity_weighted_sum / intensity_sum;
+                peaks[idx].weight = weight_weighted_sum / intensity_sum;
                 peaks[idx].intensity = intensity_sum;
             }
         }

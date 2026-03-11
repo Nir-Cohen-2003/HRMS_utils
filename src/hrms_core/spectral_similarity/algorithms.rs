@@ -176,7 +176,7 @@ pub fn general_cosine_similarity(
         .peaks
         .iter()
         .map(|p| {
-            let weighted_intensity = p.intensity.powf(intensity_power) * p.mz.powf(mass_power);
+            let weighted_intensity = p.intensity.powf(intensity_power) * p.weight.powf(mass_power);
             (p.mz, weighted_intensity)
         })
         .collect();
@@ -185,7 +185,7 @@ pub fn general_cosine_similarity(
         .peaks
         .iter()
         .map(|p| {
-            let weighted_intensity = p.intensity.powf(intensity_power) * p.mz.powf(mass_power);
+            let weighted_intensity = p.intensity.powf(intensity_power) * p.weight.powf(mass_power);
             (p.mz, weighted_intensity)
         })
         .collect();
@@ -285,7 +285,7 @@ pub fn calculate_explained_intensity(
         .peaks
         .iter()
         .map(|p| {
-            let weighted_intensity = p.intensity.powf(intensity_power) * p.mz.powf(mass_power);
+            let weighted_intensity = p.intensity.powf(intensity_power) * p.weight.powf(mass_power);
             (p.mz, weighted_intensity)
         })
         .collect();
@@ -294,7 +294,7 @@ pub fn calculate_explained_intensity(
         .peaks
         .iter()
         .map(|p| {
-            let weighted_intensity = p.intensity.powf(intensity_power) * p.mz.powf(mass_power);
+            let weighted_intensity = p.intensity.powf(intensity_power) * p.weight.powf(mass_power);
             (p.mz, weighted_intensity)
         })
         .collect();

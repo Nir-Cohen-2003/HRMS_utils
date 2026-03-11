@@ -83,28 +83,31 @@ if __name__ == "__main__":
     logging.info(f"Loading library from {LIBRARY_PATH}")
     library_lf = pl.scan_parquet(str(LIBRARY_PATH))
 
+    # Calculate information scores per fragment
+    library_lf = library_lf.with_columns(
+        pl.struct("precursor_formula", "fragment_formulas")
+        .spectral_info.spectral_info_score_per_fragment(
+            distance_metric="l2", ignore_hydrogens=True
+        )
+        .alias("info_scores")
+    )
+
     # Configure approximate similarity computation
     approx_cfg = GPUApproximateConfig(
         # Binning parameters
         upper_mass_bound=1000.0,
-<<<<<<< HEAD
-        bin_size=0.001,
-=======
         bin_size=0.0001,
->>>>>>> fast_cosine_sim_project
         ms2_tolerance_ppm=5.0,
         intensity_power=0.5,
+        weight_col="info_scores",
+        weight_power=1.0,
         approx_threshold=APPROX_THRESHOLD,
         # Comparison mode
         comparison_mode="self",  # Self-comparison with upper triangular optimization
         # Memory management
         target_gpu_mem_ratio=0.1,  # Use 10% of free GPU memory (conservative)
         safety_factor=0.5,  # Additional safety margin for memory estimation
-<<<<<<< HEAD
-        write_buffer_batches=1000,  # Flush to parquet every 100 GPU batches
-=======
         write_buffer_batches=100,  # Flush to parquet every 100 GPU batches
->>>>>>> fast_cosine_sim_project
         # Column names (match the library schema)
         spectrum_id_col="msp_index",
         mz_col="cleaned_normalized_mz",
@@ -163,6 +166,7 @@ if __name__ == "__main__":
                 "cleaned_normalized_mz": "mz1",
                 "cleaned_normalized_intensity": "intensities1",
                 "precursor_mz": "precursor_mz1",
+                "info_scores": "weights1",
             }
         )
         .join(
@@ -176,6 +180,7 @@ if __name__ == "__main__":
                 "cleaned_normalized_mz": "mz2",
                 "cleaned_normalized_intensity": "intensities2",
                 "precursor_mz": "precursor_mz2",
+                "info_scores": "weights2",
             }
         )
     )
@@ -188,8 +193,10 @@ if __name__ == "__main__":
             pl.struct(
                 mz1=pl.col("mz1"),
                 intensities1=pl.col("intensities1"),
+                weights1=pl.col("weights1"),
                 mz2=pl.col("mz2"),
                 intensities2=pl.col("intensities2"),
+                weights2=pl.col("weights2"),
                 precursor_mz1=pl.col("precursor_mz1"),
                 precursor_mz2=pl.col("precursor_mz2"),
             )

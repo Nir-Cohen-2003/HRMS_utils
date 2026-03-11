@@ -3,7 +3,7 @@ use pyo3_polars::derive::polars_expr;
 use rayon::prelude::*;
 use serde::Deserialize;
 
-use super::algorithms::calculate_score_for_spectrum;
+use super::algorithms::{calculate_score_for_spectrum, calculate_score_per_fragment};
 use crate::common::NUM_ELEMENTS;
 
 #[derive(Deserialize, Debug)]
@@ -71,4 +71,90 @@ pub fn tree_spectral_info_score(
     let scores: Vec<f64> = sorted_results.into_iter().map(|(_, score)| score).collect();
     let score_series: Series = Series::new("score".into(), scores.clone());
     Ok(score_series)
+}
+
+fn list_float_output_type(_: &[Field]) -> PolarsResult<Field> {
+    Ok(Field::new(
+        "score_per_fragment".into(),
+        DataType::List(Box::new(DataType::Float64)),
+    ))
+}
+
+#[polars_expr(output_type_func=list_float_output_type)]
+pub fn tree_spectral_info_score_per_fragment(
+    inputs: &[Series],
+    kwargs: SpectralInfoKwargs,
+) -> PolarsResult<Series> {
+    let struct_series = &inputs[0];
+    let ca: &StructChunked = struct_series.struct_()?;
+
+    let precursor_series = ca
+        .field_by_name("precursor_formula")?
+        .cast(&DataType::Array(Box::new(DataType::Float64), NUM_ELEMENTS))?;
+    let fragments_series = ca
+        .field_by_name("fragment_formulas")?
+        .cast(&DataType::List(Box::new(DataType::Array(
+            Box::new(DataType::Float64),
+            NUM_ELEMENTS,
+        ))))?;
+
+    let precursors_ca: &ChunkedArray<FixedSizeListType> = precursor_series.array()?;
+    let fragments_ca: &ChunkedArray<ListType> = fragments_series.list()?;
+
+    let precursor_vec: Vec<Series> = precursors_ca.into_no_null_iter().collect();
+    let fragments_vec: Vec<Series> = fragments_ca.into_no_null_iter().collect();
+
+    let distance_metric = kwargs.distance_metric;
+    let ignore_hydrogens = kwargs.ignore_hydrogens;
+
+    let indexed_scores: Vec<(usize, Option<Vec<f64>>)> = precursor_vec
+        .into_par_iter()
+        .zip(fragments_vec.into_par_iter())
+        .enumerate()
+        .map(|(index, (precursor_s, fragments_s))| {
+            let precursor_ca: &ChunkedArray<Float64Type> = precursor_s.f64().unwrap();
+            let precursor_vec: Vec<f64> = precursor_ca.into_no_null_iter().collect();
+
+            let fragments_list: &ChunkedArray<FixedSizeListType> = fragments_s.array().unwrap();
+            let mut fragments_flat: Vec<f64> = Vec::new();
+            let mut num_fragments = 0;
+            for fragment_series_opt in fragments_list.clone().into_iter() {
+                num_fragments += 1;
+                if let Some(fragment_series) = fragment_series_opt {
+                    let fragment_ca: &ChunkedArray<Float64Type> = fragment_series.f64().unwrap();
+                    fragments_flat.extend(fragment_ca.into_no_null_iter());
+                } else {
+                    fragments_flat.extend(vec![0.0; NUM_ELEMENTS]);
+                }
+            }
+
+            let scores = calculate_score_per_fragment(
+                precursor_vec,
+                fragments_flat,
+                &distance_metric,
+                ignore_hydrogens,
+            );
+            (index, scores)
+        })
+        .collect();
+
+    let mut sorted_results = indexed_scores;
+    sorted_results.sort_unstable_by_key(|(idx, _)| *idx);
+
+    let mut list_builder = ListPrimitiveChunkedBuilder::<Float64Type>::new(
+        "score_per_fragment".into(),
+        sorted_results.len(),
+        sorted_results.len() * 10,
+        DataType::Float64,
+    );
+
+    for (_, scores_opt) in sorted_results {
+        if let Some(scores) = scores_opt {
+            list_builder.append_slice(&scores);
+        } else {
+            list_builder.append_null();
+        }
+    }
+
+    Ok(list_builder.finish().into_series())
 }
