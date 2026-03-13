@@ -43,6 +43,12 @@ def main():
         help="Column name for SMILES (default: smiles)",
     )
     parser.add_argument(
+        "--name-column",
+        type=str,
+        default="name",
+        help="Column name for molecule name (default: name)",
+    )
+    parser.add_argument(
         "--info-column",
         type=str,
         default="spectral_information_score",
@@ -97,7 +103,7 @@ def main():
     lf = pl.scan_parquet(args.parquet_path)
     available_cols = set(lf.collect_schema().names())
 
-    required_cols = {args.smiles_column, args.info_column}
+    required_cols = {args.smiles_column, args.name_column, args.info_column}
     missing = required_cols.difference(available_cols)
     assert not missing, f"Missing required columns: {missing}"
 
@@ -154,7 +160,7 @@ def main():
 
     # For each molecule, find the energy that maximizes the info score
     # We sort by info_score and take the last element
-    agg_df = df_clean.group_by(args.smiles_column).agg(
+    agg_df = df_clean.group_by([args.name_column, args.smiles_column]).agg(
         optimal_energy=pl.col(primary_col).sort_by(args.info_column).last()
     )
     
@@ -186,6 +192,14 @@ def main():
     fig, ax = plt.subplots(figsize=(10, 8))
     
     unit = "NCE" if args.use_nce else "eV"
+    
+    csv_file = out_dir / f"optimal_energy_{unit.lower()}.csv"
+    agg_df.sort("optimal_energy").select([
+        pl.col(args.name_column).alias("name"),
+        pl.col(args.smiles_column).alias("smiles"),
+        pl.col("optimal_energy").alias("energy")
+    ]).write_csv(csv_file)
+    logger.info("CSV saved to %s", csv_file)
     
     sc = ax.scatter(
         embedding[:, 0],

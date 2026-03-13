@@ -36,12 +36,8 @@ os.environ["RUST_BACKTRACE"] = "full"
 
 
 if __name__ == "__main__":
-    LIBRARY_PATH = Path(
-        "file:///home/analytit_admin/Data/spectral_libs/info_score/combined_library.parquet"
-    )
-    PAIRS_PATH = Path(
-        "/home/analytit_admin/Data/spectral_libs/info_score/combined_library_pairs_260121.parquet"
-    )
+    LIBRARY_PATH = Path("experiments/spectral_information/data.parquet")
+    PAIRS_PATH = Path("experiments/spectral_information/data_pairs_260311.parquet")
     APPROX_PAIRS_PATH = PAIRS_PATH.with_suffix(".approx.parquet")
     LOG_PATH = PAIRS_PATH.with_suffix(".log")
 
@@ -84,7 +80,12 @@ if __name__ == "__main__":
     library_lf = pl.scan_parquet(str(LIBRARY_PATH))
 
     # Calculate information scores per fragment
-    library_lf = library_lf.with_columns(
+    library_lf = library_lf.rename(
+        {
+            "precursor_formula_array": "precursor_formula",
+            "cleaned_fragment_formulas": "fragment_formulas",
+        }
+    ).with_columns(
         pl.struct("precursor_formula", "fragment_formulas")
         .spectral_info.spectral_info_score_per_fragment(
             distance_metric="l2", ignore_hydrogens=True
@@ -96,7 +97,7 @@ if __name__ == "__main__":
     approx_cfg = GPUApproximateConfig(
         # Binning parameters
         upper_mass_bound=1000.0,
-        bin_size=0.0001,
+        bin_size=0.001,
         ms2_tolerance_ppm=5.0,
         intensity_power=0.5,
         weight_col="info_scores",

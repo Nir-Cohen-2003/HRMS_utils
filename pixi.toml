@@ -83,14 +83,16 @@ kaleido = ">=1.1.0, <2"
 
 [feature.experiments.target.linux-64.dependencies]
 hrms_utils = {path = "."}
-parallel_rdkit = "*" #{path = "../parallel_rdkit"}
+parallel_rdkit = ">=0.4.0" #{path = "../parallel_rdkit"}
 pyzmq = "*"
 marimo ="*"
 memory_profiler = "*"
 umap-learn = "*"
-
-
-
+cupy="*"
+cudatoolkit="*"
+# cusparse="*"
+[feature.experiments.system-requirements]
+cuda="12.0"
 [feature.experiments.tasks]
 sim_vs_info = {cmd="python experiments/spectral_information/similarity_vs_info.py",env={ MKL_INTERFACE_LAYER = "LP64"}}
 plot_sim_vs_info = "python experiments/spectral_information/plot_similarity_vs_info.py"
