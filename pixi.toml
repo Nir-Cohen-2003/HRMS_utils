@@ -91,7 +91,8 @@ numba-cuda = "*"
 # umap-learn = "*"
 cupy="*"
 libcusparse="*"
-nvmolkit = "==0.4.0"
+nvmolkit = "==0.2.0"
+pytorch-gpu ="*"
 [feature.experiments.system-requirements]
 cuda="12"
 [feature.experiments.tasks]

@@ -533,18 +533,17 @@ def generate_optimal_energy_histogram(
     optimal_indices = np.argmax(informativity_matrix, axis=0)
     optimal_energies = grid[optimal_indices]
 
+    # Always use a max_energy of 100 by default, or the configured value
     # Filter out molecules with optimal energy above max_energy for display
     # but keep them in the total count for fraction calculation
-    if config.max_energy is not None:
-        valid_mask = optimal_energies <= config.max_energy
-        filtered_energies = optimal_energies[valid_mask]
-    else:
-        filtered_energies = optimal_energies
+    effective_max_energy = config.max_energy if config.max_energy is not None else 100.0
+    valid_mask = optimal_energies <= effective_max_energy
+    filtered_energies = optimal_energies[valid_mask]
 
-    total_count = len(optimal_energies)  # Total for fraction calculation
+    total_count = len(optimal_energies)  # Total for fraction calculation (includes filtered)
 
     if len(filtered_energies) == 0:
-        logger.warning("No molecules with optimal energy <= max_energy for %s mode", ion_mode)
+        logger.warning("No molecules with optimal energy <= %s for %s mode", effective_max_energy, ion_mode)
         return
 
     # Create histogram with fraction (sum of all bars = 1)
@@ -552,10 +551,7 @@ def generate_optimal_energy_histogram(
 
     # Use the grid edges for histogram bins
     # Filter grid to only include values <= max_energy for bin edges
-    if config.max_energy is not None:
-        grid_for_bins = grid[grid <= config.max_energy]
-    else:
-        grid_for_bins = grid
+    grid_for_bins = grid[grid <= effective_max_energy]
 
     # Create bin edges based on filtered grid
     bin_edges = np.arange(

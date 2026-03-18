@@ -8,7 +8,8 @@ from time import perf_counter
 import numpy as np
 import polars as pl
 
-from parallel_rdkit.matrix_tanimoto import calculate_tanimoto_matrix
+from parallel_rdkit.matrix_similarity import calculate_tanimoto_matrix
+from parallel_rdkit.fingerprint import FingerprintParams
 
 # Add the src directory to sys.path so hrms_utils can be imported
 sys.path.append(str(Path(__file__).parents[2] / "src"))
@@ -264,82 +265,111 @@ def run_tanimoto_similarity():
     logging.info("Computing Tanimoto similarity on GPU...")
     t_start = perf_counter()
 
-    # Load the exact pairs and library
-    pairs_df = pl.read_parquet(str(PAIRS_PATH))
-    library_df = pl.read_parquet(str(LIBRARY_PATH))
+    # Load library using lazy streaming
+    # Why: Library can be large; use streaming to minimize memory usage
+    library_lf = pl.scan_parquet(str(LIBRARY_PATH))
 
     # Create mol_idx mapping based on base_inchikey
     # Why: base_inchikey is the canonical molecule identifier; spectra from the same
     # molecule share the same base_inchikey
-    library_with_mol_idx = library_df.with_columns(
-        pl.col("base_inchikey").hash(seed=42).cast(pl.Int64).alias("mol_idx")
+    library_with_mol_idx = library_lf.with_columns(
+        pl.col("base_inchikey").rank(method="dense").cast(pl.Int64).alias("mol_idx")
     )
 
-    # Get unique molecules (base_inchikey + smiles + mol_idx)
-    # Why: We only need one SMILES per molecule for Tanimoto computation
+    # Get unique molecules (base_inchikey + smiles + mol_idx) - this requires collect
+    # Why: We need the actual lists to pass to calculate_tanimoto_matrix which expects Python lists
     unique_mols = (
         library_with_mol_idx
         .filter(pl.col("smiles").is_not_null())
         .select(["mol_idx", "smiles", "base_inchikey"])
         .unique(subset=["mol_idx"])
         .sort("mol_idx")
+        .collect(streaming=True)
     )
 
     smiles_list = unique_mols["smiles"].to_list()
-    mol_idx_list = unique_mols["mol_idx"].to_list()
+    mol_idx_array = unique_mols["mol_idx"].to_numpy()
 
     logging.info(f"Computing Tanimoto matrix for {len(smiles_list)} unique molecules...")
 
-    # Compute Tanimoto similarity matrix on GPU
-    tanimoto_matrix = calculate_tanimoto_matrix(
+    # Temporary path for Tanimoto similarity results
+    tanimoto_parquet_path = PAIRS_PATH.with_suffix(".tanimoto.parquet")
+
+    # Compute Tanimoto similarity matrix on GPU, writing results to parquet
+    # The parquet will have columns: mol1_idx, mol2_idx, tanimoto
+    calculate_tanimoto_matrix(
         smiles=smiles_list,
-        fp_radius=2,
-        fp_size=2048,
-        save_path=None,  # We process the matrix in memory
+        parquet_path=tanimoto_parquet_path,
+        indices=mol_idx_array,
+        fp_params=FingerprintParams(fp_type="morgan", radius=2, fpSize=2048),
+        threshold=None,  # Store all similarities
+        memory_usage_fraction=0.5,
         log_path=None,
     )
 
-    # Create a mapping from molecule index pair to Tanimoto similarity
-    # Why: The matrix is symmetric; we only need to store upper triangular
-    mol_idx_to_tanimoto = {}
-    for i, mol_i in enumerate(mol_idx_list):
-        for j, mol_j in enumerate(mol_idx_list):
-            if i <= j:  # Upper triangular including diagonal
-                mol_idx_to_tanimoto[(mol_i, mol_j)] = float(tanimoto_matrix[i, j])
-                mol_idx_to_tanimoto[(mol_j, mol_i)] = float(tanimoto_matrix[i, j])
+    # Build spectrum to molecule mapping as a lazy frame for joining
+    # Why: Using joins instead of map_elements enables full streaming
+    spectrum_to_mol_lf = library_with_mol_idx.select(["msp_index", "mol_idx"])
 
-    # Join mol_idx to pairs based on spectrum indices
-    # Why: idx_left and idx_right in pairs correspond to msp_index in library
-    spectrum_to_mol = dict(zip(
-        library_with_mol_idx["msp_index"].to_list(),
-        library_with_mol_idx["mol_idx"].to_list()
-    ))
+    # Process pairs using streaming
+    # Why: Pairs file can be very large; use lazy evaluation throughout
+    pairs_lf = pl.scan_parquet(str(PAIRS_PATH))
+    tanimoto_lf = pl.scan_parquet(str(tanimoto_parquet_path))
 
-    # Add mol_idx columns to pairs
-    pairs_with_mol = pairs_df.with_columns([
-        pl.col("idx_left").map_elements(
-            lambda x: spectrum_to_mol.get(x, None),
-            return_dtype=pl.Int64
-        ).alias("mol_idx"),
-        pl.col("idx_right").map_elements(
-            lambda x: spectrum_to_mol.get(x, None),
-            return_dtype=pl.Int64
-        ).alias("mol_idx_right")
-    ])
-
-    # Add Tanimoto similarity by looking up molecule pairs
-    pairs_with_tanimoto = pairs_with_mol.with_columns(
-        pl.struct(["mol_idx", "mol_idx_right"])
-        .map_elements(
-            lambda row: mol_idx_to_tanimoto.get((row["mol_idx"], row["mol_idx_right"]), 0.0),
-            return_dtype=pl.Float64
+    # Add mol_idx columns to pairs using joins (streaming-friendly)
+    # Why: Joins work in lazy/streaming context; map_elements does not
+    pairs_with_mol = (
+        pairs_lf
+        .join(
+            spectrum_to_mol_lf,
+            left_on="idx_left",
+            right_on="msp_index",
+            how="left"
         )
-        .alias("tanimoto_similarity")
+        .rename({"mol_idx": "mol_idx_left"})
+        .join(
+            spectrum_to_mol_lf,
+            left_on="idx_right",
+            right_on="msp_index",
+            how="left"
+        )
+        .rename({"mol_idx": "mol_idx_right"})
     )
 
-    # Write final results with Tanimoto similarity
-    logging.info(f"Writing final pairs with Tanimoto to {PAIRS_WITH_TANIMOTO_PATH}")
-    pairs_with_tanimoto.write_parquet(PAIRS_WITH_TANIMOTO_PATH)
+    # Join with Tanimoto results using streaming
+    # The parquet stores pairs as (mol1_idx, mol2_idx) where mol1_idx <= mol2_idx
+    # We need to handle both orderings when joining
+    pairs_with_tanimoto = (
+        pairs_with_mol
+        .join(
+            tanimoto_lf,
+            left_on=["mol_idx_left", "mol_idx_right"],
+            right_on=["mol1_idx", "mol2_idx"],
+            how="left"
+        )
+        .join(
+            tanimoto_lf,
+            left_on=["mol_idx_right", "mol_idx_left"],
+            right_on=["mol1_idx", "mol2_idx"],
+            how="left",
+            suffix="_rev"
+        )
+        .with_columns(
+            pl.when(pl.col("tanimoto").is_not_null())
+            .then(pl.col("tanimoto"))
+            .otherwise(pl.col("tanimoto_rev"))
+            .alias("tanimoto_similarity")
+        )
+        .drop(["tanimoto", "tanimoto_rev"])
+    )
+
+    # Write final results with Tanimoto similarity using streaming sink
+    # Why: Avoid materializing entire result in memory
+    logging.info(f"Streaming final pairs with Tanimoto to {PAIRS_WITH_TANIMOTO_PATH}")
+    pairs_with_tanimoto.sink_parquet(PAIRS_WITH_TANIMOTO_PATH, maintain_order=False)
+
+    # Clean up temporary parquet file
+    tanimoto_parquet_path.unlink(missing_ok=True)
 
     t_end = perf_counter()
     logging.info(f"Tanimoto similarity computation complete in {t_end - t_start:.3f}s")
