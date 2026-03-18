@@ -2,14 +2,34 @@ import argparse
 import logging
 import os
 import sys
+from dataclasses import dataclass
 from pathlib import Path
 from time import perf_counter
+from typing import List, Optional, Tuple
 
 import numpy as np
 import polars as pl
 
-from parallel_rdkit.matrix_similarity import calculate_tanimoto_matrix
-from parallel_rdkit.fingerprint import FingerprintParams
+from parallel_rdkit.fingerprint import FingerprintParams, get_fp_list
+from parallel_rdkit.mol import sanitize_smiles
+
+import pyarrow.parquet as pq
+
+
+@dataclass
+class TanimotoConfig:
+    """Configuration for Tanimoto similarity computation.
+    
+    Why: Chunked processing allows memory-efficient computation on large pair files
+    without loading everything into memory at once.
+    """
+    chunk_size: int = 5_000_000  # Default 5M rows per chunk
+    fp_params: FingerprintParams = None
+    
+    def __post_init__(self):
+        if self.fp_params is None:
+            self.fp_params = FingerprintParams(fp_type="morgan", radius=2, fpSize=2048)
+
 
 # Add the src directory to sys.path so hrms_utils can be imported
 sys.path.append(str(Path(__file__).parents[2] / "src"))
@@ -246,8 +266,68 @@ def run_exact_similarity():
     return t_end - t_start
 
 
-def run_tanimoto_similarity():
-    """Step 3: Compute Tanimoto similarity on GPU for molecule pairs."""
+def _compute_tanimoto_for_pairs(
+    smiles_list: List[str],
+    pairs_indices: np.ndarray,
+    fp_params: FingerprintParams,
+) -> np.ndarray:
+    """Compute Tanimoto similarity for specific pairs of molecules.
+    
+    Why: Instead of computing full all-vs-all matrix, we only compute similarities
+    for the specific molecule pairs we need, using in-memory fingerprint generation.
+    
+    Args:
+        smiles_list: List of SMILES strings for all molecules in chunk
+        pairs_indices: Array of shape (n_pairs, 2) with [idx_left, idx_right] pairs
+        fp_params: Fingerprint parameters
+        
+    Returns:
+        Array of Tanimoto similarities for each pair
+    """
+    # Generate fingerprints for all molecules in chunk
+    fps, valid_mask = get_fp_list(smiles_list, fp_params, return_numpy=True)
+    
+    # fps is 2D array (n_mols, fp_size) if return_numpy=True
+    # valid_mask is 1D boolean array
+    
+    # Compute Tanimoto for each pair
+    # Tanimoto = (A & B).sum() / (A | B).sum()
+    n_pairs = len(pairs_indices)
+    similarities = np.zeros(n_pairs, dtype=np.float32)
+    
+    for i, (idx_left, idx_right) in enumerate(pairs_indices):
+        if not valid_mask[idx_left] or not valid_mask[idx_right]:
+            similarities[i] = np.nan
+            continue
+            
+        fp_left = fps[idx_left]
+        fp_right = fps[idx_right]
+        
+        # Compute intersection and union
+        intersection = np.logical_and(fp_left, fp_right).sum()
+        union = np.logical_or(fp_left, fp_right).sum()
+        
+        if union > 0:
+            similarities[i] = intersection / union
+        else:
+            similarities[i] = 0.0
+    
+    return similarities
+
+
+def run_tanimoto_similarity(config: Optional[TanimotoConfig] = None):
+    """Step 3: Compute Tanimoto similarity on GPU for molecule pairs.
+    
+    This implementation reads pairs in chunks, extracts the unique molecules needed
+    for each chunk, and computes Tanimoto similarity only for those specific pairs
+    using in-memory fingerprint generation.
+    
+    Args:
+        config: TanimotoConfig with chunk_size and fp_params. Uses defaults if None.
+    """
+    if config is None:
+        config = TanimotoConfig()
+    
     if not PAIRS_PATH.exists():
         raise MissingFileError(
             f"Missing required input file for Tanimoto similarity: {PAIRS_PATH}\n"
@@ -262,117 +342,133 @@ def run_tanimoto_similarity():
             f"Please ensure the library parquet is available at this location."
         )
 
-    logging.info("Computing Tanimoto similarity on GPU...")
+    logging.info("Computing Tanimoto similarity using chunked in-memory processing...")
+    logging.info(f"Chunk size: {config.chunk_size:,} rows")
     t_start = perf_counter()
 
-    # Load library using lazy streaming
-    # Why: Library can be large; use streaming to minimize memory usage
+    # Load library and create mol_idx mapping
+    # Why: We need to map spectrum indices to molecule indices
     library_lf = pl.scan_parquet(str(LIBRARY_PATH))
-
-    # Create mol_idx mapping based on base_inchikey
-    # Why: base_inchikey is the canonical molecule identifier; spectra from the same
-    # molecule share the same base_inchikey
+    
     library_with_mol_idx = library_lf.with_columns(
         pl.col("base_inchikey").rank(method="dense").cast(pl.Int64).alias("mol_idx")
     )
 
-    # Get unique molecules (base_inchikey + smiles + mol_idx) - this requires collect
-    # Why: We need the actual lists to pass to calculate_tanimoto_matrix which expects Python lists
+    # Get unique molecules with their SMILES
     unique_mols = (
         library_with_mol_idx
-        .filter(pl.col("smiles").is_not_null())
-        .select(["mol_idx", "smiles", "base_inchikey"])
+        .filter(
+            pl.col("smiles").is_not_null() & pl.col("mol_idx").is_not_null()
+        )
+        .select(["mol_idx", "smiles"])
         .unique(subset=["mol_idx"])
         .sort("mol_idx")
-        .collect(streaming=True)
+        .collect()
     )
 
-    smiles_list = unique_mols["smiles"].to_list()
-    mol_idx_array = unique_mols["mol_idx"].to_numpy()
+    # Create lookup from mol_idx to smiles
+    mol_idx_to_smiles = dict(zip(
+        unique_mols["mol_idx"].to_list(),
+        unique_mols["smiles"].to_list()
+    ))
 
-    logging.info(f"Computing Tanimoto matrix for {len(smiles_list)} unique molecules...")
-
-    # Temporary path for Tanimoto similarity results
-    tanimoto_parquet_path = PAIRS_PATH.with_suffix(".tanimoto.parquet")
-
-    # Compute Tanimoto similarity matrix on GPU, writing results to parquet
-    # The parquet will have columns: mol1_idx, mol2_idx, tanimoto
-    calculate_tanimoto_matrix(
-        smiles=smiles_list,
-        parquet_path=tanimoto_parquet_path,
-        indices=mol_idx_array,
-        fp_params=FingerprintParams(fp_type="morgan", radius=2, fpSize=2048),
-        threshold=None,  # Store all similarities
-        memory_usage_fraction=0.5,
-        log_path=None,
+    # Build spectrum to molecule mapping
+    spectrum_to_mol = (
+        library_with_mol_idx
+        .select(["msp_index", "mol_idx"])
+        .collect()
     )
+    spec_idx_to_mol_idx = dict(zip(
+        spectrum_to_mol["msp_index"].to_list(),
+        spectrum_to_mol["mol_idx"].to_list()
+    ))
 
-    # Build spectrum to molecule mapping as a lazy frame for joining
-    # Why: Using joins instead of map_elements enables full streaming
-    spectrum_to_mol_lf = library_with_mol_idx.select(["msp_index", "mol_idx"])
+    # Open parquet file for chunked reading with pyarrow
+    # Why: pyarrow supports true chunked reading without loading entire file
+    parquet_file = pq.ParquetFile(str(PAIRS_PATH))
+    total_rows = parquet_file.metadata.num_rows
+    logging.info(f"Total pairs to process: {total_rows:,}")
 
-    # Process pairs using streaming
-    # Why: Pairs file can be very large; use lazy evaluation throughout
-    pairs_lf = pl.scan_parquet(str(PAIRS_PATH))
-    tanimoto_lf = pl.scan_parquet(str(tanimoto_parquet_path))
+    # Process in chunks and write incrementally
+    n_chunks = (total_rows + config.chunk_size - 1) // config.chunk_size
+    logging.info(f"Processing in {n_chunks} chunks...")
 
-    # Add mol_idx columns to pairs using joins (streaming-friendly)
-    # Why: Joins work in lazy/streaming context; map_elements does not
-    pairs_with_mol = (
-        pairs_lf
-        .join(
-            spectrum_to_mol_lf,
-            left_on="idx_left",
-            right_on="msp_index",
-            how="left"
-        )
-        .rename({"mol_idx": "mol_idx_left"})
-        .join(
-            spectrum_to_mol_lf,
-            left_on="idx_right",
-            right_on="msp_index",
-            how="left"
-        )
-        .rename({"mol_idx": "mol_idx_right"})
-    )
+    # Remove output file if exists
+    if PAIRS_WITH_TANIMOTO_PATH.exists():
+        PAIRS_WITH_TANIMOTO_PATH.unlink()
 
-    # Join with Tanimoto results using streaming
-    # The parquet stores pairs as (mol1_idx, mol2_idx) where mol1_idx <= mol2_idx
-    # We need to handle both orderings when joining
-    pairs_with_tanimoto = (
-        pairs_with_mol
-        .join(
-            tanimoto_lf,
-            left_on=["mol_idx_left", "mol_idx_right"],
-            right_on=["mol1_idx", "mol2_idx"],
-            how="left"
-        )
-        .join(
-            tanimoto_lf,
-            left_on=["mol_idx_right", "mol_idx_left"],
-            right_on=["mol1_idx", "mol2_idx"],
-            how="left",
-            suffix="_rev"
-        )
-        .with_columns(
-            pl.when(pl.col("tanimoto").is_not_null())
-            .then(pl.col("tanimoto"))
-            .otherwise(pl.col("tanimoto_rev"))
-            .alias("tanimoto_similarity")
-        )
-        .drop(["tanimoto", "tanimoto_rev"])
-    )
+    total_processed = 0
+    chunk_idx = 0
+    
+    # Iterate over batches using pyarrow
+    for batch in parquet_file.iter_batches(batch_size=config.chunk_size):
+        chunk_idx += 1
+        chunk_start_time = perf_counter()
+        
+        logging.info(f"Processing chunk {chunk_idx}/{n_chunks} (batch size: {len(batch):,})...")
 
-    # Write final results with Tanimoto similarity using streaming sink
-    # Why: Avoid materializing entire result in memory
-    logging.info(f"Streaming final pairs with Tanimoto to {PAIRS_WITH_TANIMOTO_PATH}")
-    pairs_with_tanimoto.sink_parquet(PAIRS_WITH_TANIMOTO_PATH, maintain_order=False)
+        # Convert batch to polars DataFrame
+        chunk = pl.from_arrow(batch)
+        
+        if len(chunk) == 0:
+            break
 
-    # Clean up temporary parquet file
-    tanimoto_parquet_path.unlink(missing_ok=True)
+        # Add mol_idx columns using the pre-built mapping
+        chunk = chunk.with_columns([
+            pl.col("idx_left").replace_strict(spec_idx_to_mol_idx, default=None).alias("mol_idx_left"),
+            pl.col("idx_right").replace_strict(spec_idx_to_mol_idx, default=None).alias("mol_idx_right"),
+        ])
+
+        # Get unique molecule indices in this chunk
+        mol_idx_left_list = chunk["mol_idx_left"].to_numpy()
+        mol_idx_right_list = chunk["mol_idx_right"].to_numpy()
+        unique_mol_indices = np.unique(np.concatenate([mol_idx_left_list, mol_idx_right_list]))
+        unique_mol_indices = unique_mol_indices[unique_mol_indices != None]
+        
+        if len(unique_mol_indices) == 0:
+            # No valid molecules in this chunk, add NaN column
+            chunk = chunk.with_columns(pl.lit(np.nan).alias("tanimoto_similarity"))
+        else:
+            # Get SMILES for unique molecules
+            chunk_smiles = [mol_idx_to_smiles.get(int(idx), "") for idx in unique_mol_indices]
+            
+            # Create mapping from mol_idx to position in chunk_smiles
+            mol_idx_to_pos = {int(idx): i for i, idx in enumerate(unique_mol_indices)}
+            
+            # Map pairs to positions in chunk_smiles
+            pairs_indices = np.array([
+                [mol_idx_to_pos.get(int(left), -1), mol_idx_to_pos.get(int(right), -1)]
+                for left, right in zip(mol_idx_left_list, mol_idx_right_list)
+            ])
+            
+            # Compute Tanimoto for these pairs
+            similarities = _compute_tanimoto_for_pairs(
+                chunk_smiles,
+                pairs_indices,
+                config.fp_params,
+            )
+            
+            # Add similarities to chunk
+            chunk = chunk.with_columns(pl.Series("tanimoto_similarity", similarities))
+
+        # Drop the temporary mol_idx columns before writing
+        chunk = chunk.drop(["mol_idx_left", "mol_idx_right"])
+
+        # Write chunk to output
+        if chunk_idx == 1:
+            chunk.write_parquet(PAIRS_WITH_TANIMOTO_PATH)
+        else:
+            # Append mode: read existing, concat, write
+            existing = pl.read_parquet(PAIRS_WITH_TANIMOTO_PATH)
+            combined = pl.concat([existing, chunk])
+            combined.write_parquet(PAIRS_WITH_TANIMOTO_PATH)
+
+        chunk_time = perf_counter() - chunk_start_time
+        total_processed += len(chunk)
+        logging.info(f"Chunk {chunk_idx} complete: {len(chunk):,} rows in {chunk_time:.2f}s")
 
     t_end = perf_counter()
-    logging.info(f"Tanimoto similarity computation complete in {t_end - t_start:.3f}s")
+    logging.info(f"Tanimoto similarity computation complete: {total_processed:,} pairs in {t_end - t_start:.3f}s")
 
     return t_end - t_start
 
@@ -404,6 +500,12 @@ Examples:
         action="store_true",
         help="Run Tanimoto similarity computation (GPU). Requires data_pairs_260311.parquet."
     )
+    parser.add_argument(
+        "--chunk-size",
+        type=int,
+        default=5_000_000,
+        help="Number of rows to process per chunk for Tanimoto computation (default: 5,000,000)."
+    )
 
     args = parser.parse_args()
 
@@ -425,6 +527,8 @@ This script computes spectral and molecular similarities in three steps:
   --tanimoto  Run Tanimoto molecular similarity on GPU using Morgan fingerprints.
               Input:  data_pairs_260311.parquet, data.parquet (for SMILES)
               Output: data_pairs_260311_with_tanimoto.parquet
+
+  --chunk-size N  Number of rows per chunk for Tanimoto computation (default: 5000000).
 
 You can run multiple steps at once, e.g.: --approx --exact --tanimoto
 Run with -h for more details.
@@ -465,7 +569,8 @@ Run with -h for more details.
             logging.info("=" * 60)
             logging.info("Starting Step 3: Tanimoto Similarity")
             logging.info("=" * 60)
-            timings["tanimoto"] = run_tanimoto_similarity()
+            tanimoto_config = TanimotoConfig(chunk_size=args.chunk_size)
+            timings["tanimoto"] = run_tanimoto_similarity(config=tanimoto_config)
 
     except MissingFileError as e:
         logging.error(str(e))

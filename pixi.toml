@@ -88,7 +88,6 @@ parallel_rdkit = {path = "../parallel_rdkit"}
 psutil = "*"
 numba = "*"
 numba-cuda = "*"
-# umap-learn = "*"
 cupy="*"
 libcusparse="*"
 nvmolkit = "==0.2.0"
