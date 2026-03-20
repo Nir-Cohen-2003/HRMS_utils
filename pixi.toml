@@ -109,8 +109,11 @@ fit_models = "python experiments/spectral_information/tanimoto_similarity_predic
 isotope_fit = "python experiments/find_optimal_isotopic_parameters.py"
 find_optimal_energy = "python experiments/spectral_information/optimal_energy_selection.py"
 find_optimal_energy_umap = "python experiments/spectral_information/optimal_energy_umap.py"
+# Usage: pixi run plasma-fpr --input-mzmls /path/to/mzmls/ --library /path/to/lib.parquet --output ./results
+# Or:    pixi run plasma-fpr --chromatograms-dir /path/to/chromatograms/ --library /path/to/lib.parquet --output ./results
 
 [feature.scripts.tasks]
+plasma-fpr = {cmd = "python experiments/spectral_information/plasma_fpr_estimate.py", env = { MKL_INTERFACE_LAYER = "LP64" }}
 convert_msp = "python scripts/convert_msp.py"
 process-pubchem = "python scripts/process_pubchem.py"
 process-pubchem-download = "python scripts/process_pubchem.py --download"

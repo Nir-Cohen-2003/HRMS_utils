@@ -413,6 +413,11 @@ def annotate_chromatogram_with_formulas(
         ["precursor_formula", "precursor_formula_str", "precursor_errors_ppm"]
     )
 
+    # Sum original intensities before cleaning for explained intensity calculation
+    chromatogram = chromatogram.with_columns(
+        pl.col("msms_intensity").list.sum().alias("_total_intensity_before_cleaning")
+    )
+
     # Cleaning + normalization
     chromatogram = (
         chromatogram.rechunk()
@@ -451,6 +456,14 @@ def annotate_chromatogram_with_formulas(
         )
         .drop("cleaned_spectra")
     )
+
+    # Calculate explained intensity: sum of cleaned intensities divided by sum of original intensities
+    chromatogram = chromatogram.with_columns(
+        pl.col("cleaned_msms_intensity")
+        .list.sum()
+        .truediv(pl.col("_total_intensity_before_cleaning"))
+        .alias("explained_intensity")
+    ).drop("_total_intensity_before_cleaning")
 
     return chromatogram
 
