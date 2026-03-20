@@ -42,3 +42,4 @@ tests/data/**.raw
 data/
 .cache/
 **.zip
+packages/msdial
