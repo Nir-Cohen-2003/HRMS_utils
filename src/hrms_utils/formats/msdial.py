@@ -730,7 +730,7 @@ Compounds library file path for RT correction:
 adduct list: {adduct_list}
 
 # Export
-Export spectra file format: msp
+Export spectra file format: text
 Export spectra type: deconvoluted
 Mat file export folder path:
 Export folder path:
@@ -823,12 +823,12 @@ class MSDialRunnerConfig:
 
 def _get_project_root() -> Path | None:
     """Find the project root directory containing packages/msdial.
-    
+
     Tries multiple strategies:
     1. Search upward from current file location
     2. Search upward from current working directory
     3. Check environment variable
-    
+
     Returns
     -------
     Path | None
@@ -839,18 +839,18 @@ def _get_project_root() -> Path | None:
     for parent in current_file.parents:
         if (parent / "packages" / "msdial").exists():
             return parent
-    
+
     # Strategy 2: Search upward from current working directory
     cwd = Path.cwd().resolve()
     for parent in [cwd] + list(cwd.parents):
         if (parent / "packages" / "msdial").exists():
             return parent
-    
+
     # Strategy 3: Check environment variable
     env_root = Path(os.environ.get("HRMS_UTILS_ROOT", ""))
     if env_root.exists() and (env_root / "packages" / "msdial").exists():
         return env_root
-    
+
     return None
 
 
@@ -871,7 +871,7 @@ def _find_msdial_executable() -> Path:
         If MS-DIAL executable cannot be found in any common location.
     """
     system = platform.system()
-    
+
     # Try to find project root
     project_root = _get_project_root()
 
@@ -895,7 +895,7 @@ def _find_msdial_executable() -> Path:
             Path.home() / "bin",
             Path("./"),
         ]
-    
+
     # Insert project root path at the beginning if found
     if project_root is not None:
         msdial_package_dir = project_root / "packages" / "msdial"
@@ -996,7 +996,10 @@ def _parse_msdial_errors(stdout: str, stderr: str) -> List[str]:
 
     # Skip if this looks like help text
     combined_output_lower = (stdout + "\n" + stderr).lower()
-    if "requires the following args" in combined_output_lower or "usage:" in combined_output_lower:
+    if (
+        "requires the following args" in combined_output_lower
+        or "usage:" in combined_output_lower
+    ):
         return errors
 
     # Known error patterns in MS-DIAL output
