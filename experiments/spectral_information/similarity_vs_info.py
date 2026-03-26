@@ -322,6 +322,10 @@ def run_tanimoto_similarity(config: Optional[TanimotoConfig] = None):
     for each chunk, and computes Tanimoto similarity only for those specific pairs
     using in-memory fingerprint generation.
     
+    Output includes spectrum indices (idx_left, idx_right), molecule indices
+    (mol_idx_left, mol_idx_right), dot-product similarity, and Tanimoto similarity.
+    The molecule indices enable downstream analysis without reconstruction.
+    
     Args:
         config: TanimotoConfig with chunk_size and fp_params. Uses defaults if None.
     """
@@ -451,8 +455,7 @@ def run_tanimoto_similarity(config: Optional[TanimotoConfig] = None):
             # Add similarities to chunk
             chunk = chunk.with_columns(pl.Series("tanimoto_similarity", similarities))
 
-        # Drop the temporary mol_idx columns before writing
-        chunk = chunk.drop(["mol_idx_left", "mol_idx_right"])
+        # Keep mol_idx columns for downstream analysis (plot_similarity_vs_info.py)
 
         # Write chunk to output
         if chunk_idx == 1:

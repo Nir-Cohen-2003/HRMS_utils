@@ -1026,12 +1026,6 @@ def _plot_binned_stats(
     plt.close(fig)
 
 
-
-
-
-
-
-
 def plot_heatmap_avg_tanimoto_vs_info_and_dotprod(
     config: SimilarityVsInfoConfig,
     library_scores_df: Optional[pl.DataFrame] = None,
@@ -1520,7 +1514,9 @@ def run_per_molecule_analysis(config: SimilarityVsInfoConfig) -> None:
         "Found %d molecules with at least one external match", len(mols_with_matches)
     )
     if len(mols_with_matches) == 0:
-        logger.error("No molecules with external matches found. Aborting per-molecule analysis.")
+        logger.error(
+            "No molecules with external matches found. Aborting per-molecule analysis."
+        )
         return
 
     # 3) Per-molecule Spearman
@@ -1539,7 +1535,11 @@ def run_per_molecule_analysis(config: SimilarityVsInfoConfig) -> None:
         if per_molecule_spearman_df.height > 0
         else np.array([], dtype=float)
     )
-    tan_const_arr = per_molecule_spearman_df.get_column("tanimoto_constant").to_numpy() if "tanimoto_constant" in per_molecule_spearman_df.columns else np.zeros_like(rho_arr, dtype=bool)
+    tan_const_arr = (
+        per_molecule_spearman_df.get_column("tanimoto_constant").to_numpy()
+        if "tanimoto_constant" in per_molecule_spearman_df.columns
+        else np.zeros_like(rho_arr, dtype=bool)
+    )
 
     valid_mask = ~np.isnan(rho_arr)
     n_valid = int(np.sum(valid_mask))
@@ -1549,13 +1549,19 @@ def run_per_molecule_analysis(config: SimilarityVsInfoConfig) -> None:
         n_with = int(np.sum(valid_mask))
         exclude_mask = valid_mask & (~tan_const_arr)
         n_excl = int(np.sum(exclude_mask))
-        mean_without = float(np.nanmean(rho_arr[exclude_mask])) if n_excl > 0 else float("nan")
-        
+        mean_without = (
+            float(np.nanmean(rho_arr[exclude_mask])) if n_excl > 0 else float("nan")
+        )
+
         summary_path = output_dir / "per_molecule_spearman_summary.txt"
         with open(summary_path, "w") as fh:
             fh.write("Per-molecule Spearman summary\n\n")
-            fh.write(f"Mean (incl constant avg_tanimoto): {mean_with:.4f} (n={n_with})\n")
-            fh.write(f"Mean (excl constant avg_tanimoto): {mean_without:.4f} (n={n_excl})\n")
+            fh.write(
+                f"Mean (incl constant avg_tanimoto): {mean_with:.4f} (n={n_with})\n"
+            )
+            fh.write(
+                f"Mean (excl constant avg_tanimoto): {mean_without:.4f} (n={n_excl})\n"
+            )
         logger.info("Wrote summary text to %s", summary_path)
 
 
@@ -1565,7 +1571,7 @@ def run_global_line_plots(config: SimilarityVsInfoConfig) -> None:
     """
     output_dir = Path(config.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
-    
+
     logger.info("Starting Global Line Plots Analysis...")
 
     thresholds: List[Optional[float]] = (
@@ -1577,26 +1583,44 @@ def run_global_line_plots(config: SimilarityVsInfoConfig) -> None:
     per_spectrum_by_threshold: Dict[Optional[float], pl.DataFrame] = {}
     for t in thresholds:
         logger.info("Computing per-spectrum stats for threshold %s...", t)
-        per_spectrum_by_threshold[t] = compute_per_spectrum_avg_tanimoto(config, min_dotprod=t)
+        per_spectrum_by_threshold[t] = compute_per_spectrum_avg_tanimoto(
+            config, min_dotprod=t
+        )
 
     # --- 1. Global (All Spectra) ---
     global_by_threshold: Dict[str, Dict[str, object]] = {}
     for t, ps in per_spectrum_by_threshold.items():
-        mols_with_matches_t = _molecules_with_any_matches(config.pairs_parquet_path, config, min_dotprod=t)
-        included_spectra_t = ps.filter(pl.col("mol_idx").is_in(list(mols_with_matches_t)))
+        mols_with_matches_t = _molecules_with_any_matches(
+            config.pairs_parquet_path, config, min_dotprod=t
+        )
+        included_spectra_t = ps.filter(
+            pl.col("mol_idx").is_in(list(mols_with_matches_t))
+        )
         if config.use_avg_info and "avg_info_for_plot" in included_spectra_t.columns:
-            included_spectra_t = included_spectra_t.with_columns(pl.col("avg_info_for_plot").alias(config.info_measure))
-        label = f"Dot-Product above {t:.2f}" if t is not None else "Dot-Product (no filter)"
+            included_spectra_t = included_spectra_t.with_columns(
+                pl.col("avg_info_for_plot").alias(config.info_measure)
+            )
+        label = (
+            f"Dot-Product above {t:.2f}" if t is not None else "Dot-Product (no filter)"
+        )
         global_by_threshold[label] = _compute_binned_stats(included_spectra_t, config)
 
     primary_t = thresholds[0]
-    primary_label = f"Dot-Product above {primary_t:.2f}" if primary_t is not None else "Dot-Product (no filter)"
-    
+    primary_label = (
+        f"Dot-Product above {primary_t:.2f}"
+        if primary_t is not None
+        else "Dot-Product (no filter)"
+    )
+
     if primary_label in global_by_threshold:
-        plot_all_path = output_dir / config.filename_all.format(measure=config.info_measure)
+        plot_all_path = output_dir / config.filename_all.format(
+            measure=config.info_measure
+        )
         _plot_binned_stats(
             primary_stats=global_by_threshold[primary_label],
-            overlay_stats={k: v for k, v in global_by_threshold.items() if k != primary_label},
+            overlay_stats={
+                k: v for k, v in global_by_threshold.items() if k != primary_label
+            },
             out_path=plot_all_path,
             label=primary_label,
             config=config,
@@ -1605,23 +1629,44 @@ def run_global_line_plots(config: SimilarityVsInfoConfig) -> None:
     # --- 2. Best Spectrum per Molecule ---
     best_by_threshold: Dict[str, Dict[str, object]] = {}
     for t, ps in per_spectrum_by_threshold.items():
-        mols_with_matches_t = _molecules_with_any_matches(config.pairs_parquet_path, config, min_dotprod=t)
-        included_spectra_t = ps.filter(pl.col("mol_idx").is_in(list(mols_with_matches_t)))
-        best_info = included_spectra_t.group_by("mol_idx").agg(pl.col(config.info_measure).max().alias("max_info"))
-        candidates = included_spectra_t.join(best_info, on="mol_idx", how="inner").filter(pl.col(config.info_measure) == pl.col("max_info"))
-        best_per_molecule_t = candidates.sort(["mol_idx", "idx"]).group_by("mol_idx").agg(pl.col("idx").first().alias("idx")).join(included_spectra_t, on=["mol_idx", "idx"], how="left")
-        
-        if config.use_avg_info and "avg_info_for_plot" in best_per_molecule_t.columns:
-            best_per_molecule_t = best_per_molecule_t.with_columns(pl.col("avg_info_for_plot").alias(config.info_measure))
+        mols_with_matches_t = _molecules_with_any_matches(
+            config.pairs_parquet_path, config, min_dotprod=t
+        )
+        included_spectra_t = ps.filter(
+            pl.col("mol_idx").is_in(list(mols_with_matches_t))
+        )
+        best_info = included_spectra_t.group_by("mol_idx").agg(
+            pl.col(config.info_measure).max().alias("max_info")
+        )
+        candidates = included_spectra_t.join(
+            best_info, on="mol_idx", how="inner"
+        ).filter(pl.col(config.info_measure) == pl.col("max_info"))
+        best_per_molecule_t = (
+            candidates.sort(["mol_idx", "idx"])
+            .group_by("mol_idx")
+            .agg(pl.col("idx").first().alias("idx"))
+            .join(included_spectra_t, on=["mol_idx", "idx"], how="left")
+        )
 
-        label = f"Dot-Product above {t:.2f}" if t is not None else "Dot-Product (no filter)"
+        if config.use_avg_info and "avg_info_for_plot" in best_per_molecule_t.columns:
+            best_per_molecule_t = best_per_molecule_t.with_columns(
+                pl.col("avg_info_for_plot").alias(config.info_measure)
+            )
+
+        label = (
+            f"Dot-Product above {t:.2f}" if t is not None else "Dot-Product (no filter)"
+        )
         best_by_threshold[label] = _compute_binned_stats(best_per_molecule_t, config)
 
     if primary_label in best_by_threshold:
-        plot_best_path = output_dir / config.filename_best.format(measure=config.info_measure)
+        plot_best_path = output_dir / config.filename_best.format(
+            measure=config.info_measure
+        )
         _plot_binned_stats(
             primary_stats=best_by_threshold[primary_label],
-            overlay_stats={k: v for k, v in best_by_threshold.items() if k != primary_label},
+            overlay_stats={
+                k: v for k, v in best_by_threshold.items() if k != primary_label
+            },
             out_path=plot_best_path,
             label=primary_label,
             config=config,
@@ -1629,30 +1674,31 @@ def run_global_line_plots(config: SimilarityVsInfoConfig) -> None:
 
 
 if __name__ == "__main__":
+    # Note: Run reconstruct_pairs_with_tanimoto.py first to generate the input file
     cfg = SimilarityVsInfoConfig(
         pairs_parquet_path=Path(
-            "/home/analytit_admin/Data/spectral_libs/info_score/combined_library_pairs_with_tanimoto_260104.parquet"
+            "/gpfs01/work/nircoh/HRMS_utils/experiments/spectral_information/data_pairs_260311_with_tanimoto.parquet"
         ),
         left_library_parquet_path=Path(
-            "/home/analytit_admin/Data/spectral_libs/info_score/combined_library_pairs_260104.left_library.parquet"
+            "/gpfs01/work/nircoh/HRMS_utils/experiments/spectral_information/data.parquet"
         ),
         original_left_library_parquet_paths=[
             Path(
-                "/home/analytit_admin/Data/spectral_libs/info_score/combined_library.parquet"
+                "/gpfs01/work/nircoh/HRMS_utils/experiments/spectral_information/data.parquet"
             )
         ],
         right_library_parquet_path=None,
         tanimoto_col="tanimoto_similarity",
-        left_idx_col="idx",
+        left_idx_col="idx_left",
         right_idx_col="idx_right",
-        left_mol_col="mol_idx",
+        left_mol_col="mol_idx_left",
         right_mol_col="mol_idx_right",
         info_metric=InfoMetric.SPECTRAL_INFORMATION,
         x_bin_width=0.5,
         x_range=(0.0, 5.0),
         min_count_threshold=10,
         output_dir=Path(
-            "/home/analytit_admin/Data/spectral_libs/info_score/sim_vs_info_analysis_260107"
+            "/gpfs01/work/nircoh/HRMS_utils/experiments/spectral_information/sim_vs_info_analysis_260326"
         ),
         dotprod_thresholds=(0.8, 0.9),
         dotprod_bin_size=0.1,
@@ -1671,4 +1717,3 @@ if __name__ == "__main__":
     logger.info("Producing overall heatmap at %s", heatmap_path)
 
     plot_heatmap_avg_tanimoto_vs_info_and_dotprod(cfg)
-
