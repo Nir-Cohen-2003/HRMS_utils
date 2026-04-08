@@ -96,7 +96,7 @@ cupy="*"
 libcusparse="*"
 nvmolkit = "==0.2.0"
 pytorch-gpu ="*"
-
+fastexcel="*"
 [feature.experiments.system-requirements]
 cuda="12"
 [feature.experiments.tasks]

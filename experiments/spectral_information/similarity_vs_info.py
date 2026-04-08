@@ -427,7 +427,8 @@ def run_tanimoto_similarity(config: Optional[TanimotoConfig] = None):
         mol_idx_left_list = chunk["mol_idx_left"].to_numpy()
         mol_idx_right_list = chunk["mol_idx_right"].to_numpy()
         unique_mol_indices = np.unique(np.concatenate([mol_idx_left_list, mol_idx_right_list]))
-        unique_mol_indices = unique_mol_indices[unique_mol_indices != None]
+        # Filter out None and NaN values (Polars nulls become np.nan when converted to numpy)
+        unique_mol_indices = unique_mol_indices[~np.isnan(unique_mol_indices.astype(float))]
         
         if len(unique_mol_indices) == 0:
             # No valid molecules in this chunk, add NaN column
@@ -454,6 +455,9 @@ def run_tanimoto_similarity(config: Optional[TanimotoConfig] = None):
             
             # Add similarities to chunk
             chunk = chunk.with_columns(pl.Series("tanimoto_similarity", similarities))
+
+        # Filter out rows with null tanimoto similarity
+        chunk = chunk.filter(pl.col("tanimoto_similarity").is_not_null())
 
         # Keep mol_idx columns for downstream analysis (plot_similarity_vs_info.py)
 
