@@ -137,8 +137,6 @@ annotated = annotate_chromatogram_with_formulas(
     normalized_fragment_mass_accuracy_ppm=4.0,
     isotopic_mass_accuracy_ppm=2.0,
     isotopic_minimum_intensity=5e4,
-    isotopic_intensity_absolute_tolerance=2e5,
-    isotopic_intensity_relative_tolerance=0.1
 )
 
 print(annotated.schema)

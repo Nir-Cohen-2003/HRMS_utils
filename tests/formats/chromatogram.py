@@ -53,8 +53,6 @@ if __name__ == "__main__":
             precursor_mass_accuracy_ppm=3.0,
             fragment_mass_accuracy_ppm=5.0,
             isotopic_mass_accuracy_ppm=2.0,
-            isotopic_intensity_relative_tolerance=0.05,
-            isotopic_intensity_absolute_tolerance=2e5,
         )
         elapsed = timeit.default_timer() - start
         timings.append(elapsed)

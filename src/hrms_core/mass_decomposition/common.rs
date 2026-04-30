@@ -108,12 +108,22 @@ pub struct DecomposedFragment {
 }
 
 #[derive(Debug, Clone, Deserialize)]
+pub struct CalibratedIsotopicModel {
+    pub alpha: f64,
+    pub beta: f64,
+    pub offset: f64,
+    pub hetero_lower_a: f64,
+    pub hetero_lower_b: f64,
+    pub hetero_upper_a: f64,
+    pub hetero_upper_b: f64,
+}
+
+#[derive(Debug, Clone, Deserialize)]
 pub struct IsotopicPatternParams {
     pub ms1_mass_tolerance_ppm: f64,
     pub isotopic_mass_tolerance_ppm: f64,
     pub minimum_intensity: f64,
-    pub intensity_absolute_tolerance: f64,
-    pub intensity_relative_tolerance: f64,
+    pub model: CalibratedIsotopicModel,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -121,8 +131,7 @@ pub struct DeduceIsotopicPatternKwargs {
     pub ms1_mass_tolerance_ppm: f64,
     pub isotopic_mass_tolerance_ppm: f64,
     pub minimum_intensity: f64,
-    pub intensity_absolute_tolerance: f64,
-    pub intensity_relative_tolerance: f64,
+    pub model: CalibratedIsotopicModel,
     pub min_bounds: Option<HashMap<String, i32>>,
     pub max_bounds: Option<HashMap<String, i32>>,
 }

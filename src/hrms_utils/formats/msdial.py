@@ -8,6 +8,7 @@ import polars as pl
 
 from ..formula_annotation.element_table import ELEMENT_INDEX, ELEMENT_MASSES
 from ..hrms_core import *
+from ..hrms_core import CalibratedIsotopicModel
 
 T = TypeVar("T", pl.DataFrame, pl.LazyFrame)
 
@@ -240,8 +241,15 @@ def annotate_chromatogram_with_formulas(
     normalized_fragment_mass_accuracy_ppm: float = 4.0,
     isotopic_mass_accuracy_ppm: float = 2.0,
     isotopic_minimum_intensity: float = 5e4,
-    isotopic_intensity_absolute_tolerance: float = 2e5,
-    isotopic_intensity_relative_tolerance: float = 0.1,
+    isotopic_model: CalibratedIsotopicModel = CalibratedIsotopicModel(
+        alpha=1.32762,
+        beta=0.981853,
+        offset=0.0,
+        hetero_lower_a=5.5,
+        hetero_lower_b=-0.2,
+        hetero_upper_a=16.7,
+        hetero_upper_b=-0.29,
+    ),
 ) -> pl.DataFrame:
     """
     Annotate an MSDIAL chromatogram with isotopic patterns, candidate elemental formulas
@@ -297,13 +305,8 @@ def annotate_chromatogram_with_formulas(
         Minimum absolute intensity to consider an isotope peak when deducing the
         isotopic pattern.
 
-    - isotopic_intensity_absolute_tolerance: float
-        Absolute intensity tolerance used when comparing expected vs observed isotope
-        intensities.
-
-    - isotopic_intensity_relative_tolerance: float
-        Relative intensity tolerance (fraction) used when comparing expected vs
-        observed isotope intensities.
+    - isotopic_model: CalibratedIsotopicModel
+        Heteroscedastic calibrated model for isotopic intensity bounds.
 
     Returned DataFrame (columns added / meaning)
     The returned polars DataFrame contains the original chromatogram columns plus the
@@ -355,8 +358,7 @@ def annotate_chromatogram_with_formulas(
                 ms1_mass_tolerance_ppm=precursor_mass_accuracy_ppm,
                 isotopic_mass_tolerance_ppm=isotopic_mass_accuracy_ppm,
                 minimum_intensity=isotopic_minimum_intensity,
-                intensity_absolute_tolerance=isotopic_intensity_absolute_tolerance,
-                intensity_relative_tolerance=isotopic_intensity_relative_tolerance,
+                model=isotopic_model,
                 max_bounds=max_bounds,
             )
             .alias("bounds")

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -19,6 +20,17 @@ if TYPE_CHECKING:
     from .typing import IntoExprColumn
 
 LIB: Path = Path(__file__).parent.parent
+
+
+@dataclass
+class CalibratedIsotopicModel:
+    alpha: float
+    beta: float
+    offset: float
+    hetero_lower_a: float
+    hetero_lower_b: float
+    hetero_upper_a: float
+    hetero_upper_b: float
 
 
 # Placeholder for the Polars expression namespace
@@ -184,8 +196,15 @@ class MassDecomposerUtils:
         ms1_mass_tolerance_ppm: float = 5.0,
         isotopic_mass_tolerance_ppm: float = 3.0,
         minimum_intensity: float = 5e4,
-        intensity_absolute_tolerance: float = 5e4,
-        intensity_relative_tolerance: float = 0.05,
+        model: CalibratedIsotopicModel = CalibratedIsotopicModel(
+            alpha=1.32762,
+            beta=0.981853,
+            offset=0.0,
+            hetero_lower_a=5.5,
+            hetero_lower_b=-0.2,
+            hetero_upper_a=16.7,
+            hetero_upper_b=-0.29,
+        ),
         min_bounds: dict[str, int] | None = None,
         max_bounds: dict[str, int] | None = None,
     ) -> pl.Expr:
@@ -200,8 +219,7 @@ class MassDecomposerUtils:
             ms1_mass_tolerance_ppm: Tolerance for matching precursor in MS1
             isotopic_mass_tolerance_ppm: Tolerance for matching isotopic peaks
             minimum_intensity: Minimum intensity threshold
-            intensity_absolute_tolerance: Absolute tolerance for intensity matching
-            intensity_relative_tolerance: Relative tolerance for intensity matching
+            model: Calibrated heteroscedastic isotopic model
             min_bounds: Optional dictionary of minimum element counts
             max_bounds: Optional dictionary of maximum element counts
 
@@ -212,8 +230,7 @@ class MassDecomposerUtils:
             "ms1_mass_tolerance_ppm": ms1_mass_tolerance_ppm,
             "isotopic_mass_tolerance_ppm": isotopic_mass_tolerance_ppm,
             "minimum_intensity": minimum_intensity,
-            "intensity_absolute_tolerance": intensity_absolute_tolerance,
-            "intensity_relative_tolerance": intensity_relative_tolerance,
+            "model": model,
             "min_bounds": min_bounds,
             "max_bounds": max_bounds,
         }

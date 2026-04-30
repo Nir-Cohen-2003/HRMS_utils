@@ -181,51 +181,5 @@ def test_deduce_isotopic_pattern_bounds_passthrough():
     assert bounds[3] == 1
     assert bounds[3 + NUM_ELEMENTS] == 10
 
-def test_deduce_isotopic_pattern_chlorine_m_plus_4():
-    """
-    Test Chlorine M+4 check.
-    If we see a strong M+2 but NO M+4, and we predicted 2 Cl, it should correct to 1 Cl (actually 0-1).
-    Wait, the logic is: if we see M+2 consistent with > 0 Cl, check M+4.
-    If M+4 is missing or too small compared to M+2 (based on ratio), restrict Cl to 0-1.
-    """
-    precursor_mz = 200.0
-    precursor_int = 1e6
-    
-    # Simulate intensity for 2 Chlorines at M+2
-    # M+2 for 2 Cl comes from 35Cl-37Cl combination (mixed) or just sum of probabilities?
-    # The simple logic in Rust code:
-    # It calculates 'lower' and 'upper' based on the M+2 peak assuming it comes from Cl isotopes.
-    # If result says lower > 0 and upper >= 2, it checks M+4.
-    
-    # Let's fake a scenario where M+2 looks like 2 Cls, but M+4 is absent.
-    # 2 Cls M+2 relative intensity: ~ 2 * (0.24/0.75) approx 0.64 (simplistic linear approx used in code)
-    # Actually the code uses linear approx: prob_1 * n / prob_0.
-    # So for n=2: 2 * 0.2422 / 0.7578 = 0.639
-    
-    m_plus_2_int = precursor_int * 0.64
-    
-    ms1_mzs = [precursor_mz, precursor_mz + DIFF_Cl]
-    ms1_intensities = [precursor_int, m_plus_2_int]
-    
-    # No M+4 peak provided!
-    
-    df = pl.DataFrame({
-        "precursor_mz": [precursor_mz],
-        "ms1_mzs": [ms1_mzs],
-        "ms1_intensities": [ms1_intensities]
-    })
-    
-    result = df.with_columns(
-        pl.col("precursor_mz").mass_decomposition.deduce_isotopic_pattern(
-            ms1_mzs=pl.col("ms1_mzs"),
-            ms1_intensities=pl.col("ms1_intensities"),
-            minimum_intensity=100.0
-        ).alias("bounds")
-    )
-    
-    bounds = result["bounds"][0].to_list()
-    
-    # Expect Cl bounds to be restricted to [0, 1] because M+4 is missing
-    assert bounds[IDX_Cl] == 0
-    assert bounds[IDX_Cl + NUM_ELEMENTS] == 1
+
 

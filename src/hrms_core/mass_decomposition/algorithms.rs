@@ -84,77 +84,23 @@ pub fn deduce_isotopic_pattern_inner(
             upper = (params.minimum_intensity * iso_props.prob_0)
                 / (iso_props.prob_1 * precursor_ms1_intensity);
         } else {
-            lower = ((peak_total_intensity * (1.0 - params.intensity_relative_tolerance)
-                - params.intensity_absolute_tolerance)
-                * iso_props.prob_0)
+            let observed = peak_total_intensity;
+            let expected_hat = params.model.alpha
+                * (observed + params.model.offset).powf(params.model.beta);
+            let w_l = params.model.hetero_lower_a
+                * (observed + params.model.offset).powf(params.model.hetero_lower_b);
+            let w_u = params.model.hetero_upper_a
+                * (observed + params.model.offset).powf(params.model.hetero_upper_b);
+            let expected_lower = expected_hat * (-w_l).exp();
+            let expected_upper = expected_hat * w_u.exp();
+            lower = (expected_lower * iso_props.prob_0)
                 / (iso_props.prob_1 * precursor_ms1_intensity);
-            upper = ((peak_total_intensity * (1.0 + params.intensity_relative_tolerance)
-                + params.intensity_absolute_tolerance)
-                * iso_props.prob_0)
+            upper = (expected_upper * iso_props.prob_0)
                 / (iso_props.prob_1 * precursor_ms1_intensity);
         }
 
         result[res_idx] = lower;
         result[res_idx + 4] = upper;
-    }
-
-    // Special logic for Cl second peak (M+4)
-    // Cl_lower index is 2, Cl_upper is 6
-    let cl_lower = result[2];
-    let cl_upper = result[6];
-
-    if cl_lower > 0.0 && cl_upper >= 2.0 {
-        let cl_props = ELEMENT_ISOTOPES[8].unwrap();
-        let second_cl_peak_mz = precursor_ms1_mz + cl_props.mass_diff * 2.0;
-
-        let peak_indices: Vec<usize> = ms1_mzs
-            .iter()
-            .enumerate()
-            .filter(|&(_, &mz)| (mz - second_cl_peak_mz).abs() <= isotopic_absolute_tolerance)
-            .map(|(i, _)| i)
-            .collect();
-
-        let second_cl_peak_total_intensity = if peak_indices.is_empty() {
-            0.0
-        } else {
-            peak_indices
-                .iter()
-                .map(|&i| ms1_intensities[i])
-                .fold(0.0, f64::max)
-        };
-
-        // We need the intensity of the first Cl peak again
-        // Ideally we should have stored it, but we can recompute or just grab it.
-        // Wait, we need it for the ratio.
-        // Let's just recompute the first peak intensity to be safe and local.
-        let first_cl_peak_mz = precursor_ms1_mz + cl_props.mass_diff;
-        let first_peak_indices: Vec<usize> = ms1_mzs
-            .iter()
-            .enumerate()
-            .filter(|&(_, &mz)| (mz - first_cl_peak_mz).abs() <= isotopic_absolute_tolerance)
-            .map(|(i, _)| i)
-            .collect();
-        let first_cl_peak_total_intensity = if first_peak_indices.is_empty() {
-            0.0
-        } else {
-            first_peak_indices
-                .iter()
-                .map(|&i| ms1_intensities[i])
-                .fold(0.0, f64::max)
-        };
-
-        let expected_cl_ratio = cl_props.prob_1 / (2.0 * cl_props.prob_0);
-        let actual_cl_ratio = second_cl_peak_total_intensity / first_cl_peak_total_intensity;
-
-        if expected_cl_ratio * first_cl_peak_total_intensity
-            > params.minimum_intensity * (1.0 + params.intensity_relative_tolerance)
-        {
-            let cl_deviation = ((actual_cl_ratio - expected_cl_ratio) / expected_cl_ratio).abs();
-            if cl_deviation > params.intensity_relative_tolerance {
-                result[2] = 0.0; // Cl_lower
-                result[6] = 1.0; // Cl_upper
-            }
-        }
     }
 
     result

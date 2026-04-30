@@ -215,7 +215,7 @@ def fit_isotopic_tolerance_parameters(
     # Why: Extract true carbon count and filter for valid data.
     # Ground-truth can come either from a formula array (library search) or from an explicit
     # integer carbon count column (mass-list CSV mode).
-    # 
+    #
     # IMPORTANT: If library metadata is present, we filter out entries missing inchikey since
     # we don't trust their formula accuracy.
     if true_carbon_count_column in library_hits.columns:
@@ -254,14 +254,16 @@ def fit_isotopic_tolerance_parameters(
             pl.col(ms1_mz_column).is_not_null(),
             pl.col(ms1_intensity_column).is_not_null(),
         )
-    
+
     # Why: Filter out library entries missing inchikey since we don't trust their formula accuracy.
     # This applies only to library-search data; mass-list data doesn't have inchikey column.
     if "inchikey" in data.columns:
         data_before_inchikey_filter = data.height
         data = data.filter(pl.col("inchikey").is_not_null())
         data_after_inchikey_filter = data.height
-        entries_filtered_for_missing_inchikey = data_before_inchikey_filter - data_after_inchikey_filter
+        entries_filtered_for_missing_inchikey = (
+            data_before_inchikey_filter - data_after_inchikey_filter
+        )
     else:
         entries_filtered_for_missing_inchikey = 0
 
@@ -413,7 +415,7 @@ def fit_isotopic_tolerance_parameters(
     per_element_pair_counts: Counter[str] = Counter()
     fitting_pairs: list[FittingPair] = []
     skipped_for_missing_name: int = 0
-    
+
     # Track which (peak_id, source_file) combinations have already been used for fitting.
     # Why: Each peak should contribute only one calibration pair, even if it has multiple
     # isotopic targets (13C, 34S, etc.). This prevents overfitting to peaks that happen
@@ -427,10 +429,10 @@ def fit_isotopic_tolerance_parameters(
         peak_id = int(row.get("Peak ID", 0))
         source_file = str(row.get("source_file", ""))
         peak_key = (peak_id, source_file)
-        
+
         if peak_key in used_peaks:
             continue
-        
+
         precursor_mz = row[precursor_mz_column]
         ms1_mzs = np.atleast_1d(np.array(row[ms1_mz_column]))
         ms1_intensities = np.atleast_1d(np.array(row[ms1_intensity_column]))
@@ -544,11 +546,15 @@ def fit_isotopic_tolerance_parameters(
                     # Mark peak as used even if we skip pairs output
                     used_peaks.add(peak_key)
                     break
-                
+
                 library_name = str(row["name"])
                 inchikey = str(row["inchikey"])
-                smiles = str(row["smiles"]) if "smiles" in row and row["smiles"] is not None else None
-                
+                smiles = (
+                    str(row["smiles"])
+                    if "smiles" in row and row["smiles"] is not None
+                    else None
+                )
+
                 # Convert formula array to string
                 formula_array = row.get("formula_array")
                 if formula_array is not None:
@@ -564,13 +570,13 @@ def fit_isotopic_tolerance_parameters(
                     library_formula = "".join(formula_parts)
                 else:
                     library_formula = "Unknown"
-                
+
                 # Get MS2 spectra
                 query_ms2_mz = row.get("query_ms2_mz", [])
                 query_ms2_intensity = row.get("query_ms2_intensity", [])
                 library_ms2_mz = row.get("library_ms2_mz", [])
                 library_ms2_intensity = row.get("library_ms2_intensity", [])
-                
+
                 if query_ms2_mz is None:
                     query_ms2_mz = []
                 if query_ms2_intensity is None:
@@ -579,14 +585,18 @@ def fit_isotopic_tolerance_parameters(
                     library_ms2_mz = []
                 if library_ms2_intensity is None:
                     library_ms2_intensity = []
-                
+
                 fitting_pair = FittingPair(
                     peak_id=int(row.get("Peak ID", 0)),
                     source_file=str(row.get("source_file", "")),
                     precursor_mz=precursor_mz,
                     peak_height=float(row.get("Height", 0.0)),
-                    spectral_info_score=float(row.get("spectral_info_score", 0.0)) if row.get("spectral_info_score") is not None else 0.0,
-                    dotprod_similarity=float(row.get("dotprod_similarity", 0.0)) if row.get("dotprod_similarity") is not None else 0.0,
+                    spectral_info_score=float(row.get("spectral_info_score", 0.0))
+                    if row.get("spectral_info_score") is not None
+                    else 0.0,
+                    dotprod_similarity=float(row.get("dotprod_similarity", 0.0))
+                    if row.get("dotprod_similarity") is not None
+                    else 0.0,
                     library_name=library_name,
                     library_formula=library_formula,
                     inchikey=inchikey,
@@ -594,13 +604,21 @@ def fit_isotopic_tolerance_parameters(
                     element_label=element_label,
                     observed_intensity=observed_isotopic_peak_intensity,
                     expected_intensity=expected_isotopic_peak_intensity,
-                    query_mz_list=query_ms2_mz if isinstance(query_ms2_mz, list) else list(query_ms2_mz),
-                    query_intensity_list=query_ms2_intensity if isinstance(query_ms2_intensity, list) else list(query_ms2_intensity),
-                    library_mz_list=library_ms2_mz if isinstance(library_ms2_mz, list) else list(library_ms2_mz),
-                    library_intensity_list=library_ms2_intensity if isinstance(library_ms2_intensity, list) else list(library_ms2_intensity),
+                    query_mz_list=query_ms2_mz
+                    if isinstance(query_ms2_mz, list)
+                    else list(query_ms2_mz),
+                    query_intensity_list=query_ms2_intensity
+                    if isinstance(query_ms2_intensity, list)
+                    else list(query_ms2_intensity),
+                    library_mz_list=library_ms2_mz
+                    if isinstance(library_ms2_mz, list)
+                    else list(library_ms2_mz),
+                    library_intensity_list=library_ms2_intensity
+                    if isinstance(library_ms2_intensity, list)
+                    else list(library_ms2_intensity),
                 )
                 fitting_pairs.append(fitting_pair)
-            
+
             # Mark this peak as used and break from isotopic targets loop.
             # Why: Each peak should contribute exactly one calibration pair to prevent
             # overweighting peaks with multiple observable isotopes.
@@ -1225,9 +1243,13 @@ def fit_isotopic_tolerance_parameters(
             f.write(f"\n  Fitting pairs saved to: {pairs_output_path}\n")
             f.write(f"    Total pairs: {len(fitting_pairs)}\n")
             if skipped_for_missing_name > 0:
-                f.write(f"    Skipped for pairs output (missing name): {skipped_for_missing_name}\n")
+                f.write(
+                    f"    Skipped for pairs output (missing name): {skipped_for_missing_name}\n"
+                )
             if entries_filtered_for_missing_inchikey > 0:
-                f.write(f"    Filtered before fitting (missing inchikey): {entries_filtered_for_missing_inchikey}\n")
+                f.write(
+                    f"    Filtered before fitting (missing inchikey): {entries_filtered_for_missing_inchikey}\n"
+                )
 
         f.write(f"\n  Plots saved to:\n")
         f.write(f"    - Calibration bounds: {plot_path_1}\n")
@@ -1609,12 +1631,16 @@ def main(config: isotopic_config):
             pl.col("library_name").alias("calibration_library_name"),
             pl.col("library_inchikey").alias("calibration_library_inchikey"),
             pl.col("library_smiles").alias("calibration_library_smiles"),
-            pl.col("precursor_formula_array").alias("calibration_library_formula_array"),
+            pl.col("precursor_formula_array").alias(
+                "calibration_library_formula_array"
+            ),
             # MS2 spectra for dotprod
             pl.col("msms_m/z").alias("calibration_query_ms2_mz"),
             pl.col("msms_intensity").alias("calibration_query_ms2_intensity"),
             pl.col("cleaned_normalized_mz").alias("calibration_library_ms2_mz"),
-            pl.col("cleaned_normalized_intensity").alias("calibration_library_ms2_intensity"),
+            pl.col("cleaned_normalized_intensity").alias(
+                "calibration_library_ms2_intensity"
+            ),
             pl.col("dotprod_similarity").alias("calibration_dotprod_similarity"),
         )
 
@@ -1773,12 +1799,18 @@ def main(config: isotopic_config):
             pl.lit(None, dtype=pl.String).alias("calibration_library_name"),
             pl.lit(None, dtype=pl.String).alias("calibration_library_inchikey"),
             pl.lit(None, dtype=pl.String).alias("calibration_library_smiles"),
-            pl.lit(None, dtype=pl.List(pl.Int64)).alias("calibration_library_formula_array"),
+            pl.lit(None, dtype=pl.List(pl.Int64)).alias(
+                "calibration_library_formula_array"
+            ),
             # Mass list doesn't have MS2 spectra, use nulls
             pl.lit(None, dtype=pl.List(pl.Float64)).alias("calibration_query_ms2_mz"),
-            pl.lit(None, dtype=pl.List(pl.Float64)).alias("calibration_query_ms2_intensity"),
+            pl.lit(None, dtype=pl.List(pl.Float64)).alias(
+                "calibration_query_ms2_intensity"
+            ),
             pl.lit(None, dtype=pl.List(pl.Float64)).alias("calibration_library_ms2_mz"),
-            pl.lit(None, dtype=pl.List(pl.Float64)).alias("calibration_library_ms2_intensity"),
+            pl.lit(None, dtype=pl.List(pl.Float64)).alias(
+                "calibration_library_ms2_intensity"
+            ),
             pl.lit(None, dtype=pl.Float64).alias("calibration_dotprod_similarity"),
         )
 
@@ -2043,7 +2075,7 @@ if __name__ == "__main__":
         info_score_threshold=0.5,
         dot_product_threshold=0.9,
         ms1_mass_tolerance_ppm=2,
-        target_success_rate=0.9,
+        target_success_rate=0.95,
         minimum_isotopic_peak_intensity=0,
         plot_carbon_count_weighted_error=True,
         moving_average_window_log_units=1,

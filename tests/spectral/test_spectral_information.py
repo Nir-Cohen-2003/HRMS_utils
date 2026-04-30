@@ -30,8 +30,6 @@ if __name__ == "__main__":
             fragment_mass_accuracy_ppm=10.0,
             normalized_fragment_mass_accuracy_ppm=5.0,
             isotopic_mass_accuracy_ppm=2.0,
-            isotopic_intensity_relative_tolerance=0.05,
-            isotopic_intensity_absolute_tolerance=1e6,
         ).with_columns(
             explained_intensity=pl.col("cleaned_msms_intensity").list.sum().truediv(pl.col("msms_intensity").list.sum())
         ).with_columns(

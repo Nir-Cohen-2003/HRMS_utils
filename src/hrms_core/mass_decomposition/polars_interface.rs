@@ -487,8 +487,7 @@ fn deduce_isotopic_pattern(
         ms1_mass_tolerance_ppm: kwargs.ms1_mass_tolerance_ppm,
         isotopic_mass_tolerance_ppm: kwargs.isotopic_mass_tolerance_ppm,
         minimum_intensity: kwargs.minimum_intensity,
-        intensity_absolute_tolerance: kwargs.intensity_absolute_tolerance,
-        intensity_relative_tolerance: kwargs.intensity_relative_tolerance,
+        model: kwargs.model,
     };
 
     // Prepare base result array (min..max)

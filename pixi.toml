@@ -9,7 +9,7 @@ platforms = ["linux-64","win-64"]
 preview = ["pixi-build"]
 [package]
 name = "hrms_utils"
-version = "0.8.0"
+version = "0.10.0"
 license = "Apache-2.0"
 license-file = "LICENSE"
 authors = ["Nir Cohen"]
@@ -69,6 +69,7 @@ test_info_score = "python tests/spectral/test_spectral_information.py"
 [feature.testing.dependencies]
 hrms_utils = {path = "."}
 numba = ">=0.61.0"
+parallel_rdkit = ">=0.4.0,<0.5"
 pytest = ">=8.4.2,<9"
 optuna = "*"
 requests = "*"
@@ -110,8 +111,8 @@ check_msp_conversion = "python scripts/check_convert_msp.py data/ -p data/pubche
 [feature.scripts.target.linux-64.dependencies]
 hrms_utils = {path = "."}
 parallel_rdkit = {path = "../parallel_rdkit/"}
-
 [feature.scripts.dependencies]
+marimo = "*"
 dataframely = ">=2.7.0,<3"
 
 [feature.docs.dependencies]
