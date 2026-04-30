@@ -42,3 +42,5 @@ tests/data/**.raw
 data/
 .cache/
 **.zip
+raw_data/
+experiments/isotopic_parameters_results.txt
