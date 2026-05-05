@@ -1,9 +1,9 @@
 use super::common::{
-    check_dbe, CleanedAndNormalizedSpectrumResult, CorrectedFragment, DecompositionParams, Formula,
-    IsotopicPatternParams, SpectrumDecompositionParams, ATOMIC_MASSES, ELEMENT_ISOTOPES,
-    MIN_MASS_FOR_TOLERANCE, NUM_ELEMENTS,
+    ATOMIC_MASSES, CleanedAndNormalizedSpectrumResult, CorrectedFragment, DecompositionParams,
+    ELEMENT_ISOTOPES, Formula, IsotopicPatternParams, MIN_MASS_FOR_TOLERANCE, NUM_ELEMENTS,
+    SpectrumDecompositionParams, check_dbe,
 };
-use super::precomputed::{find_best_precomputed, PrecomputedDecomposer};
+use super::precomputed::{PrecomputedDecomposer, find_best_precomputed};
 use std::sync::Arc;
 
 const MASS_ACCURACY_PPM_TO_DA_THRESHOLD: f64 = 200.0;
@@ -85,18 +85,18 @@ pub fn deduce_isotopic_pattern_inner(
                 / (iso_props.prob_1 * precursor_ms1_intensity);
         } else {
             let observed = peak_total_intensity;
-            let expected_hat = params.model.alpha
-                * (observed + params.model.offset).powf(params.model.beta);
+            let expected_hat =
+                params.model.alpha * (observed + params.model.offset).powf(params.model.beta);
             let w_l = params.model.hetero_lower_a
                 * (observed + params.model.offset).powf(params.model.hetero_lower_b);
             let w_u = params.model.hetero_upper_a
                 * (observed + params.model.offset).powf(params.model.hetero_upper_b);
             let expected_lower = expected_hat * (-w_l).exp();
             let expected_upper = expected_hat * w_u.exp();
-            lower = (expected_lower * iso_props.prob_0)
-                / (iso_props.prob_1 * precursor_ms1_intensity);
-            upper = (expected_upper * iso_props.prob_0)
-                / (iso_props.prob_1 * precursor_ms1_intensity);
+            lower =
+                (expected_lower * iso_props.prob_0) / (iso_props.prob_1 * precursor_ms1_intensity);
+            upper =
+                (expected_upper * iso_props.prob_0) / (iso_props.prob_1 * precursor_ms1_intensity);
         }
 
         result[res_idx] = lower;
