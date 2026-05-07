@@ -69,7 +69,7 @@ test_info_score = "python tests/spectral/test_spectral_information.py"
 [feature.testing.dependencies]
 hrms_utils = {path = "."}
 numba = ">=0.61.0"
-parallel_rdkit = ">=0.4.0,<0.5"
+parallel_rdkit = ">=0.5.0,<0.6"
 pytest = ">=8.4.2,<9"
 optuna = "*"
 requests = "*"
@@ -84,7 +84,7 @@ kaleido = ">=1.1.0, <2"
 
 [feature.experiments.target.linux-64.dependencies]
 hrms_utils = {path = "."}
-parallel_rdkit = "*"
+parallel_rdkit = ">=0.5.0,<0.6"
 pyzmq = "*"
 marimo ="*"
 memory_profiler = "*"
@@ -110,7 +110,7 @@ process-pubchem-download = "python scripts/process_pubchem.py --download"
 check_msp_conversion = "python scripts/check_convert_msp.py data/ -p data/pubchem.parquet"
 [feature.scripts.target.linux-64.dependencies]
 hrms_utils = {path = "."}
-parallel_rdkit = {path = "../parallel_rdkit/"}
+parallel_rdkit = ">=0.5.0,<0.6"
 [feature.scripts.dependencies]
 marimo = "*"
 dataframely = ">=2.7.0,<3"
