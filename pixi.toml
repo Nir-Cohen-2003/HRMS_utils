@@ -5,7 +5,7 @@ channels = [
   "conda-forge",
   "https://prefix.dev/nir-cohen"
 ]
-platforms = ["linux-64","win-64"]
+platforms = ["linux-64"]#,"win-64"]
 preview = ["pixi-build"]
 [package]
 name = "hrms_utils"
