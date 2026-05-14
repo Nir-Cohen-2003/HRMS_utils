@@ -9,7 +9,12 @@ import requests
 from rdkit import Chem
 from rdkit.Chem.Descriptors import ExactMolWt  # type: ignore[unresolved-import]
 
-from ..rdkit.mol import sanitize_smiles_polars
+from parallel_rdkit import sanitize_smiles_parallel
+
+
+def _sanitize_smiles_polars(smiles: pl.Series) -> pl.Series:
+    """Polars batch wrapper around parallel_rdkit.sanitize_smiles_parallel."""
+    return pl.Series(sanitize_smiles_parallel(smiles), dtype=pl.String)
 
 
 def reduce_pubchem_data(
@@ -100,7 +105,7 @@ def extract_pubchem_smiles(input_path: str | Path, output_path: str | Path):
         print("Canonicalizing SMILES...")
         data = data.with_columns(
             pl.col("SMILES_raw")
-            .map_batches(function=sanitize_smiles_polars, return_dtype=pl.String)
+            .map_batches(function=_sanitize_smiles_polars, return_dtype=pl.String)
             .alias("SMILES")
         ).drop("SMILES_raw")  # Drop the original raw SMILES column
 

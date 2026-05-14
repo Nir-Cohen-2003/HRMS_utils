@@ -15,6 +15,7 @@ license-file = "LICENSE"
 authors = ["Nir Cohen"]
 [dependencies]
 python = "*"
+parallel_rdkit = ">=0.5.0,<0.6"
 
 [pypi-dependencies]
 build = "*"

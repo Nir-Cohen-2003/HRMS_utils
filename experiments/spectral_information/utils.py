@@ -14,7 +14,7 @@ from nvmolkit.fingerprints import MorganFingerprintGenerator
 from nvmolkit.similarity import crossTanimotoSimilarityMemoryConstrained
 from rdkit import Chem
 
-from hrms_utils.rdkit import sanitize_smiles
+from parallel_rdkit.mol import sanitize_smiles
 
 # Tracks which log files have been truncated for this process so we only truncate once.
 _initialized_log_paths: set[str] = set()

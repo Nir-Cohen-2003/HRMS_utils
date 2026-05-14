@@ -337,7 +337,7 @@ def _add_base_inchikey(lf: pl.LazyFrame) -> pl.LazyFrame:
     if "base_inchikey" in lf.collect_schema().names():
         return lf
     return lf.with_columns(
-        pl.col("inchikey").str.extract(r"(.+?)-").alias("base_inchikey")
+        pl.col("inchikey").str.split(by="-").list.get(0).alias("base_inchikey")
     )
 
 

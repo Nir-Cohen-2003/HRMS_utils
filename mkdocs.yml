@@ -119,7 +119,6 @@ nav:
       - HRMS Core: reference/api/hrms_core.md
       - Formats: reference/api/formats.md
       - Formula Annotation: reference/api/formula_annotation.md
-      - RDKit Utilities: reference/api/rdkit.md
       - Data Structures: reference/data-structures.md
   - Explanation:
       - Architecture: explanation/architecture.md
