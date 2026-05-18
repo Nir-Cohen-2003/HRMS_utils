@@ -95,6 +95,7 @@ memory_profiler = "*"
 [feature.experiments.tasks]
 sim_vs_info = {cmd="python experiments/spectral_information/similarity_vs_info.py",env={ MKL_INTERFACE_LAYER = "LP64"}}
 plot_sim_vs_info = "python experiments/spectral_information/plot_similarity_vs_info.py"
+recompute_info_scores = "python experiments/spectral_information/recompute_and_save_library_info_scores.py"
 approx_sim = {cmd="python experiments/fast_cosine_sim/approximate_similarity.py",env={ MKL_INTERFACE_LAYER = "LP64"}}
 approx_sim_batched  = {cmd="python experiments/fast_cosine_sim/batched_gpu.py",env={ MKL_INTERFACE_LAYER = "LP64"}}
 benchmark_gpu_cosine = {cmd="python experiments/fast_cosine_sim/simms_sparse_exact_benchmark.py",env={ MKL_INTERFACE_LAYER = "LP64"}}

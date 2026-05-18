@@ -14,12 +14,20 @@ Design:
 """
 
 import logging
+import sys
 from enum import Enum
+from pathlib import Path
 from typing import List
 
 import numpy as np
 import polars as pl
 from numpy.typing import NDArray
+
+# Add the src directory to sys.path so hrms_utils can be imported
+sys.path.append(str(Path(__file__).parents[2] / "src"))
+
+# Import hrms_core to register the spectral_info plugin
+import hrms_utils.hrms_core  # noqa: F401
 
 logger = logging.getLogger(__name__)
 
@@ -295,6 +303,57 @@ def recompute_information_scores_in_dataframe(
         # But if score_column_name == source_score_col, it is already updated.
 
         # Log statistics
+        score_stats = df_updated[score_column_name].describe()
+        logger.info("Score statistics for %s:\n%s", metric.value, score_stats)
+
+        return df_updated
+
+    if metric == InfoMetric.SPECTRAL_INFORMATION:
+        logger.info(
+            "Recomputing spectral_information_score using Rust plugin (ignore_hydrogens=True)"
+        )
+
+        required_cols = ["precursor_formula_array", "cleaned_fragment_formulas"]
+        for col in required_cols:
+            assert col in df_library.columns, (
+                f"Library must contain '{col}' column to recompute spectral_information_score. "
+                f"Available columns: {df_library.columns}"
+            )
+
+        # Compute using the Polars plugin (vectorized, no Python loops)
+        df_scores = df_library.select(
+            [
+                "idx",
+                pl.struct(
+                    [
+                        pl.col("precursor_formula_array").alias("precursor_formula"),
+                        pl.col("cleaned_fragment_formulas").alias("fragment_formulas"),
+                    ]
+                )
+                .spectral_info.spectral_info_score(distance_metric="l2", ignore_hydrogens=True)
+                .alias(score_column_name),
+            ]
+        )
+
+        if score_column_name in df_snapshot.columns:
+            logger.debug("Dropping existing '%s' column from snapshot", score_column_name)
+            df_snapshot = df_snapshot.drop(score_column_name)
+
+        df_updated = df_snapshot.join(df_scores, on="idx", how="left")
+
+        assert len(df_updated) == len(df_snapshot), (
+            f"Join changed row count: {len(df_snapshot)} -> {len(df_updated)}. "
+            "This indicates idx mismatch between library and snapshot."
+        )
+
+        null_count = df_updated[score_column_name].null_count()
+        if null_count > 0:
+            logger.warning(
+                "Warning: %d spectra have null scores after recomputation (%.1f%%)",
+                null_count,
+                100.0 * null_count / len(df_updated),
+            )
+
         score_stats = df_updated[score_column_name].describe()
         logger.info("Score statistics for %s:\n%s", metric.value, score_stats)
 
