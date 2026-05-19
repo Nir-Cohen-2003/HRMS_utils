@@ -130,7 +130,13 @@ if __name__ == "__main__":
             "using existing spectral_information_score from library file"
         )
 
-    # Persist minimal library snapshot for downstream joins (idx/mol_idx + metadata)
+    logging.info("Collecting full library for writing...")
+    library_df = library_lf.collect(engine="streaming")
+
+    FULL_LIBRARY_PATH = PAIRS_PATH.with_suffix(".left_library_full.parquet")
+    logging.info("Writing full library to %s", FULL_LIBRARY_PATH)
+    library_df.write_parquet(FULL_LIBRARY_PATH)
+
     snapshot_cols = [
         "idx",
         "mol_idx",
@@ -140,13 +146,9 @@ if __name__ == "__main__":
         "precursor_mz",
         "spectral_information_score",
     ]
-    available_snapshot_cols = [
-        c for c in snapshot_cols if c in library_lf.collect_schema().names()
-    ]
+    available_snapshot_cols = [c for c in snapshot_cols if c in library_df.columns]
     logging.info("Writing library snapshot to %s", SNAPSHOT_PATH)
-    library_lf.select(available_snapshot_cols).collect(engine="streaming").write_parquet(
-        SNAPSHOT_PATH
-    )
+    library_df.select(available_snapshot_cols).write_parquet(SNAPSHOT_PATH)
 
     # =========================================================================
     # Step 1: Generate approximate similarity candidate pairs
@@ -328,10 +330,13 @@ if __name__ == "__main__":
     )
 
     plot_output_dir = PAIRS_PATH.parent / f"sim_vs_info_analysis_{PAIRS_PATH.stem.split('_')[-1]}"
+    FULL_LIBRARY_PATH = PAIRS_PATH.with_suffix(".left_library_full.parquet")
     cfg = SimilarityVsInfoConfig(
         pairs_parquet_path=PAIRS_WITH_TANIMOTO_PATH,
         left_library_parquet_path=SNAPSHOT_PATH,
         right_library_parquet_path=None,
+        left_library_full_parquet_path=FULL_LIBRARY_PATH,
+        right_library_full_parquet_path=None,
         info_metric=InfoMetric.SPECTRAL_INFORMATION,
         tanimoto_col="tanimoto_similarity",
         left_idx_col="idx",
