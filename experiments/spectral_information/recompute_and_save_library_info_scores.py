@@ -8,11 +8,11 @@ to be wrong) without rerunning expensive similarity or tanimoto calculations. Th
 is a drop-in replacement for the original library file, preserving all columns and
 overwriting only the score column(s).
 
-Usage:
-    pixi run -e experiments recompute_info_scores
+Usage (from this directory):
+    pixi run recompute_info_scores
 
 Or directly:
-    python experiments/spectral_information/recompute_and_save_library_info_scores.py
+    python recompute_and_save_library_info_scores.py
 """
 
 import argparse
@@ -22,9 +22,6 @@ from pathlib import Path
 from time import perf_counter
 
 import polars as pl
-
-# Add the src directory to sys.path so hrms_utils can be imported
-sys.path.append(str(Path(__file__).parents[2] / "src"))
 
 # Import hrms_core to register the spectral_info plugin
 import hrms_utils.hrms_core  # noqa: F401

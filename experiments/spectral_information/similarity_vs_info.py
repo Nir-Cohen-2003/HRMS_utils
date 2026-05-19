@@ -5,28 +5,7 @@ from pathlib import Path
 from time import perf_counter
 
 import polars as pl
-
-# Add the src directory to sys.path so hrms_utils can be imported
-sys.path.append(str(Path(__file__).parents[2] / "src"))
-
-# Use the packaged fast_cosine_sim implementation (packages/fast_cosine_sim) instead of
-# experiments-local modules.
-#
-# This experiment should be runnable without installing the wheel/conda package, so we
-# add the local packages source tree (`packages/fast_cosine_sim/src`) to sys.path.
-_FAST_COSINE_SIM_SRC = (
-    Path(__file__).parents[2] / "packages" / "fast_cosine_sim" / "src"
-)
-assert _FAST_COSINE_SIM_SRC.exists(), (
-    f"Expected fast_cosine_sim source tree at {_FAST_COSINE_SIM_SRC}. "
-    "If you moved the package, update this path."
-)
-sys.path.insert(0, str(_FAST_COSINE_SIM_SRC))
-
-from fast_cosine_sim import (  # noqa: E402
-    GPUApproximateConfig,
-    batched_approximate_similarity_gpu,
-)
+from fast_cosine_sim import GPUApproximateConfig, batched_approximate_similarity_gpu
 
 # Import hrms_core to register the spectral_similarity and spectral_info plugins
 import hrms_utils.hrms_core  # noqa: F401

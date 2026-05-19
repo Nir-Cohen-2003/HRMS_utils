@@ -5,8 +5,8 @@ Standalone script to compute Tanimoto similarities for a pairs parquet.
 Why: Separates the heavy Tanimoto computation from similarity and plotting so
 that each step can be run independently via pixi tasks.
 
-Usage:
-    pixi run -e experiments run_tanimoto
+Usage (from this directory):
+    pixi run run_tanimoto
 """
 
 import argparse
@@ -14,8 +14,6 @@ import logging
 import sys
 from pathlib import Path
 from time import perf_counter
-
-sys.path.append(str(Path(__file__).parents[2] / "src"))
 
 from utils import compute_and_save_tanimoto_scores  # type: ignore
 

@@ -14,17 +14,12 @@ Design:
 """
 
 import logging
-import sys
 from enum import Enum
-from pathlib import Path
 from typing import List
 
 import numpy as np
 import polars as pl
 from numpy.typing import NDArray
-
-# Add the src directory to sys.path so hrms_utils can be imported
-sys.path.append(str(Path(__file__).parents[2] / "src"))
 
 # Import hrms_core to register the spectral_info plugin
 import hrms_utils.hrms_core  # noqa: F401
