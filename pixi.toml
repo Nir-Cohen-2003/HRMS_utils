@@ -26,14 +26,6 @@ publish-pypi = {cmd="twine upload --repository pypi --skip-existing dist/*", dep
 publish-prefix = {cmd="rattler-build upload prefix --channel nir-cohen"}
 publish-anaconda = {cmd="rattler-build upload anaconda --owner Nir_Cohen --channel main"}
 
-[environments]
-default = {features = [], solve-group = "default"}
-testing = {features = ["testing"], solve-group = "testing"}
-experiments = {features = ["experiments"], solve-group = "experiments",no-default-feature = true}
-scripts = {features = ["scripts"], solve-group = "scripts"}
-docs = {features = ["docs"], solve-group = "docs"}
-
-
 [package.build]
 backend = { name = "pixi-build-rattler-build", version = "*"}
 
@@ -66,10 +58,10 @@ test_info_score = "python tests/spectral/test_spectral_information.py"
 
 
 
-[feature.testing.dependencies]
+[feature.testing.target.linux-64.dependencies]
 hrms_utils = {path = "."}
-numba = ">=0.61.0"
 parallel_rdkit = ">=0.5.0,<0.6"
+numba = ">=0.61.0"
 pytest = ">=8.4.2,<9"
 optuna = "*"
 requests = "*"
@@ -126,3 +118,21 @@ mkdocstrings-python = ">=1.7.0"
 docs-serve = "mkdocs serve"
 docs-build = "mkdocs build"
 docs-deploy = "mkdocs gh-deploy"
+
+[feature.frag_trees.target.linux-64.dependencies]
+hrms_utils = {path = "."}
+parallel_rdkit = ">=0.5.0,<0.6"
+numba = ">=0.61.0"
+networkx = ">=3.0"
+matplotlib = ">=3.8.0"
+
+[feature.frag_trees.tasks]
+build_tree = "python experiments/frag_trees/fragmentation_tree.py"
+
+[environments]
+default = {features = [], solve-group = "default"}
+testing = {features = ["testing"], solve-group = "testing"}
+experiments = {features = ["experiments"], solve-group = "experiments",no-default-feature = true}
+scripts = {features = ["scripts"], solve-group = "scripts"}
+docs = {features = ["docs"], solve-group = "docs"}
+frag-trees = {features = ["frag_trees"], solve-group = "frag_trees"}
