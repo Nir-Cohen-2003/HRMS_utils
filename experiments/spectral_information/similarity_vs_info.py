@@ -63,6 +63,12 @@ if __name__ == "__main__":
     logging.info(f"Loading library from {LIBRARY_PATH}")
     library_lf = pl.scan_parquet(str(LIBRARY_PATH))
 
+    # Drop rows with missing or placeholder SMILES so they never enter the pipeline.
+    if "smiles" in library_lf.collect_schema().names():
+        library_lf = library_lf.filter(
+            pl.col("smiles").is_not_null() & (pl.col("smiles") != "NOT FOUND")
+        )
+
     # Assign integer idx and molecule index for downstream compatibility
     library_lf = library_lf.with_row_index("idx")
     if "base_inchikey" in library_lf.collect_schema().names() and "ion_mode" in library_lf.collect_schema().names():

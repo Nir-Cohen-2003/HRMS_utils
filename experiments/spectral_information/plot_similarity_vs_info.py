@@ -1181,25 +1181,19 @@ def plot_heatmap_avg_tanimoto_vs_info_and_dotprod(
             ]
         )
 
-        agg_input_left = (
-            p1.join(lib_lf_left, on="idx", how="left")
-            .select(
-                [
-                    pl.col(config.dotprod_col),
-                    pl.col(config.tanimoto_col),
-                    pl.col(config.info_measure),
-                ]
-            )
+        agg_input_left = p1.join(lib_lf_left, on="idx", how="left").select(
+            [
+                pl.col(config.dotprod_col),
+                pl.col(config.tanimoto_col),
+                pl.col(config.info_measure),
+            ]
         )
-        agg_input_right = (
-            p2.join(lib_lf_right, on="idx", how="left")
-            .select(
-                [
-                    pl.col(config.dotprod_col),
-                    pl.col(config.tanimoto_col),
-                    pl.col(config.info_measure),
-                ]
-            )
+        agg_input_right = p2.join(lib_lf_right, on="idx", how="left").select(
+            [
+                pl.col(config.dotprod_col),
+                pl.col(config.tanimoto_col),
+                pl.col(config.info_measure),
+            ]
         )
         agg_input = pl.concat([agg_input_left, agg_input_right])
 
@@ -1708,10 +1702,10 @@ if __name__ == "__main__":
     # in left_library_parquet_path"; no in-memory recomputation is performed.
     cfg = SimilarityVsInfoConfig(
         pairs_parquet_path=Path(
-            "/home/analytit_admin/Data/spectral_libs/info_score/combined_library_pairs_with_tanimoto_260104.parquet"
+            "/home/analytit_admin/Data/spectral_libs/info_score/combined_library_pairs_260520.with_tanimoto.parquet"
         ),
         left_library_parquet_path=Path(
-            "/home/analytit_admin/Data/spectral_libs/info_score/combined_library_recomputed_info.parquet"
+            "/home/analytit_admin/Data/spectral_libs/info_score/combined_library_pairs_260121.left_library_full.parquet"
         ),
         left_library_full_parquet_path=None,
         right_library_parquet_path=None,
