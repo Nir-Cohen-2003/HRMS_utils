@@ -24,7 +24,7 @@ def _():
     from scipy.stats import spearmanr, wilcoxon
 
     import hrms_utils
-    from hrms_utils.rdkit import sanitize_smiles
+    from parallel_rdkit.mol import sanitize_smiles
 
     os.environ["RUST_BACKTRACE"] = "full"
     return (
@@ -834,7 +834,7 @@ def _(
         )
         pairs_sim = pl.scan_parquet(config.pairs_parquet_path)
         # Local import to ensure sanitizer is available in this cell's scope.
-        from hrms_utils.rdkit import sanitize_smiles
+        from parallel_rdkit.mol import sanitize_smiles
 
         assert config.x_bin_width > 0, (
             f"x_bin_width must be > 0, got {config.x_bin_width}"

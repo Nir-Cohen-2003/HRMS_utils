@@ -69,7 +69,7 @@ docs/
 │   │   ├── hrms_core.md             # Auto-generated from docstrings
 │   │   ├── formats.md               # Auto-generated from docstrings
 │   │   ├── formula_annotation.md    # Auto-generated from docstrings
-│   │   └── rdkit.md                 # Auto-generated from docstrings
+
 │   └── data-structures.md           # DataFrame schemas
 ├── explanation/
 │   ├── architecture.md              # System overview

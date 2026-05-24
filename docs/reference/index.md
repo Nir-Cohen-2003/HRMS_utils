@@ -29,13 +29,6 @@ Tools for working with chemical formulas:
 - **Element Tables**: Periodic table data, masses, and adduct definitions
 - **Utilities**: Convert formulas between string and array representations
 
-### [RDKit Utilities](api/rdkit.md)
-RDKit integration for molecular structure operations:
-
-- **Molecular Fingerprints**: Generate molecular fingerprints
-- **Fragmentation**: In-silico fragmentation predictions
-- **Structure Utilities**: SMILES/InChI conversions
-
 ## Data Structures
 
 See [Data Structures](data-structures.md) for details on the Polars DataFrame schemas used throughout HRMS Utils.

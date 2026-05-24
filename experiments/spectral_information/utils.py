@@ -12,9 +12,12 @@ import polars as pl
 import pyarrow.parquet as pq
 from nvmolkit.fingerprints import MorganFingerprintGenerator
 from nvmolkit.similarity import crossTanimotoSimilarityMemoryConstrained
-from rdkit import Chem
+from rdkit import Chem, RDLogger
 
-from hrms_utils.rdkit import sanitize_smiles
+# Silence RDKit parse-error spam; unparseable SMILES are handled downstream.
+RDLogger.DisableLog("rdApp.error")
+
+from parallel_rdkit.mol import sanitize_smiles
 
 # Tracks which log files have been truncated for this process so we only truncate once.
 _initialized_log_paths: set[str] = set()
@@ -275,7 +278,9 @@ def compute_and_save_tanimoto_scores(
                 pl.col("idx").cast(pl.Int64),
                 pl.col("smiles"),
             )
-            .filter(pl.col("smiles").is_not_null())
+            .filter(
+                pl.col("smiles").is_not_null() & (pl.col("smiles") != "NOT FOUND")
+            )
         )
 
         right_lib_lf = (
@@ -284,7 +289,10 @@ def compute_and_save_tanimoto_scores(
                 pl.col("idx").alias("idx_right").cast(pl.Int64),
                 pl.col("smiles").alias("smiles_right"),
             )
-            .filter(pl.col("smiles_right").is_not_null())
+            .filter(
+                pl.col("smiles_right").is_not_null()
+                & (pl.col("smiles_right") != "NOT FOUND")
+            )
         )
 
         joined_lf = (

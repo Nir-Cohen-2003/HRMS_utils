@@ -35,21 +35,15 @@ def _():
 
 
 @app.cell
-def _(Path, pl):
-    input_PARQUET_PATHS = [
-        Path("/home/analytit_admin/Data/spectral_libs/msp_for_Yonathan/NIST.parquet"),
-        Path(
-            "/home/analytit_admin/Data/spectral_libs/msp_for_Yonathan/fraghub.parquet"
-        ),
-    ]
-    lfs = []
-    for input_parquet_path in input_PARQUET_PATHS:
-        lfs.append(pl.scan_parquet(input_parquet_path))
-    pl.union(lfs).sink_parquet(
-        "/home/analytit_admin/Data/spectral_libs/msp_for_Yonathan/combined_spectral_lib.parquet",
-        engine="streaming",
+def _(Path):
+    COMBINED_LIBRARY_PATH = Path(
+        "/home/analytit_admin/Data/spectral_libs/info_score/combined_library_recomputed_info.parquet"
     )
-    return
+    assert COMBINED_LIBRARY_PATH.exists(), (
+        f"Expected combined library at {COMBINED_LIBRARY_PATH} but it does not exist. "
+        f"Run 'pixi run recompute_info_scores' and 'pixi run extract_recomputed_subsets' first."
+    )
+    return (COMBINED_LIBRARY_PATH,)
 
 
 @app.cell
@@ -258,35 +252,38 @@ def _(List, Path, Tuple, dataclass, np, npt, pl, plt):
 
 @app.cell
 def _(Path, PlotConfig, plot_distributions):
-    # PARQUET_PATHS = [
-    #     Path("/home/analytit_admin/Data/spectral_libs/msp_for_Yonathan/NIST.parquet"),
-    #     Path("/home/analytit_admin/Data/spectral_libs/msp_for_Yonathan/fraghub.parquet"),
-    # ]
-    # LABELS = ["NIST23", "Fraghub"]
-    PARQUET_PATHS = [
-        # Path("/home/analytit_admin/Data/spectral_libs/msp_for_Yonathan/combined_spectral_lib.parquet"),
-        Path("/home/analytit_admin/Data/spectral_libs/msp_for_Yonathan/NIST.parquet"),
-        Path(
-            "/home/analytit_admin/Data/spectral_libs/msp_for_Yonathan/fraghub.parquet"
-        ),
-    ]
-    LABELS = [
-        # "Combined",
-        "NIST23",
-        "Fraghub",
-    ]
-    OUTPUT_PNG = Path("spectral_information_distribution_nist_and_fraghub.png")
-
-    config = PlotConfig(
-        parquet_paths=PARQUET_PATHS,
-        labels=LABELS,
-        output_path=OUTPUT_PNG,
+    # Combined library distribution (primary)
+    combined_config = PlotConfig(
+        parquet_paths=[
+            Path(
+                "/home/analytit_admin/Data/spectral_libs/info_score/combined_library_recomputed_info.parquet"
+            ),
+        ],
+        labels=["Combined"],
+        output_path=Path("spectral_information_distribution.png"),
         bins=50,
         range=(0.0, 5.0),
         add_title=True,
     )
+    plot_distributions(combined_config)
 
-    plot_distributions(config)
+    # NIST and FragHub comparison using recomputed individual files
+    nist_fraghub_config = PlotConfig(
+        parquet_paths=[
+            Path(
+                "/home/analytit_admin/Data/spectral_libs/msp_for_Yonathan/NIST.parquet"
+            ),
+            Path(
+                "/home/analytit_admin/Data/spectral_libs/msp_for_Yonathan/fraghub.parquet"
+            ),
+        ],
+        labels=["NIST23", "Fraghub"],
+        output_path=Path("spectral_information_distribution_nist_and_fraghub.png"),
+        bins=50,
+        range=(0.0, 5.0),
+        add_title=True,
+    )
+    plot_distributions(nist_fraghub_config)
     return
 
 
@@ -446,10 +443,10 @@ def _(Dict, List, Path, Tuple, dataclass, np, npt, pl, plt):
 
     cfg = MoleculePlotConfig(
         parquet_path=Path(
-            "/home/analytit_admin/Data/spectral_libs/NIST_hr_msms/NIST_hr_msms.parquet"
+            "/home/analytit_admin/Data/spectral_libs/msp_for_Yonathan/NIST.parquet"
         ),
         molecules=molecules,
-        output_path=Path("informativity_vs_collision_energy_nist.png"),
+        output_path=Path("informativity_vs_collision_energy.png"),
         collision_energy_column="collision_energy_ev",
         info_column="spectral_information_score",
         add_title=False,
@@ -761,7 +758,7 @@ def _(
 
     bonds_config = InformativityVsMassConfig(
         parquet_path=Path(
-            "/home/analytit_admin/Data/spectral_libs/msp_for_Yonathan/combined_spectral_lib.parquet"
+            "/home/analytit_admin/Data/spectral_libs/info_score/combined_library_recomputed_info.parquet"
         ),
         output_path=Path("informativity_vs_bonds.png"),
         mass_column="precursor_mz",
@@ -942,7 +939,9 @@ def _(Path, Tuple, dataclass, np, pl, plt):
 
     stacked_config = StackedBarConfig(
         parquet_paths=[
-            Path("/home/analytit_admin/Data/spectral_libs/msp_for_Yonathan/NIST.parquet"),
+            Path(
+                "/home/analytit_admin/Data/spectral_libs/msp_for_Yonathan/NIST.parquet"
+            ),
             Path(
                 "/home/analytit_admin/Data/spectral_libs/msp_for_Yonathan/fraghub.parquet"
             ),

@@ -654,6 +654,7 @@ def build_and_write_pairs_parquet_gpu_batched(
                     "spectral_information_score",
                     "cleaned_normalized_mz",
                     "cleaned_normalized_intensity",
+                    "cleaned_fragment_formulas",
                     "smiles",
                 ]
             )
@@ -697,6 +698,12 @@ def build_and_write_pairs_parquet_gpu_batched(
             f"Wrote left library snapshot to {left_snapshot_path} (rows={len(left_library_snapshot)})",
             log_path,
         )
+        left_full_path = output_path.with_suffix(".left_library_full.parquet")
+        df_source.write_parquet(left_full_path)
+        _log_message_to_file(
+            f"Wrote left library full to {left_full_path} (rows={len(df_source)})",
+            log_path,
+        )
 
         # --- Step 1b: Load and Preprocess Right Library (if cross-library) ---
         df_source_right = None
@@ -738,6 +745,7 @@ def build_and_write_pairs_parquet_gpu_batched(
                         "spectral_information_score",
                         "cleaned_normalized_mz",
                         "cleaned_normalized_intensity",
+                        "cleaned_fragment_formulas",
                         "smiles",
                     ]
                 )
@@ -779,6 +787,12 @@ def build_and_write_pairs_parquet_gpu_batched(
             right_library_snapshot.write_parquet(right_snapshot_path)
             _log_message_to_file(
                 f"Wrote right library snapshot to {right_snapshot_path} (rows={len(right_library_snapshot)})",
+                log_path,
+            )
+            right_full_path = output_path.with_suffix(".right_library_full.parquet")
+            df_source_right.write_parquet(right_full_path)
+            _log_message_to_file(
+                f"Wrote right library full to {right_full_path} (rows={len(df_source_right)})",
                 log_path,
             )
 

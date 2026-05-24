@@ -1,0 +1,37 @@
+[workspace]
+name = "spectral_information_experiment"
+channels = [
+  "https://prefix.dev/conda-forge",
+  "conda-forge",
+  "https://prefix.dev/nir-cohen",
+]
+platforms = ["linux-64"]
+preview = ["pixi-build"]
+
+[system-requirements]
+cuda = "13.0"
+[dependencies]
+# python = "3.12.*"
+hrms_utils = { path = "../../" }
+parallel_rdkit = ">=0.5.0,<0.6"
+nvmolkit = "*"
+cupy = "*"
+# numba = "*"
+cuda-version = "==13.2"
+marimo = "*"
+memory_profiler = "*"
+pyzmq = "*"
+matplotlib = "*"
+seaborn = "*"
+fast_cosine_sim = { path = "../../../fast_cosine_sim" }
+pytorch-gpu ="*"
+
+[tasks]
+sim_vs_info = { cmd = "python similarity_vs_info.py", env = { MKL_INTERFACE_LAYER = "LP64" } }
+plot_sim_vs_info = "python plot_similarity_vs_info.py"
+recompute_info_scores = "python recompute_and_save_library_info_scores.py"
+extract_recomputed_subsets = "python extract_recomputed_subsets.py"
+run_tanimoto = "python run_tanimoto.py"
+proximate_sim = "python proximate_simialrity.py"
+info_dist = "python info_distribution.py"
+optimal_energy = { cmd = "python optimal_energy_selection.py /home/analytit_admin/Data/spectral_libs/info_score/NIST.parquet", env = { MKL_INTERFACE_LAYER = "LP64" } }

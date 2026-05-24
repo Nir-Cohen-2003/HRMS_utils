@@ -53,7 +53,7 @@ requirements:
     - dataframely >=2.0.0,<3
     - rdkit >=2024.0.0
     - numpy >=1.20.0
-    # - parallel_rdkit
+    - parallel_rdkit
     - scipy
     - pymzml >2.5.0
     - pandas

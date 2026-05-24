@@ -5,7 +5,7 @@ channels = [
   "conda-forge",
   "https://prefix.dev/nir-cohen"
 ]
-platforms = ["linux-64","win-64"]
+platforms = ["linux-64"]#,"win-64"]
 preview = ["pixi-build"]
 [package]
 name = "hrms_utils"
@@ -15,6 +15,7 @@ license-file = "LICENSE"
 authors = ["Nir Cohen"]
 [dependencies]
 python = "*"
+parallel_rdkit = ">=0.5.0,<0.6"
 
 [pypi-dependencies]
 build = "*"
@@ -80,20 +81,17 @@ parallel_rdkit = ">=0.5.0,<0.6"
 pyzmq = "*"
 marimo ="*"
 memory_profiler = "*"
-
-
+cupy = "*"
+numba = "*"
+cuda-version = "*"
+nvmolkit = "*"
 
 [feature.experiments.tasks]
-sim_vs_info = {cmd="python experiments/spectral_information/similarity_vs_info.py",env={ MKL_INTERFACE_LAYER = "LP64"}}
-plot_sim_vs_info = "python experiments/spectral_information/plot_similarity_vs_info.py"
 approx_sim = {cmd="python experiments/fast_cosine_sim/approximate_similarity.py",env={ MKL_INTERFACE_LAYER = "LP64"}}
 approx_sim_batched  = {cmd="python experiments/fast_cosine_sim/batched_gpu.py",env={ MKL_INTERFACE_LAYER = "LP64"}}
 benchmark_gpu_cosine = {cmd="python experiments/fast_cosine_sim/simms_sparse_exact_benchmark.py",env={ MKL_INTERFACE_LAYER = "LP64"}}
 
-fit_models = "python experiments/spectral_information/tanimoto_similarity_prediction.py"
-
 isotope_fit = "python experiments/find_optimal_isotopic_parameters.py"
-find_optimal_energy = "python experiments/spectral_information/optimal_energy_selection.py"
 
 [feature.scripts.tasks]
 convert_msp = "python scripts/convert_msp.py"

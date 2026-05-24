@@ -44,3 +44,4 @@ data/
 **.zip
 raw_data/
 experiments/isotopic_parameters_results.txt
+.slim/

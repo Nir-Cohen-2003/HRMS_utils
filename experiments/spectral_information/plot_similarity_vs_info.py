@@ -59,12 +59,12 @@ class SimilarityVsInfoConfig:
       - pairs_parquet_path: Path to pairs parquet with columns for indices, mol_idx, and tanimoto.
       - left_library_parquet_path: Path to the left library snapshot parquet containing `idx`, `mol_idx`, and the information measure (and `smiles`).
       - right_library_parquet_path: Optional right library snapshot parquet (same schema as left); defaults to left when None.
-      - original_left_library_parquet_paths: List of paths to original library parquets (with full spectral data) for left side.
-        Required if info_metric != InfoMetric.SPECTRAL_INFORMATION.
-      - original_right_library_parquet_paths: Optional list of paths to original library parquets for right side.
+      - left_library_full_parquet_path: Path to the left library full parquet (with full spectral data and stable `idx`).
+        Required if info_metric != InfoMetric.SPECTRAL_INFORMATION or if scores need to be recomputed.
+      - right_library_full_parquet_path: Optional path to the right library full parquet.
         Required if info_metric != InfoMetric.SPECTRAL_INFORMATION and right_library_parquet_path is provided.
       - info_metric: Which information metric to use (default: spectral_information, which uses pre-computed scores).
-        If not spectral_information, scores will be recomputed from original library data.
+        If not spectral_information, scores will be recomputed from the full library parquet(s).
       - tanimoto_col: name of Tanimoto similarity column in pairs parquet.
       - left_idx_col/right_idx_col: column names for the left/right spectrum global index.
       - left_mol_col/right_mol_col: column names for the left/right molecule id (mol_idx).
@@ -81,8 +81,8 @@ class SimilarityVsInfoConfig:
     pairs_parquet_path: Union[str, Path]
     left_library_parquet_path: Union[str, Path]
     right_library_parquet_path: Optional[Union[str, Path]] = None
-    original_left_library_parquet_paths: Optional[List[Union[str, Path]]] = None
-    original_right_library_parquet_paths: Optional[List[Union[str, Path]]] = None
+    left_library_full_parquet_path: Optional[Union[str, Path]] = None
+    right_library_full_parquet_path: Optional[Union[str, Path]] = None
     info_metric: InfoMetric = InfoMetric.SPECTRAL_INFORMATION
     tanimoto_col: str = "tanimoto_similarity"
     left_idx_col: str = "idx"
@@ -127,7 +127,7 @@ class SimilarityVsInfoConfig:
     percentile_bounds: Optional[Tuple[float, float]] = None
     # If True, the heatmap x-axis (and line plot x-axis) will be the average information
     # of the pair of spectra involved in the match, rather than the information of the spectrum itself.
-    use_avg_info: bool = False
+    use_avg_info: bool = True
 
     def __post_init__(self):
         """
@@ -144,20 +144,24 @@ class SimilarityVsInfoConfig:
             else:
                 self.info_measure = self.info_metric.value
 
+        recompute_from_full = self.left_library_full_parquet_path is not None
+
         if self.info_metric != InfoMetric.SPECTRAL_INFORMATION:
-            # Validate that original library paths are provided
-            if self.original_left_library_parquet_paths is None:
+            # Alternative metrics always require full library data for recomputation
+            if not recompute_from_full:
                 raise ValueError(
-                    f"original_left_library_parquet_paths must be provided when "
+                    f"left_library_full_parquet_path must be provided when "
                     f"info_metric={self.info_metric.value}"
                 )
-            if self.right_library_parquet_path is not None:
-                if self.original_right_library_parquet_paths is None:
-                    raise ValueError(
-                        f"original_right_library_parquet_paths must be provided when "
-                        f"using cross-library mode with info_metric={self.info_metric.value}"
-                    )
 
+        if recompute_from_full and self.right_library_parquet_path is not None:
+            if self.right_library_full_parquet_path is None:
+                raise ValueError(
+                    f"right_library_full_parquet_path must be provided when "
+                    f"using cross-library mode with full library paths"
+                )
+
+        if self.info_metric != InfoMetric.SPECTRAL_INFORMATION:
             # Create subdirectory for this metric
             base_output_dir = Path(self.output_dir)
             self.output_dir = base_output_dir / self.info_metric.value
@@ -183,22 +187,22 @@ def _require_columns_or_fail(
         ) from exc
 
 
-def _load_and_recompute_library_scores(
+def _load_full_library_and_recompute_scores(
     snapshot_path: Path,
-    original_library_paths: List[Path],
+    full_library_path: Path,
     metric: InfoMetric,
     info_measure_col: str,
 ) -> pl.DataFrame:
     """
-    Load library snapshot and original library, recompute information scores in-memory.
+    Load library snapshot and full library (with stable idx), recompute information scores.
 
-    Why: When using alternative metrics, we need access to full spectral data which
-    is only available in the original library parquets. This function loads both,
-    recomputes scores, and returns the updated snapshot dataframe.
+    Why: The full library parquet already contains the correct idx assigned by the
+    heavy-compute pipeline. We simply read it and recompute scores, avoiding any
+    fragile idx reconstruction from original files.
 
     Args:
         snapshot_path: Path to library snapshot parquet
-        original_library_paths: List of paths to original library parquets
+        full_library_path: Path to full library parquet with spectral data and stable idx
         metric: Which information metric to compute
         info_measure_col: Column name for the information score
 
@@ -208,37 +212,25 @@ def _load_and_recompute_library_scores(
     logger.info("Loading library snapshot from %s", snapshot_path)
     df_snapshot = pl.read_parquet(str(snapshot_path))
 
-    logger.info("Loading original library from %d files", len(original_library_paths))
-    lf_list = []
-    for p in original_library_paths:
-        assert p.exists(), f"Original library parquet not found: {p}"
-        lf = pl.scan_parquet(str(p))
-        lf_list.append(lf)
+    logger.info("Loading full library from %s", full_library_path)
+    df_library = pl.read_parquet(str(full_library_path))
 
-    # Union all library files and replicate processing from batched_gpu.py
-    lf_library = pl.union(lf_list).filter(pl.col("clean_precursor"))
-
-    # Select columns needed for score computation, filter nulls, add idx
-    # Why: Must replicate exact row ordering and idx assignment from batched_gpu.py
-    lf_library = (
-        lf_library.select(
-            [
-                "precursor_type",
-                "precursor_mz",
-                "precursor_formula_array",
-                "ion_mode",
-                "base_inchikey",
-                "cleaned_normalized_mz",
-                "cleaned_normalized_intensity",
-                "smiles",
-            ]
-        )
-        .filter(pl.col("smiles").is_not_null())
-        .with_row_index("idx")
+    assert "idx" in df_snapshot.columns, (
+        f"Snapshot missing 'idx'. Columns: {df_snapshot.columns}"
+    )
+    assert "idx" in df_library.columns, (
+        f"Full library missing 'idx'. Columns: {df_library.columns}"
     )
 
-    logger.info("Collecting library data with streaming engine...")
-    df_library = lf_library.collect(engine="streaming")
+    # Trim to columns needed for score computation to reduce memory
+    needed_cols = ["idx", "cleaned_normalized_mz", "cleaned_normalized_intensity"]
+    if metric == InfoMetric.SPECTRAL_INFORMATION:
+        needed_cols.extend(["precursor_formula_array", "cleaned_fragment_formulas"])
+    elif metric == InfoMetric.WEIGHTED_SPECTRAL_INFORMATION:
+        needed_cols.extend(["precursor_formula_array", "spectral_information_score"])
+
+    available_needed = [c for c in needed_cols if c in df_library.columns]
+    df_library = df_library.select(available_needed)
 
     logger.info("Recomputing %s scores for %d spectra", metric.value, len(df_library))
     df_snapshot_updated = recompute_information_scores_in_dataframe(
@@ -285,37 +277,32 @@ def compute_per_spectrum_avg_tanimoto(
     assert left_lib_path.exists(), f"Left library parquet not found: {left_lib_path}"
     assert right_lib_path.exists(), f"Right library parquet not found: {right_lib_path}"
 
-    # If using alternative metric, recompute scores from original library
-    if config.info_metric != InfoMetric.SPECTRAL_INFORMATION:
+    # If full library paths are provided, recompute scores from the full libraries.
+    # The full libraries already contain the correct idx from the heavy-compute pipeline.
+    if config.left_library_full_parquet_path is not None:
         logger.info(
             "Recomputing information scores using metric: %s", config.info_metric.value
         )
-        # Recompute left library scores
-        assert config.original_left_library_parquet_paths is not None
-        left_lib_df = _load_and_recompute_library_scores(
+        left_lib_df = _load_full_library_and_recompute_scores(
             snapshot_path=left_lib_path,
-            original_library_paths=[
-                Path(p) for p in config.original_left_library_parquet_paths
-            ],
+            full_library_path=Path(config.left_library_full_parquet_path),
             metric=config.info_metric,
             info_measure_col=config.info_measure,
         )
 
-        # Recompute right library scores if different from left
         if right_lib_path != left_lib_path:
-            assert config.original_right_library_parquet_paths is not None
-            right_lib_df = _load_and_recompute_library_scores(
+            assert config.right_library_full_parquet_path is not None, (
+                "right_library_full_parquet_path required for cross-library recomputation"
+            )
+            right_lib_df = _load_full_library_and_recompute_scores(
                 snapshot_path=right_lib_path,
-                original_library_paths=[
-                    Path(p) for p in config.original_right_library_parquet_paths
-                ],
+                full_library_path=Path(config.right_library_full_parquet_path),
                 metric=config.info_metric,
                 info_measure_col=config.info_measure,
             )
         else:
             right_lib_df = left_lib_df
 
-        # Use recomputed dataframes instead of loading from disk
         left_lib = left_lib_df.lazy().select(
             [
                 pl.col("idx").cast(pl.Int64),
@@ -659,10 +646,15 @@ def compute_per_molecule_spearman(
         "and that the library index columns are correct."
     )
 
+    # When using average pair info, use the pre-computed avg_info_for_plot column
+    info_col = config.info_measure
+    if config.use_avg_info and "avg_info_for_plot" in per_spectrum_df.columns:
+        info_col = "avg_info_for_plot"
+
     # Group and collect lists for each molecule (DataFrame APIs: group_by on an already-collected DataFrame).
     grouped = included.group_by("mol_idx").agg(
         [
-            pl.col(config.info_measure).alias("info_list"),
+            pl.col(info_col).alias("info_list"),
             pl.col("avg_tanimoto").alias("avg_tani_list"),
             pl.len().alias("n_points"),
         ]
@@ -1026,12 +1018,6 @@ def _plot_binned_stats(
     plt.close(fig)
 
 
-
-
-
-
-
-
 def plot_heatmap_avg_tanimoto_vs_info_and_dotprod(
     config: SimilarityVsInfoConfig,
     library_scores_df: Optional[pl.DataFrame] = None,
@@ -1083,31 +1069,50 @@ def plot_heatmap_avg_tanimoto_vs_info_and_dotprod(
         left_lib_lf = library_scores_df.lazy().select(
             [pl.col("idx").cast(pl.Int64), pl.col(config.info_measure)]
         )
-    elif config.info_metric != InfoMetric.SPECTRAL_INFORMATION:
+        right_lib_lf = left_lib_lf
+    elif config.left_library_full_parquet_path is not None:
         logger.info(
-            "Recomputing scores for heatmap because info_metric=%s and no dataframe provided.",
-            config.info_metric.value,
+            "Recomputing scores for heatmap because full library path provided.",
         )
-        assert config.original_left_library_parquet_paths is not None
-        left_lib_df = _load_and_recompute_library_scores(
+        left_lib_df = _load_full_library_and_recompute_scores(
             snapshot_path=left_lib_path,
-            original_library_paths=[
-                Path(p) for p in config.original_left_library_parquet_paths
-            ],
+            full_library_path=Path(config.left_library_full_parquet_path),
             metric=config.info_metric,
             info_measure_col=config.info_measure,
         )
         left_lib_lf = left_lib_df.lazy().select(
             [pl.col("idx").cast(pl.Int64), pl.col(config.info_measure)]
         )
+        if right_lib_path != left_lib_path:
+            assert config.right_library_full_parquet_path is not None, (
+                "right_library_full_parquet_path required for cross-library heatmap"
+            )
+            right_lib_df = _load_full_library_and_recompute_scores(
+                snapshot_path=right_lib_path,
+                full_library_path=Path(config.right_library_full_parquet_path),
+                metric=config.info_metric,
+                info_measure_col=config.info_measure,
+            )
+            right_lib_lf = right_lib_df.lazy().select(
+                [pl.col("idx").cast(pl.Int64), pl.col(config.info_measure)]
+            )
+        else:
+            right_lib_lf = left_lib_lf
     else:
         left_lib_lf = pl.scan_parquet(str(left_lib_path)).select(
             [pl.col("idx").cast(pl.Int64), pl.col(config.info_measure)]
         )
+        right_lib_lf = left_lib_lf
 
     # Prepare library info for joining (aliased) to get info for both sides of the match
     # Cast info to Float32 early to save memory
-    lib_lf = left_lib_lf.select(
+    lib_lf_left = left_lib_lf.select(
+        [
+            pl.col("idx").cast(pl.Int64),
+            pl.col(config.info_measure).cast(pl.Float32),
+        ]
+    )
+    lib_lf_right = right_lib_lf.select(
         [
             pl.col("idx").cast(pl.Int64),
             pl.col(config.info_measure).cast(pl.Float32),
@@ -1120,13 +1125,13 @@ def plot_heatmap_avg_tanimoto_vs_info_and_dotprod(
         # We join info for both left and right, compute average, and project.
 
         # Aliases for joining
-        lib_left = lib_lf.select(
+        lib_left = lib_lf_left.select(
             [
                 pl.col("idx").alias(config.left_idx_col),
                 pl.col(config.info_measure).alias("info_left"),
             ]
         )
-        lib_right = lib_lf.select(
+        lib_right = lib_lf_right.select(
             [
                 pl.col("idx").alias(config.right_idx_col),
                 pl.col(config.info_measure).alias("info_right"),
@@ -1176,17 +1181,21 @@ def plot_heatmap_avg_tanimoto_vs_info_and_dotprod(
             ]
         )
 
-        agg_input = (
-            pl.concat([p1, p2])
-            .join(lib_lf, on="idx", how="left")
-            .select(
-                [
-                    pl.col(config.dotprod_col),
-                    pl.col(config.tanimoto_col),
-                    pl.col(config.info_measure),
-                ]
-            )
+        agg_input_left = p1.join(lib_lf_left, on="idx", how="left").select(
+            [
+                pl.col(config.dotprod_col),
+                pl.col(config.tanimoto_col),
+                pl.col(config.info_measure),
+            ]
         )
+        agg_input_right = p2.join(lib_lf_right, on="idx", how="left").select(
+            [
+                pl.col(config.dotprod_col),
+                pl.col(config.tanimoto_col),
+                pl.col(config.info_measure),
+            ]
+        )
+        agg_input = pl.concat([agg_input_left, agg_input_right])
 
     # Common filtering and aggregation logic
     joined = (
@@ -1339,46 +1348,54 @@ def plot_correlation_dotprod_tanimoto_vs_info(
         .cast({config.dotprod_col: pl.Float64, config.tanimoto_col: pl.Float64})
     )
 
-    # Prepare library info lazyframe
+    # Prepare library info lazyframes for left and right sides
     if library_scores_df is not None:
-        lib_lf = library_scores_df.lazy().select(
+        left_lib_lf = library_scores_df.lazy().select(
             [pl.col("idx").cast(pl.Int64), pl.col(config.info_measure)]
         )
-    elif config.info_metric != InfoMetric.SPECTRAL_INFORMATION:
-        assert config.original_left_library_parquet_paths is not None
-        left_lib_df = _load_and_recompute_library_scores(
+        right_lib_lf = left_lib_lf
+    elif config.left_library_full_parquet_path is not None:
+        left_lib_df = _load_full_library_and_recompute_scores(
             snapshot_path=left_lib_path,
-            original_library_paths=[
-                Path(p) for p in config.original_left_library_parquet_paths
-            ],
+            full_library_path=Path(config.left_library_full_parquet_path),
             metric=config.info_metric,
             info_measure_col=config.info_measure,
         )
-        lib_lf = left_lib_df.lazy().select(
+        left_lib_lf = left_lib_df.lazy().select(
             [pl.col("idx").cast(pl.Int64), pl.col(config.info_measure)]
         )
+        if right_lib_path != left_lib_path:
+            assert config.right_library_full_parquet_path is not None, (
+                "right_library_full_parquet_path required for cross-library correlation plot"
+            )
+            right_lib_df = _load_full_library_and_recompute_scores(
+                snapshot_path=right_lib_path,
+                full_library_path=Path(config.right_library_full_parquet_path),
+                metric=config.info_metric,
+                info_measure_col=config.info_measure,
+            )
+            right_lib_lf = right_lib_df.lazy().select(
+                [pl.col("idx").cast(pl.Int64), pl.col(config.info_measure)]
+            )
+        else:
+            right_lib_lf = left_lib_lf
     else:
-        lib_lf = pl.scan_parquet(str(left_lib_path)).select(
+        left_lib_lf = pl.scan_parquet(str(left_lib_path)).select(
             [pl.col("idx").cast(pl.Int64), pl.col(config.info_measure)]
         )
-    print(lib_lf.collect_schema())
+        right_lib_lf = left_lib_lf
+
     # Create distinct lazyframes for left and right joins with explicit aliasing
-    # This avoids potential issues with rename/drop and ensures columns are present.
-    lib_lf_left = lib_lf.select(
+    lib_lf_left = left_lib_lf.select(
         [
             pl.col("idx"),
-            pl.col(config.info_measure)
-            # .cast(pl.Float32)
-            .alias("info_left"),
+            pl.col(config.info_measure).alias("info_left"),
         ]
     )
-    print(lib_lf_left.collect_schema())
-    lib_lf_right = lib_lf.select(
+    lib_lf_right = right_lib_lf.select(
         [
             pl.col("idx"),
-            pl.col(config.info_measure)
-            # .cast(pl.Float32)
-            .alias("info_right"),
+            pl.col(config.info_measure).alias("info_right"),
         ]
     )
 
@@ -1520,7 +1537,9 @@ def run_per_molecule_analysis(config: SimilarityVsInfoConfig) -> None:
         "Found %d molecules with at least one external match", len(mols_with_matches)
     )
     if len(mols_with_matches) == 0:
-        logger.error("No molecules with external matches found. Aborting per-molecule analysis.")
+        logger.error(
+            "No molecules with external matches found. Aborting per-molecule analysis."
+        )
         return
 
     # 3) Per-molecule Spearman
@@ -1539,7 +1558,11 @@ def run_per_molecule_analysis(config: SimilarityVsInfoConfig) -> None:
         if per_molecule_spearman_df.height > 0
         else np.array([], dtype=float)
     )
-    tan_const_arr = per_molecule_spearman_df.get_column("tanimoto_constant").to_numpy() if "tanimoto_constant" in per_molecule_spearman_df.columns else np.zeros_like(rho_arr, dtype=bool)
+    tan_const_arr = (
+        per_molecule_spearman_df.get_column("tanimoto_constant").to_numpy()
+        if "tanimoto_constant" in per_molecule_spearman_df.columns
+        else np.zeros_like(rho_arr, dtype=bool)
+    )
 
     valid_mask = ~np.isnan(rho_arr)
     n_valid = int(np.sum(valid_mask))
@@ -1549,13 +1572,19 @@ def run_per_molecule_analysis(config: SimilarityVsInfoConfig) -> None:
         n_with = int(np.sum(valid_mask))
         exclude_mask = valid_mask & (~tan_const_arr)
         n_excl = int(np.sum(exclude_mask))
-        mean_without = float(np.nanmean(rho_arr[exclude_mask])) if n_excl > 0 else float("nan")
-        
+        mean_without = (
+            float(np.nanmean(rho_arr[exclude_mask])) if n_excl > 0 else float("nan")
+        )
+
         summary_path = output_dir / "per_molecule_spearman_summary.txt"
         with open(summary_path, "w") as fh:
             fh.write("Per-molecule Spearman summary\n\n")
-            fh.write(f"Mean (incl constant avg_tanimoto): {mean_with:.4f} (n={n_with})\n")
-            fh.write(f"Mean (excl constant avg_tanimoto): {mean_without:.4f} (n={n_excl})\n")
+            fh.write(
+                f"Mean (incl constant avg_tanimoto): {mean_with:.4f} (n={n_with})\n"
+            )
+            fh.write(
+                f"Mean (excl constant avg_tanimoto): {mean_without:.4f} (n={n_excl})\n"
+            )
         logger.info("Wrote summary text to %s", summary_path)
 
 
@@ -1565,7 +1594,7 @@ def run_global_line_plots(config: SimilarityVsInfoConfig) -> None:
     """
     output_dir = Path(config.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
-    
+
     logger.info("Starting Global Line Plots Analysis...")
 
     thresholds: List[Optional[float]] = (
@@ -1577,26 +1606,44 @@ def run_global_line_plots(config: SimilarityVsInfoConfig) -> None:
     per_spectrum_by_threshold: Dict[Optional[float], pl.DataFrame] = {}
     for t in thresholds:
         logger.info("Computing per-spectrum stats for threshold %s...", t)
-        per_spectrum_by_threshold[t] = compute_per_spectrum_avg_tanimoto(config, min_dotprod=t)
+        per_spectrum_by_threshold[t] = compute_per_spectrum_avg_tanimoto(
+            config, min_dotprod=t
+        )
 
     # --- 1. Global (All Spectra) ---
     global_by_threshold: Dict[str, Dict[str, object]] = {}
     for t, ps in per_spectrum_by_threshold.items():
-        mols_with_matches_t = _molecules_with_any_matches(config.pairs_parquet_path, config, min_dotprod=t)
-        included_spectra_t = ps.filter(pl.col("mol_idx").is_in(list(mols_with_matches_t)))
+        mols_with_matches_t = _molecules_with_any_matches(
+            config.pairs_parquet_path, config, min_dotprod=t
+        )
+        included_spectra_t = ps.filter(
+            pl.col("mol_idx").is_in(list(mols_with_matches_t))
+        )
         if config.use_avg_info and "avg_info_for_plot" in included_spectra_t.columns:
-            included_spectra_t = included_spectra_t.with_columns(pl.col("avg_info_for_plot").alias(config.info_measure))
-        label = f"Dot-Product above {t:.2f}" if t is not None else "Dot-Product (no filter)"
+            included_spectra_t = included_spectra_t.with_columns(
+                pl.col("avg_info_for_plot").alias(config.info_measure)
+            )
+        label = (
+            f"Dot-Product above {t:.2f}" if t is not None else "Dot-Product (no filter)"
+        )
         global_by_threshold[label] = _compute_binned_stats(included_spectra_t, config)
 
     primary_t = thresholds[0]
-    primary_label = f"Dot-Product above {primary_t:.2f}" if primary_t is not None else "Dot-Product (no filter)"
-    
+    primary_label = (
+        f"Dot-Product above {primary_t:.2f}"
+        if primary_t is not None
+        else "Dot-Product (no filter)"
+    )
+
     if primary_label in global_by_threshold:
-        plot_all_path = output_dir / config.filename_all.format(measure=config.info_measure)
+        plot_all_path = output_dir / config.filename_all.format(
+            measure=config.info_measure
+        )
         _plot_binned_stats(
             primary_stats=global_by_threshold[primary_label],
-            overlay_stats={k: v for k, v in global_by_threshold.items() if k != primary_label},
+            overlay_stats={
+                k: v for k, v in global_by_threshold.items() if k != primary_label
+            },
             out_path=plot_all_path,
             label=primary_label,
             config=config,
@@ -1605,23 +1652,44 @@ def run_global_line_plots(config: SimilarityVsInfoConfig) -> None:
     # --- 2. Best Spectrum per Molecule ---
     best_by_threshold: Dict[str, Dict[str, object]] = {}
     for t, ps in per_spectrum_by_threshold.items():
-        mols_with_matches_t = _molecules_with_any_matches(config.pairs_parquet_path, config, min_dotprod=t)
-        included_spectra_t = ps.filter(pl.col("mol_idx").is_in(list(mols_with_matches_t)))
-        best_info = included_spectra_t.group_by("mol_idx").agg(pl.col(config.info_measure).max().alias("max_info"))
-        candidates = included_spectra_t.join(best_info, on="mol_idx", how="inner").filter(pl.col(config.info_measure) == pl.col("max_info"))
-        best_per_molecule_t = candidates.sort(["mol_idx", "idx"]).group_by("mol_idx").agg(pl.col("idx").first().alias("idx")).join(included_spectra_t, on=["mol_idx", "idx"], how="left")
-        
-        if config.use_avg_info and "avg_info_for_plot" in best_per_molecule_t.columns:
-            best_per_molecule_t = best_per_molecule_t.with_columns(pl.col("avg_info_for_plot").alias(config.info_measure))
+        mols_with_matches_t = _molecules_with_any_matches(
+            config.pairs_parquet_path, config, min_dotprod=t
+        )
+        included_spectra_t = ps.filter(
+            pl.col("mol_idx").is_in(list(mols_with_matches_t))
+        )
+        best_info = included_spectra_t.group_by("mol_idx").agg(
+            pl.col(config.info_measure).max().alias("max_info")
+        )
+        candidates = included_spectra_t.join(
+            best_info, on="mol_idx", how="inner"
+        ).filter(pl.col(config.info_measure) == pl.col("max_info"))
+        best_per_molecule_t = (
+            candidates.sort(["mol_idx", "idx"])
+            .group_by("mol_idx")
+            .agg(pl.col("idx").first().alias("idx"))
+            .join(included_spectra_t, on=["mol_idx", "idx"], how="left")
+        )
 
-        label = f"Dot-Product above {t:.2f}" if t is not None else "Dot-Product (no filter)"
+        if config.use_avg_info and "avg_info_for_plot" in best_per_molecule_t.columns:
+            best_per_molecule_t = best_per_molecule_t.with_columns(
+                pl.col("avg_info_for_plot").alias(config.info_measure)
+            )
+
+        label = (
+            f"Dot-Product above {t:.2f}" if t is not None else "Dot-Product (no filter)"
+        )
         best_by_threshold[label] = _compute_binned_stats(best_per_molecule_t, config)
 
     if primary_label in best_by_threshold:
-        plot_best_path = output_dir / config.filename_best.format(measure=config.info_measure)
+        plot_best_path = output_dir / config.filename_best.format(
+            measure=config.info_measure
+        )
         _plot_binned_stats(
             primary_stats=best_by_threshold[primary_label],
-            overlay_stats={k: v for k, v in best_by_threshold.items() if k != primary_label},
+            overlay_stats={
+                k: v for k, v in best_by_threshold.items() if k != primary_label
+            },
             out_path=plot_best_path,
             label=primary_label,
             config=config,
@@ -1629,30 +1697,30 @@ def run_global_line_plots(config: SimilarityVsInfoConfig) -> None:
 
 
 if __name__ == "__main__":
+    # Workflow A: use pre-computed scores from the snapshot.
+    # left_library_full_parquet_path=None means "use the scores already present
+    # in left_library_parquet_path"; no in-memory recomputation is performed.
     cfg = SimilarityVsInfoConfig(
         pairs_parquet_path=Path(
-            "/home/analytit_admin/Data/spectral_libs/info_score/combined_library_pairs_with_tanimoto_260104.parquet"
+            "/home/analytit_admin/Data/spectral_libs/info_score/combined_library_pairs_260520.with_tanimoto.parquet"
         ),
         left_library_parquet_path=Path(
-            "/home/analytit_admin/Data/spectral_libs/info_score/combined_library_pairs_260104.left_library.parquet"
+            "/home/analytit_admin/Data/spectral_libs/info_score/combined_library_pairs_260121.left_library_full.parquet"
         ),
-        original_left_library_parquet_paths=[
-            Path(
-                "/home/analytit_admin/Data/spectral_libs/info_score/combined_library.parquet"
-            )
-        ],
+        left_library_full_parquet_path=None,
         right_library_parquet_path=None,
+        right_library_full_parquet_path=None,
         tanimoto_col="tanimoto_similarity",
         left_idx_col="idx",
         right_idx_col="idx_right",
         left_mol_col="mol_idx",
         right_mol_col="mol_idx_right",
         info_metric=InfoMetric.SPECTRAL_INFORMATION,
-        x_bin_width=0.5,
-        x_range=(0.0, 5.0),
+        x_bin_width=1.0,
+        x_range=(0.0, 10.0),
         min_count_threshold=10,
         output_dir=Path(
-            "/home/analytit_admin/Data/spectral_libs/info_score/sim_vs_info_analysis_260107"
+            "/home/analytit_admin/Data/spectral_libs/info_score/sim_vs_info_analysis_260518"
         ),
         dotprod_thresholds=(0.8, 0.9),
         dotprod_bin_size=0.1,
@@ -1671,4 +1739,3 @@ if __name__ == "__main__":
     logger.info("Producing overall heatmap at %s", heatmap_path)
 
     plot_heatmap_avg_tanimoto_vs_info_and_dotprod(cfg)
-

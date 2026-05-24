@@ -31,7 +31,6 @@ Documentation for HRMS Utils has been successfully set up using MkDocs with Mate
    - `reference/api/hrms_core.md` - Core functionality
    - `reference/api/formats.md` - Format parsers
    - `reference/api/formula_annotation.md` - Formula tools
-   - `reference/api/rdkit.md` - RDKit utilities
    - `reference/data-structures.md` - DataFrame schema documentation
 
 #### Placeholder Pages (For Future Expansion)
@@ -201,8 +200,7 @@ docs/
 │       ├── hrms_core.md                          # ✓ Complete (auto-gen)
 │       ├── formats.md                            # ✓ Complete (auto-gen)
 │       ├── formula_annotation.md                 # ✓ Complete (auto-gen)
-│       └── rdkit.md                              # ✓ Complete (auto-gen)
-├── explanation/
+│├── explanation/
 │   ├── architecture.md                           # Placeholder
 │   ├── mass-decomposition-algorithm.md           # Placeholder
 │   ├── spectral-entropy.md                       # Placeholder
