@@ -46,8 +46,6 @@ data/
 raw_data/
 experiments/isotopic_parameters_results.txt
 .slim/
-=======
 packages/msdial
 tests/output/
 experiments/spectral_information/msdial_output/
->>>>>>> similarity_search_with_info
