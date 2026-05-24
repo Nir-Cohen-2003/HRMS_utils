@@ -1,7 +1,10 @@
+import os
+import platform
+import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 from time import time
-from typing import Dict, Iterable, List, Tuple, TypeVar, cast
+from typing import Dict, Iterable, List, Literal, Tuple, TypeVar, cast
 
 import numpy as np
 import polars as pl
@@ -412,6 +415,11 @@ def annotate_chromatogram_with_formulas(
         ["precursor_formula", "precursor_formula_str", "precursor_errors_ppm"]
     )
 
+    # Sum original intensities before cleaning for explained intensity calculation
+    chromatogram = chromatogram.with_columns(
+        pl.col("msms_intensity").list.sum().alias("_total_intensity_before_cleaning")
+    )
+
     # Cleaning + normalization
     chromatogram = (
         chromatogram.rechunk()
@@ -450,6 +458,14 @@ def annotate_chromatogram_with_formulas(
         )
         .drop("cleaned_spectra")
     )
+
+    # Calculate explained intensity: sum of cleaned intensities divided by sum of original intensities
+    chromatogram = chromatogram.with_columns(
+        pl.col("cleaned_msms_intensity")
+        .list.sum()
+        .truediv(pl.col("_total_intensity_before_cleaning"))
+        .alias("explained_intensity")
+    ).drop("_total_intensity_before_cleaning")
 
     return chromatogram
 
@@ -687,6 +703,467 @@ def _subtract_isobar_spectra(
     )
 
     return compound_msms_mz, compound_msms_intensity
+
+
+# =============================================================================
+# MS-DIAL Console App CLI Integration
+# =============================================================================
+
+# Base template for MS-DIAL parameters (without ion mode and adduct list)
+_MSDIAL_PARAMS_TEMPLATE = """MS1 data type: Centroid
+MS2 data type: Centroid
+Ion mode: {ion_mode}
+Target omics: Metabolomics
+Ionization: ESI
+Machine category: LCMS
+Instrument type:
+Instrument:
+Authors:
+License:
+Comment:
+Msp file path:
+Lbm file path:
+Text DB file path:
+Isotope text DB file path:
+Compounds library file path for target detection:
+Compounds library file path for RT correction:
+
+#Adduct ion setting
+adduct list: {adduct_list}
+
+# Export
+Export spectra file format: text
+Export spectra type: deconvoluted
+Mat file export folder path:
+Export folder path:
+Height matrix export: True
+Normalized height matrix export: False
+Representative spectra export: False
+Peak ID matrix export: False
+Retention time matrix export: False
+Mass matrix export: False
+MSMS included matrix export: False
+Unique mass matrix export: False
+Peak area matrix export: False
+Parameter export: False
+GNPS export: False
+Molecular networking export: False
+SN matrix export: False
+Export as mztabM format: True
+
+
+# Process parameters
+Process option: All
+Number of threads: {threads}
+
+
+# Feature detection parameters
+Smoothing method: LinearWeightedMovingAverage
+Smoothing level: 3
+Minimum peak height: {minimum_peak_height}
+Minimum peak width: 5
+Average peak width: 30
+Mass slice width: 0.005
+Retention time begin: 0
+Retention time end: 100
+MS1 mass range begin: 0
+MS1 mass range end: 2000
+MS2 mass range begin: 0
+MS2 mass range end: 2000
+MS1 tolerance for centroid: 0.01
+MS2 tolerance for centroid: 0.025
+Accuracy type: IsAccurate
+Max charge number: 2
+Considering Br and Cl for isotopes: True
+Exclude mass list:
+Max isotopes detected in ms1 spectrum: 3
+
+
+# Deconvolution
+Sigma window value: 0.5
+Amplitude cut off: 1000
+Keep isotope range: 5
+Exclude after precursor: True
+Keep original precursor isotopes: False
+Is do andromeda ms2 deconvolution: False
+Andromeda delta: 100
+Andromeda max peaks: 12
+Target CE: 0
+
+
+# Retention time correction
+Execute RT correction: False
+
+
+# CorrDec settings
+CorrDec execute: False
+"""
+
+_NEGATIVE_ADDUCTS = "[M-H]-,[M-H2O-H]-,[M+Na-2H]-,[M+Cl]-,[M+K-2H]-,[M+HCOO]-,[M+CH3COO]-,[M+C2H3N+Na-2H]-,[M+Br]-,[M+TFA-H]-,[M-C6H10O4-H]-,[M-C6H10O5-H]-,[M-C6H8O6-H]-,[M+CH3COONa-H]-,[2M-H]-,[2M+FA-H]-,[2M+Hac-H]-,[3M-H]-,[M-2H]2-,[M-3H]3-"
+
+_POSITIVE_ADDUCTS = "[M+H]+,[M-H2O+H]+,[M+Na]+,[M+K]+,[M+NH4]+,[M+HCOO+Na]+,[M+CH3COO+Na]+,[M+CH3COO+K]+,[M+CH3COO+NH4]+,[M+HCOO+K]+,[M+HCOO+NH4]+,[2M+H]+,[2M+Na]+,[2M+K]+,[2M+NH4]+,[3M+H]+,[M+2H]2+,[M+3H]3+"
+
+
+@dataclass
+class MSDialRunnerConfig:
+    """Configuration for running MS-DIAL Console App.
+
+    Attributes
+    ----------
+    msdial_path : Path | None
+        Path to the MS-DIAL executable. If None, will attempt auto-detection.
+    threads : int
+        Number of threads to use for processing (default: 20).
+    minimum_peak_height : int
+        Minimum peak height for feature detection (default: 100000).
+    """
+
+    msdial_path: Path | None = None
+    threads: int = 20
+    minimum_peak_height: int = 100000
+
+
+def _get_project_root() -> Path | None:
+    """Find the project root directory containing packages/msdial.
+
+    Tries multiple strategies:
+    1. Search upward from current file location
+    2. Search upward from current working directory
+    3. Check environment variable
+
+    Returns
+    -------
+    Path | None
+        Project root path if found, None otherwise.
+    """
+    # Strategy 1: Search upward from current file
+    current_file = Path(__file__).resolve()
+    for parent in current_file.parents:
+        if (parent / "packages" / "msdial").exists():
+            return parent
+
+    # Strategy 2: Search upward from current working directory
+    cwd = Path.cwd().resolve()
+    for parent in [cwd] + list(cwd.parents):
+        if (parent / "packages" / "msdial").exists():
+            return parent
+
+    # Strategy 3: Check environment variable
+    env_root = Path(os.environ.get("HRMS_UTILS_ROOT", ""))
+    if env_root.exists() and (env_root / "packages" / "msdial").exists():
+        return env_root
+
+    return None
+
+
+def _find_msdial_executable() -> Path:
+    """Find MS-DIAL Console App executable on the system.
+
+    Searches common installation directories for both Windows and Linux.
+    Handles permission errors gracefully by skipping inaccessible directories.
+
+    Returns
+    -------
+    Path
+        Path to the MS-DIAL executable.
+
+    Raises
+    ------
+    FileNotFoundError
+        If MS-DIAL executable cannot be found in any common location.
+    """
+    system = platform.system()
+
+    # Try to find project root
+    project_root = _get_project_root()
+
+    if system == "Windows":
+        executable_names = ["MsdialConsoleApp.exe", "MsdialConsoleApp.exe"]
+        search_paths = [
+            Path("C:/Program Files/MSDIAL"),
+            Path("C:/Program Files (x86)/MSDIAL"),
+            Path.home() / "AppData/Local/MSDIAL",
+            Path.home() / "Documents/MSDIAL",
+            Path.home() / "Downloads/MSDIAL",
+            Path("./"),
+        ]
+    else:  # Linux and other Unix-like systems
+        executable_names = ["MsdialConsoleApp", "MsdialConsoleApp.exe", "MSDIALCUI"]
+        search_paths = [
+            Path("/usr/local/bin"),
+            Path("/opt/msdial"),
+            Path("/opt/MSDIAL"),
+            Path.home() / ".local/bin",
+            Path.home() / "bin",
+            Path("./"),
+        ]
+
+    # Insert project root path at the beginning if found
+    if project_root is not None:
+        msdial_package_dir = project_root / "packages" / "msdial"
+        search_paths.insert(0, msdial_package_dir)
+
+    for search_path in search_paths:
+        try:
+            if not search_path.exists():
+                continue
+
+            for exec_name in executable_names:
+                candidate = search_path / exec_name
+                if candidate.exists() and candidate.is_file():
+                    return candidate.resolve()
+
+            # Also search recursively one level deep in some directories
+            if search_path in [Path("/opt"), Path.home() / "Downloads"]:
+                try:
+                    for subdir in search_path.iterdir():
+                        if subdir.is_dir():
+                            for exec_name in executable_names:
+                                candidate = subdir / exec_name
+                                if candidate.exists() and candidate.is_file():
+                                    return candidate.resolve()
+                except PermissionError:
+                    continue
+
+        except PermissionError:
+            continue
+
+    raise FileNotFoundError(
+        f"MS-DIAL Console App executable not found. "
+        f"Please install MS-DIAL or provide the path explicitly via MSDialRunnerConfig.msdial_path. "
+        f"Searched in: {[str(p) for p in search_paths]}"
+    )
+
+
+def _generate_params_file(
+    polarity: Literal["positive", "negative"],
+    output_path: Path,
+    threads: int = 20,
+    minimum_peak_height: int = 100000,
+) -> Path:
+    """Generate MS-DIAL parameters file for the specified polarity.
+
+    Parameters
+    ----------
+    polarity : Literal["positive", "negative"]
+        Ionization polarity for the run.
+    output_path : Path
+        Directory where the parameters file will be saved.
+    threads : int
+        Number of threads for processing.
+    minimum_peak_height : int
+        Minimum peak height for feature detection.
+
+    Returns
+    -------
+    Path
+        Path to the generated parameters file.
+    """
+    if polarity == "positive":
+        ion_mode = "Positive"
+        adduct_list = _POSITIVE_ADDUCTS
+    else:
+        ion_mode = "Negative"
+        adduct_list = _NEGATIVE_ADDUCTS
+
+    params_content = _MSDIAL_PARAMS_TEMPLATE.format(
+        ion_mode=ion_mode,
+        adduct_list=adduct_list,
+        threads=threads,
+        minimum_peak_height=minimum_peak_height,
+    )
+
+    params_file = output_path / f"Msdial-lcms-dda-{polarity}-params.txt"
+    params_file.write_text(params_content)
+
+    return params_file
+
+
+def _parse_msdial_errors(stdout: str, stderr: str) -> List[str]:
+    """Parse MS-DIAL output for error patterns.
+
+    Parameters
+    ----------
+    stdout : str
+        Standard output from MS-DIAL process.
+    stderr : str
+        Standard error from MS-DIAL process.
+
+    Returns
+    -------
+    List[str]
+        List of detected error messages.
+    """
+    errors = []
+
+    # Skip if this looks like help text
+    combined_output_lower = (stdout + "\n" + stderr).lower()
+    if (
+        "requires the following args" in combined_output_lower
+        or "usage:" in combined_output_lower
+    ):
+        return errors
+
+    # Known error patterns in MS-DIAL output
+    error_patterns = [
+        "error",
+        "exception",
+        "failed",
+        "failure",
+        "cannot",
+        "unable to",
+        "not found",
+        "invalid",
+        "crash",
+        "abort",
+    ]
+
+    combined_output = combined_output_lower
+
+    for pattern in error_patterns:
+        if pattern in combined_output:
+            # Extract lines containing the error pattern
+            for line in (stdout + "\n" + stderr).split("\n"):
+                if pattern in line.lower() and line.strip():
+                    errors.append(line.strip())
+
+    # Remove duplicates while preserving order
+    seen = set()
+    unique_errors = []
+    for error in errors:
+        if error not in seen:
+            seen.add(error)
+            unique_errors.append(error)
+
+    return unique_errors
+
+
+def run_msdial_lcmsdda(
+    input_dir: Path | str,
+    output_dir: Path | str,
+    polarity: Literal["positive", "negative"],
+    params_file: Path | str | None = None,
+    config: MSDialRunnerConfig | None = None,
+) -> subprocess.CompletedProcess:
+    """Run MS-DIAL LCMS-DDA analysis via command line interface.
+
+    Parameters
+    ----------
+    input_dir : Path | str
+        Directory containing input raw data files.
+    output_dir : Path | str
+        Directory where results will be saved.
+    polarity : Literal["positive", "negative"]
+        Ionization polarity for the run.
+    params_file : Path | str | None
+        Path to custom MS-DIAL parameters file. If None, a parameters file
+        will be generated based on polarity and saved to output_dir.
+    config : MSDialRunnerConfig | None
+        Configuration object. If None, uses default configuration with
+        auto-detection of MS-DIAL executable.
+
+    Returns
+    -------
+    subprocess.CompletedProcess
+        The completed process object containing return code and output.
+
+    Raises
+    ------
+    FileNotFoundError
+        If MS-DIAL executable cannot be found.
+    RuntimeError
+        If MS-DIAL execution fails or reports errors.
+    ValueError
+        If invalid polarity is specified.
+
+    Examples
+    --------
+    >>> result = run_msdial_lcmsdda(
+    ...     input_dir="/path/to/raw/data",
+    ...     output_dir="/path/to/output",
+    ...     polarity="negative",
+    ... )
+    >>> print(result.returncode)
+    0
+
+    >>> config = MSDialRunnerConfig(
+    ...     msdial_path=Path("/custom/path/MsdialConsoleApp.exe"),
+    ...     threads=10,
+    ... )
+    >>> result = run_msdial_lcmsdda(
+    ...     input_dir="/path/to/raw/data",
+    ...     output_dir="/path/to/output",
+    ...     polarity="positive",
+    ...     config=config,
+    ... )
+    """
+    if polarity not in ("positive", "negative"):
+        raise ValueError(f"polarity must be 'positive' or 'negative', got '{polarity}'")
+
+    input_dir = Path(input_dir)
+    output_dir = Path(output_dir)
+
+    if not input_dir.exists():
+        raise FileNotFoundError(f"Input directory does not exist: {input_dir}")
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    # Determine MS-DIAL executable path
+    if config is None:
+        config = MSDialRunnerConfig()
+
+    if config.msdial_path is None:
+        msdial_executable = _find_msdial_executable()
+    else:
+        msdial_executable = Path(config.msdial_path)
+        if not msdial_executable.exists():
+            raise FileNotFoundError(
+                f"Specified MS-DIAL executable not found: {msdial_executable}"
+            )
+
+    # Generate or use provided parameters file
+    if params_file is None:
+        params_path = _generate_params_file(
+            polarity=polarity,
+            output_path=output_dir,
+            threads=config.threads,
+            minimum_peak_height=config.minimum_peak_height,
+        )
+    else:
+        params_path = Path(params_file)
+        if not params_path.exists():
+            raise FileNotFoundError(f"Parameters file not found: {params_path}")
+
+    # Construct command
+    cmd = [
+        str(msdial_executable),
+        "lcms",
+        "-i",
+        str(input_dir),
+        "-o",
+        str(output_dir),
+        "-m",
+        str(params_path),
+    ]
+
+    # Run MS-DIAL
+    result = subprocess.run(
+        cmd,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    # Parse for errors
+    detected_errors = _parse_msdial_errors(result.stdout, result.stderr)
+
+    if result.returncode != 0 or detected_errors:
+        error_msg = f"MS-DIAL execution failed with return code {result.returncode}"
+        if detected_errors:
+            error_msg += f". Detected errors: {'; '.join(detected_errors[:5])}"
+        raise RuntimeError(error_msg)
+
+    return result
 
 
 if __name__ == "__main__":

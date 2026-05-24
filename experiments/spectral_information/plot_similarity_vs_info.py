@@ -1697,6 +1697,7 @@ def run_global_line_plots(config: SimilarityVsInfoConfig) -> None:
 
 
 if __name__ == "__main__":
+<<<<<<< HEAD
     # Workflow A: use pre-computed scores from the snapshot.
     # left_library_full_parquet_path=None means "use the scores already present
     # in left_library_parquet_path"; no in-memory recomputation is performed.
@@ -1708,19 +1709,38 @@ if __name__ == "__main__":
             "/home/analytit_admin/Data/spectral_libs/info_score/combined_library_pairs_260121.left_library_full.parquet"
         ),
         left_library_full_parquet_path=None,
+=======
+    # Note: Run reconstruct_pairs_with_tanimoto.py first to generate the input file
+    cfg = SimilarityVsInfoConfig(
+        pairs_parquet_path=Path(
+            "/gpfs01/work/nircoh/HRMS_utils/experiments/spectral_information/data_pairs_260311_with_tanimoto.parquet"
+        ),
+        left_library_parquet_path=Path(
+            "/gpfs01/work/nircoh/HRMS_utils/experiments/spectral_information/data.parquet"
+        ),
+        original_left_library_parquet_paths=[
+            Path(
+                "/gpfs01/work/nircoh/HRMS_utils/experiments/spectral_information/data.parquet"
+            )
+        ],
+>>>>>>> similarity_search_with_info
         right_library_parquet_path=None,
         right_library_full_parquet_path=None,
         tanimoto_col="tanimoto_similarity",
-        left_idx_col="idx",
+        left_idx_col="idx_left",
         right_idx_col="idx_right",
-        left_mol_col="mol_idx",
+        left_mol_col="mol_idx_left",
         right_mol_col="mol_idx_right",
         info_metric=InfoMetric.SPECTRAL_INFORMATION,
         x_bin_width=1.0,
         x_range=(0.0, 10.0),
         min_count_threshold=10,
         output_dir=Path(
+<<<<<<< HEAD
             "/home/analytit_admin/Data/spectral_libs/info_score/sim_vs_info_analysis_260518"
+=======
+            "/gpfs01/work/nircoh/HRMS_utils/experiments/spectral_information/sim_vs_info_analysis_260326"
+>>>>>>> similarity_search_with_info
         ),
         dotprod_thresholds=(0.8, 0.9),
         dotprod_bin_size=0.1,

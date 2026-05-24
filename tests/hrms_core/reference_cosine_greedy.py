@@ -391,8 +391,8 @@ def cosine_greedy_ppm(
     
     # Apply centroiding if requested
     if apply_centroiding:
-        mz1, intensity1 = _apply_centroiding_if_needed(mz1, intensity1, tolerance_ppm)
-        mz2, intensity2 = _apply_centroiding_if_needed(mz2, intensity2, tolerance_ppm)
+        mz1, intensity1 = _apply_centroiding_if_needed(mz1, intensity1, 2.0 * tolerance_ppm)
+        mz2, intensity2 = _apply_centroiding_if_needed(mz2, intensity2, 2.0 * tolerance_ppm)
     
     # Find all matching pairs within tolerance
     matching_pairs = collect_peak_pairs_ppm(

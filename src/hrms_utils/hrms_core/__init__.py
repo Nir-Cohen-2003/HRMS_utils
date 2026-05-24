@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 import polars as pl
 from polars.plugins import register_plugin_function
@@ -290,6 +290,36 @@ class SpectralInfoNamespace:
         )
 
 
+    def spectral_info_score_per_fragment(
+        self,
+        *,
+        distance_metric: Literal["l1", "l2", "cosine"] = "l2",
+        ignore_hydrogens: bool = True,
+    ) -> pl.Expr:
+        """
+        Calculate spectral information score for each fragment in a spectrum based on a tree structure.
+
+        Input expression requirements:
+        - The expression must evaluate to a Struct column with the following fields:
+          - precursor_formula: Array(Int32, NUM_ELEMENTS)
+          - fragment_formulas: List(Array(Int32, NUM_ELEMENTS))
+
+        Returns:
+            A Polars Series of List(Float64) scores, one score for each fragment in the input spectrum.
+        """
+        kwargs = {
+            "distance_metric": distance_metric,
+            "ignore_hydrogens": ignore_hydrogens,
+        }
+
+        return register_plugin_function(
+            args=[self._expr],
+            plugin_path=LIB,
+            function_name="tree_spectral_info_score_per_fragment",
+            is_elementwise=True,
+            kwargs=kwargs,
+        )
+
 @pl.api.register_expr_namespace("spectral_similarity")
 class SpectralUtils:
     def __init__(self, expr: pl.Expr):
@@ -313,6 +343,8 @@ class SpectralUtils:
           - intensities2: List[Float64]   # intensities for spectrum 2
           - precursor_mz1: Float64        # precursor m/z for spectrum 1
           - precursor_mz2: Float64        # precursor m/z for spectrum 2
+          - weights1: List[Float64]       # (Optional) explicit weights for spectrum 1
+          - weights2: List[Float64]       # (Optional) explicit weights for spectrum 2
 
         Return:
         - A pl.Expr that evaluates elementwise to a Float64 similarity score (nullable).

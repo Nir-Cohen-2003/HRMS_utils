@@ -47,6 +47,13 @@ class SpectralInfoNamespace:
         ignore_hydrogens: bool = True,
     ) -> pl.Expr: ...
 
+    def spectral_info_score_per_fragment(
+        self,
+        *,
+        distance_metric: str = "l2",
+        ignore_hydrogens: bool = True,
+    ) -> pl.Expr: ...
+
 
 @pl.api.register_expr_namespace("spectral_similarity")
 class SpectralUtils:

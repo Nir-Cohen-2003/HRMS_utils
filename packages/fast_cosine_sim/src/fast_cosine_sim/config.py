@@ -199,6 +199,8 @@ class GPUApproximateConfig:
     spectrum_id_col: str = "idx"
     mz_col: str = "mz"
     intensity_col: str = "intensity"
+    weight_col: Optional[str] = None
+    weight_power: float = 0.0
 
     # Data types
     csr_data_dtype: np.dtype = np.dtype(np.float32)

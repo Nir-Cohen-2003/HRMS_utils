@@ -219,3 +219,143 @@ pub fn calculate_score_for_spectrum(
 
     Some(total_score)
 }
+
+pub fn calculate_score_per_fragment(
+    precursor_vec: Vec<f64>,
+    fragments_flat: Vec<f64>,
+    distance_metric: &str,
+    ignore_hydrogens: bool,
+) -> Option<Vec<f64>> {
+    let num_fragments = fragments_flat.len() / NUM_ELEMENTS;
+    if precursor_vec.is_empty() {
+        return Some(vec![0.0; num_fragments]);
+    }
+
+    let active_mask: Vec<bool> = precursor_vec.iter().map(|&x| x > 0.0).collect();
+    let n_active = active_mask.iter().filter(|&&b| b).count();
+
+    if n_active == 0 {
+        return Some(vec![0.0; num_fragments]);
+    }
+
+    let total_precursor_mass: f64 = precursor_vec
+        .iter()
+        .zip(active_mask.iter())
+        .filter_map(|(mass, &is_active)| if is_active { Some(mass) } else { None })
+        .sum();
+
+    if total_precursor_mass <= 0.0 {
+        return Some(vec![0.0; num_fragments]);
+    }
+
+    let mut all_formulas: Vec<Vec<f64>> = Vec::new();
+    all_formulas.push(precursor_vec.clone());
+
+    for fragment in fragments_flat.chunks(NUM_ELEMENTS) {
+        if fragment.len() == NUM_ELEMENTS {
+            all_formulas.push(fragment.to_vec());
+        }
+    }
+
+    let mut norm_formulas: Vec<Vec<f64>> = Vec::with_capacity(all_formulas.len());
+    for formula_vec in all_formulas.iter() {
+        let f_active: Vec<f64> = formula_vec
+            .iter()
+            .zip(active_mask.iter())
+            .filter_map(|(mass, &is_active)| if is_active { Some(*mass) } else { None })
+            .collect();
+        norm_formulas.push(f_active.iter().map(|&x| x / total_precursor_mass).collect());
+    }
+
+    let dist_fn = match distance_metric {
+        "l1" => l1_distance,
+        "l2" => l2_distance,
+        "cosine" => cosine_distance,
+        _ => panic!("Invalid distance metric"),
+    };
+
+    let mut unique_mask: Vec<bool> = vec![true; norm_formulas.len()];
+    if ignore_hydrogens && n_active > 1 {
+        for j in 0..norm_formulas.len() {
+            if !unique_mask[j] {
+                continue;
+            }
+            for l in (j + 1)..norm_formulas.len() {
+                if unique_mask[l] {
+                    let formula_j = &norm_formulas[j][1..];
+                    let formula_l = &norm_formulas[l][1..];
+
+                    let is_same = formula_j
+                        .iter()
+                        .zip(formula_l.iter())
+                        .all(|(a, b)| (a - b).abs() < 1e-12);
+
+                    if is_same {
+                        unique_mask[l] = false;
+                    }
+                }
+            }
+        }
+    }
+
+    let mut scores = vec![0.0; num_fragments];
+
+    for j in 1..norm_formulas.len() {
+        if !unique_mask[j] {
+            continue;
+        }
+        let node_a_norm = &norm_formulas[j];
+
+        let node_a_compare = if ignore_hydrogens && n_active > 1 {
+            &node_a_norm[1..]
+        } else {
+            &node_a_norm[..]
+        };
+
+        let mut min_dist = f64::INFINITY;
+
+        for l in 0..norm_formulas.len() {
+            if j == l || !unique_mask[l] {
+                continue;
+            }
+            let node_b_norm = &norm_formulas[l];
+
+            let node_b_compare = if ignore_hydrogens && n_active > 1 {
+                &node_b_norm[1..]
+            } else {
+                &node_b_norm[..]
+            };
+
+            if is_superformula(node_b_compare, node_a_compare) {
+                let dist = dist_fn(node_a_compare, node_b_compare);
+                if dist < min_dist {
+                    min_dist = dist;
+                }
+            }
+        }
+
+        if min_dist.is_finite() {
+            let distance_cap = match distance_metric {
+                "l1" => 2.0,
+                "l2" => 2.0f64.sqrt(),
+                "cosine" => 2.0,
+                _ => 1.0,
+            };
+
+            let mut scaled_dist = min_dist / distance_cap;
+            if scaled_dist <= 1e-12 {
+                continue;
+            }
+            if scaled_dist >= 1.0 {
+                scaled_dist = 1.0 - 1e-12;
+            }
+
+            let m: f64 = node_a_norm.iter().sum();
+            if m > 0.0 {
+                let score = -scaled_dist * scaled_dist.ln() * m;
+                scores[j - 1] = score; // j starts from 1, precursor is at 0
+            }
+        }
+    }
+    Some(scores)
+}
