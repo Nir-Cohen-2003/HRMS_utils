@@ -491,7 +491,7 @@ class SpectralUtils:
 
 def read_mzml(paths: list[str]) -> list[pl.DataFrame]:
     """
-    Read multiple mzML files into Polars DataFrames using the Rust backend.
+    Read multiple mzML files in parallel into Polars DataFrames using the Rust backend.
 
     Args:
         paths: List of file paths to read.
@@ -500,3 +500,16 @@ def read_mzml(paths: list[str]) -> list[pl.DataFrame]:
         List of Polars DataFrames, one for each file.
     """
     return read_mzml_files(paths)
+
+
+def read_thermo(paths: list[str]) -> list[pl.DataFrame]:
+    """
+    Read multiple Thermo RAW files in parallel into Polars DataFrames using the Rust backend.
+
+    Args:
+        paths: List of file paths to read.
+
+    Returns:
+        List of Polars DataFrames, one for each file.
+    """
+    return read_thermo_files(paths)

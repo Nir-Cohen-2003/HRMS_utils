@@ -64,6 +64,8 @@ df.with_columns(
 
 ::: hrms_utils.hrms_core.read_mzml
 
+::: hrms_utils.hrms_core.read_thermo
+
 ## Module Constants
 
 ::: hrms_utils.hrms_core.__version__

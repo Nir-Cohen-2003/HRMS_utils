@@ -117,9 +117,7 @@ pub fn tree_spectral_info_score_per_fragment(
 
             let fragments_list: &ChunkedArray<FixedSizeListType> = fragments_s.array().unwrap();
             let mut fragments_flat: Vec<f64> = Vec::new();
-            let mut num_fragments = 0;
             for fragment_series_opt in fragments_list.clone().into_iter() {
-                num_fragments += 1;
                 if let Some(fragment_series) = fragment_series_opt {
                     let fragment_ca: &ChunkedArray<Float64Type> = fragment_series.f64().unwrap();
                     fragments_flat.extend(fragment_ca.into_no_null_iter());

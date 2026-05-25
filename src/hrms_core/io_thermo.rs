@@ -11,7 +11,7 @@ use std::path::Path;
 #[pyfunction]
 pub fn read_thermo_files(paths: Vec<String>) -> PyResult<Vec<PyDataFrame>> {
     let dfs: Vec<PyDataFrame> = paths
-        .iter()
+        .par_iter()
         .map(|path| {
             let path = Path::new(path);
             read_single_thermo(path).map(PyDataFrame)

@@ -1,6 +1,5 @@
 use crate::common::{ATOMIC_MASSES, ELEMENT_SYMBOLS, NUM_ELEMENTS};
 use pyo3::prelude::*;
-use pyo3_polars::PolarsAllocator;
 
 pub mod common;
 pub mod io_mzml;
