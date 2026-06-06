@@ -200,6 +200,56 @@ def _drop_orphans_iterative(superset_matrix: np.ndarray, precursor_idx: int) -> 
     return keep
 
 
+def _minimize_dag(
+    superset_matrix: np.ndarray,
+    spectrum_peak_fragments: list[list[int]],
+    spectrum_msn_precursor_indices: list[int],
+    spectrum_mslevels: list[int],
+    molecular_precursor_idx: int,
+) -> np.ndarray:
+    """Remove transitive edges when an intermediate has an MSn spectrum with the child.
+
+    For each edge a -> c, if there exists b such that:
+    - a -> b and b -> c both exist in the original graph
+    - b is the precursor of an MSn spectrum (mslevel > 2, not molecular precursor)
+    - c is a peak in that MSn spectrum
+
+    Then remove a -> c, because c can be created via b and the direct edge
+    is likely due to hidden intermediate fragmentation.
+
+    If no intermediate b has an MSn spectrum with c, the edge a -> c is kept.
+    """
+    n = superset_matrix.shape[0]
+    result = superset_matrix.copy()
+
+    # Build a set of (precursor_idx, child_idx) pairs from MSn spectra
+    observed_pairs = set()
+    for peaks, prec_idx, mslevel in zip(
+        spectrum_peak_fragments, spectrum_msn_precursor_indices, spectrum_mslevels
+    ):
+        if prec_idx < 0 or prec_idx == molecular_precursor_idx or mslevel <= 2:
+            continue
+        for child_idx in peaks:
+            observed_pairs.add((prec_idx, child_idx))
+
+    # For each edge a -> c, check if there's a path a -> b -> c
+    # where (b, c) is observed in an MSn spectrum
+    for a in range(n):
+        for c in range(n):
+            if not superset_matrix[a, c] or a == c:
+                continue
+
+            # Look for any b that creates a transitive path with observed MSn
+            for b in range(n):
+                if b == a or b == c:
+                    continue
+                if superset_matrix[a, b] and superset_matrix[b, c] and (b, c) in observed_pairs:
+                    result[a, c] = False
+                    break
+
+    return result
+
+
 # ---------------------------------------------------------------------------
 # Data structures
 # ---------------------------------------------------------------------------
@@ -250,12 +300,16 @@ class FragmentationTree:
 
 def build_fragmentation_trees(
     df: pl.DataFrame,
+    mass_tolerance_ppm: float = 5.0,
 ) -> dict[tuple[str, str, str], FragmentationTree]:
     """Build fragmentation trees from a processed spectral library DataFrame.
 
     Groups by (base_inchikey, ion_mode, precursor_type), combines ALL
     spectra of the same molecule and adduct (MS2, MS3, MS4, different
     energies, etc.) into a single fragmentation graph.
+
+    Fragments are identified by mass (within tolerance) rather than by
+    exact formula, so isobaric fragments across spectra are merged.
 
     Args:
         df: Processed spectral library DataFrame with columns:
@@ -264,9 +318,13 @@ def build_fragmentation_trees(
             - precursor_type
             - molecular_formula_array (Array(Int32, NUM_ELEMENTS))
             - precursor_formula_array (Array(Int32, NUM_ELEMENTS))
+            - precursor_mz (Float64)
             - cleaned_fragment_formulas (List(Array(Int32, NUM_ELEMENTS)))
             - cleaned_fragment_formulas_str (List(String), optional)
+            - cleaned_normalized_mz (List(Float64))
             - mslevel (Int64)
+        mass_tolerance_ppm: Mass tolerance in ppm for grouping fragments
+            across spectra (default: 5.0).
 
     Returns:
         Dictionary mapping (base_inchikey, ion_mode, precursor_type) -> FragmentationTree
@@ -277,7 +335,9 @@ def build_fragmentation_trees(
         "precursor_type",
         "molecular_formula_array",
         "precursor_formula_array",
+        "precursor_mz",
         "cleaned_fragment_formulas",
+        "cleaned_normalized_mz",
         "mslevel",
     ]
     missing = [c for c in required if c not in df.columns]
@@ -303,29 +363,41 @@ def build_fragmentation_trees(
             ms2_rows["precursor_formula_array"][0], dtype=np.int32
         )
         molecular_precursor_str = _formula_array_to_string(molecular_precursor)
+        molecular_precursor_mass = float(ms2_rows["precursor_mz"][0])
 
         # Global fragment registry: all fragments from all spectra in this group
         all_formulas: list[np.ndarray] = []
-        formula_to_idx: dict[tuple, int] = {}
+        all_masses: list[float] = []
         formula_to_str: dict[tuple, str] = {}
 
         def _register_formula(
-            formula_arr: np.ndarray, formula_str: str | None = None
+            formula_arr: np.ndarray,
+            mass: float | None,
+            formula_str: str | None = None,
         ) -> int:
-            """Register a formula in the global list, return its index."""
-            formula_tuple = tuple(formula_arr)
-            if formula_tuple in formula_to_idx:
-                return formula_to_idx[formula_tuple]
+            """Register a fragment by mass (within tolerance) and return its index.
+
+            If an existing fragment has a mass within ``mass_tolerance_ppm``
+            of the supplied mass, the existing index is returned and the new
+            fragment is treated as the same node.  The first formula/string
+            encountered for a mass cluster is kept as the representative.
+            """
+            if mass is not None:
+                tol = mass_tolerance_ppm * 1e-6
+                for idx, existing_mass in enumerate(all_masses):
+                    if existing_mass > 0 and abs(mass - existing_mass) / existing_mass <= tol:
+                        return idx
             idx = len(all_formulas)
             all_formulas.append(formula_arr.copy())
-            formula_to_idx[formula_tuple] = idx
+            all_masses.append(mass if mass is not None else 0.0)
+            formula_tuple = tuple(formula_arr)
             if formula_str is not None:
                 formula_to_str[formula_tuple] = formula_str
             return idx
 
         # Register molecular precursor
         molecular_precursor_idx = _register_formula(
-            molecular_precursor, molecular_precursor_str
+            molecular_precursor, molecular_precursor_mass, molecular_precursor_str
         )
 
         # Per-spectrum data for truncation
@@ -344,6 +416,8 @@ def build_fragmentation_trees(
                 if has_str
                 else None
             )
+            frag_masses = row["cleaned_normalized_mz"]
+            spec_precursor_mass = float(row["precursor_mz"])
             # The direct precursor of THIS spectrum (MS2 -> molecular, MS3+ -> fragment)
             spec_precursor_formula = np.array(
                 row["precursor_formula_array"], dtype=np.int32
@@ -357,6 +431,8 @@ def build_fragmentation_trees(
                 frag_formulas = frag_formulas.to_list()
             if frag_strs is not None and isinstance(frag_strs, pl.Series):
                 frag_strs = frag_strs.to_list()
+            if isinstance(frag_masses, pl.Series):
+                frag_masses = frag_masses.to_list()
 
             peak_indices: list[int] = []
 
@@ -370,12 +446,19 @@ def build_fragmentation_trees(
                     if frag_strs is not None and frag_idx < len(frag_strs)
                     else None
                 )
-                fidx = _register_formula(frag_arr, frag_str)
+                frag_mass = (
+                    frag_masses[frag_idx]
+                    if frag_masses is not None and frag_idx < len(frag_masses)
+                    else None
+                )
+                fidx = _register_formula(frag_arr, frag_mass, frag_str)
                 peak_indices.append(fidx)
 
             # Register the spectrum's direct precursor as a fragment
             # (for MS2 this is the molecular precursor, already registered)
-            spec_precursor_idx = _register_formula(spec_precursor_formula)
+            spec_precursor_idx = _register_formula(
+                spec_precursor_formula, spec_precursor_mass
+            )
 
             # For the tree, the spectrum contains both peaks and precursor
             # (deduplicated: if precursor already in peaks, don't add twice)
@@ -470,7 +553,16 @@ def _build_tree_from_fragments(
     if molecular_precursor_idx < 0:
         molecular_precursor_idx = 0  # fallback
 
-    # 4. Iteratively drop orphans (fragments with 0 parents, except molecular precursor)
+    # 4. Minimize DAG: remove transitive edges when intermediate has MSn evidence
+    superset_matrix = _minimize_dag(
+        superset_matrix,
+        spectrum_peak_fragments,
+        spectrum_msn_precursor_indices,
+        spectrum_mslevels,
+        molecular_precursor_idx,
+    )
+
+    # 5. Iteratively drop orphans (fragments with 0 parents, except molecular precursor)
     keep_mask = _drop_orphans_iterative(superset_matrix, molecular_precursor_idx)
 
     # Remap indices
@@ -608,7 +700,9 @@ def visualize_tree(
 
     if output_path is not None:
         plt.savefig(output_path, dpi=150, bbox_inches="tight")
-    plt.show()
+        plt.close(fig)
+    else:
+        plt.show()
 
 
 # ---------------------------------------------------------------------------
