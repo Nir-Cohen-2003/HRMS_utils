@@ -8,11 +8,11 @@ name = "hrms_core"
 crate-type = ["rlib","cdylib"]
 path = "hrms_core/lib.rs"
 [dependencies]
-polars = { version = "*", features = ["dtype-struct","dtype-array", "dtype-full"] }
-pyo3 = { version = "*", features = ["extension-module", "abi3-py312"] }
-pyo3-polars = { version = "*", features = ["derive", "dtype-struct","dtype-full", "dtype-array"] }
-polars-arrow = { version = "*", default-features = false }
-pyo3-ffi = "*"
+polars = { version = "0.52.0", features = ["dtype-struct","dtype-array", "dtype-full"] }
+pyo3 = { version = "0.26.0", features = ["extension-module", "abi3-py312"] }
+pyo3-polars = { version = "0.25.0", features = ["derive", "dtype-struct","dtype-full", "dtype-array"] }
+polars-arrow = { version = "0.52.0", default-features = false }
+pyo3-ffi = "0.26.0"
 rayon = "*"
 serde = { version = "1", features = ["derive"] }
 num-traits = "*"
