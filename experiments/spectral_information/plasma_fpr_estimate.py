@@ -81,6 +81,12 @@ def parse_args() -> argparse.Namespace:
     )
 
     parser.add_argument(
+        "--no-epa-filter",
+        action="store_true",
+        help="Skip EPA list filtering and search the full spectral library",
+    )
+
+    parser.add_argument(
         "--output",
         type=str,
         required=True,
@@ -1322,7 +1328,10 @@ def main():
         sys.exit(1)
 
     # Load library (once for all chromatograms)
-    epa_list_dir = Path(args.epa_list_dir) if args.epa_list_dir else None
+    if args.no_epa_filter:
+        epa_list_dir = None
+    else:
+        epa_list_dir = Path(args.epa_list_dir) if args.epa_list_dir else None
     library_lf = load_spectral_library(library_path, epa_list_dir)
 
     print("\n" + "=" * 80)

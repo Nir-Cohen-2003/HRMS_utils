@@ -1,5 +1,5 @@
 """
-Plot spectral_information_score histograms from two parquet outputs produced by convert_msp.py.
+Plot spectral_information_score histograms from two parquet outputs produced by process_spectral_library.py.
 
 Usage:
     python plot_spectral_info_hist.py /path/to/first.parquet /path/to/second.parquet --bins 60 --out /tmp/out.png

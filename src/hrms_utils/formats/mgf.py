@@ -179,10 +179,10 @@ def parse_mgf(mgf_path: str | Path, includes_MSn: bool = False) -> pl.LazyFrame:
     # Handling of spectrum
     lf = lf.with_columns(
         pl.col("mz_int_pairs")
-        .list.eval(pl.element().str.split(by=" ").list.get(0).cast(pl.Float64))
+        .list.eval(pl.element().str.replace_all(r"\s+", " ").str.split(by=" ").list.get(0).cast(pl.Float64))
         .alias("raw_spectrum_mz"),
         pl.col("mz_int_pairs")
-        .list.eval(pl.element().str.split(by=" ").list.get(1).cast(pl.Float64))
+        .list.eval(pl.element().str.replace_all(r"\s+", " ").str.split(by=" ").list.get(1).cast(pl.Float64))
         .alias("raw_spectrum_intensity"),
     ).drop("mz_int_pairs")
     

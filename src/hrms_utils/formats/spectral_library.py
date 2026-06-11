@@ -29,6 +29,7 @@ def process_single_file(
     molecular_ion_tolerance_ppm: float = 5.0,
     includes_MSn: bool = False,
     lazy: bool = False,
+    clean_identifiers: bool = True,
 ) -> pl.DataFrame | pl.LazyFrame:
     """Unified entry point for processing a single spectral library file (MSP, MSPEC, MGF)."""
     path = Path(path)
@@ -43,6 +44,7 @@ def process_single_file(
         raw_fragment_tolerance_ppm=raw_fragment_tolerance_ppm,
         normalized_fragment_tolerance_ppm=normalized_fragment_tolerance_ppm,
         molecular_ion_tolerance_ppm=molecular_ion_tolerance_ppm,
+        clean_identifiers=clean_identifiers,
     )
 
     if not lazy:
@@ -59,6 +61,8 @@ def process_spectral_library(
     pubchem_path: Path | None = None,
     min_explained_intensity: float | None = None,
     dedup_threshold: float = 0.99,
+    deduplicate: bool = True,
+    clean_identifiers: bool = True,
     logger=None,
 ) -> pl.DataFrame:
     """Unified entry point for processing multiple spectral library files with deduplication and enrichment."""
@@ -78,6 +82,7 @@ def process_spectral_library(
             molecular_ion_tolerance_ppm=molecular_ion_tolerance_ppm,
             includes_MSn=includes_MSn,
             lazy=True,
+            clean_identifiers=clean_identifiers,
         )
         lazyframes.append(lf)
         log(f"[{time.perf_counter() - ti:.2f}s] Parsed {f}")
@@ -108,61 +113,70 @@ def process_spectral_library(
     # MS-ready standardization
     df = combined_lf.collect(engine="streaming")
     log(f"[{time.perf_counter() - t1:.2f}s] collected after enriching with pubchem")
-    t5 = time.perf_counter()
-    df = _standardize_structures(df)
-    combined_lf = df.lazy()
-    log(f"[{time.perf_counter() - t5:.2f}s] Standardized structures")
+
+    if clean_identifiers:
+        t5 = time.perf_counter()
+        df = _standardize_structures(df)
+        combined_lf = df.lazy()
+        log(f"[{time.perf_counter() - t5:.2f}s] Standardized structures")
+    else:
+        combined_lf = df.lazy()
+        log("Skipped identifier standardization (clean_identifiers=False)")
 
     # Pairwise deduplication
-    t4 = time.perf_counter()
+    if deduplicate:
+        t4 = time.perf_counter()
 
-    # Pre-deduplication stats
-    stats_df = combined_lf.select(
-        ["source_file", "base_inchikey", "clean_precursor"]
-    ).collect()
+        # Pre-deduplication stats
+        stats_df = combined_lf.select(
+            ["source_file", "base_inchikey", "clean_precursor"]
+        ).collect()
 
-    def get_stats(df, prefix=""):
-        total_spectra = df.height
-        total_molecules = df["base_inchikey"].n_unique()
-        stats_str = (
-            f"{prefix}Total: {total_spectra} spectra, {total_molecules} molecules\n"
-        )
-
-        file_stats = (
-            df.group_by("source_file")
-            .agg(
-                pl.len().alias("spectra"),
-                pl.col("base_inchikey").n_unique().alias("molecules"),
+        def get_stats(df, prefix=""):
+            total_spectra = df.height
+            total_molecules = df["base_inchikey"].n_unique()
+            stats_str = (
+                f"{prefix}Total: {total_spectra} spectra, {total_molecules} molecules\n"
             )
-            .sort("source_file")
+
+            file_stats = (
+                df.group_by("source_file")
+                .agg(
+                    pl.len().alias("spectra"),
+                    pl.col("base_inchikey").n_unique().alias("molecules"),
+                )
+                .sort("source_file")
+            )
+            for row in file_stats.iter_rows(named=True):
+                stats_str += f"  {row['source_file']}: {row['spectra']} spectra, {row['molecules']} molecules\n"
+            return stats_str
+
+        log("Library Statistics (Pre-deduplication):")
+        log(get_stats(stats_df))
+
+        clean_df = stats_df.filter(pl.col("clean_precursor"))
+        log("Library Statistics (Clean Precursors Only):")
+        log(get_stats(clean_df))
+
+        combined_lf = _deduplicate_spectra(
+            combined_lf,
+            fragment_tolerance_ppm=normalized_fragment_tolerance_ppm,
+            molecular_ion_tolerance_ppm=molecular_ion_tolerance_ppm,
+            threshold=dedup_threshold,
         )
-        for row in file_stats.iter_rows(named=True):
-            stats_str += f"  {row['source_file']}: {row['spectra']} spectra, {row['molecules']} molecules\n"
-        return stats_str
+        log(f"[{time.perf_counter() - t4:.2f}s] Built deduplication plan")
 
-    log("Library Statistics (Pre-deduplication):")
-    log(get_stats(stats_df))
+        t6 = time.perf_counter()
+        df = combined_lf.collect(engine="streaming")
+        log(f"[{time.perf_counter() - t6:.2f}s] Collected deduplicated library")
 
-    clean_df = stats_df.filter(pl.col("clean_precursor"))
-    log("Library Statistics (Clean Precursors Only):")
-    log(get_stats(clean_df))
-
-    combined_lf = _deduplicate_spectra(
-        combined_lf,
-        fragment_tolerance_ppm=normalized_fragment_tolerance_ppm,
-        molecular_ion_tolerance_ppm=molecular_ion_tolerance_ppm,
-        threshold=dedup_threshold,
-    )
-    log(f"[{time.perf_counter() - t4:.2f}s] Built deduplication plan")
-
-    t6 = time.perf_counter()
-    df = combined_lf.collect(engine="streaming")
-    log(f"[{time.perf_counter() - t6:.2f}s] Collected deduplicated library")
-
-    log("Library Statistics (Post-deduplication):")
-    log(get_stats(df))
-    log("Library Statistics (Post-deduplication, Clean Precursors Only):")
-    log(get_stats(df.filter(pl.col("clean_precursor"))))
+        log("Library Statistics (Post-deduplication):")
+        log(get_stats(df))
+        log("Library Statistics (Post-deduplication, Clean Precursors Only):")
+        log(get_stats(df.filter(pl.col("clean_precursor"))))
+    else:
+        df = combined_lf.collect(engine="streaming")
+        log("Skipped deduplication (deduplicate=False)")
 
     log(f"[{time.perf_counter() - t0:.2f}s] Total execution time")
 
@@ -185,12 +199,14 @@ def _process_pipeline(
     raw_fragment_tolerance_ppm: float,
     normalized_fragment_tolerance_ppm: float,
     molecular_ion_tolerance_ppm: float,
+    clean_identifiers: bool = True,
 ) -> pl.LazyFrame:
     """
     Core processing pipeline.
     including organizing of metadata, spectrum annotation
     """
-    lf = _fill_missing_inchikeys(lf)
+    if clean_identifiers:
+        lf = _fill_missing_inchikeys(lf)
     lf = _add_base_inchikey(lf)
     lf = _normalize_precursor_type_strings(lf)
     lf = _compute_precursor_formula(lf)
@@ -228,6 +244,7 @@ def _process_pipeline(
         "is_orbitrap",
         "is_TOF",
         "is_ESI",
+        "is_LC",
         "precursor_type",
         "precursor_mz",
         "molecular_formula",
@@ -247,6 +264,21 @@ def _process_pipeline(
         "spectral_information_score",
         "spectral_information_score_with_hydrogens",
         "source_file",
+        "rt_seconds",
+        "precursor_intensity",
+        "pubchem_cid",
+        "ccs",
+        "charge",
+        "adduct",
+        "precursor_im",
+        "sample_inlet",
+        "column_type",
+        "spectral_entropy",
+        "num_explained_peaks",
+        "explained_intensity_raw",
+        "enamine_catalog_id",
+        "iupac_name",
+        "adduct_formula",
     ]
 
     cols_to_select = [c for c in target_cols if c in existing_cols]
@@ -398,7 +430,7 @@ def _normalize_precursor_type_strings(lf: pl.LazyFrame) -> pl.LazyFrame:
 
 def _annotate_and_filter_metadata(data: polarsFrame) -> polarsFrame:
     instrument_data_columns = pl.selectors.by_name(
-        ["instrument", "instrument_type", "ionization"]
+        ["instrument", "instrument_type", "ionization", "sample_inlet"]
     )
     qq_mask = pl.any_horizontal(
         instrument_data_columns.str.contains(r"(?i)QQ").fill_null(False)
@@ -408,7 +440,7 @@ def _annotate_and_filter_metadata(data: polarsFrame) -> polarsFrame:
         polarsFrame,
         data.filter(qq_mask.not_()).with_columns(
             pl.any_horizontal(
-                instrument_data_columns.str.contains(r"(?i)LC").fill_null(False)
+                instrument_data_columns.str.contains(r"(?i)LC|HPLC").fill_null(False)
             ).alias("is_LC"),
             pl.any_horizontal(
                 instrument_data_columns.str.contains(
@@ -469,15 +501,17 @@ def _extract_collision_energy_values(data: polarsFrame) -> polarsFrame:
                 pl.col("collision_energy_raw").str.extract(pat_nce, group_index=2)
             )
             .cast(pl.Float64, strict=False)
+            .abs()
             .alias("collision_energy_NCE"),
             pl.col("collision_energy_raw")
             .str.extract(pat_ev, group_index=1)
             .cast(pl.Float64, strict=False)
+            .abs()
             .alias("collision_energy_ev"),
             pl.col("collision_energy_raw")
             .str.extract(pat_list_content, group_index=1)
             .str.extract_all(r"\d+(?:\.\d+)?")
-            .list.eval(pl.element().cast(pl.Float64, strict=False))
+            .list.eval(pl.element().cast(pl.Float64, strict=False).abs())
             .alias("collision_energy_list"),
         )
         .with_columns(
@@ -490,6 +524,7 @@ def _extract_collision_energy_values(data: polarsFrame) -> polarsFrame:
                 pl.col("collision_energy_raw")
                 .str.extract(pat_num, group_index=1)
                 .cast(pl.Float64, strict=False)
+                .abs()
             )
             .otherwise(None)
             .alias("_bare_energy"),
@@ -514,6 +549,25 @@ def _extract_collision_energy_values(data: polarsFrame) -> polarsFrame:
             .alias("collision_energy_ev"),
         )
         .with_columns(
+            pl.when(pl.col("_collision_energies_ev_raw").is_not_null())
+            .then(
+                pl.col("_collision_energies_ev_raw")
+                .str.extract(pat_num, group_index=1)
+                .cast(pl.Float64, strict=False)
+                .abs()
+            )
+            .otherwise(pl.col("collision_energy_ev"))
+            .alias("collision_energy_ev")
+        )
+        .with_columns(  # if NCE is missing, normalize by using ev and mass. other way roudn would be wrong, since NIST have different normalization masses seamingly in random, but 500 is supposedly the "correct" one. technically meanign less for non orbitrap, but at least this gives us something
+            pl.when(
+                pl.col("collision_energy_NCE").is_null()
+                & pl.col("collision_energy_ev").is_not_null()
+            ).then(
+                pl.col("collision_energy_ev").mul(500).truediv(pl.col("precursor_mz"))
+            )
+        )
+        .with_columns(
             pl.col("collision_energy_list")
             .list.len()
             .ge(2)
@@ -527,7 +581,7 @@ def _extract_collision_energy_values(data: polarsFrame) -> polarsFrame:
                 ]
             ).alias("collision_energy_mean"),
         )
-        .drop("_bare_energy", "_list_mean"),
+        .drop("_bare_energy", "_list_mean", "_collision_energies_ev_raw"),
     )
 
 

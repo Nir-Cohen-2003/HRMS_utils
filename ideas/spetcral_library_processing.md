@@ -51,7 +51,7 @@
   - Pairwise comparison using `spectral_similarity.explained_intensity` (Rust extension).
   - Parameters: `ms2_tolerance_ppm` (input), `threshold=0.99`.
   - If `A->B > 0.99` AND `B->A > 0.99`, keep only one.
-- **PubChem Enrichment:** Optional join to retrieve missing SMILES/InChI from PubChem (logic from `convert_msp.py`).
+- **PubChem Enrichment:** Optional join to retrieve missing SMILES/InChI from PubChem (logic from `process_spectral_library.py`).
 - **MS-Ready Standardization:**
   - Collect unique SMILES per `base_inchikey`.
   - Call `msready_inchi_inchikey_parallel(smiles_list)`.
@@ -59,6 +59,6 @@
   - Update all `smiles`, `inchi`, `inchikey`, and `base_inchikey` columns with the MS-ready versions.
 
 ## 5. Global Updates
-- **Call Sites:** Update `scripts/convert_msp.py`, `tests/formats/test_nist_mspec.py`, and `experiments/` to use the new API.
+- **Call Sites:** Update `scripts/process_spectral_library.py`, `tests/formats/test_nist_mspec.py`, and `experiments/` to use the new API.
 - **Exports:** Update `src/hrms_utils/formats/__init__.py`.
 - **Documentation:** Update all `.md` files in `docs/` to reflect new import paths and function names.
