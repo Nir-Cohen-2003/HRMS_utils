@@ -49,3 +49,4 @@ experiments/isotopic_parameters_results.txt
 packages/msdial
 tests/output/
 experiments/spectral_information/msdial_output/
+**.ods

@@ -98,7 +98,6 @@ isotope_fit = "python experiments/find_optimal_isotopic_parameters.py"
 
 [feature.scripts.tasks]
 plasma-fpr = {cmd = "python experiments/spectral_information/plasma_fpr_estimate.py"}
-process_spectral_library = "python scripts/process_spectral_library.py"
 process-pubchem = "python scripts/process_pubchem.py"
 process-pubchem-download = "python scripts/process_pubchem.py --download"
 check_spectral_library = "python scripts/check_spectral_library.py data/ -p data/pubchem.parquet"

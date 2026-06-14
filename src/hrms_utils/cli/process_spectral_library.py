@@ -2,7 +2,7 @@
 Process Spectral Library files (MSP/MSPEC/MGF) to a single Parquet file.
 
 Usage:
-    python process_spectral_library.py <path>
+    build-spectral-library <path>
 
 Where <path> can be:
 - A single library file (.msp/.mspec/.mgf)
@@ -157,7 +157,3 @@ def main():
     print(f"Writing to {output_path}...")
     df.write_parquet(output_path)
     print("Success!")
-
-
-if __name__ == "__main__":
-    main()
