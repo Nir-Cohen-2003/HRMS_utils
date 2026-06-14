@@ -8,6 +8,7 @@ import polars.selectors as cs
 from parallel_rdkit import (
     inchi_to_smiles_parallel,
     msready_inchi_inchikey_parallel,
+    sanitize_smiles_parallel,
     smiles_to_inchikey_parallel,
 )
 
@@ -59,10 +60,12 @@ def process_spectral_library(
     molecular_ion_tolerance_ppm: float = 5.0,
     includes_MSn: bool = False,
     pubchem_path: Path | None = None,
+    pubchem_fill_missing_only: bool = False,
     min_explained_intensity: float | None = None,
     dedup_threshold: float = 0.99,
     deduplicate: bool = True,
     clean_identifiers: bool = True,
+    inchikey_changes_path: Path | None = None,
     logger=None,
 ) -> pl.DataFrame:
     """Unified entry point for processing multiple spectral library files with deduplication and enrichment."""
@@ -107,7 +110,20 @@ def process_spectral_library(
 
     # Optional PubChem enrichment
     if pubchem_path is not None:
-        combined_lf = _enrich_with_pubchem(combined_lf, pubchem_path)
+        # Report identifier status before enrichment
+        missing_both_count = df.filter(
+            pl.col("smiles").is_null() & pl.col("inchi").is_null()
+        ).height
+        have_both_count = df.filter(
+            pl.col("smiles").is_not_null() & pl.col("inchi").is_not_null()
+        ).height
+        log(
+            f"Identifier status before PubChem: {missing_both_count} rows missing both SMILES and InChI, "
+            f"{have_both_count} rows have both"
+        )
+        combined_lf = _enrich_with_pubchem(
+            combined_lf, pubchem_path, fill_missing_only=pubchem_fill_missing_only
+        )
         log("Built PubChem enrichment")
 
     # MS-ready standardization
@@ -116,7 +132,47 @@ def process_spectral_library(
 
     if clean_identifiers:
         t5 = time.perf_counter()
+        df = _sanitize_smiles(df)
+        # Preserve pre-standardization identifier columns for change tracking/CSV output
+        df = df.with_columns(
+            pl.col("base_inchikey").alias("original_base_inchikey"),
+            pl.col("inchikey").alias("original_inchikey"),
+            pl.col("smiles").alias("original_smiles"),
+            pl.col("inchi").alias("original_inchi"),
+        )
         df = _standardize_structures(df)
+
+        # Count rows whose base InChIKey changed during standardization
+        n_changed = df.filter(
+            pl.col("base_inchikey") != pl.col("original_base_inchikey")
+        ).height
+        log(f"{n_changed} rows had final base InChIKey differ from original")
+
+        # Optionally write a CSV of changed rows next to the input
+        if inchikey_changes_path is not None and n_changed > 0:
+            changed_df = df.filter(
+                pl.col("base_inchikey") != pl.col("original_base_inchikey")
+            ).select(
+                "name",
+                pl.col("original_inchikey"),
+                pl.col("original_base_inchikey"),
+                pl.col("original_smiles"),
+                pl.col("original_inchi"),
+                pl.col("inchikey").alias("new_inchikey"),
+                pl.col("base_inchikey").alias("new_base_inchikey"),
+                pl.col("smiles").alias("new_smiles"),
+                pl.col("inchi").alias("new_inchi"),
+            )
+            changed_df.write_csv(inchikey_changes_path)
+
+        df = df.drop(
+            [
+                "original_base_inchikey",
+                "original_inchikey",
+                "original_smiles",
+                "original_inchi",
+            ]
+        )
         combined_lf = df.lazy()
         log(f"[{time.perf_counter() - t5:.2f}s] Standardized structures")
     else:
@@ -839,8 +895,15 @@ def _deduplicate_spectra(
     )
 
 
-def _enrich_with_pubchem(lf: pl.LazyFrame, pubchem_path: Path) -> pl.LazyFrame:
-    """get smiles from pubchem based on matching base_inchikey"""
+def _enrich_with_pubchem(
+    lf: pl.LazyFrame, pubchem_path: Path, fill_missing_only: bool = False
+) -> pl.LazyFrame:
+    """get smiles from pubchem based on matching base_inchikey
+
+    If fill_missing_only is True, PubChem values are only used to fill rows where
+    BOTH 'smiles' and 'inchi' are null. Otherwise PubChem identifiers are
+    coalesced over the existing ones for every row.
+    """
     pubchem_lf = (
         pl.scan_parquet(str(pubchem_path), low_memory=True)
         .select(
@@ -860,13 +923,60 @@ def _enrich_with_pubchem(lf: pl.LazyFrame, pubchem_path: Path) -> pl.LazyFrame:
 
     lf = lf.join(pubchem_lf, on="base_inchikey", how="left")
 
-    # Override identifiers with PubChem
+    if fill_missing_only:
+        missing_both_mask = pl.col("smiles").is_null() & pl.col("inchi").is_null()
+        return lf.with_columns(
+            pl.when(missing_both_mask)
+            .then(pl.col("smiles_pubchem"))
+            .otherwise(pl.col("smiles"))
+            .alias("smiles"),
+            pl.when(missing_both_mask)
+            .then(pl.col("inchi_pubchem"))
+            .otherwise(pl.col("inchi"))
+            .alias("inchi"),
+            pl.when(missing_both_mask)
+            .then(pl.col("inchikey_pubchem"))
+            .otherwise(pl.col("inchikey"))
+            .alias("inchikey"),
+        ).drop(cs.ends_with("_pubchem"), "cid")
 
+    # Override identifiers with PubChem
     return lf.with_columns(
         pl.coalesce([pl.col("smiles_pubchem"), pl.col("smiles")]).alias("smiles"),
         pl.coalesce([pl.col("inchi_pubchem"), pl.col("inchi")]).alias("inchi"),
         pl.coalesce([pl.col("inchikey_pubchem"), pl.col("inchikey")]).alias("inchikey"),
     ).drop(cs.ends_with("_pubchem"), "cid")
+
+
+def _sanitize_smiles(df: pl.DataFrame) -> pl.DataFrame:
+    """Sanitize SMILES strings in the 'smiles' column; leave null values as null.
+
+    Uses parallel_rdkit.sanitize_smiles_parallel on the non-null SMILES and writes
+    the sanitized values back into the 'smiles' column, preserving nulls.
+    """
+    if "smiles" not in df.columns:
+        return df
+
+    non_null_mask = pl.col("smiles").is_not_null()
+    if df.filter(non_null_mask).is_empty():
+        return df
+
+    # Use row index to keep sanitized values aligned even if SMILES have duplicates
+    df_with_idx = df.with_row_index("_san_idx")
+    non_null_df = df_with_idx.filter(non_null_mask)
+    smiles_list = non_null_df["smiles"].to_list()
+    sanitized_list = sanitize_smiles_parallel(smiles_list)
+    sanitized_df = non_null_df.select(
+        [
+            pl.col("_san_idx"),
+            pl.Series(name="smiles", values=sanitized_list),
+        ]
+    )
+    return (
+        df_with_idx.drop("smiles")
+        .join(sanitized_df, on="_san_idx", how="left")
+        .drop("_san_idx")
+    )
 
 
 def _standardize_structures(df: pl.DataFrame) -> pl.DataFrame:
