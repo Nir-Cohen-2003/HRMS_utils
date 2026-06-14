@@ -108,10 +108,10 @@ def main():
         help="Skip molecular identifier cleaning/standardization; use identifiers as-is from the input file",
     )
     parser.add_argument(
-        "--pubchem-fill-missing-only",
+        "--pubchem-enrich-all",
         action="store_true",
         default=False,
-        help="Only use PubChem to fill rows missing both SMILES and InChI (default: enrich all rows)",
+        help="Use PubChem to enrich all rows, not only rows missing both SMILES and InChI",
     )
 
     args = parser.parse_args()
@@ -141,7 +141,7 @@ def main():
         normalized_fragment_tolerance_ppm=args.normalized_fragment_tolerance_ppm,
         molecular_ion_tolerance_ppm=args.molecular_ion_tolerance_ppm,
         pubchem_path=pubchem_path,
-        pubchem_fill_missing_only=args.pubchem_fill_missing_only,
+        pubchem_fill_missing_only=not args.pubchem_enrich_all,
         min_explained_intensity=args.min_explained_intensity,
         dedup_threshold=args.dedup_threshold,
         deduplicate=not args.no_deduplicate,

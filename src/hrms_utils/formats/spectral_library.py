@@ -8,7 +8,6 @@ import polars.selectors as cs
 from parallel_rdkit import (
     inchi_to_smiles_parallel,
     msready_inchi_inchikey_parallel,
-    sanitize_smiles_parallel,
     smiles_to_inchikey_parallel,
 )
 
@@ -60,7 +59,7 @@ def process_spectral_library(
     molecular_ion_tolerance_ppm: float = 5.0,
     includes_MSn: bool = False,
     pubchem_path: Path | None = None,
-    pubchem_fill_missing_only: bool = False,
+    pubchem_fill_missing_only: bool = True,
     min_explained_intensity: float | None = None,
     dedup_threshold: float = 0.99,
     deduplicate: bool = True,
@@ -132,7 +131,6 @@ def process_spectral_library(
 
     if clean_identifiers:
         t5 = time.perf_counter()
-        df = _sanitize_smiles(df)
         # Preserve pre-standardization identifier columns for change tracking/CSV output
         df = df.with_columns(
             pl.col("base_inchikey").alias("original_base_inchikey"),
@@ -946,37 +944,6 @@ def _enrich_with_pubchem(
         pl.coalesce([pl.col("inchi_pubchem"), pl.col("inchi")]).alias("inchi"),
         pl.coalesce([pl.col("inchikey_pubchem"), pl.col("inchikey")]).alias("inchikey"),
     ).drop(cs.ends_with("_pubchem"), "cid")
-
-
-def _sanitize_smiles(df: pl.DataFrame) -> pl.DataFrame:
-    """Sanitize SMILES strings in the 'smiles' column; leave null values as null.
-
-    Uses parallel_rdkit.sanitize_smiles_parallel on the non-null SMILES and writes
-    the sanitized values back into the 'smiles' column, preserving nulls.
-    """
-    if "smiles" not in df.columns:
-        return df
-
-    non_null_mask = pl.col("smiles").is_not_null()
-    if df.filter(non_null_mask).is_empty():
-        return df
-
-    # Use row index to keep sanitized values aligned even if SMILES have duplicates
-    df_with_idx = df.with_row_index("_san_idx")
-    non_null_df = df_with_idx.filter(non_null_mask)
-    smiles_list = non_null_df["smiles"].to_list()
-    sanitized_list = sanitize_smiles_parallel(smiles_list)
-    sanitized_df = non_null_df.select(
-        [
-            pl.col("_san_idx"),
-            pl.Series(name="smiles", values=sanitized_list),
-        ]
-    )
-    return (
-        df_with_idx.drop("smiles")
-        .join(sanitized_df, on="_san_idx", how="left")
-        .drop("_san_idx")
-    )
 
 
 def _standardize_structures(df: pl.DataFrame) -> pl.DataFrame:
