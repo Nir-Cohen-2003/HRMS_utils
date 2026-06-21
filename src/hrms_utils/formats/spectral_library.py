@@ -588,6 +588,7 @@ def _process_pipeline(
     if clean_identifiers:
         lf = _fill_missing_inchikeys(lf, logger=logger)
     lf = _add_base_inchikey(lf)
+    lf = _normalize_ion_mode(lf)
     lf = _normalize_precursor_type_strings(lf)
     lf = _annotate_and_filter_metadata(lf)
     lf = _extract_collision_energy_values(lf)
@@ -724,7 +725,7 @@ def _compute_precursor_formula(
         pl.when(pl.col("precursor_type").is_not_null())
         .then(pl.col("precursor_type").str.replace(r"\[(M.*)\][+\\-]?\\d*", r"$1"))
         .otherwise(
-            pl.when(pl.col("ion_mode").str.to_uppercase().eq("P"))
+            pl.when(pl.col("ion_mode").eq("P"))
             .then(pl.lit("M+H"))
             .otherwise(pl.lit("M-H"))
         )
@@ -843,8 +844,8 @@ def _fill_molecular_formula_and_infer_precursor_type(
         ppm_error("mass_m_minus_h").alias("err_m_minus_h"),
     )
 
-    pos_mask = pl.col("ion_mode").str.to_uppercase().is_in(["P", "POSITIVE"])
-    neg_mask = pl.col("ion_mode").str.to_uppercase().is_in(["N", "NEGATIVE"])
+    pos_mask = pl.col("ion_mode").eq("P")
+    neg_mask = pl.col("ion_mode").eq("N")
 
     inferred_type = (
         pl.when(pos_mask & (pl.col("err_m_h") <= tolerance_ppm))
@@ -922,6 +923,20 @@ def _fill_molecular_formula_and_infer_precursor_type(
     ]
 
     return joined.with_columns(update_exprs).drop(drop_cols)
+
+
+def _normalize_ion_mode(lf: pl.LazyFrame) -> pl.LazyFrame:
+    if "ion_mode" not in lf.collect_schema().names():
+        return lf
+    upper = pl.col("ion_mode").str.to_uppercase()
+    return lf.with_columns(
+        pl.when(upper.is_in(["P", "POSITIVE"]))
+        .then(pl.lit("P"))
+        .when(upper.is_in(["N", "NEGATIVE"]))
+        .then(pl.lit("N"))
+        .otherwise(None)
+        .alias("ion_mode")
+    )
 
 
 def _normalize_precursor_type_strings(lf: pl.LazyFrame) -> pl.LazyFrame:
