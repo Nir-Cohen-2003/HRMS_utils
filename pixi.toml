@@ -16,7 +16,7 @@ license-file = "LICENSE"
 authors = ["Nir Cohen"]
 [dependencies]
 python = "*"
-parallel_rdkit = ">=0.5.0,<0.6"
+
 
 [pypi-dependencies]
 build = "*"
@@ -64,23 +64,18 @@ test_info_score = "python tests/spectral/test_spectral_information.py"
 
 [feature.testing.target.linux-64.dependencies]
 hrms_utils = {path = "."}
-parallel_rdkit = ">=0.5.0,<0.6"
+parallel_rdkit =  {path = "../parallel_rdkit"}
 numba = ">=0.61.0"
 pytest = ">=8.4.2,<9"
 optuna = "*"
 requests = "*"
-ipykernel = "*"
-plotly = ">=6.3.0,<7"
-nbformat = ">=5.10.4,<6"
 marimo ="*"
 ruff = "*"
-ty = "*"
-[feature.testing.pypi-dependencies]
-kaleido = ">=1.1.0, <2"
+pyrefly = "*"
 
 [feature.experiments.target.linux-64.dependencies]
 hrms_utils = {path = "."}
-parallel_rdkit = ">=0.5.0,<0.6"
+parallel_rdkit =  {path = "../parallel_rdkit"}
 pyzmq = "*"
 marimo ="*"
 memory_profiler = "*"
@@ -101,11 +96,15 @@ plasma-fpr = {cmd = "python experiments/spectral_information/plasma_fpr_estimate
 process-pubchem = "python scripts/process_pubchem.py"
 process-pubchem-download = "python scripts/process_pubchem.py --download"
 check_spectral_library = "python scripts/check_spectral_library.py data/ -p data/pubchem.parquet"
+notebook = {cmd="marimo edit test.py",env={MARIMO_OUTPUT_MAX_BYTES="100_000_000"}}
 [feature.scripts.target.linux-64.dependencies]
 hrms_utils = {path = "."}
-parallel_rdkit = ">=0.5.0,<0.6"
+parallel_rdkit = {path = "../parallel_rdkit"}
 [feature.scripts.dependencies]
 marimo = "*"
+altair = ">=5.4.0"
+vegafusion = "*"
+vl-convert-python=">=1.9.0"
 dataframely = ">=2.7.0,<3"
 
 [feature.docs.dependencies]
@@ -122,7 +121,7 @@ docs-deploy = "mkdocs gh-deploy"
 
 [feature.frag_trees.target.linux-64.dependencies]
 hrms_utils = {path = "."}
-parallel_rdkit = ">=0.5.0,<0.6"
+parallel_rdkit = {path = "../parallel_rdkit"}
 numba = ">=0.61.0"
 networkx = ">=3.0"
 matplotlib = ">=3.8.0"
