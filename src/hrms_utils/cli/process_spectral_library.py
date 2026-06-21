@@ -150,6 +150,7 @@ def main():
     )
     logging.basicConfig(
         filename=str(log_path),
+        filemode="w",
         level=logging.INFO,
         format="%(asctime)s %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S",
