@@ -83,7 +83,7 @@ def run_reader_profile(file_path: Path, use_pubchem: bool = False, pubchem_path:
                 molecular_ion_tolerance_ppm=10.0,
                 pubchem_path=pubchem_path,
                 logger=sys.stdout
-            )
+            ).collect()
         else:
             spectra_df = process_single_file(
                 file_path,

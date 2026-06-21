@@ -25,6 +25,21 @@ def _write_msp(path: Path, name: str, inchikey: str, smiles: str | None, inchi: 
     )
 
 
+def _write_msp_no_precursor_type(
+    path: Path, name: str, inchikey: str, smiles: str, precursor_mz: float, ion_mode: str
+) -> None:
+    """Write a minimal MSP file without ``PRECURSORTYPE`` and ``FORMULA``."""
+    path.write_text(
+        f"NAME: {name}\n"
+        f"PRECURSORMZ: {precursor_mz}\n"
+        f"IONMODE: {ion_mode}\n"
+        f"INCHIKEY: {inchikey}\n"
+        f"SMILES: {smiles}\n"
+        "NUM PEAKS: 1\n"
+        "100.0 1.0\n"
+    )
+
+
 def _write_pubchem(path: Path, inchikey: str, smiles: str, inchi: str) -> None:
     """Write a minimal PubChem parquet for testing."""
     pl.DataFrame(
@@ -69,7 +84,7 @@ def test_pubchem_fill_missing_only_default(tmp_path: Path) -> None:
         pubchem_path=pubchem,
         deduplicate=False,
         min_explained_intensity=0.0,
-    )
+    ).collect()
 
     complete = df.filter(pl.col("name") == "Complete").row(0, named=True)
     missing = df.filter(pl.col("name") == "Missing").row(0, named=True)
@@ -111,7 +126,7 @@ def test_pubchem_enrich_all_overrides_existing(tmp_path: Path) -> None:
         pubchem_fill_missing_only=False,
         deduplicate=False,
         min_explained_intensity=0.0,
-    )
+    ).collect()
 
     row = df.filter(pl.col("name") == "Complete").row(0, named=True)
     # Values should still be present and valid after standardization.
@@ -138,7 +153,7 @@ def test_changed_inchikey_csv_written(tmp_path: Path) -> None:
         deduplicate=False,
         min_explained_intensity=0.0,
         inchikey_changes_path=changes_csv,
-    )
+    ).collect()
 
     row = df.filter(pl.col("name") == "WrongInchiKey").row(0, named=True)
     assert row["base_inchikey"] == "LFQSCWFLJHTTHZ"
@@ -171,6 +186,52 @@ def test_no_changes_no_csv(tmp_path: Path) -> None:
         deduplicate=False,
         min_explained_intensity=0.0,
         inchikey_changes_path=changes_csv,
-    )
+    ).collect()
 
     assert not changes_csv.exists()
+
+
+def test_infer_precursor_type_positive_mode(tmp_path: Path) -> None:
+    """Ethanol in positive mode is inferred as ``[M+H]+``."""
+    # Ethanol neutral mass (C2H6O) ≈ 46.04186; [M+H]+ m/z ≈ 47.04914.
+    msp = tmp_path / "test.msp"
+    _write_msp_no_precursor_type(
+        msp,
+        name="Ethanol",
+        inchikey="LFQSCWFLJHTTHZ-UHFFFAOYSA-N",
+        smiles="CCO",
+        precursor_mz=47.04914,
+        ion_mode="positive",
+    )
+
+    df = process_spectral_library(
+        files=[msp],
+        deduplicate=False,
+        min_explained_intensity=0.0,
+    ).collect()
+
+    row = df.filter(pl.col("name") == "Ethanol").row(0, named=True)
+    assert row["precursor_type"] == "[M+H]+"
+
+
+def test_infer_precursor_type_negative_mode(tmp_path: Path) -> None:
+    """Ethanol in negative mode is inferred as ``[M-H]-``."""
+    # Ethanol neutral mass (C2H6O) ≈ 46.04186; [M-H]- m/z ≈ 45.03459.
+    msp = tmp_path / "test.msp"
+    _write_msp_no_precursor_type(
+        msp,
+        name="Ethanol",
+        inchikey="LFQSCWFLJHTTHZ-UHFFFAOYSA-N",
+        smiles="CCO",
+        precursor_mz=45.03459,
+        ion_mode="negative",
+    )
+
+    df = process_spectral_library(
+        files=[msp],
+        deduplicate=False,
+        min_explained_intensity=0.0,
+    ).collect()
+
+    row = df.filter(pl.col("name") == "Ethanol").row(0, named=True)
+    assert row["precursor_type"] == "[M-H]-"

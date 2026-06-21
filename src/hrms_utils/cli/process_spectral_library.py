@@ -10,6 +10,7 @@ Where <path> can be:
 """
 
 import argparse
+import logging
 import sys
 from pathlib import Path
 from time import perf_counter
@@ -113,6 +114,13 @@ def main():
         default=False,
         help="Use PubChem to enrich all rows, not only rows missing both SMILES and InChI",
     )
+    parser.add_argument(
+        "--log-file",
+        "-l",
+        type=Path,
+        default=None,
+        help="Path for the execution log file (default: next to the output Parquet)",
+    )
 
     args = parser.parse_args()
 
@@ -134,8 +142,23 @@ def main():
         output_path = input_path / f"{input_path.name}.parquet"
         inchikey_changes_path = input_path / f"{input_path.name}.inchikey_changes.csv"
 
+    # Configure real-time file logging so crashes can be pinpointed by timestamp.
+    log_path = (
+        args.log_file.resolve()
+        if args.log_file is not None
+        else output_path.with_suffix(".log")
+    )
+    logging.basicConfig(
+        filename=str(log_path),
+        level=logging.INFO,
+        format="%(asctime)s %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+        force=True,
+    )
+    logger = logging.getLogger("hrms_utils.formats.spectral_library")
+
     # Use the unified API
-    df = process_spectral_library(
+    result_lf = process_spectral_library(
         files=library_files,
         raw_fragment_tolerance_ppm=args.raw_fragment_tolerance_ppm,
         normalized_fragment_tolerance_ppm=args.normalized_fragment_tolerance_ppm,
@@ -147,13 +170,16 @@ def main():
         deduplicate=not args.no_deduplicate,
         clean_identifiers=not args.no_clean_identifiers,
         inchikey_changes_path=inchikey_changes_path,
-        logger=sys.stdout,
+        output_path=output_path,
+        logger=logger,
     )
 
     end = perf_counter()
-    print(f"Processed {df.height} spectra in {end - start:.2f} seconds")
-    print(f"Unique compounds: {df.unique(subset='base_inchikey').height}")
+    n_spectra = result_lf.select(pl.len()).collect().item()
+    n_molecules = result_lf.select(pl.col("base_inchikey").n_unique()).collect().item()
+    print(f"Processed {n_spectra} spectra in {end - start:.2f} seconds")
+    print(f"Unique compounds: {n_molecules}")
 
-    print(f"Writing to {output_path}...")
-    df.write_parquet(output_path)
-    print("Success!")
+    print(f"Success! Output written to {output_path}")
+    logger.info(f"Output written to {output_path}")
+    print(f"Log written to {log_path}")

@@ -28,7 +28,7 @@ def parse_mspec(path: Path | str) -> pl.LazyFrame:
             pl.col("raw").str.extract(pattern=r"(?i)Ion_?mode: (p|n)", group_index=1).alias("_ion_mode_short"),
             pl.col("raw").str.extract(pattern=r"(?i)Ion_?mode: (.+)", group_index=1).alias("ion_mode_full"),
             pl.col("raw").str.extract(pattern=r"(?i)Precursor_?type: (.+)", group_index=1).alias("precursor_type"),
-            pl.col("raw").str.extract(pattern=r"(?i)PrecursorMZ: (\d+\.?\d*)", group_index=1).alias("_precursor_mz_raw"),
+            pl.col("raw").str.extract(pattern=r"(?i)(?:PrecursorMZ|Selected Ion m/z): (\d+\.?\d*)", group_index=1).alias("_precursor_mz_raw"),
             pl.col("raw").str.extract(pattern=r"(?i)PEPMASS: (\d+\.?\d*)", group_index=1).alias("_pepmass"),
             pl.col("raw").str.extract(pattern=r"(?i)MW: (\d+)", group_index=1).alias("mw"),
             pl.col("raw").str.extract(pattern=r"(?i)Formula: (.+)", group_index=1).alias("molecular_formula"),
@@ -58,23 +58,30 @@ def parse_mspec(path: Path | str) -> pl.LazyFrame:
             pl.col("raw").str.extract(pattern=r"(?i)ADDUCT_?FORMULA: (.+)", group_index=1).alias("adduct_formula"),
             pl.col("raw").str.extract_all(pattern=mz_intensity_pattern).alias("mz_intensity"),
         )
-        .drop("raw")
         .with_columns(
             pl.col("nist_id").str.to_integer(),
             pl.col("db_id").str.to_integer(),
             pl.col("mw").str.to_integer(),
             pl.col("_ion_mode_short").str.to_uppercase(),
-            pl.when(pl.col("_ion_mode_short").is_null())
-            .then(
-                pl.when(pl.col("ion_mode_full").str.contains(r"(?i)positive")).then(pl.lit("P"))
-                .when(pl.col("ion_mode_full").str.contains(r"(?i)negative")).then(pl.lit("N"))
-                .otherwise(None)
-            )
-            .otherwise(pl.col("_ion_mode_short"))
+            pl.when(pl.col("_ion_mode_short").is_not_null())
+            .then(pl.col("_ion_mode_short"))
+            .when(pl.col("ion_mode_full").str.contains(r"(?i)positive"))
+            .then(pl.lit("P"))
+            .when(pl.col("ion_mode_full").str.contains(r"(?i)negative"))
+            .then(pl.lit("N"))
+            .when(pl.col("raw").str.contains(r"(?mi)^\s*Positive\b"))
+            .then(pl.lit("P"))
+            .when(pl.col("raw").str.contains(r"(?mi)^\s*Negative\b"))
+            .then(pl.lit("N"))
+            .otherwise(None)
             .alias("ion_mode"),
-            pl.when(pl.col("ionization").is_null())
+            pl.when(pl.col("ionization").is_not_null())
+            .then(pl.col("ionization"))
+            .when(pl.col("ion_mode_full").str.extract(r"(?i)(ESI|APCI|EI|CI|FAB|MALDI|DESI)").is_not_null())
             .then(pl.col("ion_mode_full").str.extract(r"(?i)(ESI|APCI|EI|CI|FAB|MALDI|DESI)"))
-            .otherwise(pl.col("ionization"))
+            .when(pl.col("raw").str.contains(r"(?mi)^\s*Electrospr[a-z]* ionization\b"))
+            .then(pl.lit("ESI"))
+            .otherwise(None)
             .alias("ionization"),
             pl.col("num_peaks").str.to_integer(),
             pl.coalesce([pl.col("precursor_type"), pl.col("adduct")]).alias("precursor_type"),
@@ -94,7 +101,7 @@ def parse_mspec(path: Path | str) -> pl.LazyFrame:
             pl.col("mz_intensity").list.eval(pl.element().str.replace_all(r"\s+", " ").str.split(by=" ").list.get(index=0).cast(pl.Float64)).alias("raw_spectrum_mz"),
             pl.col("mz_intensity").list.eval(pl.element().str.replace_all(r"\s+", " ").str.split(by=" ").list.get(index=1).cast(pl.Float64)).alias("raw_spectrum_intensity"),
         )
-        .drop("mz_intensity", "_pepmass", "ion_mode_full", "_ion_mode_short", "_precursor_mz_raw")
+        .drop("raw", "mz_intensity", "_pepmass", "ion_mode_full", "_ion_mode_short", "_precursor_mz_raw")
     )
 
 def _split_entries(file_contents: str) -> list[str]:
