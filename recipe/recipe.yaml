@@ -7,7 +7,7 @@ package:
   version: ${{ version }}
 
 source:
-  path: ../src/
+  path: ..
   use_gitignore: true
 
 build:
@@ -18,8 +18,8 @@ build:
     # 2. Enable sccache
     export RUSTC_WRAPPER="sccache"
 
-    # 3. Build the package
-    python -m build --wheel --outdir "$SRC_DIR/../dist/wheels" --no-isolation --skip-dependency-check
+    # 3. Build the package (the Python/Rust extension lives in the src/ subdir)
+    python -m build "$SRC_DIR/src" --wheel --outdir "$SRC_DIR/../dist/wheels" --no-isolation --skip-dependency-check
     mkdir -p "$RECIPE_DIR/../dist"
     cp "$SRC_DIR/../dist/wheels/"*.whl "$RECIPE_DIR/../dist/"
     python -m pip install "$SRC_DIR/../dist/wheels/"*.whl --no-deps --no-build-isolation -vv

@@ -45,12 +45,18 @@ fn mass_decomposition(inputs: &[Series], kwargs: DecompositionKwargs) -> PolarsR
     let min_bounds: [i32; NUM_ELEMENTS] = kwargs.min_bounds.unwrap();
     let max_bounds: [i32; NUM_ELEMENTS] = kwargs.max_bounds.unwrap();
 
-    let decomposer = Arc::new(MassDecomposer::new(min_bounds, max_bounds));
+    let decomposer = Arc::new(
+        MassDecomposer::new(min_bounds, max_bounds)
+            .map_err(|e| polars::prelude::PolarsError::ComputeError(e.to_string().into()))?,
+    );
 
     let allow_half_integer = kwargs.dbe_mode == "half_integer";
 
+    let mass_tolerance = kwargs
+        .to_mass_tolerance()
+        .map_err(|e| polars::prelude::PolarsError::ComputeError(e.to_string().into()))?;
     let params = Arc::new(DecompositionParams {
-        tolerance_ppm: kwargs.tolerance_ppm,
+        tolerance_ppm: mass_tolerance.to_ppm(200.0),
         min_dbe: kwargs.min_dbe,
         max_dbe: kwargs.max_dbe,
         allow_half_integer,
@@ -176,8 +182,11 @@ fn mass_decomposition_with_bounds(
             .push((idx, mass));
     }
 
+    let mass_tolerance = kwargs
+        .to_mass_tolerance()
+        .map_err(|e| polars::prelude::PolarsError::ComputeError(e.to_string().into()))?;
     let params = Arc::new(DecompositionParams {
-        tolerance_ppm: kwargs.tolerance_ppm,
+        tolerance_ppm: mass_tolerance.to_ppm(200.0),
         min_dbe: kwargs.min_dbe,
         max_dbe: kwargs.max_dbe,
         allow_half_integer,
@@ -187,7 +196,14 @@ fn mass_decomposition_with_bounds(
     let results_by_bounds: Vec<_> = bounds_to_data
         .into_par_iter()
         .flat_map(|((min_bounds, max_bounds), data)| {
-            let decomposer = Arc::new(MassDecomposer::new(min_bounds, max_bounds));
+            // The precomputed cache always contains the 'ALL' preset, so construction
+            // can only fail if the element set is genuinely unsupported. The
+            // fail-fast style is preserved with a clear message.
+            let decomposer = Arc::new(
+                MassDecomposer::new(min_bounds, max_bounds).expect(
+                    "precomputed cache must cover the requested element set (containing 'ALL')",
+                ),
+            );
 
             data.into_par_iter()
                 .map(|(idx, mass)| {
@@ -303,6 +319,14 @@ fn spectrum_decomposition_normalized(
     let precursor_vec: Vec<Series> = precursor_ca.into_no_null_iter().collect();
 
     let allow_half_integer = kwargs.dbe_mode == "half_integer";
+    let raw_mass_tolerance = kwargs
+        .raw_mass_tolerance()
+        .map_err(|e| polars::prelude::PolarsError::ComputeError(e.to_string().into()))?;
+    let normalized_tolerance_ppm = kwargs
+        .normalized_mass_tolerance()
+        .map_err(|e| polars::prelude::PolarsError::ComputeError(e.to_string().into()))?
+        .to_ppm(200.0);
+
     // Parallel extraction AND processing using zipped vectors
     // let start_first_loop = Instant::now();
     let indexed_results: Vec<(usize, CleanedAndNormalizedSpectrumResult)> = masses_vec
@@ -340,20 +364,22 @@ fn spectrum_decomposition_normalized(
             let min_bounds = [0; NUM_ELEMENTS];
 
             let params = SpectrumDecompositionParams {
-                tolerance_ppm: kwargs.raw_fragment_tolerance_ppm,
+                mass_tolerance: raw_mass_tolerance,
                 min_dbe: kwargs.min_dbe,
                 max_dbe: kwargs.max_dbe,
                 allow_half_integer,
                 water_absorption: kwargs.water_absorption,
             };
 
-            let decomposer = SpectrumDecomposer::new(min_bounds, max_bounds);
+            let decomposer = SpectrumDecomposer::new(min_bounds, max_bounds).expect(
+                "precomputed cache must cover the requested element set (containing 'ALL')",
+            );
 
             let result = decomposer.clean_and_normalize_spectrum(
                 masses,
                 intensities,
                 &params,
-                kwargs.normalized_fragment_tolerance_ppm,
+                normalized_tolerance_ppm,
             );
 
             (idx, result)
