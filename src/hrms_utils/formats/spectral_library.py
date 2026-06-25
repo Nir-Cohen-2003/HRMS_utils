@@ -1016,89 +1016,32 @@ def _annotate_and_filter_metadata(data: polarsFrame) -> polarsFrame:
 
 
 def _extract_collision_energy_values(data: polarsFrame) -> polarsFrame:
-    # Different formats represent collision energy differently. Detect what is
-    # available and branch accordingly so formats that omit these fields do not
-    # break the pipeline.
+    """Single source of truth for collision energy extraction and normalization.
+
+    Called exactly once in the pipeline, never skipped. Steps:
+    1. Extract NCE, ev, and list from raw string columns (if present).
+    2. If neither NCE nor ev is known, assign the list mean (or bare number
+       from the raw string) to NCE (orbitrap default) or ev (non-orbitrap
+       default), matching what the data author most likely intended.
+    3. Cross-fill the missing unit from the known one using
+       NCE = ev * 500 / precursor_mz (and ev = NCE * precursor_mz / 500),
+       when precursor_mz is available and non-zero. If precursor_mz is
+       missing the energy cannot be normalized and is left as-is.
+    4. Derive multiple_collision_energies and collision_energy_mean.
+    """
     cols = data.collect_schema().names()
-    has_collision_energy_list = "collision_energy_list" in cols
     has_collision_energy_raw = "collision_energy_raw" in cols
     has_ev_raw = "_collision_energies_ev_raw" in cols
+    has_list = "collision_energy_list" in cols
 
-    if has_collision_energy_list:
-        mean_expr = pl.col("collision_energy_list").list.mean()
-        is_orbi = pl.col("is_orbitrap").fill_null(False)
-        return cast(
-            polarsFrame,
-            data.with_columns(
-                pl.col("collision_energy_list")
-                .list.len()
-                .ge(2)
-                .fill_null(False)
-                .alias("multiple_collision_energies"),
-                mean_expr.alias("collision_energy_mean"),
-                pl.when(is_orbi)
-                .then(mean_expr)
-                .otherwise(None)
-                .alias("collision_energy_NCE"),
-                pl.when(is_orbi.not_())
-                .then(mean_expr)
-                .otherwise(None)
-                .alias("collision_energy_ev"),
-            )
-            .with_columns(
-                pl.when(
-                    pl.col("collision_energy_NCE").is_null()
-                    & pl.col("collision_energy_ev").is_not_null()
-                    & pl.col("precursor_mz").is_not_null()
-                    & (pl.col("precursor_mz") != 0.0)
-                )
-                .then(
-                    pl.col("collision_energy_ev")
-                    .mul(500.0)
-                    .truediv(pl.col("precursor_mz"))
-                    .abs()
-                )
-                .otherwise(pl.col("collision_energy_NCE"))
-                .alias("collision_energy_NCE"),
-                pl.when(
-                    pl.col("collision_energy_ev").is_null()
-                    & pl.col("collision_energy_NCE").is_not_null()
-                    & pl.col("precursor_mz").is_not_null()
-                    & (pl.col("precursor_mz") != 0.0)
-                )
-                .then(
-                    pl.col("collision_energy_NCE")
-                    .mul(pl.col("precursor_mz"))
-                    .truediv(500.0)
-                    .abs()
-                )
-                .otherwise(pl.col("collision_energy_ev"))
-                .alias("collision_energy_ev"),
-            ),
-        )
+    # --- Step 1: Extract NCE, ev, list from raw string columns ---
+    if has_collision_energy_raw:
+        pat_nce = r"(?i)(?:NCE\s*[:=]?\s*([0-9]+(?:\.[0-9]+)?)|([0-9]+(?:\.[0-9]+)?)\s*(?:%|(?:\(?NCE\)?)))"
+        pat_ev = r"(?i)([0-9]+(?:\.[0-9]+)?)\s*e?V"
+        pat_num = r"([0-9]+(?:\.[0-9]+)?)"
+        pat_list_content = r"\[(.*?)\]"
 
-    if not has_collision_energy_raw:
-        # No usable collision energy metadata at all; create the expected columns
-        # as nulls so downstream consumers can still select them.
-        return cast(
-            polarsFrame,
-            data.with_columns(
-                pl.lit(None).cast(pl.Float64).alias("collision_energy_NCE"),
-                pl.lit(None).cast(pl.Float64).alias("collision_energy_ev"),
-                pl.lit(None).cast(pl.List(pl.Float64)).alias("collision_energy_list"),
-                pl.lit(False).alias("multiple_collision_energies"),
-                pl.lit(None).cast(pl.Float64).alias("collision_energy_mean"),
-            ),
-        )
-
-    pat_nce = r"(?i)(?:NCE\s*[:=]?\s*([0-9]+(?:\.[0-9]+)?)|([0-9]+(?:\.[0-9]+)?)\s*(?:%|(?:\(?NCE\)?)))"
-    pat_ev = r"(?i)([0-9]+(?:\.[0-9]+)?)\s*e?V"
-    pat_num = r"([0-9]+(?:\.[0-9]+)?)"
-    pat_list_content = r"\[(.*?)\]"
-
-    result = cast(
-        polarsFrame,
-        data.with_columns(
+        extract_exprs = [
             pl.col("collision_energy_raw")
             .str.extract(pat_nce, group_index=1)
             .fill_null(
@@ -1112,95 +1055,127 @@ def _extract_collision_energy_values(data: polarsFrame) -> polarsFrame:
             .cast(pl.Float64, strict=False)
             .abs()
             .alias("collision_energy_ev"),
-            pl.col("collision_energy_raw")
-            .str.extract(pat_list_content, group_index=1)
-            .str.extract_all(r"\d+(?:\.\d+)?")
-            .list.eval(pl.element().cast(pl.Float64, strict=False).abs())
-            .alias("collision_energy_list"),
-        )
-        .with_columns(
-            pl.when(
-                pl.col("collision_energy_NCE").is_null()
-                & pl.col("collision_energy_ev").is_null()
-                & pl.col("collision_energy_list").is_null()
-            )
-            .then(
+        ]
+        # Only extract list from raw if it doesn't already exist as a column
+        # (e.g. MGF parser may have already provided it).
+        if not has_list:
+            extract_exprs.append(
                 pl.col("collision_energy_raw")
-                .str.extract(pat_num, group_index=1)
-                .cast(pl.Float64, strict=False)
-                .abs()
+                .str.extract(pat_list_content, group_index=1)
+                .str.extract_all(r"\d+(?:\.\d+)?")
+                .list.eval(pl.element().cast(pl.Float64, strict=False).abs())
+                .alias("collision_energy_list")
             )
-            .otherwise(None)
-            .alias("_bare_energy"),
-            pl.col("collision_energy_list").list.mean().alias("_list_mean"),
+        data = cast(polarsFrame, data.with_columns(extract_exprs))
+
+        # Override ev from dedicated ev-raw column if present (higher fidelity)
+        if has_ev_raw:
+            data = cast(
+                polarsFrame,
+                data.with_columns(
+                    pl.when(pl.col("_collision_energies_ev_raw").is_not_null())
+                    .then(
+                        pl.col("_collision_energies_ev_raw")
+                        .str.extract(pat_num, group_index=1)
+                        .cast(pl.Float64, strict=False)
+                        .abs()
+                    )
+                    .otherwise(pl.col("collision_energy_ev"))
+                    .alias("collision_energy_ev")
+                ).drop("_collision_energies_ev_raw"),
+            )
+
+    # Ensure all energy columns exist (inputs with no raw energy metadata)
+    cols = data.collect_schema().names()
+    fill_exprs = []
+    if "collision_energy_NCE" not in cols:
+        fill_exprs.append(pl.lit(None).cast(pl.Float64).alias("collision_energy_NCE"))
+    if "collision_energy_ev" not in cols:
+        fill_exprs.append(pl.lit(None).cast(pl.Float64).alias("collision_energy_ev"))
+    if "collision_energy_list" not in cols:
+        fill_exprs.append(
+            pl.lit(None).cast(pl.List(pl.Float64)).alias("collision_energy_list")
         )
-        .with_columns(
-            pl.when(pl.col("collision_energy_NCE").is_null())
-            .then(
-                pl.when(pl.col("is_orbitrap"))
-                .then(pl.coalesce([pl.col("_list_mean"), pl.col("_bare_energy")]))
-                .otherwise(None)
-            )
+    if fill_exprs:
+        data = cast(polarsFrame, data.with_columns(fill_exprs))
+
+    # --- Step 2: Default assignment when neither NCE nor ev is known ---
+    # Use list mean, then bare number from raw string, as the energy value.
+    # Assign to NCE (orbitrap default) or ev (non-orbitrap default).
+    cols = data.collect_schema().names()
+    is_orbi = (
+        pl.col("is_orbitrap").fill_null(False)
+        if "is_orbitrap" in cols
+        else pl.lit(False)
+    )
+
+    list_mean = pl.col("collision_energy_list").list.mean()
+    if has_collision_energy_raw:
+        bare_energy = (
+            pl.col("collision_energy_raw")
+            .str.extract(r"([0-9]+(?:\.[0-9]+)?)", group_index=1)
+            .cast(pl.Float64, strict=False)
+            .abs()
+        )
+    else:
+        bare_energy = pl.lit(None).cast(pl.Float64)
+    fallback = pl.coalesce([list_mean, bare_energy])
+
+    both_unknown = (
+        pl.col("collision_energy_NCE").is_null()
+        & pl.col("collision_energy_ev").is_null()
+    )
+
+    data = cast(
+        polarsFrame,
+        data.with_columns(
+            pl.when(both_unknown & is_orbi)
+            .then(fallback)
             .otherwise(pl.col("collision_energy_NCE"))
             .alias("collision_energy_NCE"),
-            pl.when(pl.col("collision_energy_ev").is_null())
-            .then(
-                pl.when(pl.col("is_orbitrap").not_())
-                .then(pl.coalesce([pl.col("_list_mean"), pl.col("_bare_energy")]))
-                .otherwise(None)
-            )
+            pl.when(both_unknown & is_orbi.not_())
+            .then(fallback)
             .otherwise(pl.col("collision_energy_ev"))
             .alias("collision_energy_ev"),
         ),
     )
 
-    if has_ev_raw:
-        result = result.with_columns(
-            pl.when(pl.col("_collision_energies_ev_raw").is_not_null())
-            .then(
-                pl.col("_collision_energies_ev_raw")
-                .str.extract(pat_num, group_index=1)
-                .cast(pl.Float64, strict=False)
-                .abs()
-            )
-            .otherwise(pl.col("collision_energy_ev"))
-            .alias("collision_energy_ev")
+    # --- Step 3: Cross-fill the missing unit from the known one ---
+    # NCE = ev * 500 / precursor_mz
+    # ev = NCE * precursor_mz / 500
+    if "precursor_mz" in data.collect_schema().names():
+        data = cast(
+            polarsFrame,
+            data.with_columns(
+                pl.when(
+                    pl.col("collision_energy_NCE").is_null()
+                    & pl.col("collision_energy_ev").is_not_null()
+                    & pl.col("precursor_mz").is_not_null()
+                    & (pl.col("precursor_mz") != 0.0)
+                )
+                .then(
+                    (pl.col("collision_energy_ev") * 500.0 / pl.col("precursor_mz")).abs()
+                )
+                .otherwise(pl.col("collision_energy_NCE"))
+                .alias("collision_energy_NCE"),
+                pl.when(
+                    pl.col("collision_energy_ev").is_null()
+                    & pl.col("collision_energy_NCE").is_not_null()
+                    & pl.col("precursor_mz").is_not_null()
+                    & (pl.col("precursor_mz") != 0.0)
+                )
+                .then(
+                    (pl.col("collision_energy_NCE") * pl.col("precursor_mz") / 500.0).abs()
+                )
+                .otherwise(pl.col("collision_energy_ev"))
+                .alias("collision_energy_ev"),
+            ),
         )
 
-    # Derive the missing unit from the known one using a 500 Da normalization.
-    # Values are always kept positive.
-    result = cast(
+    # --- Step 4: Derive multiple_collision_energies and collision_energy_mean ---
+    data = cast(
         polarsFrame,
-        result.with_columns(
-            pl.when(
-                pl.col("collision_energy_NCE").is_null()
-                & pl.col("collision_energy_ev").is_not_null()
-                & pl.col("precursor_mz").is_not_null()
-                & (pl.col("precursor_mz") != 0.0)
-            )
-            .then(
-                pl.col("collision_energy_ev")
-                .mul(500.0)
-                .truediv(pl.col("precursor_mz"))
-                .abs()
-            )
-            .otherwise(pl.col("collision_energy_NCE"))
-            .alias("collision_energy_NCE"),
-            pl.when(
-                pl.col("collision_energy_ev").is_null()
-                & pl.col("collision_energy_NCE").is_not_null()
-                & pl.col("precursor_mz").is_not_null()
-                & (pl.col("precursor_mz") != 0.0)
-            )
-            .then(
-                pl.col("collision_energy_NCE")
-                .mul(pl.col("precursor_mz"))
-                .truediv(500.0)
-                .abs()
-            )
-            .otherwise(pl.col("collision_energy_ev"))
-            .alias("collision_energy_ev"),
-        ).with_columns(
+        data.with_columns(
             pl.col("collision_energy_list")
             .list.len()
             .ge(2)
@@ -1208,7 +1183,7 @@ def _extract_collision_energy_values(data: polarsFrame) -> polarsFrame:
             .alias("multiple_collision_energies"),
             pl.coalesce(
                 [
-                    pl.col("_list_mean"),
+                    pl.col("collision_energy_list").list.mean(),
                     pl.col("collision_energy_NCE"),
                     pl.col("collision_energy_ev"),
                 ]
@@ -1216,10 +1191,7 @@ def _extract_collision_energy_values(data: polarsFrame) -> polarsFrame:
         ),
     )
 
-    drop_cols = ["_bare_energy", "_list_mean"]
-    if has_ev_raw:
-        drop_cols.append("_collision_energies_ev_raw")
-    return cast(polarsFrame, result.drop(drop_cols))
+    return data
 
 
 def _fill_missing_mslevel(data: polarsFrame) -> polarsFrame:
