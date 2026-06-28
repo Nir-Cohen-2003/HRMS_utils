@@ -138,7 +138,9 @@ def _log(logger: logging.Logger | TextIO | None, msg: str) -> None:
             pass
 
 
-def _collect_logged(lf: pl.LazyFrame, logger: logging.Logger | TextIO | None, label: str) -> pl.DataFrame:
+def _collect_logged(
+    lf: pl.LazyFrame, logger: logging.Logger | TextIO | None, label: str
+) -> pl.DataFrame:
     """Call ``lf.collect()`` and log ``label`` immediately before and after."""
     _log(logger, f"before {label}")
     result = lf.collect()
@@ -146,7 +148,9 @@ def _collect_logged(lf: pl.LazyFrame, logger: logging.Logger | TextIO | None, la
     return result
 
 
-def _run_logged(logger: logging.Logger | TextIO | None, label: str, func, *args, **kwargs):
+def _run_logged(
+    logger: logging.Logger | TextIO | None, label: str, func, *args, **kwargs
+):
     """Call ``func(*args, **kwargs)`` and log ``label`` immediately before and after."""
     _log(logger, f"before {label}")
     result = func(*args, **kwargs)
@@ -161,7 +165,10 @@ def _get_stats_str(lf: pl.LazyFrame, prefix: str = "") -> str:
     stats_str = f"{prefix}Total: {total} spectra, {total_molecules} molecules\n"
     file_stats = (
         lf.group_by("source_file")
-        .agg(pl.len().alias("spectra"), pl.col("base_inchikey").n_unique().alias("molecules"))
+        .agg(
+            pl.len().alias("spectra"),
+            pl.col("base_inchikey").n_unique().alias("molecules"),
+        )
         .sort("source_file")
         .collect()
     )
@@ -342,9 +349,10 @@ def process_spectral_library(
             )
             missing_both_count = stats["missing_both_count"].item()
             have_both_count = stats["have_both_count"].item()
-            _log(logger, 
+            _log(
+                logger,
                 f"Identifier status before PubChem: {missing_both_count} rows missing both SMILES and InChI, "
-                f"{have_both_count} rows have both"
+                f"{have_both_count} rows have both",
             )
             combined_lf = _enrich_with_pubchem(
                 combined_lf, pubchem_path, fill_missing_only=pubchem_fill_missing_only
@@ -360,7 +368,10 @@ def process_spectral_library(
         df = _collect_logged(
             combined_lf, logger, "collecting after optional PubChem enrichment"
         )
-        _log(logger, f"[{time.perf_counter() - t1:.2f}s] collected after enriching with pubchem")
+        _log(
+            logger,
+            f"[{time.perf_counter() - t1:.2f}s] collected after enriching with pubchem",
+        )
     finally:
         if intermediate_path is not None:
             intermediate_path.unlink(missing_ok=True)
@@ -374,7 +385,9 @@ def process_spectral_library(
             pl.col("smiles").alias("original_smiles"),
             pl.col("inchi").alias("original_inchi"),
         )
-        df = _run_logged(logger, "standardizing structures", _standardize_structures, df)
+        df = _run_logged(
+            logger, "standardizing structures", _standardize_structures, df
+        )
 
         # Count rows whose base InChIKey changed during standardization
         n_changed = df.filter(
@@ -418,8 +431,9 @@ def process_spectral_library(
     )
     dropped = pre_filter - df.height
     if dropped > 0:
-        _log(logger, 
-            f"Dropped {dropped} rows with no molecular identifier after standardization"
+        _log(
+            logger,
+            f"Dropped {dropped} rows with no molecular identifier after standardization",
         )
 
     # Fill missing molecular formulas and infer missing precursor types from
@@ -432,8 +446,9 @@ def process_spectral_library(
         df,
         molecular_ion_tolerance_ppm,
     )
-    _log(logger, 
-        f"[{time.perf_counter() - t_infer:.2f}s] Filled molecular_formula and inferred precursor_type"
+    _log(
+        logger,
+        f"[{time.perf_counter() - t_infer:.2f}s] Filled molecular_formula and inferred precursor_type",
     )
 
     # Now run the annotation steps that were skipped in ``annotate=False``
@@ -455,36 +470,57 @@ def process_spectral_library(
         raw_fragment_tolerance_ppm=raw_fragment_tolerance_ppm,
         normalized_fragment_tolerance_ppm=normalized_fragment_tolerance_ppm,
     )
-    df = _run_logged(
-        logger,
-        "adding molecular ion info",
-        _add_molecular_ion_info,
-        df,
-        molecular_ion_tolerance_ppm,
-    )
-    df = _run_logged(
-        logger,
-        "adding spectral information score",
-        _add_spectral_information_score,
-        df,
-    )
 
-    # Apply the explained-intensity filter now that annotation is done.
-    if min_explained_intensity is not None:
-        pre_filter = df.height
-        df = df.filter(pl.col("explained_intensity") >= min_explained_intensity)
-        _log(logger, 
-            f"Defined explained intensity filter (>= {min_explained_intensity}); "
-            f"dropped {pre_filter - df.height} rows"
-        )
-
-    combined_lf = _select_output_columns(df.lazy())
-
-    # Spill the annotated frame to a temp Parquet, drop the in-memory frame,
-    # and rescan from disk. This keeps peak memory low before the (potentially
-    # memory-hungry) deduplication step and the final sink.
+    # Spill the freshly annotated frame to a temp Parquet, drop the in-memory
+    # frame, and rescan from disk. This keeps peak memory low for the remaining
+    # annotation steps and the final deduplication/sink.
+    annotation_temp_path = output_path.with_suffix(".annotation.temp.parquet")
     temp_path = output_path.with_suffix(".temp.parquet")
+    previous_temp_path: Path | None = None
     try:
+        _run_logged(
+            logger,
+            "writing annotation intermediate Parquet",
+            df.lazy().sink_parquet,
+            annotation_temp_path,
+            engine="streaming",
+        )
+        # Drop in-memory frames before rescanning from disk
+        df = None  # type: ignore[assignment]
+        del df
+        df = pl.scan_parquet(annotation_temp_path).collect()
+        _log(logger, "Rescanned annotation intermediate Parquet from disk")
+        previous_temp_path = annotation_temp_path
+
+        df = _run_logged(
+            logger,
+            "adding molecular ion info",
+            _add_molecular_ion_info,
+            df,
+            molecular_ion_tolerance_ppm,
+        )
+        df = _run_logged(
+            logger,
+            "adding spectral information score",
+            _add_spectral_information_score,
+            df,
+        )
+        lf: pl.LazyFrame = df.lazy()
+        # Apply the explained-intensity filter now that annotation is done.
+        if min_explained_intensity is not None:
+            pre_filter = df.height
+            lf = lf.filter(pl.col("explained_intensity") >= min_explained_intensity)
+            _log(
+                logger,
+                f"Defined explained intensity filter (>= {min_explained_intensity}); "
+                f"dropped {pre_filter - df.height} rows",
+            )
+
+        combined_lf = _select_output_columns(lf)
+
+        # Spill the annotated frame to a temp Parquet, drop the in-memory frame,
+        # and rescan from disk. This keeps peak memory low before the (potentially
+        # memory-hungry) deduplication step and the final sink.
         _run_logged(
             logger,
             "writing intermediate Parquet",
@@ -498,10 +534,18 @@ def process_spectral_library(
         combined_lf = pl.scan_parquet(temp_path)
         _log(logger, "Rescanned intermediate Parquet from disk")
 
+        # Each intermediate temp removes the older one so disk usage stays
+        # bounded when multiple checkpoint Parquets are written.
+        if previous_temp_path is not None:
+            previous_temp_path.unlink(missing_ok=True)
+            previous_temp_path = None
+
         if deduplicate:
             t4 = time.perf_counter()
 
-            stats_lf = combined_lf.select(["source_file", "base_inchikey", "clean_precursor"])
+            stats_lf = combined_lf.select(
+                ["source_file", "base_inchikey", "clean_precursor"]
+            )
             _log(logger, "Library Statistics (Pre-deduplication):")
             _log(logger, _get_stats_str(stats_lf))
             _log(logger, "Library Statistics (Clean Precursors Only):")
@@ -524,7 +568,10 @@ def process_spectral_library(
                 output_path,
                 engine="streaming",
             )
-            _log(logger, f"[{time.perf_counter() - t6:.2f}s] Sank deduplicated library to {output_path}")
+            _log(
+                logger,
+                f"[{time.perf_counter() - t6:.2f}s] Sank deduplicated library to {output_path}",
+            )
         else:
             _log(logger, "Skipped deduplication (deduplicate=False)")
             t6 = time.perf_counter()
@@ -535,13 +582,19 @@ def process_spectral_library(
                 output_path,
                 engine="streaming",
             )
-            _log(logger, f"[{time.perf_counter() - t6:.2f}s] Sank final library to {output_path}")
+            _log(
+                logger,
+                f"[{time.perf_counter() - t6:.2f}s] Sank final library to {output_path}",
+            )
 
         result_lf = pl.scan_parquet(output_path)
         if deduplicate:
             _log(logger, "Library Statistics (Post-deduplication):")
             _log(logger, _get_stats_str(result_lf))
-            _log(logger, "Library Statistics (Post-deduplication, Clean Precursors Only):")
+            _log(
+                logger,
+                "Library Statistics (Post-deduplication, Clean Precursors Only):",
+            )
             _log(logger, _get_stats_str(result_lf.filter(pl.col("clean_precursor"))))
         else:
             _log(logger, "Library Statistics (Final):")
@@ -552,6 +605,8 @@ def process_spectral_library(
     finally:
         if temp_path is not None:
             temp_path.unlink(missing_ok=True)
+        if previous_temp_path is not None:
+            previous_temp_path.unlink(missing_ok=True)
 
 
 def _parse_file(path: Path, includes_MSn: bool = False) -> pl.LazyFrame:
@@ -605,7 +660,10 @@ def _process_pipeline(
             normalized_fragment_tolerance_ppm=normalized_fragment_tolerance_ppm,
         )
         lf = _run_logged(
-            logger, "adding precursor type indicators", _add_precursor_type_indicators, lf
+            logger,
+            "adding precursor type indicators",
+            _add_precursor_type_indicators,
+            lf,
         )
         lf = _run_logged(
             logger,
@@ -1154,7 +1212,9 @@ def _extract_collision_energy_values(data: polarsFrame) -> polarsFrame:
                     & (pl.col("precursor_mz") != 0.0)
                 )
                 .then(
-                    (pl.col("collision_energy_ev") * 500.0 / pl.col("precursor_mz")).abs()
+                    (
+                        pl.col("collision_energy_ev") * 500.0 / pl.col("precursor_mz")
+                    ).abs()
                 )
                 .otherwise(pl.col("collision_energy_NCE"))
                 .alias("collision_energy_NCE"),
@@ -1165,7 +1225,9 @@ def _extract_collision_energy_values(data: polarsFrame) -> polarsFrame:
                     & (pl.col("precursor_mz") != 0.0)
                 )
                 .then(
-                    (pl.col("collision_energy_NCE") * pl.col("precursor_mz") / 500.0).abs()
+                    (
+                        pl.col("collision_energy_NCE") * pl.col("precursor_mz") / 500.0
+                    ).abs()
                 )
                 .otherwise(pl.col("collision_energy_ev"))
                 .alias("collision_energy_ev"),
@@ -1568,9 +1630,7 @@ def _enrich_with_pubchem(
                 "inchikey",
             ]
         )
-        .filter(
-            pl.col("base_inchikey").is_not_null() & (pl.col("base_inchikey") != "")
-        )
+        .filter(pl.col("base_inchikey").is_not_null() & (pl.col("base_inchikey") != ""))
         .join(pubchem_lf, on="base_inchikey", how="left")
     )
 
@@ -1578,9 +1638,7 @@ def _enrich_with_pubchem(
         pl.coalesce([pl.col("smiles_pubchem"), pl.col("smiles")]).alias(
             "smiles_enriched"
         ),
-        pl.coalesce([pl.col("inchi_pubchem"), pl.col("inchi")]).alias(
-            "inchi_enriched"
-        ),
+        pl.coalesce([pl.col("inchi_pubchem"), pl.col("inchi")]).alias("inchi_enriched"),
         pl.coalesce([pl.col("inchikey_pubchem"), pl.col("inchikey")]).alias(
             "inchikey_enriched"
         ),

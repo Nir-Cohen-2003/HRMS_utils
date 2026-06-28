@@ -46,7 +46,6 @@ def parse_mgf(mgf_path: str | Path, includes_MSn: bool = False) -> pl.LazyFrame:
         "INSTRUMENT_TYPE": "instrument_type",
         "SOURCE_INSTRUMENT": "instrument",
         "ION_SOURCE": "ionization",
-        "COLLISION_ENERGY": "collision_energy_raw",
         "RTINSECONDS": "rt_seconds",
         "RT_SECONDS": "rt_seconds",
         "CHARGE": "charge",
@@ -79,7 +78,16 @@ def parse_mgf(mgf_path: str | Path, includes_MSn: bool = False) -> pl.LazyFrame:
         raw_exprs.append(
             pl.col("entry").str.extract(rf"(?mi)^{key}=(.+)$", 1).alias(f"raw_{key}")
         )
-    
+
+    # Any non-MSn key containing "energy" is treated as the collision-energy
+    # field. MSn_* keys are parsed separately when includes_MSn is enabled.
+    raw_exprs.append(
+        pl.col("entry").str.extract(
+            r"(?mi)^(?:energy[^=\n]*|(?:[^M\n]|M[^S\n]|MS[^n\n]|MSn[^_\-\n])[^=\n]*energy)[^=\n]*=(.+)$",
+            1,
+        ).alias("collision_energy_raw")
+    )
+
     lf = lf.with_columns(raw_exprs)
 
     # Check for mismatches when multiple keys map to the same unified name

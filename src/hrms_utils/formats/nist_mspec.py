@@ -22,8 +22,11 @@ def parse_mspec(path: Path | str) -> pl.LazyFrame:
             pl.col("raw").str.extract(pattern=r"(?i)Instrument: (.+)", group_index=1).alias("instrument"),
             pl.col("raw").str.extract(pattern=r"(?i)(?:Spectrum_type|MSLEVEL): (?:MS)?(\d+)", group_index=1).cast(pl.Int64, strict=False).alias("mslevel"),
             pl.col("raw").str.extract(pattern=r"(?i)Collision_gas: (.+)", group_index=1).alias("collision_gas"),
-            pl.col("raw").str.extract(pattern=r"(?i)Collision_?energies?: (.+)", group_index=1).alias("collision_energy_raw"),
-            pl.col("raw").str.extract(pattern=r"(?i)COLLISION_ENERGIES: (.+)", group_index=1).alias("_collision_energies_ev_raw"),
+            # Any non-MSn key containing "energy" is treated as the collision-energy field.
+            pl.col("raw").str.extract(
+                pattern=r"(?mi)^\s*(?:energy[^:\n]*|(?:[^M\n]|M[^S\n]|MS[^n\n]|MSn[^_\-\n])[^:\n]*energy)[^:\n]*:\s*(.+)$",
+                group_index=1,
+            ).alias("collision_energy_raw"),
             pl.col("raw").str.extract(pattern=r"(?i)Ionization: (.+)", group_index=1).alias("ionization"),
             pl.col("raw").str.extract(pattern=r"(?i)Ion_?mode: (p|n)", group_index=1).alias("_ion_mode_short"),
             pl.col("raw").str.extract(pattern=r"(?i)Ion_?mode: (.+)", group_index=1).alias("ion_mode_full"),
