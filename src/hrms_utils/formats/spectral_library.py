@@ -269,6 +269,7 @@ def process_spectral_library(
     inchikey_changes_path: Path | None = None,
     output_path: Path | None = None,
     logger: logging.Logger | TextIO | None = None,
+    batch_size: int = 500_000,
 ) -> pl.LazyFrame:
     """Unified entry point for processing multiple spectral library files with deduplication and enrichment.
 
@@ -279,64 +280,97 @@ def process_spectral_library(
     ``<file>.parquet``; multiple files yield
     ``<parent_dir>/<parent_dir>.parquet``.
 
-    The pipeline writes an intermediate ``.temp.parquet`` next to the final
-    output, drops the in-memory frame, and rescans the intermediate file
-    before deduplication/sinking to keep peak memory low.
+    Processing is performed in batches to keep peak memory low:
+
+    1. All input files are parsed with minimal work and concatenated into a
+       single intermediate Parquet.
+    2. Metadata is normalized once on the full frame and written to a second
+       intermediate Parquet.
+    3. A uniform MS-Ready mapping is built once from the unique molecular
+       identifiers (with optional PubChem enrichment folded in). The mapping
+       is applied inside the batch loop so every row receives the same
+       standardized identifier for a given base InChIKey.
+    4. The normalized frame is read in batches of ``batch_size`` rows; each
+       batch applies the MS-Ready mapping and runs the full annotation
+       pipeline, then is written to a per-batch Parquet file.
+    5. Per-batch files are concatenated (and optionally deduplicated using the
+       streaming engine) into the final output Parquet. All intermediate files
+       are removed before returning.
     """
 
     t0 = time.perf_counter()
     if output_path is None:
         output_path = _deduce_output_path(files)
-    lazyframes = []
-    for f in files:
-        ti = time.perf_counter()
-        # Parse the file with metadata-only normalization; annotation is
-        # performed later, after MS-Ready standardization and precursor-type
-        # inference, so it can use the corrected structures.
-        lf = process_single_file(
-            f,
-            raw_fragment_tolerance_ppm=raw_fragment_tolerance_ppm,
-            normalized_fragment_tolerance_ppm=normalized_fragment_tolerance_ppm,
-            molecular_ion_tolerance_ppm=molecular_ion_tolerance_ppm,
-            includes_MSn=includes_MSn,
-            lazy=True,
-            clean_identifiers=clean_identifiers,
-            annotate=False,
-            logger=logger,
-        )
-        lazyframes.append(lf)
-        _log(logger, f"[{time.perf_counter() - ti:.2f}s] Parsed {f}")
 
-    combined_lf = pl.concat(lazyframes, how="diagonal_relaxed")
-    # Workaround for polars schema lengths differ bug
-    df = _collect_logged(combined_lf, logger, "concatenating parsed files")
-    combined_lf = df.lazy()
-    _log(logger, f"[{time.perf_counter() - t0:.2f}s] Parsed all files and collected")
+    output_dir = output_path.parent
+    output_stem = output_path.stem
+    parsed_path = output_dir / f"{output_stem}.parsed.parquet"
+    normalized_path = output_dir / f"{output_stem}.normalized.parquet"
+    temp_paths: list[Path] = [parsed_path, normalized_path]
+    batch_paths: list[Path] = []
 
-    t1 = time.perf_counter()
-
-    # Optional PubChem enrichment
-    intermediate_path: Path | None = None
-    if pubchem_path is not None:
-        # Persist the current frame and re-scan to keep the rest of the pipeline
-        # streaming-friendly and to give PubChem enrichment a stable schema.
-        fd, intermediate_path_str = tempfile.mkstemp(suffix=".parquet")
-        os.close(fd)
-        intermediate_path = Path(intermediate_path_str)
-        try:
-            _run_logged(
-                logger,
-                "writing intermediate Parquet for PubChem enrichment",
-                combined_lf.sink_parquet,
-                intermediate_path,
-                engine="streaming",
+    try:
+        # ------------------------------------------------------------------
+        # 1. Parse all files with minimal per-file work.
+        # ------------------------------------------------------------------
+        t_parse = time.perf_counter()
+        lazyframes: list[pl.LazyFrame] = []
+        for f in files:
+            ti = time.perf_counter()
+            path = Path(f)
+            lf = _parse_file(path, includes_MSn=includes_MSn).with_columns(
+                pl.lit(path.name).alias("source_file")
             )
-            combined_lf = pl.scan_parquet(intermediate_path)
-            _log(logger, "Materialized intermediate Parquet for PubChem enrichment")
+            lazyframes.append(lf)
+            _log(logger, f"[{time.perf_counter() - ti:.2f}s] Parsed {f}")
 
-            # Report identifier status before enrichment
+        combined_lf = pl.concat(lazyframes, how="diagonal_relaxed")
+        _run_logged(
+            logger,
+            "sinking parsed files to Parquet",
+            combined_lf.sink_parquet,
+            parsed_path,
+            engine="streaming",
+        )
+        _log(
+            logger,
+            f"[{time.perf_counter() - t_parse:.2f}s] Parsed all files to {parsed_path}",
+        )
+
+        current_path = parsed_path
+
+        # ------------------------------------------------------------------
+        # 2. Metadata normalization (once on the full frame).
+        # ------------------------------------------------------------------
+        t_meta = time.perf_counter()
+        df = _collect_logged(
+            _process_pipeline(
+                pl.scan_parquet(current_path),
+                raw_fragment_tolerance_ppm=raw_fragment_tolerance_ppm,
+                normalized_fragment_tolerance_ppm=normalized_fragment_tolerance_ppm,
+                molecular_ion_tolerance_ppm=molecular_ion_tolerance_ppm,
+                clean_identifiers=clean_identifiers,
+                annotate=False,
+                logger=logger,
+            ),
+            logger,
+            "normalizing metadata",
+        )
+        _log(
+            logger,
+            f"[{time.perf_counter() - t_meta:.2f}s] Normalized metadata",
+        )
+
+        # Persist the metadata-normalized frame so the batch loop always reads
+        # from a single source.
+        df.write_parquet(normalized_path)
+
+        # ------------------------------------------------------------------
+        # 3. Optional PubChem/standardization identifier stats.
+        # ------------------------------------------------------------------
+        if pubchem_path is not None:
             stats = _collect_logged(
-                combined_lf.select(
+                pl.scan_parquet(normalized_path).select(
                     (pl.col("smiles").is_null() & pl.col("inchi").is_null())
                     .sum()
                     .alias("missing_both_count"),
@@ -354,191 +388,142 @@ def process_spectral_library(
                 f"Identifier status before PubChem: {missing_both_count} rows missing both SMILES and InChI, "
                 f"{have_both_count} rows have both",
             )
-            combined_lf = _enrich_with_pubchem(
-                combined_lf, pubchem_path, fill_missing_only=pubchem_fill_missing_only
-            )
-            _log(logger, "Built PubChem enrichment")
-        except Exception:
-            if intermediate_path is not None:
-                intermediate_path.unlink(missing_ok=True)
-            raise
 
-    # MS-ready standardization
-    try:
-        df = _collect_logged(
-            combined_lf, logger, "collecting after optional PubChem enrichment"
+        # ------------------------------------------------------------------
+        # 4. Process batches through the annotation pipeline.
+        # ------------------------------------------------------------------
+        total_rows = (
+            pl.scan_parquet(normalized_path).select(pl.len()).collect().item()
         )
+        num_batches = max(1, (total_rows + batch_size - 1) // batch_size)
         _log(
             logger,
-            f"[{time.perf_counter() - t1:.2f}s] collected after enriching with pubchem",
-        )
-    finally:
-        if intermediate_path is not None:
-            intermediate_path.unlink(missing_ok=True)
-
-    if clean_identifiers:
-        t5 = time.perf_counter()
-        # Preserve pre-standardization identifier columns for change tracking/CSV output
-        df = df.with_columns(
-            pl.col("base_inchikey").alias("original_base_inchikey"),
-            pl.col("inchikey").alias("original_inchikey"),
-            pl.col("smiles").alias("original_smiles"),
-            pl.col("inchi").alias("original_inchi"),
-        )
-        df = _run_logged(
-            logger, "standardizing structures", _standardize_structures, df
+            f"Processing {total_rows} rows in {num_batches} batch(es) of up to {batch_size} rows",
         )
 
-        # Count rows whose base InChIKey changed during standardization
-        n_changed = df.filter(
-            pl.col("base_inchikey") != pl.col("original_base_inchikey")
-        ).height
-        _log(logger, f"{n_changed} rows had final base InChIKey differ from original")
+        batch_paths: list[Path] = []
+        failed_batches: list[pl.DataFrame] = []
+        changed_batches: list[pl.DataFrame] = []
+        for batch_idx in range(num_batches):
+            _log(logger, f"before batch {batch_idx + 1}/{num_batches}")
+            t_batch = time.perf_counter()
+            offset = batch_idx * batch_size
 
-        # Optionally write a CSV of changed rows next to the input
-        if inchikey_changes_path is not None and n_changed > 0:
-            changed_df = df.filter(
-                pl.col("base_inchikey") != pl.col("original_base_inchikey")
-            ).select(
-                "name",
-                pl.col("original_inchikey"),
-                pl.col("original_base_inchikey"),
-                pl.col("original_smiles"),
-                pl.col("original_inchi"),
-                pl.col("inchikey").alias("new_inchikey"),
-                pl.col("base_inchikey").alias("new_base_inchikey"),
-                pl.col("smiles").alias("new_smiles"),
-                pl.col("inchi").alias("new_inchi"),
+            batch_df = (
+                pl.scan_parquet(normalized_path)
+                .slice(offset, batch_size)
+                .collect()
             )
-            changed_df.write_csv(inchikey_changes_path)
 
-        df = df.drop(
-            [
-                "original_base_inchikey",
-                "original_inchikey",
-                "original_smiles",
-                "original_inchi",
-            ]
-        )
-        _log(logger, f"[{time.perf_counter() - t5:.2f}s] Standardized structures")
-    else:
-        _log(logger, "Skipped identifier standardization (clean_identifiers=False)")
+            # Optional PubChem enrichment inside the batch loop.
+            if pubchem_path is not None:
+                batch_df = _collect_logged(
+                    _enrich_with_pubchem(
+                        batch_df.lazy(),
+                        pubchem_path,
+                        fill_missing_only=pubchem_fill_missing_only,
+                    ),
+                    logger,
+                    f"PubChem enrichment in batch {batch_idx + 1}/{num_batches}",
+                )
 
-    # Drop rows whose standardization left them without any identifier.
-    pre_filter = df.height
-    df = _collect_logged(
-        _filter_invalid_entries(df.lazy()), logger, "filtering invalid entries"
-    )
-    dropped = pre_filter - df.height
-    if dropped > 0:
-        _log(
-            logger,
-            f"Dropped {dropped} rows with no molecular identifier after standardization",
-        )
+            # Optional MS-Ready standardization inside the batch loop.
+            if clean_identifiers:
+                # Preserve pre-standardization identifier columns for change
+                # tracking/CSV output.
+                batch_df = batch_df.with_columns(
+                    pl.col("base_inchikey").alias("original_base_inchikey"),
+                    pl.col("inchikey").alias("original_inchikey"),
+                    pl.col("smiles").alias("original_smiles"),
+                    pl.col("inchi").alias("original_inchi"),
+                )
+                batch_df, failed_df = _standardize_structures_with_failures(batch_df)
+                if not failed_df.is_empty():
+                    failed_batches.append(failed_df)
 
-    # Fill missing molecular formulas and infer missing precursor types from
-    # the MS-Ready SMILES produced by ``_standardize_structures``.
-    t_infer = time.perf_counter()
-    df = _run_logged(
-        logger,
-        "filling molecular formula and inferring precursor type",
-        _fill_molecular_formula_and_infer_precursor_type,
-        df,
-        molecular_ion_tolerance_ppm,
-    )
-    _log(
-        logger,
-        f"[{time.perf_counter() - t_infer:.2f}s] Filled molecular_formula and inferred precursor_type",
-    )
+                if inchikey_changes_path is not None:
+                    changed_batch = batch_df.filter(
+                        pl.col("base_inchikey") != pl.col("original_base_inchikey")
+                    ).select(
+                        "name",
+                        pl.col("original_inchikey"),
+                        pl.col("original_base_inchikey"),
+                        pl.col("original_smiles"),
+                        pl.col("original_inchi"),
+                        pl.col("inchikey").alias("new_inchikey"),
+                        pl.col("base_inchikey").alias("new_base_inchikey"),
+                        pl.col("smiles").alias("new_smiles"),
+                        pl.col("inchi").alias("new_inchi"),
+                    )
+                    if changed_batch.height > 0:
+                        changed_batches.append(changed_batch)
 
-    # Now run the annotation steps that were skipped in ``annotate=False``
-    # mode. The pipeline still reuses the helper functions so behaviour is
-    # consistent with ``process_single_file(annotate=True)``.
-    df = _collect_logged(
-        _compute_precursor_formula(df.lazy(), logger=logger),
-        logger,
-        "computing precursor formula for annotation",
-    )
-    df = _run_logged(
-        logger, "adding precursor type indicators", _add_precursor_type_indicators, df
-    )
-    df = _run_logged(
-        logger,
-        "spectral formula annotation",
-        _annotate_spectra,
-        df,
-        raw_fragment_tolerance_ppm=raw_fragment_tolerance_ppm,
-        normalized_fragment_tolerance_ppm=normalized_fragment_tolerance_ppm,
-    )
+                batch_df = batch_df.drop(
+                    [
+                        "original_base_inchikey",
+                        "original_inchikey",
+                        "original_smiles",
+                        "original_inchi",
+                    ]
+                )
 
-    # Spill the freshly annotated frame to a temp Parquet, drop the in-memory
-    # frame, and rescan from disk. This keeps peak memory low for the remaining
-    # annotation steps and the final deduplication/sink.
-    annotation_temp_path = output_path.with_suffix(".annotation.temp.parquet")
-    temp_path = output_path.with_suffix(".temp.parquet")
-    previous_temp_path: Path | None = None
-    try:
-        _run_logged(
-            logger,
-            "writing annotation intermediate Parquet",
-            df.lazy().sink_parquet,
-            annotation_temp_path,
-            engine="streaming",
-        )
-        # Drop in-memory frames before rescanning from disk
-        df = None  # type: ignore[assignment]
-        del df
-        df = pl.scan_parquet(annotation_temp_path).collect()
-        _log(logger, "Rescanned annotation intermediate Parquet from disk")
-        previous_temp_path = annotation_temp_path
+                # Drop rows whose standardization left them without any identifier.
+                pre_filter = batch_df.height
+                batch_df = _collect_logged(
+                    _filter_invalid_entries(batch_df.lazy()),
+                    logger,
+                    f"filtering invalid entries in batch {batch_idx + 1}/{num_batches}",
+                )
+                dropped = pre_filter - batch_df.height
+                if dropped > 0:
+                    _log(
+                        logger,
+                        f"Dropped {dropped} rows with no molecular identifier in batch {batch_idx + 1}/{num_batches}",
+                    )
+            else:
+                _log(logger, "Skipped identifier standardization (clean_identifiers=False)")
 
-        df = _run_logged(
-            logger,
-            "adding molecular ion info",
-            _add_molecular_ion_info,
-            df,
-            molecular_ion_tolerance_ppm,
-        )
-        df = _run_logged(
-            logger,
-            "adding spectral information score",
-            _add_spectral_information_score,
-            df,
-        )
-        lf: pl.LazyFrame = df.lazy()
-        # Apply the explained-intensity filter now that annotation is done.
-        if min_explained_intensity is not None:
-            pre_filter = df.height
-            lf = lf.filter(pl.col("explained_intensity") >= min_explained_intensity)
+            batch_df = _process_batch(
+                batch_df,
+                raw_fragment_tolerance_ppm=raw_fragment_tolerance_ppm,
+                normalized_fragment_tolerance_ppm=normalized_fragment_tolerance_ppm,
+                molecular_ion_tolerance_ppm=molecular_ion_tolerance_ppm,
+                min_explained_intensity=min_explained_intensity,
+                logger=logger,
+            )
+
+            batch_path = output_dir / f"{output_stem}.batch_{batch_idx:06d}.parquet"
+            batch_df.write_parquet(batch_path)
+            batch_paths.append(batch_path)
+
+            # Drop the batch from memory.
+            batch_df = None  # type: ignore[assignment]
+            del batch_df
+
             _log(
                 logger,
-                f"Defined explained intensity filter (>= {min_explained_intensity}); "
-                f"dropped {pre_filter - df.height} rows",
+                f"[{time.perf_counter() - t_batch:.2f}s] after batch {batch_idx + 1}/{num_batches}",
             )
 
-        combined_lf = _select_output_columns(lf)
+        # Write accumulated standardization failures and InChIKey changes once.
+        if failed_batches:
+            failed_df = pl.concat(failed_batches)
+            failed_df.write_parquet("failed_structures.parquet")
+            num_failed_keys = failed_df["base_inchikey"].n_unique()
+            num_failed_rows = failed_df.height
+            _log(
+                logger,
+                f"Standardization failed for {num_failed_keys} unique InChIKeys "
+                f"({num_failed_rows} total rows). Saved to 'failed_structures.parquet'.",
+            )
+        if changed_batches:
+            pl.concat(changed_batches).write_csv(inchikey_changes_path)
 
-        # Spill the annotated frame to a temp Parquet, drop the in-memory frame,
-        # and rescan from disk. This keeps peak memory low before the (potentially
-        # memory-hungry) deduplication step and the final sink.
-        _run_logged(
-            logger,
-            "writing intermediate Parquet",
-            combined_lf.sink_parquet,
-            temp_path,
-            engine="streaming",
-        )
-        # Drop in-memory frames before rescanning from disk
-        df = None  # type: ignore[assignment]
-        del df
-        combined_lf = pl.scan_parquet(temp_path)
-        _log(logger, "Rescanned intermediate Parquet from disk")
-
-        # Each intermediate temp removes the older one so disk usage stays
-        # bounded when multiple checkpoint Parquets are written.
-        if previous_temp_path is not None:
-            previous_temp_path.unlink(missing_ok=True)
-            previous_temp_path = None
+        # ------------------------------------------------------------------
+        # 6. Concatenate batches and optionally deduplicate.
+        # ------------------------------------------------------------------
+        batch_glob = output_dir / f"{output_stem}.batch_*.parquet"
+        combined_lf = pl.scan_parquet(batch_glob)
 
         if deduplicate:
             t4 = time.perf_counter()
@@ -603,10 +588,10 @@ def process_spectral_library(
         _log(logger, f"[{time.perf_counter() - t0:.2f}s] Total execution time")
         return result_lf
     finally:
-        if temp_path is not None:
-            temp_path.unlink(missing_ok=True)
-        if previous_temp_path is not None:
-            previous_temp_path.unlink(missing_ok=True)
+        for p in temp_paths:
+            p.unlink(missing_ok=True)
+        for p in batch_paths:
+            p.unlink(missing_ok=True)
 
 
 def _parse_file(path: Path, includes_MSn: bool = False) -> pl.LazyFrame:
@@ -680,6 +665,73 @@ def _process_pipeline(
         )
 
     return _select_output_columns(lf)
+
+
+def _process_batch(
+    df: pl.DataFrame,
+    raw_fragment_tolerance_ppm: float,
+    normalized_fragment_tolerance_ppm: float,
+    molecular_ion_tolerance_ppm: float,
+    min_explained_intensity: float | None,
+    logger: logging.Logger | TextIO | None = None,
+) -> pl.DataFrame:
+    """Run the spectral annotation pipeline on a single eager batch.
+
+    The input ``df`` is expected to have already passed through metadata
+    normalization and optional structure standardization. This function
+    performs formula inference, precursor-formula computation, spectral
+    annotation, molecular-ion annotation, spectral-information scoring, the
+    optional explained-intensity filter, and final output-column selection.
+    """
+    df = _run_logged(
+        logger,
+        "filling molecular formula and inferring precursor type",
+        _fill_molecular_formula_and_infer_precursor_type,
+        df,
+        molecular_ion_tolerance_ppm,
+    )
+    df = _collect_logged(
+        _compute_precursor_formula(df.lazy(), logger=logger),
+        logger,
+        "computing precursor formula for annotation",
+    )
+    df = _run_logged(
+        logger, "adding precursor type indicators", _add_precursor_type_indicators, df
+    )
+    df = _run_logged(
+        logger,
+        "spectral formula annotation",
+        _annotate_spectra,
+        df,
+        raw_fragment_tolerance_ppm=raw_fragment_tolerance_ppm,
+        normalized_fragment_tolerance_ppm=normalized_fragment_tolerance_ppm,
+    )
+    df = _run_logged(
+        logger,
+        "adding molecular ion info",
+        _add_molecular_ion_info,
+        df,
+        molecular_ion_tolerance_ppm,
+    )
+    df = _run_logged(
+        logger,
+        "adding spectral information score",
+        _add_spectral_information_score,
+        df,
+    )
+
+    lf = df.lazy()
+    if min_explained_intensity is not None:
+        pre_filter = df.height
+        lf = lf.filter(pl.col("explained_intensity") >= min_explained_intensity)
+        post_filter = lf.select(pl.len()).collect().item()
+        _log(
+            logger,
+            f"Applied explained intensity filter (>= {min_explained_intensity}); "
+            f"dropped {pre_filter - post_filter} rows",
+        )
+
+    return _select_output_columns(lf).collect()
 
 
 def _filter_invalid_entries(lf: pl.LazyFrame) -> pl.LazyFrame:
@@ -1672,8 +1724,15 @@ def _enrich_with_pubchem(
     )
 
 
-def _standardize_structures(df: pl.DataFrame) -> pl.DataFrame:
+def _standardize_structures_with_failures(
+    df: pl.DataFrame,
+) -> tuple[pl.DataFrame, pl.DataFrame]:
+    """MS-Ready standardization that returns both the standardized frame and failures.
 
+    This is the file-write-free core of :func:`_standardize_structures`. It is
+    exposed separately so :func:`process_spectral_library` can standardize per
+    batch, accumulate failures across batches, and write the failure report once.
+    """
     # Get unique SMILES per base_inchikey
     mapping_df = df.group_by("base_inchikey").agg(pl.col("smiles").drop_nulls().first())
 
@@ -1700,6 +1759,20 @@ def _standardize_structures(df: pl.DataFrame) -> pl.DataFrame:
     )
     failed_df = df.filter(failed_mask)
 
+    standardized = df.with_columns(
+        pl.col("msready_smiles").alias("smiles"),
+        pl.col("msready_inchi").alias("inchi"),
+        pl.col("msready_inchikey").alias("inchikey"),
+        pl.col("msready_inchikey").str.extract(r"(.+?)-").alias("base_inchikey"),
+    ).drop(["msready_smiles", "msready_inchi", "msready_inchikey"])
+
+    return standardized, failed_df
+
+
+def _standardize_structures(df: pl.DataFrame) -> pl.DataFrame:
+    """MS-Ready standardization with per-call failure reporting."""
+    standardized, failed_df = _standardize_structures_with_failures(df)
+
     if not failed_df.is_empty():
         failed_df.write_parquet("failed_structures.parquet")
         num_failed_keys = failed_df["base_inchikey"].n_unique()
@@ -1708,9 +1781,4 @@ def _standardize_structures(df: pl.DataFrame) -> pl.DataFrame:
             f"Standardization failed for {num_failed_keys} unique InChIKeys ({num_failed_rows} total rows). Saved to 'failed_structures.parquet'."
         )
 
-    return df.with_columns(
-        pl.col("msready_smiles").alias("smiles"),
-        pl.col("msready_inchi").alias("inchi"),
-        pl.col("msready_inchikey").alias("inchikey"),
-        pl.col("msready_inchikey").str.extract(r"(.+?)-").alias("base_inchikey"),
-    ).drop(["msready_smiles", "msready_inchi", "msready_inchikey"])
+    return standardized

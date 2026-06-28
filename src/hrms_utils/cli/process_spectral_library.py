@@ -121,6 +121,13 @@ def main():
         default=None,
         help="Path for the execution log file (default: next to the output Parquet)",
     )
+    parser.add_argument(
+        "--batch-size",
+        "-b",
+        type=int,
+        default=500_000,
+        help="Number of rows to process per batch (default: 500000)",
+    )
 
     args = parser.parse_args()
 
@@ -173,6 +180,7 @@ def main():
         inchikey_changes_path=inchikey_changes_path,
         output_path=output_path,
         logger=logger,
+        batch_size=args.batch_size,
     )
 
     end = perf_counter()
