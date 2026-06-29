@@ -22,9 +22,15 @@ def parse_mspec(path: Path | str) -> pl.LazyFrame:
             pl.col("raw").str.extract(pattern=r"(?i)Instrument: (.+)", group_index=1).alias("instrument"),
             pl.col("raw").str.extract(pattern=r"(?i)(?:Spectrum_type|MSLEVEL): (?:MS)?(\d+)", group_index=1).cast(pl.Int64, strict=False).alias("mslevel"),
             pl.col("raw").str.extract(pattern=r"(?i)Collision_gas: (.+)", group_index=1).alias("collision_gas"),
-            # Any non-MSn key containing "energy" is treated as the collision-energy field.
+            # Any non-MSn key containing "energy" or "energies" is treated as the
+            # collision-energy field. MSn_* keys are parsed separately when
+            # includes_MSn is enabled. Polars (Rust regex) does not support
+            # look-around, so the ``MSn_`` exclusion is expressed as a
+            # hand-rolled state machine in the second alternative: keys that
+            # start with ``M``, ``MS``, ``MSn`` then ``_``/``-``/``\n`` are
+            # rejected.
             pl.col("raw").str.extract(
-                pattern=r"(?mi)^\s*(?:energy[^:\n]*|(?:[^M\n]|M[^S\n]|MS[^n\n]|MSn[^_\-\n])[^:\n]*energy)[^:\n]*:\s*(.+)$",
+                pattern=r"(?mi)^\s*(?:energ(?:y|ies)[^:\n]*|(?:[^M\n]|M[^S\n]|MS[^n\n]|MSn[^_\-\n])[^:\n]*energ(?:y|ies))[^:\n]*:\s*(.+)$",
                 group_index=1,
             ).alias("collision_energy_raw"),
             pl.col("raw").str.extract(pattern=r"(?i)Ionization: (.+)", group_index=1).alias("ionization"),

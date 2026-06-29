@@ -79,11 +79,15 @@ def parse_mgf(mgf_path: str | Path, includes_MSn: bool = False) -> pl.LazyFrame:
             pl.col("entry").str.extract(rf"(?mi)^{key}=(.+)$", 1).alias(f"raw_{key}")
         )
 
-    # Any non-MSn key containing "energy" is treated as the collision-energy
-    # field. MSn_* keys are parsed separately when includes_MSn is enabled.
+    # Any non-MSn key containing "energy" or "energies" is treated as the
+    # collision-energy field. MSn_* keys are parsed separately when
+    # includes_MSn is enabled. Polars (Rust regex) does not support
+    # look-around, so the ``MSn_`` exclusion is expressed as a hand-rolled
+    # state machine in the second alternative: keys that start with ``M``,
+    # ``MS``, ``MSn`` then ``_``/``-``/``\n`` are rejected.
     raw_exprs.append(
         pl.col("entry").str.extract(
-            r"(?mi)^(?:energy[^=\n]*|(?:[^M\n]|M[^S\n]|MS[^n\n]|MSn[^_\-\n])[^=\n]*energy)[^=\n]*=(.+)$",
+            r"(?mi)^\s*(?:energ(?:y|ies)[^=\n]*|(?:[^M\n]|M[^S\n]|MS[^n\n]|MSn[^_\-\n])[^=\n]*energ(?:y|ies))[^=\n]*=(.+)$",
             1,
         ).alias("collision_energy_raw")
     )
@@ -202,18 +206,7 @@ def parse_mgf(mgf_path: str | Path, includes_MSn: bool = False) -> pl.LazyFrame:
     ).with_columns(
         pl.col("num_merged_spectra").eq(1).alias("is_single_spectra")
     )
-    
-    # COLLISION_ENERGY handling (MS2) - keep as list if already formatted
-    lf = lf.with_columns(
-        pl.col("collision_energy_raw").str.strip_chars("[]").str.split(by=",").list.eval(
-            pl.element().str.strip_chars(" ")
-        ).cast(pl.List(pl.Float64)).alias("collision_energy_list")
-    ).with_columns(
-        pl.when(pl.col("collision_energy_list").list.len() > 1)
-        .then(pl.lit(True)).otherwise(pl.lit(False)).alias("multiple_collision_energies"),
-        pl.col("collision_energy_list").list.mean().alias("collision_energy_mean")
-    )
-    
+
     if includes_MSn:
         # We'll just do basic list parsing for MSn fields
         for key in ["msn_precursor_mzs", "msn_isolation_windows"]:
