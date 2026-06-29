@@ -50,3 +50,4 @@ packages/msdial
 tests/output/
 experiments/spectral_information/msdial_output/
 **.ods
+src/.cargo/config.toml
