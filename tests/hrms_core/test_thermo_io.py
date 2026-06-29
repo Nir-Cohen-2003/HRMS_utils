@@ -41,6 +41,7 @@ def test_read_thermo_file(raw_file):
         "isolation_window_lower_bound",
         "isolation_window_upper_bound",
         "collision_energy",
+        "collision_energy_unit",
         "injection_time",
         "filter_string",
     }

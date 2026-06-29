@@ -406,9 +406,7 @@ def process_spectral_library(
         # ------------------------------------------------------------------
         # 4. Process batches through the annotation pipeline.
         # ------------------------------------------------------------------
-        total_rows = (
-            pl.scan_parquet(normalized_path).select(pl.len()).collect().item()
-        )
+        total_rows = pl.scan_parquet(normalized_path).select(pl.len()).collect().item()
         num_batches = max(1, (total_rows + batch_size - 1) // batch_size)
         _log(
             logger,
@@ -424,9 +422,7 @@ def process_spectral_library(
             offset = batch_idx * batch_size
 
             batch_df = (
-                pl.scan_parquet(normalized_path)
-                .slice(offset, batch_size)
-                .collect()
+                pl.scan_parquet(normalized_path).slice(offset, batch_size).collect()
             )
 
             # Optional PubChem enrichment inside the batch loop.
@@ -500,7 +496,10 @@ def process_spectral_library(
                         f"Dropped {dropped} rows with no molecular identifier in batch {batch_idx + 1}/{num_batches}",
                     )
             else:
-                _log(logger, "Skipped identifier standardization (clean_identifiers=False)")
+                _log(
+                    logger,
+                    "Skipped identifier standardization (clean_identifiers=False)",
+                )
 
             batch_df = _process_batch(
                 batch_df,
@@ -1311,9 +1310,7 @@ def _extract_collision_energy_values(data: polarsFrame) -> polarsFrame:
     # --- Step 1: Parse the raw collision-energy string per row ---------------
     if has_collision_energy_raw:
         orbi_expr = (
-            pl.col("is_orbitrap").fill_null(False)
-            if has_orbitrap
-            else pl.lit(False)
+            pl.col("is_orbitrap").fill_null(False) if has_orbitrap else pl.lit(False)
         )
         mz_expr = (
             pl.col("precursor_mz")
@@ -1336,8 +1333,12 @@ def _extract_collision_energy_values(data: polarsFrame) -> polarsFrame:
         data = cast(
             polarsFrame,
             data.with_columns(
-                pl.col("_energy_parsed").struct.field("nce").alias("collision_energy_NCE"),
-                pl.col("_energy_parsed").struct.field("ev").alias("collision_energy_ev"),
+                pl.col("_energy_parsed")
+                .struct.field("nce")
+                .alias("collision_energy_NCE"),
+                pl.col("_energy_parsed")
+                .struct.field("ev")
+                .alias("collision_energy_ev"),
                 pl.col("_energy_parsed")
                 .struct.field("energy_list")
                 .alias("collision_energy_list"),

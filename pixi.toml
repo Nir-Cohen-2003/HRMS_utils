@@ -2,6 +2,7 @@
 channels = [
   "https://prefix.dev/conda-forge",
   "conda-forge",
+  "bioconda",
   # "https://prefix.dev/pixi-build-backends",
   "https://prefix.dev/nir-cohen",
   "https://prefix.dev/skill-forge"
@@ -72,6 +73,7 @@ requests = "*"
 marimo ="*"
 ruff = "*"
 pyrefly = "*"
+thermorawfileparser = "*"
 
 [feature.experiments.target.linux-64.dependencies]
 hrms_utils = {path = "."}
@@ -100,6 +102,7 @@ notebook = {cmd="marimo edit test.py",env={MARIMO_OUTPUT_MAX_BYTES="100_000_000"
 [feature.scripts.target.linux-64.dependencies]
 hrms_utils = {path = "."}
 parallel_rdkit = {path = "../parallel_rdkit"}
+thermorawfileparser = "*"
 [feature.scripts.dependencies]
 marimo = "*"
 altair = ">=5.4.0"

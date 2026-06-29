@@ -67,6 +67,7 @@ requirements:
     - xlsxwriter
     - connectorx
     - sqlalchemy
+    - thermorawfileparser
 
 tests:
   - python:

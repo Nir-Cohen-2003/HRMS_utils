@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import subprocess
+import tempfile
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal
@@ -12,7 +15,6 @@ from polars.plugins import register_plugin_function
 from .._internal import (
     NUM_ELEMENTS,  # type: ignore
     read_mzml_files,  # type: ignore
-    read_thermo_files,  # type: ignore
 )
 from .._internal import __version__ as __version__  # type: ignore
 
@@ -502,9 +504,93 @@ def read_mzml(paths: list[str]) -> list[pl.DataFrame]:
     return read_mzml_files(paths)
 
 
+def _run_thermorawfileparser(raw_path: Path, mzml_path: Path) -> None:
+    """Convert a single Thermo RAW file to mzML using the external `thermorawfileparser` CLI.
+
+    Args:
+        raw_path: Path to the input `.raw` file. Must exist.
+        mzml_path: Full destination path for the produced `.mzML` file.
+
+    Raises:
+        RuntimeError: If the CLI exits with a non-zero status, or if the expected
+            mzML output file is not produced.
+    """
+    cmd = [
+        "thermorawfileparser",
+        "-i",
+        str(raw_path),
+        "-b",
+        str(mzml_path),
+        "-f",
+        "mzML",
+    ]
+    result = subprocess.run(cmd, capture_output=True, text=True, check=False)
+    if result.returncode != 0:
+        raise RuntimeError(
+            f"thermorawfileparser failed for {raw_path} (exit code {result.returncode}): "
+            f"{result.stderr.strip() or result.stdout.strip()}"
+        )
+    if not mzml_path.exists():
+        raise RuntimeError(
+            f"thermorawfileparser did not produce expected mzML output: {mzml_path}"
+        )
+
+
+def _read_single_thermo(raw_path: str) -> pl.DataFrame:
+    """Convert one Thermo RAW file to mzML, read it, and clean up the temp directory.
+
+    Args:
+        raw_path: Path to a `.raw` file on disk.
+
+    Returns:
+        A single `pl.DataFrame` populated by the mzML reader.
+    """
+    raw = Path(raw_path)
+    if not raw.exists():
+        raise RuntimeError(f"Thermo RAW file not found: {raw_path}")
+
+    # TemporaryDirectory is cleaned up automatically when the context manager exits.
+    with tempfile.TemporaryDirectory(prefix="hrms_utils_thermo_") as tmp_dir:
+        mzml_path = Path(tmp_dir) / f"{raw.stem}.mzML"
+        _run_thermorawfileparser(raw, mzml_path)
+        dfs = read_mzml_files([str(mzml_path)])
+    return dfs[0]
+
+
+def read_thermo_files(paths: list[str]) -> list[pl.DataFrame]:
+    """Read multiple Thermo RAW files in parallel by converting them to mzML first.
+
+    For each input `.raw` file, this function:
+
+    1. Creates a per-file temporary working directory.
+    2. Invokes the external `thermorawfileparser` CLI to convert the RAW file to
+       an mzML file inside that directory.
+    3. Reads the resulting mzML file with the existing Rust mzML reader.
+    4. Lets the `TemporaryDirectory` context manager remove the converted file on
+       exit, so no on-disk artifacts persist beyond the call.
+
+    Conversion is parallelized across inputs via a `ThreadPoolExecutor` (the heavy
+    work is the external CLI process, which releases the GIL).
+
+    Args:
+        paths: List of file paths to Thermo `.raw` files.
+
+    Returns:
+        List of Polars DataFrames, one for each input file. Each DataFrame has the
+        same unified schema produced by `read_mzml_files` (including
+        `injection_time` and `filter_string`).
+    """
+    with ThreadPoolExecutor() as executor:
+        return list(executor.map(_read_single_thermo, paths))
+
+
 def read_thermo(paths: list[str]) -> list[pl.DataFrame]:
     """
-    Read multiple Thermo RAW files in parallel into Polars DataFrames using the Rust backend.
+    Read multiple Thermo RAW files in parallel into Polars DataFrames.
+
+    Internally converts each RAW file to mzML via the `thermorawfileparser` CLI and
+    reads the result with the Rust mzML reader; the converted mzML files are
+    written to a temporary directory and removed on return.
 
     Args:
         paths: List of file paths to read.

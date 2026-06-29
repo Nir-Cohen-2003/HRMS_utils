@@ -19,4 +19,4 @@ num-traits = "*"
 num-integer = "*"
 itertools = "*"
 mass-decomposition = { version = "0.1.0", features = ["serde"] }
-mzdata = { version = "0.63.*", features = ["thermo"] }
+mzdata = { version = "0.63.*" }

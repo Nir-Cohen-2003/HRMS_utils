@@ -40,6 +40,8 @@ fn read_single_mzml(path: &Path) -> Result<DataFrame, Box<dyn std::error::Error 
     let mut iso_window_upper = Vec::new();
     let mut collision_energies = Vec::new();
     let mut collision_energy_units = Vec::new();
+    let mut injection_times = Vec::new();
+    let mut filter_strings = Vec::new();
 
     for spectrum in reader {
         // ID
@@ -149,6 +151,27 @@ fn read_single_mzml(path: &Path) -> Result<DataFrame, Box<dyn std::error::Error 
             collision_energies.push(None);
             collision_energy_units.push(None);
         }
+
+        // Acquisition metadata: injection_time + filter string (carried over from the
+        // former Thermo RAW reader; available on the first scan of any spectrum).
+        let mut found_meta = false;
+        if let Some(acquisition) = spectrum.acquisition().first_scan() {
+            injection_times.push(Some(acquisition.injection_time as f64));
+            if let Some(param) = acquisition
+                .params()
+                .iter()
+                .find(|p| p.name == "filter string")
+            {
+                filter_strings.push(Some(param.value.to_string()));
+            } else {
+                filter_strings.push(None);
+            }
+            found_meta = true;
+        }
+        if !found_meta {
+            injection_times.push(None);
+            filter_strings.push(None);
+        }
     }
 
     // Create Series
@@ -165,6 +188,8 @@ fn read_single_mzml(path: &Path) -> Result<DataFrame, Box<dyn std::error::Error 
     let s_iso_upper = Series::new("isolation_window_upper_bound".into(), iso_window_upper);
     let s_ce = Series::new("collision_energy".into(), collision_energies);
     let s_ce_unit = Series::new("collision_energy_unit".into(), collision_energy_units);
+    let s_inj_time = Series::new("injection_time".into(), injection_times);
+    let s_filter = Series::new("filter_string".into(), filter_strings);
 
     let df = DataFrame::new(vec![
         s_id.into(),
@@ -178,6 +203,8 @@ fn read_single_mzml(path: &Path) -> Result<DataFrame, Box<dyn std::error::Error 
         s_iso_upper.into(),
         s_ce.into(),
         s_ce_unit.into(),
+        s_inj_time.into(),
+        s_filter.into(),
     ])?;
 
     Ok(df)

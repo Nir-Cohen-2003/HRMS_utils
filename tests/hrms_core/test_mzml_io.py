@@ -37,19 +37,21 @@ def test_read_mzml_files(mzml_files):
         # Check schema
         expected_columns = {
             "id", "ms_level", "scan_time", "polarity", "mz", "intensity",
-            "precursor_mz", "isolation_window_lower_bound", 
-            "isolation_window_upper_bound", "collision_energy", 
-            "collision_energy_unit"
+            "precursor_mz", "isolation_window_lower_bound",
+            "isolation_window_upper_bound", "collision_energy",
+            "collision_energy_unit", "injection_time", "filter_string"
         }
-        
+
         assert set(df.columns) == expected_columns
-        
+
         # Check data types
         schema = df.schema
         assert schema["id"] == pl.String
         assert schema["ms_level"] == pl.UInt8
         assert schema["mz"] == pl.List(pl.Float64)
         assert schema["intensity"] == pl.List(pl.Float64)
+        assert schema["injection_time"] == pl.Float64
+        assert schema["filter_string"] == pl.String
         
         # Check content (basic checks)
         assert df.height > 0
