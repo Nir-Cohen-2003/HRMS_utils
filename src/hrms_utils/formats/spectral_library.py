@@ -437,7 +437,12 @@ def process_spectral_library(
                     pl.col("smiles").alias("original_smiles"),
                     pl.col("inchi").alias("original_inchi"),
                 )
-                batch_df, failed_df = _standardize_structures_with_failures(batch_df)
+                batch_df, failed_df = _run_logged(
+                    logger,
+                    f"MS-Ready standardization in batch {batch_idx + 1}/{num_batches}",
+                    _standardize_structures_with_failures,
+                    batch_df,
+                )
                 if not failed_df.is_empty():
                     failed_batches.append(failed_df)
 
