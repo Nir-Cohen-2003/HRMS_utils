@@ -1,3 +1,4 @@
+import gc
 import logging
 import os
 import re
@@ -322,6 +323,7 @@ def process_spectral_library(
     normalized_path = output_dir / f"{output_stem}.normalized.parquet"
     temp_paths: list[Path] = [parsed_path, normalized_path]
     batch_paths: list[Path] = []
+    dedup_temp_paths: list[Path] = []
 
     try:
         # ------------------------------------------------------------------
@@ -378,6 +380,11 @@ def process_spectral_library(
         # Persist the metadata-normalized frame so the batch loop always reads
         # from a single source.
         df.write_parquet(normalized_path)
+
+        # The parsed intermediate is no longer needed now that normalization is
+        # persisted; remove it to avoid leaving unused Parquets behind.
+        _log(logger, f"removing parsed intermediate {parsed_path}")
+        parsed_path.unlink(missing_ok=True)
 
         # ------------------------------------------------------------------
         # 3. Optional PubChem/standardization identifier stats.
@@ -537,6 +544,11 @@ def process_spectral_library(
         if changed_batches:
             pl.concat(changed_batches).write_csv(inchikey_changes_path)
 
+        # The normalized intermediate is no longer needed now that all batches
+        # have been written; remove it to avoid leaving unused Parquets behind.
+        _log(logger, f"removing normalized intermediate {normalized_path}")
+        normalized_path.unlink(missing_ok=True)
+
         # ------------------------------------------------------------------
         # 6. Concatenate batches and optionally deduplicate.
         # ------------------------------------------------------------------
@@ -554,11 +566,13 @@ def process_spectral_library(
             _log(logger, "Library Statistics (Clean Precursors Only):")
             _log(logger, _get_stats_str(stats_lf.filter(pl.col("clean_precursor"))))
 
-            combined_lf = _deduplicate_spectra(
+            combined_lf, dedup_temp_paths = _deduplicate_spectra(
                 combined_lf,
                 fragment_tolerance_ppm=normalized_fragment_tolerance_ppm,
                 molecular_ion_tolerance_ppm=molecular_ion_tolerance_ppm,
                 threshold=dedup_threshold,
+                work_dir=output_dir,
+                output_stem=output_stem,
                 logger=logger,
             )
             _log(logger, f"[{time.perf_counter() - t4:.2f}s] Built deduplication plan")
@@ -609,6 +623,8 @@ def process_spectral_library(
         for p in temp_paths:
             p.unlink(missing_ok=True)
         for p in batch_paths:
+            p.unlink(missing_ok=True)
+        for p in dedup_temp_paths:
             p.unlink(missing_ok=True)
 
 
@@ -1616,9 +1632,25 @@ def _deduplicate_spectra(
     fragment_tolerance_ppm: float,
     molecular_ion_tolerance_ppm: float,
     threshold: float,
+    work_dir: Path,
+    output_stem: str,
     logger: logging.Logger | TextIO | None = None,
-) -> pl.LazyFrame:
-    """Pairwise deduplication based on explained intensity, restricted to same base_inchikey and precursor_mz."""
+) -> tuple[pl.LazyFrame, list[Path]]:
+    """Pairwise deduplication based on explained intensity, restricted to same base_inchikey and precursor_mz.
+
+    Any intermediate frame that is pair-sized is materialized to Parquet on
+    disk (using the streaming engine) instead of being collected into memory.
+    The returned lazy frame is the de-duplicated input; the returned list
+    contains the temporary Parquet paths so the caller can remove them after
+    the final sink.
+    """
+    candidate_pairs_path = work_dir / f"{output_stem}.candidate_pairs.parquet"
+    duplicate_pairs_path = work_dir / f"{output_stem}.duplicate_pairs.parquet"
+    duplicate_idx_path = work_dir / f"{output_stem}.duplicate_indices.parquet"
+    temp_paths = [candidate_pairs_path, duplicate_pairs_path, duplicate_idx_path]
+    for p in temp_paths:
+        p.unlink(missing_ok=True)
+
     lf = lf.with_row_index("_dedup_idx")
 
     valid_bases = lf.filter(
@@ -1636,11 +1668,16 @@ def _deduplicate_spectra(
             "source_file",
         ]
     )
-
-    # Bin precursor_mz to 0.1 Da bins to avoid Cartesian explosion during join
+    # Bin precursor_mz to 1 Da bins to avoid Cartesian explosion during join
     base_lf = base_lf.with_columns(
         pl.col("precursor_mz").round(decimals=0).cast(pl.Int64).alias("_mz_bin")
-    )
+    ).sort(by=["base_inchikey", "_mz_bin"])
+    base_lf = _collect_logged(
+        base_lf,
+        logger,
+        "collecting sorted base_lf",
+    ).lazy()
+
     # Join on base_inchikey AND the expanded mz bin
     pairs = base_lf.join(
         base_lf,
@@ -1658,79 +1695,125 @@ def _deduplicate_spectra(
         ).alias("_ppm_diff")
     ).filter(pl.col("_ppm_diff") <= molecular_ion_tolerance_ppm)
 
-    # Forward similarity
-    pairs = pairs.with_columns(
-        pl.struct(
-            [
-                pl.col("cleaned_normalized_mz").alias("mz1"),
-                pl.col("cleaned_normalized_intensity").alias("intensities1"),
-                pl.col("cleaned_normalized_mz_right").alias("mz2"),
-                pl.col("cleaned_normalized_intensity_right").alias("intensities2"),
-                pl.col("precursor_mz").alias("precursor_mz1"),
-                pl.col("precursor_mz_right").alias("precursor_mz2"),
-            ]
-        )
-        .spectral_similarity.explained_intensity(
-            ms2_tolerance_in_ppm=fragment_tolerance_ppm, permissive=True
-        )
-        .alias("sim_forward"),
-        # Reverse similarity
-        pl.struct(
-            [
-                pl.col("cleaned_normalized_mz_right").alias("mz1"),
-                pl.col("cleaned_normalized_intensity_right").alias("intensities1"),
-                pl.col("cleaned_normalized_mz").alias("mz2"),
-                pl.col("cleaned_normalized_intensity").alias("intensities2"),
-                pl.col("precursor_mz_right").alias("precursor_mz1"),
-                pl.col("precursor_mz").alias("precursor_mz2"),
-            ]
-        )
-        .spectral_similarity.explained_intensity(
-            ms2_tolerance_in_ppm=fragment_tolerance_ppm, permissive=True
-        )
-        .alias("sim_reverse"),
-    )
+    # Materialize the candidate pair list to disk so it does not sit in memory.
+    _log(logger, "sinking candidate pairs to Parquet")
+    pairs.sink_parquet(candidate_pairs_path, engine="streaming")
+    _log(logger, f"candidate pairs written to {candidate_pairs_path}")
 
-    duplicate_pairs = _collect_logged(
-        pairs.filter(
-            (pl.col("sim_forward") >= threshold) & (pl.col("sim_reverse") >= threshold)
-        ),
-        logger,
-        "collecting duplicate candidate pairs",
-    )
+    # Release the in-memory plan and force a GC before reading the candidates back.
+    pairs = None  # type: ignore[assignment]
+    gc.collect()
+    _log(logger, "gc after candidate pairs sink")
 
-    if not duplicate_pairs.is_empty():
-        # Log total duplicates
-        total_dups = duplicate_pairs.select("_dedup_idx_right").n_unique()
-        _log(logger, f"Deduplication: found {total_dups} duplicate spectra")
+    # Read candidates back from disk and compute the spectral similarity.
+    pairs = pl.scan_parquet(candidate_pairs_path)
 
-        # Log duplicates per file
-        dups_per_file = duplicate_pairs.group_by("source_file_right").agg(
-            pl.col("_dedup_idx_right").n_unique().alias("num_duplicates")
-        )
-        for row in dups_per_file.iter_rows(named=True):
-            _log(
-                logger,
-                f"  {row['source_file_right']}: {row['num_duplicates']} duplicates",
+    # Forward and reverse explained-intensity similarity.
+    duplicate_pairs_lf = (
+        pairs.with_columns(
+            pl.struct(
+                [
+                    pl.col("cleaned_normalized_mz").alias("mz1"),
+                    pl.col("cleaned_normalized_intensity").alias("intensities1"),
+                    pl.col("cleaned_normalized_mz_right").alias("mz2"),
+                    pl.col("cleaned_normalized_intensity_right").alias("intensities2"),
+                    pl.col("precursor_mz").alias("precursor_mz1"),
+                    pl.col("precursor_mz_right").alias("precursor_mz2"),
+                ]
             )
+            .spectral_similarity.explained_intensity(
+                ms2_tolerance_in_ppm=fragment_tolerance_ppm, permissive=True
+            )
+            .alias("sim_forward"),
+            pl.struct(
+                [
+                    pl.col("cleaned_normalized_mz_right").alias("mz1"),
+                    pl.col("cleaned_normalized_intensity_right").alias("intensities1"),
+                    pl.col("cleaned_normalized_mz").alias("mz2"),
+                    pl.col("cleaned_normalized_intensity").alias("intensities2"),
+                    pl.col("precursor_mz_right").alias("precursor_mz1"),
+                    pl.col("precursor_mz").alias("precursor_mz2"),
+                ]
+            )
+            .spectral_similarity.explained_intensity(
+                ms2_tolerance_in_ppm=fragment_tolerance_ppm, permissive=True
+            )
+            .alias("sim_reverse"),
+        )
+        .filter(
+            (pl.col("sim_forward") >= threshold) & (pl.col("sim_reverse") >= threshold)
+        )
+        .drop("sim_forward", "sim_reverse")
+    )
 
-        # Overlap matrix
-        overlap_matrix = (
-            duplicate_pairs.group_by(["source_file", "source_file_right"])
-            .agg(pl.len().alias("count"))
-            .pivot(on="source_file_right", index="source_file", values="count")
-            .fill_null(0)
+    # Materialize the duplicate pair list to disk as well.
+    _log(logger, "sinking duplicate pairs to Parquet")
+    duplicate_pairs_lf.sink_parquet(duplicate_pairs_path, engine="streaming")
+    _log(logger, f"duplicate pairs written to {duplicate_pairs_path}")
+
+    pairs = None  # type: ignore[assignment]
+    duplicate_pairs_lf = None  # type: ignore[assignment]
+    gc.collect()
+    _log(logger, "gc after duplicate pairs sink")
+
+    # Re-read duplicates from disk for the small downstream aggregations.
+    duplicate_pairs_lf = pl.scan_parquet(duplicate_pairs_path)
+
+    # Project down to the columns needed for stats to avoid loading wide spectra.
+    dup_stats_lf = duplicate_pairs_lf.select(
+        ["_dedup_idx_right", "source_file", "source_file_right"]
+    )
+    total_dups = (
+        dup_stats_lf.select(pl.col("_dedup_idx_right").n_unique()).collect().item()
+    )
+    _log(logger, f"Deduplication: found {total_dups} duplicate spectra")
+
+    dups_per_file = (
+        dup_stats_lf.group_by("source_file_right")
+        .agg(pl.col("_dedup_idx_right").n_unique().alias("num_duplicates"))
+        .collect()
+    )
+    for row in dups_per_file.iter_rows(named=True):
+        _log(
+            logger,
+            f"  {row['source_file_right']}: {row['num_duplicates']} duplicates",
         )
 
-        with open("overlap_matrix.txt", "w") as f:
-            f.write(str(overlap_matrix))
+    # The pivot API only exists on eager DataFrames, so collect the small
+    # aggregated counts first (#files x #files rows at most) and pivot there.
+    overlap_counts = (
+        dup_stats_lf.group_by(["source_file", "source_file_right"])
+        .agg(pl.len().alias("count"))
+        .collect()
+    )
+    overlap_matrix = overlap_counts.pivot(
+        on="source_file_right", index="source_file", values="count"
+    ).fill_null(0)
+    overlap_path = work_dir / f"{output_stem}.overlap_matrix.txt"
+    with open(overlap_path, "w") as f:
+        f.write(str(overlap_matrix))
+    _log(logger, f"overlap matrix written to {overlap_path}")
 
-    to_remove = duplicate_pairs.select("_dedup_idx_right").unique()
+    # Write just the indices to remove to disk and read them back before joining.
+    _log(logger, "sinking duplicate indices to Parquet")
+    dup_stats_lf.select("_dedup_idx_right").unique().sink_parquet(
+        duplicate_idx_path, engine="streaming"
+    )
+    _log(logger, f"duplicate indices written to {duplicate_idx_path}")
+
+    duplicate_pairs_lf = None  # type: ignore[assignment]
+    dup_stats_lf = None  # type: ignore[assignment]
+    gc.collect()
+    _log(logger, "gc after duplicate indices sink")
+
+    to_remove_lf = pl.scan_parquet(duplicate_idx_path).with_columns(
+        pl.lit(True).alias("_is_dup")
+    )
 
     # Join back with original lf and filter out the duplicates
-    return (
+    deduped_lf = (
         lf.join(
-            to_remove.lazy().with_columns(pl.lit(True).alias("_is_dup")),
+            to_remove_lf,
             left_on="_dedup_idx",
             right_on="_dedup_idx_right",
             how="left",
@@ -1738,6 +1821,8 @@ def _deduplicate_spectra(
         .filter(pl.col("_is_dup").is_null())
         .drop(["_dedup_idx", "_is_dup"])
     )
+
+    return deduped_lf, temp_paths
 
 
 def _enrich_with_pubchem(
