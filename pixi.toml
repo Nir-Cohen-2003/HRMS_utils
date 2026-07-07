@@ -131,6 +131,7 @@ matplotlib = ">=3.8.0"
 
 [feature.frag_trees.tasks]
 build_tree = "python experiments/frag_trees/fragmentation_tree.py"
+build_tree_molecule = "python experiments/frag_trees/build_tree_for_molecule.py"
 
 [environments]
 default = {features = [], solve-group = "default"}
