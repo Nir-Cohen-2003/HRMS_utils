@@ -1666,6 +1666,9 @@ def _deduplicate_spectra(
             "cleaned_normalized_intensity",
             "precursor_mz",
             "source_file",
+            "is_orbitrap",
+            "is_TOF",
+            "collision_energy_NCE",
         ]
     )
     # Bin precursor_mz to 1 Da bins to avoid Cartesian explosion during join
@@ -1744,6 +1747,30 @@ def _deduplicate_spectra(
             (pl.col("sim_forward") >= threshold) & (pl.col("sim_reverse") >= threshold)
         )
         .drop("sim_forward", "sim_reverse")
+        .filter(
+            (pl.col("is_orbitrap") & pl.col("is_orbitrap_right"))
+            | (pl.col("is_TOF") & pl.col("is_TOF_right"))
+            | ~(
+                pl.col("is_orbitrap")
+                | pl.col("is_orbitrap_right")
+                | pl.col("is_TOF")
+                | pl.col("is_TOF_right")
+            )
+        )
+        .with_columns(
+            pl.when(
+                pl.col("collision_energy_NCE").is_not_null()
+                & pl.col("collision_energy_NCE_right").is_null()
+            )
+            .then(pl.col("_dedup_idx_right"))
+            .when(
+                pl.col("collision_energy_NCE").is_null()
+                & pl.col("collision_energy_NCE_right").is_not_null()
+            )
+            .then(pl.col("_dedup_idx"))
+            .otherwise(pl.col("_dedup_idx_right"))
+            .alias("_dedup_idx_to_remove")
+        )
     )
 
     # Materialize the duplicate pair list to disk as well.
@@ -1761,16 +1788,16 @@ def _deduplicate_spectra(
 
     # Project down to the columns needed for stats to avoid loading wide spectra.
     dup_stats_lf = duplicate_pairs_lf.select(
-        ["_dedup_idx_right", "source_file", "source_file_right"]
+        ["_dedup_idx_to_remove", "source_file", "source_file_right"]
     )
     total_dups = (
-        dup_stats_lf.select(pl.col("_dedup_idx_right").n_unique()).collect().item()
+        dup_stats_lf.select(pl.col("_dedup_idx_to_remove").n_unique()).collect().item()
     )
     _log(logger, f"Deduplication: found {total_dups} duplicate spectra")
 
     dups_per_file = (
         dup_stats_lf.group_by("source_file_right")
-        .agg(pl.col("_dedup_idx_right").n_unique().alias("num_duplicates"))
+        .agg(pl.col("_dedup_idx_to_remove").n_unique().alias("num_duplicates"))
         .collect()
     )
     for row in dups_per_file.iter_rows(named=True):
@@ -1796,7 +1823,7 @@ def _deduplicate_spectra(
 
     # Write just the indices to remove to disk and read them back before joining.
     _log(logger, "sinking duplicate indices to Parquet")
-    dup_stats_lf.select("_dedup_idx_right").unique().sink_parquet(
+    dup_stats_lf.select("_dedup_idx_to_remove").unique().sink_parquet(
         duplicate_idx_path, engine="streaming"
     )
     _log(logger, f"duplicate indices written to {duplicate_idx_path}")
@@ -1815,7 +1842,7 @@ def _deduplicate_spectra(
         lf.join(
             to_remove_lf,
             left_on="_dedup_idx",
-            right_on="_dedup_idx_right",
+            right_on="_dedup_idx_to_remove",
             how="left",
         )
         .filter(pl.col("_is_dup").is_null())
