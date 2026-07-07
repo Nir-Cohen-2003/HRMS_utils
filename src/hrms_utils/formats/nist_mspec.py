@@ -15,7 +15,9 @@ def parse_mspec(path: Path | str) -> pl.LazyFrame:
     
     return (
         data.with_columns(
-            pl.col("raw").str.extract(pattern=r"(?i)Name: (.+)", group_index=1).alias("name"),
+            pl.col("raw").str.extract(pattern=r"(?mi)^\s*COMPOUND_?NAME:\s*(.+)", group_index=1).alias("_compound_name"),
+            pl.col("raw").str.extract(pattern=r"(?mi)^\s*Name:\s*(.+)", group_index=1).alias("_name"),
+            pl.col("raw").str.extract(pattern=r"(?mi)^\s*TITLE:\s*(.+)", group_index=1).alias("_title"),
             pl.col("raw").str.extract(pattern=r"(?i)NIST#: (\d+)", group_index=1).alias("nist_id"),
             pl.col("raw").str.extract(pattern=r"(?i)DB#: (\d+)", group_index=1).alias("db_id"),
             pl.col("raw").str.extract(pattern=r"(?i)Instrument_?type: (.+)", group_index=1).alias("instrument_type"),
@@ -33,6 +35,14 @@ def parse_mspec(path: Path | str) -> pl.LazyFrame:
                 pattern=r"(?mi)^\s*(?:energ(?:y|ies)[^:\n]*|(?:[^M\n]|M[^S\n]|MS[^n\n]|MSn[^_\-\n])[^:\n]*energ(?:y|ies))[^:\n]*:\s*(.+)$",
                 group_index=1,
             ).alias("collision_energy_raw"),
+            pl.col("raw").str.extract(pattern=r"(?mi)^\s*COLLISION_ENERGY:\s*(-?\d+\.?\d*(?:[eE][+-]?\d+)?|nan)", group_index=1).alias("collision_energy"),
+            pl.col("raw").str.extract(pattern=r"(?mi)^\s*COLLISION_ENERGY_1:\s*(-?\d+\.?\d*(?:[eE][+-]?\d+)?|nan)", group_index=1).alias("collision_energy_1"),
+            pl.col("raw").str.extract(pattern=r"(?mi)^\s*COLLISION_ENERGY_2:\s*(-?\d+\.?\d*(?:[eE][+-]?\d+)?|nan)", group_index=1).alias("collision_energy_2"),
+            pl.col("raw").str.extract(pattern=r"(?mi)^\s*COLLISION_ENERGY_3:\s*(-?\d+\.?\d*(?:[eE][+-]?\d+)?|nan)", group_index=1).alias("collision_energy_3"),
+            pl.col("raw").str.extract(pattern=r"(?mi)^\s*NORMALIZED_COLLISION_ENERGY:\s*(-?\d+\.?\d*(?:[eE][+-]?\d+)?|nan)", group_index=1).alias("normalized_collision_energy"),
+            pl.col("raw").str.extract(pattern=r"(?mi)^\s*NORMALIZED_COLLISION_ENERGY_1:\s*(-?\d+\.?\d*(?:[eE][+-]?\d+)?|nan)", group_index=1).alias("normalized_collision_energy_1"),
+            pl.col("raw").str.extract(pattern=r"(?mi)^\s*NORMALIZED_COLLISION_ENERGY_2:\s*(-?\d+\.?\d*(?:[eE][+-]?\d+)?|nan)", group_index=1).alias("normalized_collision_energy_2"),
+            pl.col("raw").str.extract(pattern=r"(?mi)^\s*NORMALIZED_COLLISION_ENERGY_3:\s*(-?\d+\.?\d*(?:[eE][+-]?\d+)?|nan)", group_index=1).alias("normalized_collision_energy_3"),
             pl.col("raw").str.extract(pattern=r"(?i)Ionization: (.+)", group_index=1).alias("ionization"),
             pl.col("raw").str.extract(pattern=r"(?i)Ion_?mode: (p|n)", group_index=1).alias("_ion_mode_short"),
             pl.col("raw").str.extract(pattern=r"(?i)Ion_?mode: (.+)", group_index=1).alias("ion_mode_full"),
@@ -95,10 +105,19 @@ def parse_mspec(path: Path | str) -> pl.LazyFrame:
             pl.col("num_peaks").str.to_integer(),
             pl.coalesce([pl.col("precursor_type"), pl.col("adduct")]).alias("precursor_type"),
             pl.coalesce([pl.col("_precursor_mz_raw"), pl.col("_pepmass")]).cast(pl.Float64).alias("precursor_mz"),
+            pl.coalesce([pl.col("_compound_name"), pl.col("_name"), pl.col("_title")]).alias("name"),
             pl.col("exact_mass").cast(pl.Float64, strict=False),
             pl.col("rt_seconds").cast(pl.Float64, strict=False),
             pl.col("ccs").cast(pl.Float64, strict=False),
             pl.col("precursor_intensity").cast(pl.Float64, strict=False),
+            pl.col("collision_energy").cast(pl.Float64, strict=False),
+            pl.col("collision_energy_1").cast(pl.Float64, strict=False),
+            pl.col("collision_energy_2").cast(pl.Float64, strict=False),
+            pl.col("collision_energy_3").cast(pl.Float64, strict=False),
+            pl.col("normalized_collision_energy").cast(pl.Float64, strict=False),
+            pl.col("normalized_collision_energy_1").cast(pl.Float64, strict=False),
+            pl.col("normalized_collision_energy_2").cast(pl.Float64, strict=False),
+            pl.col("normalized_collision_energy_3").cast(pl.Float64, strict=False),
             pl.col("precursor_im").cast(pl.Float64, strict=False),
             pl.col("spectral_entropy").cast(pl.Float64, strict=False),
             pl.col("pubchem_cid").str.to_integer(),
@@ -110,7 +129,7 @@ def parse_mspec(path: Path | str) -> pl.LazyFrame:
             pl.col("mz_intensity").list.eval(pl.element().str.replace_all(r"\s+", " ").str.split(by=" ").list.get(index=0).cast(pl.Float64)).alias("raw_spectrum_mz"),
             pl.col("mz_intensity").list.eval(pl.element().str.replace_all(r"\s+", " ").str.split(by=" ").list.get(index=1).cast(pl.Float64)).alias("raw_spectrum_intensity"),
         )
-        .drop("raw", "mz_intensity", "_pepmass", "ion_mode_full", "_ion_mode_short", "_precursor_mz_raw")
+        .drop("raw", "mz_intensity", "_pepmass", "ion_mode_full", "_ion_mode_short", "_precursor_mz_raw", "_compound_name", "_name", "_title")
     )
 
 def _split_entries(file_contents: str) -> list[str]:

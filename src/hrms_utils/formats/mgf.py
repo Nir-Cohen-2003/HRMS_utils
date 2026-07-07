@@ -25,8 +25,9 @@ def parse_mgf(mgf_path: str | Path, includes_MSn: bool = False) -> pl.LazyFrame:
     lf = pl.DataFrame({'entry': entries}).lazy()
     
     meta_keys = {
-        "NAME": "name",
         "COMPOUND_NAME": "name",
+        "NAME": "name",
+        "TITLE": "title",
         "EXACTMASS": "exact_mass",
         "EXACT_MASS": "exact_mass",
         "FORMULA": "molecular_formula",
@@ -67,7 +68,15 @@ def parse_mgf(mgf_path: str | Path, includes_MSn: bool = False) -> pl.LazyFrame:
         "QUALITY_EXPLAINED_INTENSITY": "quality_explained_intensity",
         "QUALITY_EXPLAINED_SIGNALS": "quality_explained_signals",
         "Num peaks": "num_peaks",
-        "NUM_PEAKS": "num_peaks"
+        "NUM_PEAKS": "num_peaks",
+        "COLLISION_ENERGY": "collision_energy",
+        "COLLISION_ENERGY_1": "collision_energy_1",
+        "COLLISION_ENERGY_2": "collision_energy_2",
+        "COLLISION_ENERGY_3": "collision_energy_3",
+        "NORMALIZED_COLLISION_ENERGY": "normalized_collision_energy",
+        "NORMALIZED_COLLISION_ENERGY_1": "normalized_collision_energy_1",
+        "NORMALIZED_COLLISION_ENERGY_2": "normalized_collision_energy_2",
+        "NORMALIZED_COLLISION_ENERGY_3": "normalized_collision_energy_3",
     }
     
     # We first extract all raw values from meta_keys.
@@ -147,6 +156,11 @@ def parse_mgf(mgf_path: str | Path, includes_MSn: bool = False) -> pl.LazyFrame:
     # Clean up raw columns
     available_raw_cols = [f"raw_{k}" for k in meta_keys.keys() if f"raw_{k}" in lf.collect_schema().names()]
     lf = lf.with_columns(exprs).drop(available_raw_cols)
+
+    # Fallback: use TITLE as name if name is null, then drop the title column
+    lf = lf.with_columns(
+        pl.col("name").fill_null(pl.col("title"))
+    ).drop("title")
     
     msn_keys = [
         "MSn_collision_energies", "MSn_precursor_mzs", "MSn_fragmentation_methods", "MSn_isolation_windows"
@@ -185,7 +199,15 @@ def parse_mgf(mgf_path: str | Path, includes_MSn: bool = False) -> pl.LazyFrame:
         "num_peaks": pl.Int64,
         "precursor_purity": pl.Float64,
         "quality_explained_intensity": pl.Float64,
-        "quality_explained_signals": pl.Float64
+        "quality_explained_signals": pl.Float64,
+        "collision_energy": pl.Float64,
+        "collision_energy_1": pl.Float64,
+        "collision_energy_2": pl.Float64,
+        "collision_energy_3": pl.Float64,
+        "normalized_collision_energy": pl.Float64,
+        "normalized_collision_energy_1": pl.Float64,
+        "normalized_collision_energy_2": pl.Float64,
+        "normalized_collision_energy_3": pl.Float64,
     })
     
     # Handling of spectrum
