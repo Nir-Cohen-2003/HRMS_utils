@@ -17,7 +17,7 @@ from time import perf_counter
 
 import polars as pl
 
-from hrms_utils.formats.spectral_library import process_spectral_library
+from hrms_utils.formats.spectral_library import deduplicate_spectra, process_spectral_library
 
 
 def collect_library_files(path: Path) -> list[Path]:
@@ -38,6 +38,19 @@ def collect_library_files(path: Path) -> list[Path]:
         return sorted(files)
 
     raise ValueError(f"Path does not exist or is not a file/directory: {path}")
+
+
+def configure_file_logging(log_path: Path) -> logging.Logger:
+    """Configure real-time file logging so crashes can be pinpointed by timestamp."""
+    logging.basicConfig(
+        filename=str(log_path),
+        filemode="w",
+        level=logging.INFO,
+        format="%(asctime)s %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+        force=True,
+    )
+    return logging.getLogger("hrms_utils.formats.spectral_library")
 
 
 def main():
@@ -79,8 +92,8 @@ def main():
         "--ms2-tolerance-ppm",
         "-t",
         type=float,
-        default=10.0,
-        help="MS2 tolerance in ppm for deduplication (default: 10.0)",
+        default=5.0,
+        help="MS2 tolerance in ppm for deduplication (default: 5.0)",
     )
     parser.add_argument(
         "--dedup-threshold",
@@ -101,6 +114,18 @@ def main():
         action="store_true",
         default=False,
         help="Skip pairwise spectrum deduplication",
+    )
+    parser.add_argument(
+        "--prepared-library",
+        action="store_true",
+        default=False,
+        help=(
+            "Treat input_path as a single already-annotated .parquet library "
+            "(e.g. from a prior run with --no-deduplicate) and run ONLY "
+            "deduplication. Output is written to <input_stem>_deduplicated.parquet. "
+            "In this mode --ms2-tolerance-ppm controls the fragment tolerance "
+            "for deduplication (not --normalized-fragment-tolerance-ppm)."
+        ),
     )
     parser.add_argument(
         "--no-clean-identifiers",
@@ -133,6 +158,49 @@ def main():
 
     input_path = args.input_path.resolve()
     assert input_path.exists(), f"Input path does not exist: {input_path}"
+    if args.prepared_library:
+        # --- Dedup-only mode: input must be a single annotated Parquet. ---
+        assert args.no_deduplicate is False, (
+            "--prepared-library runs deduplication; it is incompatible with --no-deduplicate."
+        )
+        assert input_path.is_file(), (
+            f"--prepared-library requires a single .parquet file, got directory: {input_path}"
+        )
+        assert input_path.suffix.lower() == ".parquet", (
+            f"--prepared-library requires a .parquet file, got suffix '{input_path.suffix}' "
+            f"on {input_path}"
+        )
+
+        output_path = input_path.with_name(f"{input_path.stem}_deduplicated.parquet")
+        log_path = (
+            args.log_file.resolve()
+            if args.log_file is not None
+            else output_path.with_suffix(".log")
+        )
+        logger = configure_file_logging(log_path)
+
+        print(f"Deduplicating prepared library: {input_path}")
+        start = perf_counter()
+
+        result_lf = deduplicate_spectra(
+            input_path=input_path,
+            output_path=output_path,
+            fragment_tolerance_ppm=args.ms2_tolerance_ppm,
+            molecular_ion_tolerance_ppm=args.molecular_ion_tolerance_ppm,
+            threshold=args.dedup_threshold,
+            logger=logger,
+        )
+
+        end = perf_counter()
+        n_spectra = result_lf.select(pl.len()).collect().item()
+        n_molecules = result_lf.select(pl.col("base_inchikey").n_unique()).collect().item()
+        print(f"Processed {n_spectra} spectra in {end - start:.2f} seconds")
+        print(f"Unique compounds: {n_molecules}")
+        print(f"Success! Output written to {output_path}")
+        logger.info(f"Output written to {output_path}")
+        print(f"Log written to {log_path}")
+        return
+
     pubchem_path = args.pubchem.resolve() if args.pubchem is not None else None
 
     # Collect all matching files
@@ -155,15 +223,7 @@ def main():
         if args.log_file is not None
         else output_path.with_suffix(".log")
     )
-    logging.basicConfig(
-        filename=str(log_path),
-        filemode="w",
-        level=logging.INFO,
-        format="%(asctime)s %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S",
-        force=True,
-    )
-    logger = logging.getLogger("hrms_utils.formats.spectral_library")
+    logger = configure_file_logging(log_path)
 
     # Use the unified API
     result_lf = process_spectral_library(

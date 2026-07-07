@@ -1852,6 +1852,90 @@ def _deduplicate_spectra(
     return deduped_lf, temp_paths
 
 
+# Required columns the dedup implementation reads. Kept as a module-level
+# constant so the public wrapper can fail fast if a prepared library is
+# missing any of them (e.g. someone passed a raw parsed frame by mistake).
+_DEDUP_REQUIRED_COLUMNS: List[str] = [
+    "base_inchikey",
+    "precursor_mz",
+    "cleaned_normalized_mz",
+    "cleaned_normalized_intensity",
+    "source_file",
+    "is_orbitrap",
+    "is_TOF",
+    "collision_energy_NCE",
+]
+
+
+def deduplicate_spectra(
+    input_path: Path,
+    output_path: Path,
+    fragment_tolerance_ppm: float = 5.0,
+    molecular_ion_tolerance_ppm: float = 5.0,
+    threshold: float = 0.99,
+    logger: logging.Logger | TextIO | None = None,
+) -> pl.LazyFrame:
+    """Deduplicate an already-annotated spectral library Parquet in place.
+
+    Unlike :func:`process_spectral_library`, this skips parsing, normalization,
+    enrichment, and annotation: ``input_path`` must be a Parquet file produced
+    by a prior ``process_spectral_library(..., deduplicate=False)`` run (or
+    equivalent) and must contain the annotation columns listed in
+    :data:`_DEDUP_REQUIRED_COLUMNS`.
+
+    The deduplicated frame is streamed to ``output_path`` and a
+    :class:`pl.LazyFrame` scanning that Parquet is returned. Temporary
+    dedup artifacts (candidate pairs, duplicate pairs, duplicate indices)
+    are removed before returning; the ``<output_stem>.overlap_matrix.txt``
+    diagnostic is intentionally left next to the output, matching the full
+    pipeline's behavior.
+    """
+    assert input_path.suffix.lower() == ".parquet", (
+        f"deduplicate_spectra expects a .parquet input, got: {input_path}"
+    )
+
+    input_lf = pl.scan_parquet(input_path)
+
+    # Fail fast: a prepared library must already carry every column the dedup
+    # join/similarity steps read. A missing column means the input was not
+    # produced by the full annotation pipeline.
+    schema_columns = set(input_lf.collect_schema().names())
+    missing = [c for c in _DEDUP_REQUIRED_COLUMNS if c not in schema_columns]
+    assert len(missing) == 0, (
+        f"Input Parquet {input_path} is missing required dedup columns: {missing}. "
+        f"Provide a library produced by process_spectral_library(deduplicate=False)."
+    )
+
+    work_dir = output_path.parent
+    output_stem = output_path.stem
+
+    deduped_lf, temp_paths = _deduplicate_spectra(
+        input_lf,
+        fragment_tolerance_ppm=fragment_tolerance_ppm,
+        molecular_ion_tolerance_ppm=molecular_ion_tolerance_ppm,
+        threshold=threshold,
+        work_dir=work_dir,
+        output_stem=output_stem,
+        logger=logger,
+    )
+
+    try:
+        _run_logged(
+            logger,
+            f"sinking deduplicated library to {output_path}",
+            deduped_lf.sink_parquet,
+            output_path,
+            engine="streaming",
+        )
+    finally:
+        # Always remove dedup temps, even if the final sink fails, so we do
+        # not leave multi-GB candidate-pair parquets behind on disk.
+        for path in temp_paths:
+            path.unlink(missing_ok=True)
+
+    return pl.scan_parquet(output_path)
+
+
 def _enrich_with_pubchem(
     lf: pl.LazyFrame, pubchem_path: Path, fill_missing_only: bool = False
 ) -> pl.LazyFrame:
