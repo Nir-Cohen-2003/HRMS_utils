@@ -69,7 +69,6 @@ def parse_mgf(mgf_path: str | Path, includes_MSn: bool = False) -> pl.LazyFrame:
         "QUALITY_EXPLAINED_SIGNALS": "quality_explained_signals",
         "Num peaks": "num_peaks",
         "NUM_PEAKS": "num_peaks",
-        "COLLISION_ENERGY": "collision_energy",
         "COLLISION_ENERGY_1": "collision_energy_1",
         "COLLISION_ENERGY_2": "collision_energy_2",
         "COLLISION_ENERGY_3": "collision_energy_3",
@@ -200,7 +199,6 @@ def parse_mgf(mgf_path: str | Path, includes_MSn: bool = False) -> pl.LazyFrame:
         "precursor_purity": pl.Float64,
         "quality_explained_intensity": pl.Float64,
         "quality_explained_signals": pl.Float64,
-        "collision_energy": pl.Float64,
         "collision_energy_1": pl.Float64,
         "collision_energy_2": pl.Float64,
         "collision_energy_3": pl.Float64,
@@ -256,6 +254,14 @@ def parse_mgf(mgf_path: str | Path, includes_MSn: bool = False) -> pl.LazyFrame:
                     .list.eval(pl.element().str.strip_chars(" ").cast(pl.Float64, strict=False))
                 )
             ).alias("msn_collision_energies")
+        )
+        
+        # Override precursor_mz with the immediate (last) precursor for MSn spectra
+        lf = lf.with_columns(
+            pl.when(pl.col("msn_precursor_mzs").is_not_null())
+            .then(pl.col("msn_precursor_mzs").list.get(-1))
+            .otherwise(pl.col("precursor_mz"))
+            .alias("precursor_mz")
         )
         
     return lf

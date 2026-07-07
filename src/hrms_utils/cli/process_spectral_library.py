@@ -147,6 +147,12 @@ def main():
         help="Path for the execution log file (default: next to the output Parquet)",
     )
     parser.add_argument(
+        "--include-msn",
+        action="store_true",
+        default=False,
+        help="Process and include MSn (multi-level MS) spectra from MGF files",
+    )
+    parser.add_argument(
         "--batch-size",
         "-b",
         type=int,
@@ -231,6 +237,7 @@ def main():
         raw_fragment_tolerance_ppm=args.raw_fragment_tolerance_ppm,
         normalized_fragment_tolerance_ppm=args.normalized_fragment_tolerance_ppm,
         molecular_ion_tolerance_ppm=args.molecular_ion_tolerance_ppm,
+        includes_MSn=args.include_msn,
         pubchem_path=pubchem_path,
         pubchem_fill_missing_only=not args.pubchem_enrich_all,
         min_explained_intensity=args.min_explained_intensity,
