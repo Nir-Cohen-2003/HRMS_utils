@@ -128,10 +128,13 @@ parallel_rdkit = {path = "../parallel_rdkit"}
 numba = ">=0.61.0"
 networkx = ">=3.0"
 matplotlib = ">=3.8.0"
+pytest = ">=8.4.2,<9"
 
 [feature.frag_trees.tasks]
 build_tree = "python experiments/frag_trees/fragmentation_tree.py"
 build_tree_molecule = "python experiments/frag_trees/build_tree_for_molecule.py"
+build_and_store_trees = {cmd="python experiments/frag_trees/build_and_store_trees.py", description="Build MS2 + full MSn fragmentation trees from a spectral library parquet and save as collated NPZ files. Use --input <path> --output-dir <dir> [--tolerance-ppm 5.0] [--ion-mode P|N] [--verbose]"}
+test_trees = {cmd="python -m pytest experiments/frag_trees/test_tree_storage.py -v", description="Run tree storage round-trip and key-matching tests"}
 
 [environments]
 default = {features = [], solve-group = "default"}
