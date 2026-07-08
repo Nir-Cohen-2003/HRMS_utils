@@ -450,6 +450,17 @@ class FragmentationTree:
     # Annotation error per fragment (backward-compatible, defaults to empty)
     fragment_errors_ppm: np.ndarray = field(default_factory=lambda: np.array([]))  # shape (n_fragments,)
 
+    def __post_init__(self) -> None:
+        """Validate that no fragment formula is all zeros."""
+        n = self.fragment_formulas.shape[0]
+        for i in range(n):
+            assert np.any(self.fragment_formulas[i] != 0), (
+                f"Fragment {i} has an empty (all-zero) formula. "
+                f"Formula string: '{self.fragment_formulas_str[i]}'. "
+                f"This is a bug in tree construction — zero-formula "
+                f"clusters should have been filtered out."
+            )
+
     @property
     def n_fragments(self) -> int:
         return self.fragment_formulas.shape[0]
@@ -585,6 +596,8 @@ def _annotate_mass_clusters(
 
     Formula selection: lowest errors_ppm, tie-break by lowest total atom count.
     If no candidates, formula is set to zeros and error to a large value.
+    Zero-formula clusters are filtered out in _build_tree_for_group before
+    tree assembly.
 
     Args:
         cluster_masses: shape (n_clusters,), float64
@@ -1139,6 +1152,19 @@ def _build_tree_for_group(
         updated_precursor_formulas, config,
     )
 
+    # Filter out clusters with zero formulas (un-annotatable masses).
+    # These have no chemical meaning in a formula-driven fragmentation tree.
+    valid_cluster_mask = np.any(final_formulas != 0, axis=1)
+    n_valid = int(valid_cluster_mask.sum())
+    n_removed = n_unified - n_valid
+
+    if n_removed > 0:
+        final_formulas = final_formulas[valid_cluster_mask]
+        final_formulas_str = [s for s, v in zip(final_formulas_str, valid_cluster_mask) if v]
+        final_errors_ppm = final_errors_ppm[valid_cluster_mask]
+        unified_cluster_masses = unified_cluster_masses[valid_cluster_mask]
+        n_unified = n_valid
+
     # -----------------------------------------------------------------------
     # Add molecular precursor as a fragment (if not already present)
     # -----------------------------------------------------------------------
@@ -1375,12 +1401,16 @@ def visualize_tree(
     """
     import matplotlib.pyplot as plt
     import networkx as nx
+    from hrms_utils.formula_annotation.element_table import ELEMENT_MASSES
+
+    element_masses_array = np.array(ELEMENT_MASSES, dtype=np.float64)
 
     G = nx.DiGraph()
 
     # Add nodes with labels
     for i, formula_str in enumerate(tree.fragment_formulas_str):
-        G.add_node(i, label=formula_str)
+        mass = np.dot(tree.fragment_formulas[i], element_masses_array)
+        G.add_node(i, label=f"{formula_str}\n{mass:.4f} Da")
 
     # Add edges with weights
     n = tree.n_fragments
