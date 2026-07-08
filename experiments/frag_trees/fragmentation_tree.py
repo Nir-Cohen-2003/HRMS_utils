@@ -13,6 +13,7 @@ formula-parents using a three-phase pipeline:
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
@@ -23,6 +24,8 @@ from numba import njit, prange
 
 from hrms_utils.formula_annotation.utils import format_formula_string_to_array
 from hrms_utils.hrms_core import NUM_ELEMENTS
+
+logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -669,10 +672,10 @@ def _annotate_mass_clusters(
 
         if len(candidates_arr) == 0:
             # No candidates: set zeros and large error
-            import warnings
-            warnings.warn(
-                f"No formula candidates for mass {cluster_masses[i]:.4f} "
-                f"with max_bounds {max_bounds_per_cluster[i].tolist()}"
+            logger.debug(
+                "No formula candidates for mass %.4f with max_bounds %s",
+                cluster_masses[i],
+                max_bounds_per_cluster[i].tolist(),
             )
             final_formulas_str.append("")
             continue
