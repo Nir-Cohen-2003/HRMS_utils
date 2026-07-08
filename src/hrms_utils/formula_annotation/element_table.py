@@ -115,3 +115,13 @@ ADDUCT_MASSES = {
     "[M+CHO2]-": 44.998201,
     "[M-H2O-H]-": 19.01839,
 }
+
+# Maps shorthand adduct substrings (used in precursor_type strings) to their
+# actual chemical formulas. Applied during _compute_precursor_formula after the
+# molecular formula has been substituted for "M". Separate tables for positive
+# and negative ion modes because the same shorthand can mean different formulas
+# depending on the ionisation polarity.
+POSITIVE_ADDUCT_DECODING: dict[str, str] = {}
+NEGATIVE_ADDUCT_DECODING: dict[str, str] = {
+    "FA": "CHO2",   # formic acid / formate
+}

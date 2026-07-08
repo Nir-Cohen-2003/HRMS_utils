@@ -21,6 +21,8 @@ from ..formula_annotation.element_table import (
     ADDUCT_MASSES,
     ELEMENT_MASSES,
     ELEMENT_SYMBOLS,
+    NEGATIVE_ADDUCT_DECODING,
+    POSITIVE_ADDUCT_DECODING,
 )
 from ..formula_annotation.utils import (
     format_formula_string_to_array,
@@ -855,6 +857,20 @@ def _add_base_inchikey(lf: pl.LazyFrame) -> pl.LazyFrame:
     )
 
 
+def _apply_shorthand_decoding(
+    expr: pl.Expr, decoding_table: dict[str, str]
+) -> pl.Expr:
+    """Replace adduct shorthand substrings (e.g. ``"FA"``) in a formula
+    string with their actual chemical formulas (e.g. ``"CHO2"``).
+
+    Chained ``str.replace`` calls are fused into a single Polars expression
+    so the lazy pipeline remains efficient.
+    """
+    for shorthand, formula in decoding_table.items():
+        expr = expr.str.replace(shorthand, formula, literal=True)
+    return expr
+
+
 def _compute_precursor_formula(
     lf: pl.LazyFrame, logger: logging.Logger | TextIO | None = None
 ) -> pl.LazyFrame:
@@ -889,6 +905,33 @@ def _compute_precursor_formula(
     if not check_df.is_empty():
         raise NotImplementedError(
             "Molecular formula missing for entry with InChIKey. This will be handled by parallel_rdkit."
+        )
+
+    # Apply adduct shorthand decoding — replace human-readable adduct
+    # substrings (e.g. "FA" = formic acid) with their actual chemical
+    # formulas before parsing. Separate tables per ion mode because the
+    # same shorthand can mean different formulas in different polarities.
+    if NEGATIVE_ADDUCT_DECODING:
+        lf = lf.with_columns(
+            pl.when(pl.col("ion_mode").ne("P"))
+            .then(
+                _apply_shorthand_decoding(
+                    pl.col("precursor_formula"), NEGATIVE_ADDUCT_DECODING
+                )
+            )
+            .otherwise(pl.col("precursor_formula"))
+            .alias("precursor_formula")
+        )
+    if POSITIVE_ADDUCT_DECODING:
+        lf = lf.with_columns(
+            pl.when(pl.col("ion_mode").eq("P"))
+            .then(
+                _apply_shorthand_decoding(
+                    pl.col("precursor_formula"), POSITIVE_ADDUCT_DECODING
+                )
+            )
+            .otherwise(pl.col("precursor_formula"))
+            .alias("precursor_formula")
         )
 
     result = lf.with_columns(

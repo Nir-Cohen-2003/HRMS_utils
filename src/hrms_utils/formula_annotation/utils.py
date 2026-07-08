@@ -68,18 +68,18 @@ def format_formula_string_to_array(raw_formula : str) -> np.ndarray:
     add = re.search(r'[+]\d?'+clean_formula_pattern, raw_formula)
     if add is not None:
         add = add.group()
-        multiplier = re.search(r'\d+', add)
+        multiplier = re.search(r'^\+(\d+)', add)
         if multiplier is not None:
-            multiplier = int(multiplier.group())
+            multiplier = int(multiplier.group(1))
             formula_array = formula_array + multiplier*clean_formula_string_to_array(add)
         else:
             formula_array = formula_array + clean_formula_string_to_array(add)
     sub = re.search(r'[-]\d?'+clean_formula_pattern, raw_formula)
     if sub is not None:
         sub = sub.group()
-        multiplier = re.search(r'\d+', sub)
+        multiplier = re.search(r'^\-(\d+)', sub)
         if multiplier is not None:
-            multiplier = int(multiplier.group())
+            multiplier = int(multiplier.group(1))
             formula_array = formula_array - multiplier*clean_formula_string_to_array(sub)
         else:
             formula_array = formula_array - clean_formula_string_to_array(sub)
