@@ -51,6 +51,11 @@ For development or to use the latest unreleased features, you can build from sou
 
 ### Clone and Build
 
+Pixi is the supported environment manager for repository workflows. Run Python tools
+through `pixi run`; for the complete external MS-DIAL and annotation path, see the
+[MS-DIAL annotation tutorial](../tutorials/01-msdial-chromatogram-annotation.md) and
+[isotopic calibration guide](../how-to/calibrate-isotopic-parameters.md).
+
 ```bash
 # Clone the repository
 git clone https://github.com/Nir-Cohen-2003/HRMS_utils.git
@@ -60,9 +65,8 @@ cd HRMS_utils
 pixi install
 pixi run python -c "import hrms_utils; print(hrms_utils.hrms_core.__version__)"
 
-# Or using maturin directly
-pip install maturin
-maturin develop --release
+# The Pixi environment builds the Rust extension as needed; do not install a second
+# environment with pip for repository workflows.
 ```
 
 ### Running Tests
@@ -70,8 +74,8 @@ maturin develop --release
 After building from source, verify the installation:
 
 ```bash
-# Using pixi
-pixi run pytest
+# Using the testing environment
+pixi run -e testing pytest
 
 # Or using pytest directly
 pytest tests/
@@ -89,7 +93,7 @@ print(f"HRMS Utils version: {hrms_core.__version__}")
 print(f"Number of elements supported: {hrms_core.NUM_ELEMENTS}")
 ```
 
-You should see output showing the version number and the number of elements (15) supported for formula decomposition.
+You should see output showing the version number and the number of elements (12) supported for formula decomposition.
 
 ## Optional Dependencies
 

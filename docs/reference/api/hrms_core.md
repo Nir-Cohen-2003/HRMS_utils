@@ -78,6 +78,6 @@ df.with_columns(
 
 ## See Also
 
-- [Tutorial: Mass Decomposition](../tutorials/04-mass-decomposition.md)
-- [Tutorial: Spectral Similarity](../tutorials/03-spectral-similarity-search.md)
-- [Explanation: Mass Decomposition Algorithm](../explanation/mass-decomposition-algorithm.md)
+- [Tutorial: Mass Decomposition](../../tutorials/04-mass-decomposition.md)
+- [Tutorial: Spectral Similarity](../../tutorials/03-spectral-similarity-search.md)
+- [Explanation: Mass Decomposition Algorithm](../../explanation/mass-decomposition-algorithm.md)

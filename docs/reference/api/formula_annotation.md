@@ -44,5 +44,5 @@ Constants and data structures for chemical elements.
 
 ## See Also
 
-- [Tutorial: Mass Decomposition](../tutorials/04-mass-decomposition.md)
-- [Explanation: Mass Decomposition Algorithm](../explanation/mass-decomposition-algorithm.md)
+- [Tutorial: Mass Decomposition](../../tutorials/04-mass-decomposition.md)
+- [Explanation: Mass Decomposition Algorithm](../../explanation/mass-decomposition-algorithm.md)

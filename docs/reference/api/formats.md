@@ -6,6 +6,20 @@ Utilities for reading and processing various mass spectrometry data formats.
 
 Functions for reading and processing MSDIAL chromatogram exports.
 
+The repository also contains an external-console runner. It is not a verified MS-DIAL
+5 integration: it uses the legacy `run_msdial_lcmsdda()` input-directory contract and
+mixed executable conventions. For the current MS-DIAL 5 metadata-CSV command, follow
+the [MS-DIAL workflow tutorial](../../tutorials/01-msdial-chromatogram-annotation.md)
+and the official [console guide](https://systemsomicslab.github.io/msdial5tutorial/consoleapp.html).
+
+::: hrms_utils.formats.msdial.MSDialRunnerConfig
+    options:
+      show_root_heading: false
+
+::: hrms_utils.formats.msdial.run_msdial_lcmsdda
+    options:
+      show_root_heading: false
+
 ::: hrms_utils.formats.msdial.get_chromatogram
     options:
       show_root_heading: false
@@ -22,7 +36,7 @@ Functions for reading and processing MSDIAL chromatogram exports.
     options:
       show_root_heading: false
 
-## MSP/MSPEC (NIST)
+## MSP/MSPEC (NIST) {#msp-mspec-nist}
 
 Functions for reading NIST-format spectral libraries.
 
@@ -48,6 +62,6 @@ Functions for reading Mascot Generic Format files.
 
 ## See Also
 
-- [Tutorial: MSDIAL Chromatogram Annotation](../tutorials/01-msdial-chromatogram-annotation.md)
-- [Tutorial: MSP Library Processing](../tutorials/02-msp-library-processing.md)
+- [Tutorial: MSDIAL Chromatogram Annotation](../../tutorials/01-msdial-chromatogram-annotation.md)
+- [Tutorial: MSP Library Processing](../../tutorials/02-msp-library-processing.md)
 - [Data Structures](../data-structures.md)

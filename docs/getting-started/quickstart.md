@@ -141,10 +141,9 @@ spectrum_df = pl.DataFrame({
     "intensity": [[0.5, 0.8, 1.0]]
 })
 
-# Formula stored as Array(Int32, 15)
-# Represents element counts: [H, C, N, O, P, S, F, Cl, Br, I, Si, B, Se, As, Na]
+# Formula stored as Array(Int32, 12), ordered H, C, N, O, F, Na, P, S, Cl, K, Br, I.
 formula_df = pl.DataFrame({
-    "formula_array": [[2, 6, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]]  # C6H2O
+    "formula_array": [[2, 6, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0]]  # C6H2O
 })
 ```
 

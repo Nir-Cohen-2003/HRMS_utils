@@ -109,6 +109,7 @@ nav:
       - 4. Mass Decomposition: tutorials/04-mass-decomposition.md
       - 5. Isotopic Pattern Analysis: tutorials/05-isotopic-pattern-analysis.md
   - How-To Guides:
+      - Calibrate Isotopic Parameters: how-to/calibrate-isotopic-parameters.md
       - Custom Tolerances: how-to/custom-tolerances.md
       - Blank Subtraction: how-to/blank-subtraction.md
       - Batch Processing: how-to/batch-processing.md
@@ -120,6 +121,7 @@ nav:
       - Formats: reference/api/formats.md
       - Formula Annotation: reference/api/formula_annotation.md
       - Data Structures: reference/data-structures.md
+      - Calibration and Workflow API: reference/isotopic-calibration-api.md
   - Explanation:
       - Architecture: explanation/architecture.md
       - Mass Decomposition Algorithm: explanation/mass-decomposition-algorithm.md

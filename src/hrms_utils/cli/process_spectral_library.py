@@ -11,7 +11,6 @@ Where <path> can be:
 
 import argparse
 import logging
-import sys
 from pathlib import Path
 from time import perf_counter
 

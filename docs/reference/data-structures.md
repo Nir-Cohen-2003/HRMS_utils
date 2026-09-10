@@ -1,104 +1,89 @@
-# Data Structures
+# Data structures
 
-Documentation for the Polars DataFrame schemas used in HRMS Utils.
+HRMS Utils uses Polars DataFrames, including nested `List` and fixed-size `Array`
+columns. These schemas describe the current MS-DIAL parser and annotation output.
 
-## Overview
+## Parsed MS-DIAL chromatogram
 
-HRMS Utils uses Polars DataFrames with nested types (Lists, Arrays, Structs) to efficiently represent mass spectrometry data.
+`get_chromatogram()` consumes a tab-delimited table with the required MS-DIAL headers
+and returns:
 
-## Common Types
+| Column | Polars type |
+|---|---|
+| `Peak ID` | `Int64` |
+| `RT (min)`, `Precursor_mz_MSDIAL`, `Height` | `Float64` |
+| `Precursor_type_MSDIAL` | `String` |
+| `Isotope` | `Int32` |
+| `msms_m/z`, `msms_intensity` | `List(Float64)` |
+| `isobars` | `List(Int64)` |
+| `msms_m/z_cleaned`, `msms_intensity_cleaned` | `List(Float64)` |
+| `energy_is_too_low`, `energy_is_too_high` | `Boolean` |
+| `ms1_isotopes_m/z`, `ms1_isotopes_intensity` | `List(Float64)` |
 
-### Spectrum Representation
+MS/MS intensities are normalized to the maximum intensity while parsing. MS1
+intensities remain absolute. The two cleaned MS/MS columns are parser output; formula
+annotation currently consumes the raw `msms_m/z` and `msms_intensity` columns.
 
-Spectra are stored as separate List columns for m/z and intensity:
+## Formula and isotope representation
 
-```python
-{
-    "mz": List[Float64],            # m/z values
-    "intensity": List[Float64]      # Intensities (0-1 normalized)
-}
+All formula arrays use this fixed element order and width 12:
+
+```text
+H, C, N, O, F, Na, P, S, Cl, K, Br, I
 ```
 
-### Formula Representation
+`deduce_isotopic_pattern()` returns `Array(Int32, 24)` with twelve minimum counts
+followed by twelve maximum counts. The Rust plugin uses isotope evidence to constrain
+C, S, Cl, and Br.
 
-Chemical formulas are stored as fixed-size arrays of element counts:
+## Annotation output
 
-```python
-{
-    "formula": Array[Int32, 15]     # Element counts [H, C, N, O, P, S, F, Cl, Br, I, Si, B, Se, As, Na]
-}
-```
+`annotate_chromatogram_with_formulas()` retains the parsed columns and adds:
 
-Element order: H, C, N, O, P, S, F, Cl, Br, I, Si, B, Se, As, Na
+| Column | Polars type |
+|---|---|
+| `min_bounds`, `max_bounds`, `precursor_formula` | `Array(Int32, 12)` |
+| `precursor_formula_str` | `String` |
+| `precursor_errors_ppm`, `explained_intensity` | `Float64` |
+| `cleaned_msms_mz`, `cleaned_msms_intensity` | `List(Float64)` |
+| `cleaned_spectrum_formulas` | `List(Array(Int32, 12))` |
+| `cleaned_spectrum_formulas_str` | `List(String)` |
+| `cleaned_fragment_errors_ppm` | `List(Float64)` |
 
-## Schema Definitions
+The pipeline deduces bounds, performs bounded decomposition on the precursor m/z,
+explodes candidate formulas, and annotates fragments. It decomposes
+`Precursor_mz_MSDIAL` directly without adduct/charge neutralization; these candidates
+are not automatically neutral molecular formulas or compound identifications.
 
-### MSDIAL Chromatogram
+## Recommended filtering and storage
 
-Schema returned by `get_chromatogram()`:
-
-| Column | Type | Description |
-|--------|------|-------------|
-| `Peak ID` | Int64 | Unique peak identifier |
-| `RT (min)` | Float64 | Retention time in minutes |
-| `Precursor_mz_MSDIAL` | Float64 | Precursor m/z |
-| `Height` | Float64 | Peak height |
-| `Precursor_type_MSDIAL` | String | Adduct type |
-| `msms_m/z` | List[Float64] | MS/MS fragment m/z |
-| `msms_intensity` | List[Float64] | MS/MS intensities (0-1) |
-| `ms1_isotopes_m/z` | List[Float64] | MS1 isotope m/z values |
-| `ms1_isotopes_intensity` | List[Float64] | MS1 isotope intensities |
-
-### MSP Library
-
-Schema returned by `process_single_file()`:
-
-| Column | Type | Description |
-|--------|------|-------------|
-| `name` | String | Compound name |
-| `precursor_mz` | Float64 | Precursor m/z |
-| `molecular_formula` | String | Formula as text |
-| `molecular_formula_array` | Array[Int32, 15] | Formula as element counts |
-| `cleaned_normalized_mz` | List[Float64] | Cleaned fragment m/z |
-| `cleaned_normalized_intensity` | List[Float64] | Cleaned intensities (0-1) |
-| `spectral_information_score` | Float64 | Quality score |
-| `inchikey` | String | InChIKey identifier |
-
-See [API Reference](api/formats.md) for complete schemas.
-
-## Working with Nested Types
-
-### Accessing List Elements
+Use Polars expressions to select monoisotopic features with usable spectra:
 
 ```python
-# Get first element
-df.with_columns(first_mz=pl.col("mz").list.first())
+import polars as pl
 
-# Get specific index
-df.with_columns(second_intensity=pl.col("intensity").list.get(1))
-
-# List length
-df.with_columns(num_peaks=pl.col("mz").list.len())
+usable = annotated.filter(
+    pl.col("Isotope") == 0,
+    pl.col("ms1_isotopes_m/z").is_not_null(),
+    pl.col("ms1_isotopes_m/z").list.len() > 0,
+    pl.col("msms_m/z").is_not_null(),
+    pl.col("msms_m/z").list.len() > 0,
+)
 ```
 
-### Exploding Lists
+Use Parquet to preserve nested columns:
 
 ```python
-# One row per fragment
-df.explode(["mz", "intensity"])
+annotated.write_parquet("annotated.parquet")
 ```
 
-### Array Operations
+For CSV/Excel, select scalar columns (for example `Peak ID`, `Height`,
+`precursor_formula_str`, and `precursor_errors_ppm`) rather than serializing nested
+lists and arrays directly.
 
-```python
-# Access array element by index
-df.with_columns(carbon_count=pl.col("formula_array").arr.get(1))
+## Library spectra
 
-# Sum array
-df.with_columns(total_atoms=pl.col("formula_array").arr.sum())
-```
-
-## See Also
-
-- [Polars Data Types Documentation](https://docs.pola.rs/user-guide/expressions/data-types/)
-- [Tutorials](../tutorials/01-msdial-chromatogram-annotation.md)
+Processed spectral-library tables commonly include `name`, `precursor_mz`,
+`cleaned_normalized_mz`, `cleaned_normalized_intensity`, quality scores, and `inchikey`.
+Their exact schema depends on the library-processing path; see the
+[formats API](api/formats.md).

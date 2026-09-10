@@ -117,7 +117,7 @@ spectral_cols = [
     # Cleaned and normalized spectrum
     "cleaned_normalized_mz",             # List[Float64]: cleaned m/z
     "cleaned_normalized_intensity",      # List[Float64]: cleaned intensities (0-1)
-    "cleaned_formulas",                  # List[Array[Int32, 15]]: fragment formulas
+    "cleaned_formulas",                  # List[Array[Int32, 12]]: fragment formulas
     "cleaned_formulas_str",              # List[String]: fragment formulas as text
     "cleaned_errors_ppm",                # List[Float64]: mass errors for fragments
 ]
