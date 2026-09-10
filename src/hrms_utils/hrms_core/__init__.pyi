@@ -1,4 +1,19 @@
+from dataclasses import dataclass
+from typing import Mapping
+from .typing import IntoExprColumn
+
 import polars as pl
+
+@dataclass
+class CalibratedIsotopicModel:
+    alpha: float
+    beta: float
+    offset: float
+    hetero_lower_a: float
+    hetero_lower_b: float
+    hetero_upper_a: float
+    hetero_upper_b: float
+
 
 __version__: str
 NUM_ELEMENTS: int
@@ -23,6 +38,21 @@ class MassDecomposerUtils:
         min_dbe: float = -0.5,
         max_dbe: float = 40.0,
         dbe_mode: str = "integer",
+    ) -> pl.Expr: ...
+
+    def deduce_isotopic_pattern(
+        self,
+        ms1_mzs: IntoExprColumn,
+        ms1_intensities: IntoExprColumn,
+        ms1_mass_tolerance_ppm: float = 5.0,
+        isotopic_mass_tolerance_ppm: float = 3.0,
+        minimum_intensity: float = 5e4,
+        model: CalibratedIsotopicModel = ...,
+        min_bounds: dict[str, int] | None = None,
+        max_bounds: dict[str, int] | None = None,
+        *,
+        minimum_element_count_error: Mapping[str, int] | None = None,
+        maximum_element_count_error: Mapping[str, int] | None = None,
     ) -> pl.Expr: ...
 
     def clean_and_normalize_spectrum(

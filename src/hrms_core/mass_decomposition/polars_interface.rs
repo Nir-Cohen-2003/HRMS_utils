@@ -1,3 +1,6 @@
+use super::isotope_count_error::{
+    clamp_count_margins, deduce_isotopic_pattern_with_centers, validate_count_errors, TARGET_ELEMENTS,
+};
 use crate::mass_decomposition::algorithms::{
     deduce_isotopic_pattern_inner, MassDecomposer, SpectrumDecomposer,
 };
@@ -496,6 +499,15 @@ fn deduce_isotopic_pattern(
     inputs: &[Series],
     kwargs: DeduceIsotopicPatternKwargs,
 ) -> PolarsResult<Series> {
+    validate_count_errors(
+        kwargs.minimum_element_count_error.as_ref(),
+        kwargs.maximum_element_count_error.as_ref(),
+    )
+    .map_err(|message| polars_err!(ComputeError: "{}", message))?;
+    let minimum_errors = kwargs.minimum_element_count_error;
+    let maximum_errors = kwargs.maximum_element_count_error;
+    let apply_count_errors = minimum_errors.is_some() || maximum_errors.is_some();
+    let kwargs = kwargs.inference;
     let precursor_mzs = inputs[0].f64()?;
     let ms1_mzs_series = &inputs[1];
     let ms1_intensities_series = &inputs[2];
@@ -555,12 +567,18 @@ fn deduce_isotopic_pattern(
                 let ms1_mzs_slice: Vec<f64> = ms1_mzs.into_no_null_iter().collect();
                 let ms1_int_slice: Vec<f64> = ms1_int.into_no_null_iter().collect();
 
-                let deduced = deduce_isotopic_pattern_inner(
-                    precursor_mz,
-                    &ms1_mzs_slice,
-                    &ms1_int_slice,
-                    &params,
-                );
+                let (deduced, centers) = if apply_count_errors {
+                    deduce_isotopic_pattern_with_centers(
+                        precursor_mz, &ms1_mzs_slice, &ms1_int_slice, &params,
+                    )
+                } else {
+                    (
+                        deduce_isotopic_pattern_inner(
+                            precursor_mz, &ms1_mzs_slice, &ms1_int_slice, &params,
+                        ),
+                        [None; 4],
+                    )
+                };
 
                 // deduced is [C_l, S_l, Cl_l, Br_l, C_u, S_u, Cl_u, Br_u]
                 // Indices: C=1, S=7, Cl=8, Br=10
@@ -579,6 +597,25 @@ fn deduce_isotopic_pattern(
                 update_elem(8, deduced[2], deduced[6], &mut row_result); // Cl
                 update_elem(10, deduced[3], deduced[7], &mut row_result); // Br
 
+                if apply_count_errors {
+                    for (result_index, &(element_index, symbol)) in TARGET_ELEMENTS.iter().enumerate() {
+                        let minimum = minimum_errors.as_ref()
+                            .and_then(|values| values.get(symbol)).copied();
+                        let maximum = maximum_errors.as_ref()
+                            .and_then(|values| values.get(symbol)).copied();
+                        if let Some(center) = centers[result_index] {
+                            if minimum.is_some() || maximum.is_some() {
+                                let (lower, upper) = clamp_count_margins(
+                                    center, deduced[result_index], deduced[result_index + 4],
+                                    minimum, maximum,
+                                    min_bounds_base[element_index], max_bounds_base[element_index],
+                                );
+                                row_result[element_index] = lower;
+                                row_result[element_index + NUM_ELEMENTS] = upper;
+                            }
+                        }
+                    }
+                }
                 Some(row_result)
             } else {
                 None

@@ -2,3 +2,5 @@ pub mod algorithms;
 pub mod common;
 pub mod polars_interface;
 mod precomputed;
+
+mod isotope_count_error;

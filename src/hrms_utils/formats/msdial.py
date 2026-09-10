@@ -4,7 +4,7 @@ import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 from time import time
-from typing import Dict, Iterable, List, Literal, Tuple, TypeVar, cast
+from typing import Dict, Iterable, List, Literal, Mapping, Tuple, TypeVar, cast
 
 import numpy as np
 import polars as pl
@@ -253,6 +253,9 @@ def annotate_chromatogram_with_formulas(
         hetero_upper_a=16.7,
         hetero_upper_b=-0.29,
     ),
+    *,
+    minimum_element_count_error: Mapping[str, int] | None = None,
+    maximum_element_count_error: Mapping[str, int] | None = None,
 ) -> pl.DataFrame:
     """
     Annotate an MSDIAL chromatogram with isotopic patterns, candidate elemental formulas
@@ -261,12 +264,10 @@ def annotate_chromatogram_with_formulas(
     What the function does
     - Deduce an isotopic pattern (element count bounds) for each precursor using the
       observed MS1 isotopes.
-    - Compute candidate elemental decompositions for the (non-ionized) precursor mass
+    - Compute candidate elemental decompositions for `Precursor_mz_MSDIAL` directly,
       using the deduced bounds and the provided precursor mass tolerance.
-    - For each candidate formula, shift MS/MS fragment m/z values to the non-ionized
-      frame (subtracting addcut_mass), then clean and normalize the fragment spectrum
-      against the candidate formula (matching fragment masses with tolerance and
-      filtering/noise handling).
+    - For each candidate formula, clean and normalize the raw `msms_m/z` and
+      `msms_intensity` lists against the candidate formula.
     - Explode the chromatogram so each output row corresponds to one candidate precursor
       formula (i.e., one decomposition), with accompanying cleaned MS/MS results.
 
@@ -279,10 +280,6 @@ def annotate_chromatogram_with_formulas(
         - "msms_m/z": List(Float) (observed MS/MS fragment m/z)
         - "msms_intensity": List(Float) (observed MS/MS fragment intensities)
         The function fails fast if required columns are missing.
-
-    - addcut_mass: float
-        Mass of the adduct or proton to subtract from observed m/z to obtain the
-        neutral (non-ionized) mass. Default is PROTON_MASS.
 
     - max_bounds: dict | None
         Optional user-specified upper bounds for element counts used by the isotopic
@@ -315,18 +312,14 @@ def annotate_chromatogram_with_formulas(
     The returned polars DataFrame contains the original chromatogram columns plus the
     following annotations (types indicated informally):
 
-    - min_bounds: Array(Int32) length NUM_ELEMENTS
+    - min_bounds: Array(Int32, shape=(NUM_ELEMENTS,))
         Per-element minimum counts inferred for the precursor formula (from isotopic pattern).
-    - max_bounds: Array(Int32) length NUM_ELEMENTS
+    - max_bounds: Array(Int32, shape=(NUM_ELEMENTS,))
         Per-element maximum counts inferred for the precursor formula (from isotopic pattern).
-    - non_ionized_mass: Float
-        Precursor neutral mass = Precursor_mz_MSDIAL - addcut_mass.
     - precursor_formula: Array(Int32, shape=(NUM_ELEMENTS,))
         Candidate elemental formula for the precursor (each is an integer vector of
         element counts). The function explodes this column so each output row contains
         exactly one candidate formula (a single Array(Int32,...)).
-    - non_ionized_msms_m/z: List(Float)
-        MS/MS fragment m/z values shifted to the neutral frame (each mz - addcut_mass).
     - cleaned_msms_mz: List(Float)
         Cleaned and (internally) normalized fragment masses that were retained after
         matching against the candidate formula and applying mass tolerances.
@@ -342,12 +335,21 @@ def annotate_chromatogram_with_formulas(
 
     Notes and behavior
     - The function relies on domain utilities: deduce_isotopic_pattern,
-      and the mass_decomposition polars plugin. Any
-      change in those APIs must be propagated here.
+      and the mass_decomposition polars plugin. Any change in those APIs must be
+      propagated here.
+    - Formula arrays contain NUM_ELEMENTS (currently 12) entries in the order
+      H, C, N, O, F, Na, P, S, Cl, K, Br, I. Isotope bounds contain 24 entries:
+      twelve minima followed by twelve maxima.
+    - This function does not neutralize adducts or guarantee compound identity.
     - One input precursor row may expand into multiple output rows (one per candidate
       decomposition) because of the explosion of "decomposed_formulas".
     - Mass tolerances are expressed in ppm; callers should pass values appropriate
       for their instrument and data quality.
+    - Keyword-only minimum_element_count_error / maximum_element_count_error maps
+      (C/S/Cl/Br integer margins, default None) bound each directional error around
+      the rounded calibrated expected count, minimum first then maximum. Physical
+      and global limits still apply. Missing/below-threshold isotope peaks have no
+      calibrated center and are not adjusted; no endpoint midpoint is inferred.
     - The function performs no downstream filtering of candidate formulas; downstream
       ranking/selection is the caller's responsibility.
     """
@@ -362,6 +364,8 @@ def annotate_chromatogram_with_formulas(
                 isotopic_mass_tolerance_ppm=isotopic_mass_accuracy_ppm,
                 minimum_intensity=isotopic_minimum_intensity,
                 model=isotopic_model,
+                minimum_element_count_error=minimum_element_count_error,
+                maximum_element_count_error=maximum_element_count_error,
                 max_bounds=max_bounds,
             )
             .alias("bounds")
@@ -413,8 +417,11 @@ def annotate_chromatogram_with_formulas(
     )
     chromatogram = chromatogram.explode(
         ["precursor_formula", "precursor_formula_str", "precursor_errors_ppm"]
-    )
+    ).filter(pl.col("precursor_formula").is_not_null())
 
+    # Mass decomposition can return null candidate entries for features with no valid
+    # formula. Remove those rows before passing fixed-size formula arrays to the Rust
+    # spectrum-cleaning plugin, which requires a concrete formula for every row.
     # Sum original intensities before cleaning for explained intensity calculation
     chromatogram = chromatogram.with_columns(
         pl.col("msms_intensity").list.sum().alias("_total_intensity_before_cleaning")
@@ -806,7 +813,10 @@ _POSITIVE_ADDUCTS = "[M+H]+,[M-H2O+H]+,[M+Na]+,[M+K]+,[M+NH4]+,[M+HCOO+Na]+,[M+C
 
 @dataclass
 class MSDialRunnerConfig:
-    """Configuration for running MS-DIAL Console App.
+    """Configuration for the repository's legacy MS-DIAL console runner.
+
+    This runner has not been verified against the current MS-DIAL 5 metadata-CSV
+    workflow; pin and validate the external executable and method file yourself.
 
     Attributes
     ----------

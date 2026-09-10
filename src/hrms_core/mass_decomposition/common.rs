@@ -12,10 +12,19 @@ pub use mass_decomposition::Formula;
 pub use mass_decomposition::bounds::{
     CalibratedIsotopicModel, CleanAndNormalizeSpectrumKwargs, CleanedAndNormalizedSpectrumResult,
     CorrectedFragment, DecomposedFragment, DecompositionKwargs, DecompositionParams,
-    DeduceIsotopicPatternKwargs, IsotopicPatternParams, SpectrumDecompositionParams,
+    IsotopicPatternParams, SpectrumDecompositionParams,
     check_dbe, default_max_bounds, default_min_bounds,
 };
 
 // Used by the deducer of isotopic patterns; `DeduceIsotopicPatternKwargs` carries
 // `Option<HashMap<String, i32>>` fields.
 pub use std::collections::HashMap;
+
+/// Local plugin kwargs extend the dependency without changing its serialized fields.
+#[derive(serde::Deserialize)]
+pub struct DeduceIsotopicPatternKwargs {
+    #[serde(flatten)]
+    pub inference: mass_decomposition::bounds::DeduceIsotopicPatternKwargs,
+    pub minimum_element_count_error: Option<HashMap<String, i32>>,
+    pub maximum_element_count_error: Option<HashMap<String, i32>>,
+}

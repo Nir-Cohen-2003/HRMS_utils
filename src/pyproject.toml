@@ -12,6 +12,7 @@ dependencies = [
     "requests",
     "aiohttp",
     "scipy",
+    "matplotlib>=3.8.0",
     # for polars
     "pyarrow>=12.0.0",
     "pandas",
@@ -25,7 +26,10 @@ dependencies = [
 dynamic = ["version"]
 
 [project.scripts]
+hrms-msdial-annotate = "hrms_utils.cli.msdial_annotation:cli_main"
 build-spectral-library = "hrms_utils.cli.process_spectral_library:main"
+hrms-isotope-calibrate = "hrms_utils.cli.isotope_calibration:cli_main"
+hrms-positive-msdial-annotate = "hrms_utils.cli.positive_msdial_annotation:cli_main"
 
 [build-system]
 requires = ["maturin>=1.0,<2.0"]
@@ -37,6 +41,7 @@ python-source = "."
 features = ["pyo3/abi3-py312"]
 bindings = "pyo3"
 exclude = ["scripts/**", "tests/**","experiments/**","docs/**","results/**","ideas/**"]
+include = ["hrms_utils/msdial_console_params_negative.txt", "hrms_utils/msdial_console_params_positive.txt", "hrms_utils/data/**"]
 
 [tool.ty.src] #this project uses pyrefly, but mrimo introduces the ty type checker, which we disable
 exclude = ["src", "scripts", "tests","experiments"]

@@ -38,6 +38,9 @@ check_all = "pyrefly check ./src/hrms_utils --ignore missing-import --ignore mis
 check_nist_mspec = "pyrefly check ./src/hrms_utils/formats/nist_mspec.py"
 test = {cmd="echo 'All tests passed!'", depends-on = [
     "test_isotopic_pattern",
+    "test_isotopic_calibration",
+    "test_positive_annotation",
+    "test_msdial_annotation",
     "test_mass_decomposition",
     "test_mzml",
     "test_core_spectral_information",
@@ -50,6 +53,9 @@ test = {cmd="echo 'All tests passed!'", depends-on = [
     # "test_mol",
   ]}
 test_isotopic_pattern = "pytest tests/hrms_core/test_isotopic_pattern.py"
+test_isotopic_calibration = "pytest tests/experiments/test_find_optimal_isotopic_parameters.py"
+test_msdial_annotation = "pytest tests/test_msdial_annotation.py tests/hrms_core/test_element_count_error.py"
+test_positive_annotation = "pytest tests/experiments/test_run_positive_msdial_annotation.py"
 test_mass_decomposition = "pytest tests/hrms_core/test_mass_decomposition.py"
 test_mzml = "pytest tests/hrms_core/test_mzml_io.py"
 test_core_spectral_information = "pytest tests/hrms_core/test_spectral_information.py"
@@ -87,11 +93,13 @@ cuda-version = "*"
 nvmolkit = "*"
 
 [feature.experiments.tasks]
+run_msdial_annotation = "python -m experiments.run_msdial_annotation"
 approx_sim = {cmd="python experiments/fast_cosine_sim/approximate_similarity.py",env={ MKL_INTERFACE_LAYER = "LP64"}}
 approx_sim_batched  = {cmd="python experiments/fast_cosine_sim/batched_gpu.py",env={ MKL_INTERFACE_LAYER = "LP64"}}
 benchmark_gpu_cosine = {cmd="python experiments/fast_cosine_sim/simms_sparse_exact_benchmark.py",env={ MKL_INTERFACE_LAYER = "LP64"}}
 
 isotope_fit = "python experiments/find_optimal_isotopic_parameters.py"
+run_positive_msdial_annotation = "python -m experiments.run_positive_msdial_annotation --msdial-method experiments/msdial_console_params_positive.txt"
 
 [feature.scripts.tasks]
 plasma-fpr = {cmd = "python experiments/spectral_information/plasma_fpr_estimate.py"}

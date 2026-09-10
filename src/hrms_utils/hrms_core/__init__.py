@@ -7,10 +7,12 @@ import tempfile
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Literal, Mapping
 
 import polars as pl
 from polars.plugins import register_plugin_function
+
+from ..element_count_error import validate_element_count_errors
 
 from .._internal import (
     NUM_ELEMENTS,  # type: ignore
@@ -65,12 +67,8 @@ class MassDecomposerUtils:
             max_bounds: The maximum elemental counts for the formula.
 
         Returns:
-            A Polars expression with the decomposition results, of the type:
-            pl.Struct({
-                "formulas": pl.List(pl.Array(pl.Int32, 15)),
-                "formulas_str": pl.List(pl.String),
-                "errors_ppm": pl.List(pl.Float64),
-            })
+            A Polars expression with the decomposition results. Formula arrays have
+            12 entries in the order H, C, N, O, F, Na, P, S, Cl, K, Br, I.
         """
         if min_bounds is None:
             min_bounds = [0] * NUM_ELEMENTS
@@ -118,12 +116,8 @@ class MassDecomposerUtils:
             dbe_mode: The DBE mode, one of 'integer', 'half_integer', 'any'.
 
         Returns:
-            A Polars expression with the decomposition results, of the type:
-            pl.Struct({
-                "formulas": pl.List(pl.Array(pl.Int32, 15)),
-                "formulas_str": pl.List(pl.String),
-                "errors_ppm": pl.List(pl.Float64),
-            })
+            A Polars expression with the decomposition results. Formula arrays have
+            12 entries in the order H, C, N, O, F, Na, P, S, Cl, K, Br, I.
         """
         kwargs = {
             "tolerance_ppm": tolerance_ppm,
@@ -155,7 +149,7 @@ class MassDecomposerUtils:
             pl.Struct({
                 "mz": List[float64],
                 "intensities": List[float64],
-                "precursor_formula": Array[int, 15],
+                "precursor_formula": Array[int, 12],
             })
         Args:
             raw_fragment_tolerance_ppm: The mass tolerance in ppm for the initial decomposition.
@@ -165,14 +159,9 @@ class MassDecomposerUtils:
             dbe_mode: The DBE mode, one of 'integer', 'half_integer', 'any'.
             water_absorption: Whether to allow for water absorption.
         Returns:
-            A Polars expression with the cleaned and normalized spectrum, of the type:
-            pl.Struct({
-                "formulas": pl.List(pl.Array(pl.Int32, 15)),
-                "formulas_str": pl.List(pl.String),
-                "normalized_masses": pl.List(pl.Float64),
-                "intensities": pl.List(pl.Float64),
-                "errors_ppm": pl.List(pl.Float64),
-            })
+            A Polars expression with the cleaned and normalized spectrum. Fragment
+            formula arrays have 12 entries in the order H, C, N, O, F, Na, P, S,
+            Cl, K, Br, I.
         """
         kwargs = {
             "raw_fragment_tolerance_ppm": raw_fragment_tolerance_ppm,
@@ -209,6 +198,9 @@ class MassDecomposerUtils:
         ),
         min_bounds: dict[str, int] | None = None,
         max_bounds: dict[str, int] | None = None,
+        *,
+        minimum_element_count_error: Mapping[str, int] | None = None,
+        maximum_element_count_error: Mapping[str, int] | None = None,
     ) -> pl.Expr:
         """
         Deduce the isotopic pattern from the given precursor and MS1 data.
@@ -224,14 +216,23 @@ class MassDecomposerUtils:
             model: Calibrated heteroscedastic isotopic model
             min_bounds: Optional dictionary of minimum element counts
             max_bounds: Optional dictionary of maximum element counts
+            minimum_element_count_error: Keyword-only C/S/Cl/Br integer directional
+                margin floors around floor(calibrated expected count + 0.5).
+            maximum_element_count_error: Directional margin ceilings, applied after
+                floors. None preserves inference. Missing/below-threshold peaks
+                have no calibrated center and are not adjusted. Adjusted bounds
+                are intersected with nonnegative/global element limits.
 
         Returns:
             pl.Expr: Series of Array(Int32, 24) containing [min_counts..., max_counts...]
         """
+        minimum, maximum = validate_element_count_errors(minimum_element_count_error, maximum_element_count_error)
         kwargs = {
             "ms1_mass_tolerance_ppm": ms1_mass_tolerance_ppm,
             "isotopic_mass_tolerance_ppm": isotopic_mass_tolerance_ppm,
             "minimum_intensity": minimum_intensity,
+            "minimum_element_count_error": minimum,
+            "maximum_element_count_error": maximum,
             "model": model,
             "min_bounds": min_bounds,
             "max_bounds": max_bounds,
@@ -264,12 +265,10 @@ class SpectralInfoNamespace:
         where edges connect sub-formulas to super-formulas. The score is derived from
         the entropy of the minimum distances between connected nodes in a normalized space.
 
-        Args:
-            A struct with the following fields:
-            "precursor_formula": Array(Int32, NUM_ELEMENTS),
-            "fragment_formulas": List(Array(Int32, NUM_ELEMENTS)),
-            and with keywords:
+        The input struct has `precursor_formula` as an Array(Int32, 12) and
+        `fragment_formulas` as a List(Array(Int32, 12)).
 
+        Args:
             distance_metric: The distance metric for comparing normalized formulas.
                             One of 'l1', 'l2', or 'cosine'. Defaults to 'l2'.
             ignore_hydrogens: If True, ignores the first element (hydrogen) when comparing formulas.

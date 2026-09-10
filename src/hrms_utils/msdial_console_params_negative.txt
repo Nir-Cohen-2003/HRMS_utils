@@ -1,0 +1,87 @@
+MS1 data type: Centroid
+MS2 data type: Centroid
+Ion mode: Negative
+Target omics: Metabolomics
+Ionization: ESI
+Machine category: LCMS
+Instrument type:
+Instrument:
+Authors:
+License:
+Comment:
+Msp file path:
+Lbm file path:
+Text DB file path:
+Isotope text DB file path:
+Compounds library file path for target detection:
+Compounds library file path for RT correction:
+
+#Adduct ion setting
+adduct list: [M-H]-
+
+# Export
+Export spectra file format: msp
+Export spectra type: deconvoluted
+Mat file export folder path:
+Export folder path:
+Height matrix export: True
+Normalized height matrix export: False
+Representative spectra export: False
+Peak ID matrix export: False
+Retention time matrix export: False
+Mass matrix export: False
+MSMS included matrix export: False
+Unique mass matrix export: False
+Peak area matrix export: False
+Parameter export: False
+GNPS export: False
+Molecular networking export: False
+SN matrix export: False
+Export as mztabM format: True
+
+
+# Process parameters
+Process option: All
+Number of threads: 20
+
+
+# Feature detection parameters
+Smoothing method: LinearWeightedMovingAverage
+Smoothing level: 3
+Minimum peak height: 100000
+Minimum peak width: 5
+Average peak width: 30
+Mass slice width: 0.005
+Retention time begin: 0
+Retention time end: 100
+MS1 mass range begin: 0
+MS1 mass range end: 2000
+MS2 mass range begin: 0
+MS2 mass range end: 2000
+MS1 tolerance for centroid: 0.01
+MS2 tolerance for centroid: 0.025
+Accuracy type: IsAccurate
+Max charge number: 1
+Considering Br and Cl for isotopes: True
+Exclude mass list:
+Max isotopes detected in ms1 spectrum: 3
+
+
+# Deconvolution
+Sigma window value: 0.5
+Amplitude cut off: 1000
+Keep isotope range: 5
+Exclude after precursor: True
+Keep original precursor isotopes: False
+Is do andromeda ms2 deconvolution: False
+Andromeda delta: 100
+Andromeda max peaks: 12
+Target CE: 0
+
+
+# Retention time correction
+Execute RT correction: False
+
+
+# CorrDec settings
+CorrDec execute: False

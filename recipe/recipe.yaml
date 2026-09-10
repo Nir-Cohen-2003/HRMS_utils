@@ -55,6 +55,7 @@ requirements:
     - numpy >=1.20.0
     - parallel_rdkit
     - scipy
+    - matplotlib >=3.8.0
     - pymzml >2.5.0
     - pandas
     - lxml
@@ -73,6 +74,8 @@ tests:
   - python:
       imports:
         - hrms_utils
+        - hrms_utils.msdial_annotation
+        - hrms_utils.cli.msdial_annotation
       python_version: ["${{ python_min ~ '.*' }}", "3.13.*", "3.14.*"]
 
 about:
