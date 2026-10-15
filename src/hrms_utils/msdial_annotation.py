@@ -28,7 +28,10 @@ from hrms_utils.formats.msdial import (
     annotate_chromatogram_with_formulas,
     get_chromatogram,
 )
-from hrms_utils.element_count_error import validate_element_count_errors
+from hrms_utils.element_count_error import (
+    validate_carbon_tolerance,
+    validate_element_count_errors,
+)
 from hrms_utils.hrms_core import CalibratedIsotopicModel
 from hrms_utils.isotope_model import (
     load_calibrated_isotopic_model,
@@ -108,6 +111,7 @@ class MsdialAnnotationConfig:
     calibrated_error_bound_scale: float = 1.0
     minimum_element_count_error: Mapping[str, int] | None = None
     maximum_element_count_error: Mapping[str, int] | None = None
+    carbon_tolerance: int | float | None = None
 
 
 @dataclass(frozen=True)
@@ -268,6 +272,7 @@ def _validate_inputs(config: MsdialAnnotationConfig) -> ValidatedInputs:
     validate_element_count_errors(
         config.minimum_element_count_error, config.maximum_element_count_error
     )
+    validate_carbon_tolerance(config.carbon_tolerance)
     if config.load_model_path is not None and config.save_model_path is not None:
         raise ValueError("--load-model and --save-model cannot be used together.")
     load_model_path = (
@@ -670,6 +675,7 @@ def _run_workflow(
                 isotopic_model=effective_model,
                 minimum_element_count_error=config.minimum_element_count_error,
                 maximum_element_count_error=config.maximum_element_count_error,
+                carbon_tolerance=config.carbon_tolerance,
             )
             name = table_path.stem
             annotated.write_parquet(annotations / f"{name}.parquet")
@@ -689,6 +695,7 @@ def _run_workflow(
             "config": {
                 "polarity": config.polarity,
                 "calibrated_error_bound_scale": config.calibrated_error_bound_scale,
+                "carbon_tolerance": config.carbon_tolerance,
                 "minimum_element_count_error": None
                 if config.minimum_element_count_error is None
                 else dict(config.minimum_element_count_error),
@@ -823,6 +830,12 @@ def _build_argument_parser(*, positive_compatibility: bool) -> argparse.Argument
         type=_parse_element_count_error_json,
         help="JSON integer margin ceilings, applied after floors; no effect without a calibrated center.",
     )
+    parser.add_argument(
+        "--carbon-tolerance",
+        type=float,
+        default=None,
+        help="Nonnegative carbon-count tolerance around the raw calibrated estimate.",
+    )
     if positive_compatibility:
         parser.set_defaults(
             msdial_method=default_method("positive"),
@@ -861,6 +874,7 @@ def configuration_from_arguments(
         calibrated_error_bound_scale=arguments.calibrated_error_bound_scale,
         minimum_element_count_error=arguments.minimum_element_count_error,
         maximum_element_count_error=arguments.maximum_element_count_error,
+        carbon_tolerance=arguments.carbon_tolerance,
     )
 
 
@@ -879,6 +893,7 @@ class MsdialWorkflowParameters:
     calibrated_error_bound_scale: float = 1.0
     minimum_element_count_error: Mapping[str, int] | None = None
     maximum_element_count_error: Mapping[str, int] | None = None
+    carbon_tolerance: int | float | None = None
 
 
 def _source_to_glob(source: str | Path) -> str:
@@ -908,6 +923,7 @@ def run_msdial_annotation(
     calibrated_error_bound_scale: float = 1.0,
     minimum_element_count_error: Mapping[str, int] | None = None,
     maximum_element_count_error: Mapping[str, int] | None = None,
+    carbon_tolerance: int | float | None = None,
 ) -> Path:
     """Run explicitly polarity-selected MS-DIAL annotation with the complete CLI option surface."""
     return main(
@@ -926,6 +942,7 @@ def run_msdial_annotation(
             calibrated_error_bound_scale=calibrated_error_bound_scale,
             minimum_element_count_error=minimum_element_count_error,
             maximum_element_count_error=maximum_element_count_error,
+            carbon_tolerance=carbon_tolerance,
         )
     )
 
@@ -962,6 +979,7 @@ def run_complete_msdial_workflow(
         calibrated_error_bound_scale=parameters.calibrated_error_bound_scale,
         minimum_element_count_error=parameters.minimum_element_count_error,
         maximum_element_count_error=parameters.maximum_element_count_error,
+        carbon_tolerance=parameters.carbon_tolerance,
     )
 
 

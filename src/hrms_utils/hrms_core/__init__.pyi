@@ -53,6 +53,7 @@ class MassDecomposerUtils:
         *,
         minimum_element_count_error: Mapping[str, int] | None = None,
         maximum_element_count_error: Mapping[str, int] | None = None,
+        carbon_tolerance: int | float | None = None,
     ) -> pl.Expr: ...
 
     def clean_and_normalize_spectrum(

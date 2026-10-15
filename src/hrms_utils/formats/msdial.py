@@ -256,6 +256,7 @@ def annotate_chromatogram_with_formulas(
     *,
     minimum_element_count_error: Mapping[str, int] | None = None,
     maximum_element_count_error: Mapping[str, int] | None = None,
+    carbon_tolerance: int | float | None = None,
 ) -> pl.DataFrame:
     """
     Annotate an MSDIAL chromatogram with isotopic patterns, candidate elemental formulas
@@ -366,6 +367,7 @@ def annotate_chromatogram_with_formulas(
                 model=isotopic_model,
                 minimum_element_count_error=minimum_element_count_error,
                 maximum_element_count_error=maximum_element_count_error,
+                carbon_tolerance=carbon_tolerance,
                 max_bounds=max_bounds,
             )
             .alias("bounds")

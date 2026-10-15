@@ -46,6 +46,7 @@ class PositiveMsdialAnnotationConfig:
     calibrated_error_bound_scale: float = 1.0
     minimum_element_count_error: Mapping[str, int] | None = None
     maximum_element_count_error: Mapping[str, int] | None = None
+    carbon_tolerance: int | float | None = None
 
 
 def _generic_config(
@@ -118,6 +119,7 @@ class PositiveMsdialWorkflowParameters:
     calibrated_error_bound_scale: float = 1.0
     minimum_element_count_error: Mapping[str, int] | None = None
     maximum_element_count_error: Mapping[str, int] | None = None
+    carbon_tolerance: int | float | None = None
 
 
 def _source_to_glob(source: str | Path) -> str:
@@ -146,6 +148,7 @@ def run_positive_msdial_annotation(
     calibrated_error_bound_scale: float = 1.0,
     minimum_element_count_error: Mapping[str, int] | None = None,
     maximum_element_count_error: Mapping[str, int] | None = None,
+    carbon_tolerance: int | float | None = None,
 ) -> Path:
     """Run positive MS-DIAL annotation with the complete CLI option surface."""
     return main(
@@ -163,6 +166,7 @@ def run_positive_msdial_annotation(
             calibrated_error_bound_scale=calibrated_error_bound_scale,
             minimum_element_count_error=minimum_element_count_error,
             maximum_element_count_error=maximum_element_count_error,
+            carbon_tolerance=carbon_tolerance,
         )
     )
 
@@ -196,6 +200,7 @@ def run_complete_positive_msdial_workflow(
         calibrated_error_bound_scale=parameters.calibrated_error_bound_scale,
         minimum_element_count_error=parameters.minimum_element_count_error,
         maximum_element_count_error=parameters.maximum_element_count_error,
+        carbon_tolerance=parameters.carbon_tolerance,
     )
 
 

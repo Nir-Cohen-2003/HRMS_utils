@@ -1,5 +1,6 @@
 use super::isotope_count_error::{
-    clamp_count_margins, deduce_isotopic_pattern_with_centers, validate_count_errors, TARGET_ELEMENTS,
+    clamp_carbon_tolerance, clamp_count_margins, deduce_isotopic_pattern_with_centers,
+    validate_count_errors, TARGET_ELEMENTS,
 };
 use crate::mass_decomposition::algorithms::{
     deduce_isotopic_pattern_inner, MassDecomposer, SpectrumDecomposer,
@@ -504,9 +505,14 @@ fn deduce_isotopic_pattern(
         kwargs.maximum_element_count_error.as_ref(),
     )
     .map_err(|message| polars_err!(ComputeError: "{}", message))?;
+    if kwargs.carbon_tolerance.is_some_and(|value| !value.is_finite() || value < 0.0) {
+        return Err(polars_err!(ComputeError: "carbon_tolerance must be a nonnegative finite value"));
+    }
     let minimum_errors = kwargs.minimum_element_count_error;
     let maximum_errors = kwargs.maximum_element_count_error;
+    let carbon_tolerance = kwargs.carbon_tolerance;
     let apply_count_errors = minimum_errors.is_some() || maximum_errors.is_some();
+    let infer_centers = apply_count_errors || carbon_tolerance.is_some();
     let kwargs = kwargs.inference;
     let precursor_mzs = inputs[0].f64()?;
     let ms1_mzs_series = &inputs[1];
@@ -567,7 +573,7 @@ fn deduce_isotopic_pattern(
                 let ms1_mzs_slice: Vec<f64> = ms1_mzs.into_no_null_iter().collect();
                 let ms1_int_slice: Vec<f64> = ms1_int.into_no_null_iter().collect();
 
-                let (deduced, centers) = if apply_count_errors {
+                let (deduced, centers) = if infer_centers {
                     deduce_isotopic_pattern_with_centers(
                         precursor_mz, &ms1_mzs_slice, &ms1_int_slice, &params,
                     )
@@ -615,6 +621,16 @@ fn deduce_isotopic_pattern(
                             }
                         }
                     }
+                }
+                if let (Some(tolerance), Some(center)) = (carbon_tolerance, centers[0]) {
+                    let (lower, upper) = clamp_carbon_tolerance(
+                        center,
+                        tolerance,
+                        min_bounds_base[1],
+                        max_bounds_base[1],
+                    );
+                    row_result[1] = lower;
+                    row_result[1 + NUM_ELEMENTS] = upper;
                 }
                 Some(row_result)
             } else {

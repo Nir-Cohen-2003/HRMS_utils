@@ -27,4 +27,5 @@ pub struct DeduceIsotopicPatternKwargs {
     pub inference: mass_decomposition::bounds::DeduceIsotopicPatternKwargs,
     pub minimum_element_count_error: Option<HashMap<String, i32>>,
     pub maximum_element_count_error: Option<HashMap<String, i32>>,
+    pub carbon_tolerance: Option<f64>,
 }

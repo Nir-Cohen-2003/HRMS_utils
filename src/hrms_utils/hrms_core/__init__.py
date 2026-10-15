@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING, Literal, Mapping
 import polars as pl
 from polars.plugins import register_plugin_function
 
-from ..element_count_error import validate_element_count_errors
+from ..element_count_error import validate_carbon_tolerance, validate_element_count_errors
 
 from .._internal import (
     NUM_ELEMENTS,  # type: ignore
@@ -201,6 +201,7 @@ class MassDecomposerUtils:
         *,
         minimum_element_count_error: Mapping[str, int] | None = None,
         maximum_element_count_error: Mapping[str, int] | None = None,
+        carbon_tolerance: int | float | None = None,
     ) -> pl.Expr:
         """
         Deduce the isotopic pattern from the given precursor and MS1 data.
@@ -227,12 +228,14 @@ class MassDecomposerUtils:
             pl.Expr: Series of Array(Int32, 24) containing [min_counts..., max_counts...]
         """
         minimum, maximum = validate_element_count_errors(minimum_element_count_error, maximum_element_count_error)
+        carbon_tolerance = validate_carbon_tolerance(carbon_tolerance)
         kwargs = {
             "ms1_mass_tolerance_ppm": ms1_mass_tolerance_ppm,
             "isotopic_mass_tolerance_ppm": isotopic_mass_tolerance_ppm,
             "minimum_intensity": minimum_intensity,
             "minimum_element_count_error": minimum,
             "maximum_element_count_error": maximum,
+            "carbon_tolerance": carbon_tolerance,
             "model": model,
             "min_bounds": min_bounds,
             "max_bounds": max_bounds,

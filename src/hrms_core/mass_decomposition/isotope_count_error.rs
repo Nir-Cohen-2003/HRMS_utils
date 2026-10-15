@@ -39,6 +39,24 @@ pub fn validate_count_errors(
 /// Intersect adjusted margins with physical/global bounds; an empty interval stays
 /// empty, rather than inventing a candidate at a cap. Float arithmetic avoids Int32
 /// overflow before the final saturating conversion to the existing output schema.
+pub fn clamp_carbon_tolerance(
+    center: f64,
+    tolerance: f64,
+    global_minimum: i32,
+    global_maximum: i32,
+) -> (i32, i32) {
+    let lower_bound = (center - tolerance)
+        .ceil()
+        .max(f64::from(global_minimum.max(0)));
+    let upper_bound = (center + tolerance)
+        .floor()
+        .min(f64::from(global_maximum));
+    if lower_bound > f64::from(i32::MAX) {
+        return (i32::MAX, global_maximum.min(i32::MAX - 1));
+    }
+    (lower_bound as i32, upper_bound as i32)
+}
+
 pub fn clamp_count_margins(
     expected_count: f64,
     lower: f64,
